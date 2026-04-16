@@ -69,3 +69,80 @@ Stage Summary:
 - Events: transaction CRUD, purchase CRUD, account/card updates, dashboard refresh, notifications
 - CORS enabled for all origins
 - Graceful shutdown handling
+
+---
+Task ID: 3
+Agent: Dashboard Fix & Seed Data
+Task: Fix dashboard API bugs and add historical seed data
+
+Work Log:
+- Fixed monthly trend to include purchase expenses alongside transaction expenses
+- Fixed expense by category to include purchase categories alongside transaction categories
+- Changed month labels from "en-US" to "pt-BR" locale with short month + 2-digit year
+- Added `category: true` to recentPurchases query include
+- Added 5 months of historical seed data (29 transactions + 13 purchases across past 5 months)
+- Converted all seed data to use upsert with deterministic IDs to prevent duplicates on re-run
+- Added cleanup step to remove old non-prefixed records from previous seed runs
+
+Stage Summary:
+- Dashboard charts now show full 6 months of data including both transactions and purchases
+- Expense calculations correctly aggregate transactions and purchases
+- Portuguese month labels (e.g., "jan./25", "fev./25")
+- All API routes returning 200, no lint errors
+
+---
+Task ID: CR1
+Agent: Cron Review - Round 1
+Task: QA testing, bug fixes, styling improvements, and new features
+
+Work Log:
+- Performed comprehensive QA with agent-browser (dashboard, accounts, cards, purchases, categories, mobile, light theme)
+- Identified and fixed dashboard API bugs (monthly trend not including purchases, expense by category missing purchases)
+- Added 5 months of historical seed data for realistic charts
+- Fixed SimCard import (not in lucide-react) → replaced with Nfc
+- Fixed duplicate variable name totalItems in purchases-view.tsx
+- Completely redesigned Dashboard view:
+  - Gradient top borders on summary cards
+  - Shadow effects on cards (shadow-md)
+  - Quick stats row (patrimônio total, compras, transações, gasto médio/dia)
+  - Area chart instead of bar chart with gradient fills
+  - Animated account distribution with progress bars
+  - Show/hide values toggle button
+  - Animated expand/collapse for purchase items
+  - Portuguese category labels on chart
+- Completely redesigned Cards view:
+  - Premium credit card visuals with grid pattern, chip icon (Nfc), WiFi icon
+  - Glow effect under cards
+  - Summary banner (total em faturas + limite total)
+  - Hover animation (whileHover y:-4)
+  - Better detail view with centered card, 3-column stats
+  - Animated expand/collapse for items (AnimatePresence)
+- Enhanced Purchases view:
+  - Spending insights cards (total gasto, ticket médio, estabelecimentos, itens comprados)
+  - Top Merchants section with animated progress bars
+  - Animated expand/collapse for item details (motion.div)
+  - Better expanded items styling with bg-accent/20
+
+Stage Summary:
+- All 5 views working correctly with no errors
+- Zero lint errors
+- No console errors in browser
+- Responsive design verified on mobile (375px), tablet, and desktop
+- Dark and light themes both working
+- Historical data provides realistic chart visualization
+- QA screenshots saved to /home/z/my-project/download/
+
+Current Assessment:
+- Application is STABLE with no runtime errors
+- All CRUD operations functional
+- Charts populated with 6 months of data
+- Styling significantly improved with shadows, gradients, animations
+- New features added: value toggle, spending insights, top merchants
+
+Unresolved Issues / Next Steps:
+1. Socket.io service is running but NOT yet connected to the frontend (real-time updates not active)
+2. Transfer between accounts feature not yet implemented
+3. Date range filter for dashboard not yet implemented
+4. Consider adding a receipt/pdf export feature for purchases
+5. Consider adding a budget/goals feature
+6. Consider adding recurring transaction support

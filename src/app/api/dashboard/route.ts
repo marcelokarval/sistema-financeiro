@@ -24,6 +24,8 @@ export async function GET() {
       recentPurchases,
       monthlyTransactions,
       categoryExpenseTransactions,
+      monthlyPurchases,
+      categoryExpensePurchases,
     ] = await Promise.all([
       // 1. All accounts for totalBalance and accountBalances
       db.account.findMany({
@@ -78,13 +80,14 @@ export async function GET() {
         },
       }),
 
-      // 7. Recent 10 purchases
+      // 7. Recent 10 purchases (now includes category)
       db.purchase.findMany({
         take: 10,
         orderBy: { date: "desc" },
         include: {
           items: { orderBy: { createdAt: "asc" } },
           card: true,
+          category: true,
         },
       }),
 
@@ -114,6 +117,31 @@ export async function GET() {
           amount: true,
         },
       }),
+
+      // 10. All purchases for monthly trend (last 6 months)
+      db.purchase.findMany({
+        where: {
+          date: {
+            gte: new Date(currentYear, currentMonth - 5, 1),
+          },
+        },
+        select: {
+          totalAmount: true,
+          date: true,
+        },
+      }),
+
+      // 11. Current month purchases grouped by category
+      db.purchase.findMany({
+        where: {
+          date: { gte: monthStart, lte: monthEnd },
+          categoryId: { not: null },
+        },
+        select: {
+          categoryId: true,
+          totalAmount: true,
+        },
+      }),
     ]);
 
     // Calculate totals
@@ -131,58 +159,76 @@ export async function GET() {
       balance: acc.balance,
     }));
 
-    // Monthly trend - last 6 months
+    // Monthly trend - last 6 months (includes both transactions and purchases)
     const monthlyTrend = [];
     for (let i = 5; i >= 0; i--) {
       const trendMonth = new Date(currentYear, currentMonth - i, 1);
       const trendMonthEnd = new Date(currentYear, currentMonth - i + 1, 0, 23, 59, 59, 999);
-      const monthLabel = trendMonth.toLocaleString("en-US", {
+      const monthLabel = trendMonth.toLocaleString("pt-BR", {
         month: "short",
-        year: "numeric",
+        year: "2-digit",
       });
 
       const monthTxns = monthlyTransactions.filter(
         (t) => t.date >= trendMonth && t.date <= trendMonthEnd
       );
 
+      const monthPurchasesInPeriod = monthlyPurchases.filter(
+        (p) => p.date >= trendMonth && p.date <= trendMonthEnd
+      );
+
       const income = monthTxns
         .filter((t) => t.type === "INCOME")
         .reduce((sum, t) => sum + t.amount, 0);
 
-      const expense = monthTxns
+      const txnExpense = monthTxns
         .filter((t) => t.type === "EXPENSE")
         .reduce((sum, t) => sum + t.amount, 0);
+
+      const purchaseExpense = monthPurchasesInPeriod.reduce(
+        (sum, p) => sum + p.totalAmount,
+        0
+      );
 
       monthlyTrend.push({
         month: monthLabel,
         income,
-        expense,
+        expense: txnExpense + purchaseExpense,
       });
     }
 
-    // Expense by category - current month
-    const categoryIds = [...new Set(categoryExpenseTransactions.map((t) => t.categoryId!))];
+    // Expense by category - current month (includes both transactions and purchases)
+    const allCategoryIds = [
+      ...new Set([
+        ...categoryExpenseTransactions.map((t) => t.categoryId!),
+        ...categoryExpensePurchases.map((p) => p.categoryId!),
+      ]),
+    ];
     const expenseByCategory = [];
 
-    if (categoryIds.length > 0) {
+    if (allCategoryIds.length > 0) {
       const categories = await db.category.findMany({
-        where: { id: { in: categoryIds } },
+        where: { id: { in: allCategoryIds } },
         select: { id: true, name: true, color: true },
       });
 
-      for (const catId of categoryIds) {
+      for (const catId of allCategoryIds) {
         const cat = categories.find((c) => c.id === catId);
         if (!cat) continue;
 
-        const total = categoryExpenseTransactions
+        const txnTotal = categoryExpenseTransactions
           .filter((t) => t.categoryId === catId)
           .reduce((sum, t) => sum + t.amount, 0);
+
+        const purchaseTotal = categoryExpensePurchases
+          .filter((p) => p.categoryId === catId)
+          .reduce((sum, p) => sum + p.totalAmount, 0);
 
         expenseByCategory.push({
           categoryId: cat.id,
           categoryName: cat.name,
           categoryColor: cat.color,
-          total,
+          total: txnTotal + purchaseTotal,
         });
       }
 

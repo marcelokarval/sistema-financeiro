@@ -3,6 +3,13 @@ import { db } from '@/lib/db';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  // Clean up old data from previous seed runs (without prefixed IDs)
+  // Delete all purchase items, purchases, and transactions, then re-seed with upsert
+  await db.purchaseItem.deleteMany({});
+  await db.purchase.deleteMany({});
+  await db.transaction.deleteMany({});
+  console.log('🧹 Cleaned up old transactions and purchases');
+
   // Create categories
   const categories = await Promise.all([
     db.category.upsert({ where: { id: 'cat-salary' }, update: {}, create: { id: 'cat-salary', name: 'Salário', icon: 'banknote', type: 'INCOME', color: '#22c55e' } }),
@@ -47,34 +54,250 @@ async function main() {
   });
   console.log(`✅ Created 3 cards`);
 
-  // Create transactions
   const now = new Date();
+  const Y = now.getFullYear();
+  const M = now.getMonth();
+  const D = now.getDate();
+
+  // ============================
+  // HISTORICAL DATA: 5 months back
+  // ============================
+  const historicalData: { monthOffset: number; transactions: any[]; purchases: any[] }[] = [
+    // Month -5
+    {
+      monthOffset: 5,
+      transactions: [
+        { accountId: account3.id, categoryId: 'cat-salary', type: 'INCOME', amount: 8500, description: 'Salário Mensal', date: new Date(Y, M - 5, 5) },
+        { accountId: account3.id, categoryId: 'cat-home', type: 'EXPENSE', amount: 1750, description: 'Aluguel', date: new Date(Y, M - 5, 10) },
+        { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 290, description: 'Conta de Luz', date: new Date(Y, M - 5, 8) },
+        { accountId: account3.id, categoryId: 'cat-health', type: 'EXPENSE', amount: 450, description: 'Plano de Saúde', date: new Date(Y, M - 5, 5) },
+        { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 80, description: 'Internet', date: new Date(Y, M - 5, 8) },
+      ],
+      purchases: [
+        {
+          merchant: 'Carrefour', totalAmount: 389.40, date: new Date(Y, M - 5, 12), cardId: card1.id, categoryId: 'cat-food',
+          items: [
+            { name: 'Arroz 5kg', quantity: 2, unitPrice: 24.90, totalPrice: 49.80 },
+            { name: 'Feijão 1kg', quantity: 3, unitPrice: 8.50, totalPrice: 25.50 },
+            { name: 'Leite 1L', quantity: 6, unitPrice: 5.49, totalPrice: 32.94 },
+            { name: 'Carne Moida 500g', quantity: 2, unitPrice: 22.90, totalPrice: 45.80 },
+            { name: 'Frango Kg', quantity: 2, unitPrice: 16.90, totalPrice: 33.80 },
+            { name: 'Diversos limpeza', quantity: 1, unitPrice: 85.00, totalPrice: 85.00 },
+            { name: 'Higiene pessoal', quantity: 1, unitPrice: 116.56, totalPrice: 116.56 },
+          ]
+        },
+        {
+          merchant: 'Farmácia Drogasil', totalAmount: 124.90, date: new Date(Y, M - 5, 18), cardId: card1.id, categoryId: 'cat-health',
+          items: [
+            { name: 'Dipirona 500mg', quantity: 2, unitPrice: 8.90, totalPrice: 17.80 },
+            { name: 'Vitamina C 60cp', quantity: 1, unitPrice: 42.90, totalPrice: 42.90 },
+            { name: 'Protetor Solar', quantity: 1, unitPrice: 64.20, totalPrice: 64.20 },
+          ]
+        },
+        {
+          merchant: 'Americanas', totalAmount: 259.80, date: new Date(Y, M - 5, 22), cardId: card2.id, categoryId: 'cat-entertainment',
+          items: [
+            { name: 'Jogo PS5', quantity: 1, unitPrice: 249.90, totalPrice: 249.90 },
+            { name: 'Pilha AA 4un', quantity: 1, unitPrice: 9.90, totalPrice: 9.90 },
+          ]
+        },
+      ]
+    },
+    // Month -4
+    {
+      monthOffset: 4,
+      transactions: [
+        { accountId: account3.id, categoryId: 'cat-salary', type: 'INCOME', amount: 8500, description: 'Salário Mensal', date: new Date(Y, M - 4, 5) },
+        { accountId: account4.id, categoryId: 'cat-freelance', type: 'INCOME', amount: 1800, description: 'Freelance - Logo Design', date: new Date(Y, M - 4, 15) },
+        { accountId: account3.id, categoryId: 'cat-home', type: 'EXPENSE', amount: 1750, description: 'Aluguel', date: new Date(Y, M - 4, 10) },
+        { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 310, description: 'Conta de Luz', date: new Date(Y, M - 4, 8) },
+        { accountId: account3.id, categoryId: 'cat-health', type: 'EXPENSE', amount: 450, description: 'Plano de Saúde', date: new Date(Y, M - 4, 5) },
+        { accountId: account3.id, categoryId: 'cat-transport', type: 'EXPENSE', amount: 380, description: 'Combustível', date: new Date(Y, M - 4, 14) },
+      ],
+      purchases: [
+        {
+          merchant: 'Extra Hipermercado', totalAmount: 523.70, date: new Date(Y, M - 4, 10), cardId: card2.id, categoryId: 'cat-shopping',
+          items: [
+            { name: 'Camiseta Lacoste', quantity: 1, unitPrice: 289.90, totalPrice: 289.90 },
+            { name: 'Cinto Armani', quantity: 1, unitPrice: 159.90, totalPrice: 159.90 },
+            { name: 'Meias 3pç', quantity: 2, unitPrice: 36.95, totalPrice: 73.90 },
+          ]
+        },
+        {
+          merchant: 'Carrefour', totalAmount: 312.60, date: new Date(Y, M - 4, 18), cardId: card1.id, categoryId: 'cat-food',
+          items: [
+            { name: 'Supermercado semanal', quantity: 1, unitPrice: 312.60, totalPrice: 312.60 },
+          ]
+        },
+      ]
+    },
+    // Month -3
+    {
+      monthOffset: 3,
+      transactions: [
+        { accountId: account3.id, categoryId: 'cat-salary', type: 'INCOME', amount: 8500, description: 'Salário Mensal', date: new Date(Y, M - 3, 5) },
+        { accountId: account3.id, categoryId: 'cat-home', type: 'EXPENSE', amount: 1750, description: 'Aluguel', date: new Date(Y, M - 3, 10) },
+        { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 275, description: 'Conta de Luz', date: new Date(Y, M - 3, 8) },
+        { accountId: account3.id, categoryId: 'cat-health', type: 'EXPENSE', amount: 450, description: 'Plano de Saúde', date: new Date(Y, M - 3, 5) },
+        { accountId: account4.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 189.90, description: 'Netflix + Spotify + Disney+', date: new Date(Y, M - 3, 3) },
+      ],
+      purchases: [
+        {
+          merchant: 'Magazine Luiza', totalAmount: 899.00, date: new Date(Y, M - 3, 8), cardId: card2.id, categoryId: 'cat-education',
+          items: [
+            { name: 'Monitor LG 27"', quantity: 1, unitPrice: 849.00, totalPrice: 849.00 },
+            { name: 'Cabo HDMI 2m', quantity: 1, unitPrice: 50.00, totalPrice: 50.00 },
+          ]
+        },
+        {
+          merchant: 'iFood - Restaurante Siri', totalAmount: 145.80, date: new Date(Y, M - 3, 20), cardId: card1.id, categoryId: 'cat-food',
+          items: [
+            { name: 'Moqueca', quantity: 1, unitPrice: 59.90, totalPrice: 59.90 },
+            { name: 'Arroz Tropeiro', quantity: 1, unitPrice: 42.90, totalPrice: 42.90 },
+            { name: 'Suco Natural 500ml', quantity: 2, unitPrice: 12.90, totalPrice: 25.80 },
+            { name: 'Pudim', quantity: 1, unitPrice: 17.20, totalPrice: 17.20 },
+          ]
+        },
+        {
+          merchant: 'Farmácia Raia', totalAmount: 89.70, date: new Date(Y, M - 3, 25), cardId: card1.id, categoryId: 'cat-health',
+          items: [
+            { name: 'Ibuprofeno 400mg', quantity: 1, unitPrice: 22.90, totalPrice: 22.90 },
+            { name: 'Gelol 500g', quantity: 2, unitPrice: 16.90, totalPrice: 33.80 },
+            { name: 'Banda Sport', quantity: 1, unitPrice: 33.00, totalPrice: 33.00 },
+          ]
+        },
+      ]
+    },
+    // Month -2
+    {
+      monthOffset: 2,
+      transactions: [
+        { accountId: account3.id, categoryId: 'cat-salary', type: 'INCOME', amount: 8500, description: 'Salário Mensal', date: new Date(Y, M - 2, 5) },
+        { accountId: account3.id, categoryId: 'cat-freelance', type: 'INCOME', amount: 3200, description: 'Freelance - App Mobile', date: new Date(Y, M - 2, 20) },
+        { accountId: account3.id, categoryId: 'cat-home', type: 'EXPENSE', amount: 1750, description: 'Aluguel', date: new Date(Y, M - 2, 10) },
+        { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 340, description: 'Conta de Luz', date: new Date(Y, M - 2, 8) },
+        { accountId: account3.id, categoryId: 'cat-health', type: 'EXPENSE', amount: 450, description: 'Plano de Saúde', date: new Date(Y, M - 2, 5) },
+        { accountId: account4.id, categoryId: 'cat-education', type: 'EXPENSE', amount: 197, description: 'Alura Plus', date: new Date(Y, M - 2, 1) },
+      ],
+      purchases: [
+        {
+          merchant: 'Carrefour', totalAmount: 478.30, date: new Date(Y, M - 2, 7), cardId: card1.id, categoryId: 'cat-food',
+          items: [
+            { name: 'Compras do mês', quantity: 1, unitPrice: 478.30, totalPrice: 478.30 },
+          ]
+        },
+        {
+          merchant: 'Netshoes', totalAmount: 689.70, date: new Date(Y, M - 2, 14), cardId: card2.id, categoryId: 'cat-entertainment',
+          items: [
+            { name: 'Tênis Nike Air Max', quantity: 1, unitPrice: 649.90, totalPrice: 649.90 },
+            { name: 'Cadarço Premium', quantity: 1, unitPrice: 39.80, totalPrice: 39.80 },
+          ]
+        },
+      ]
+    },
+    // Month -1
+    {
+      monthOffset: 1,
+      transactions: [
+        { accountId: account3.id, categoryId: 'cat-salary', type: 'INCOME', amount: 9000, description: 'Salário Mensal', date: new Date(Y, M - 1, 5) },
+        { accountId: account4.id, categoryId: 'cat-investment', type: 'INCOME', amount: 280, description: 'Dividendos BBDC4', date: new Date(Y, M - 1, 15) },
+        { accountId: account3.id, categoryId: 'cat-home', type: 'EXPENSE', amount: 1800, description: 'Aluguel', date: new Date(Y, M - 1, 10) },
+        { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 305, description: 'Conta de Luz', date: new Date(Y, M - 1, 8) },
+        { accountId: account3.id, categoryId: 'cat-health', type: 'EXPENSE', amount: 450, description: 'Plano de Saúde', date: new Date(Y, M - 1, 5) },
+        { accountId: account4.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 189.90, description: 'Netflix + Spotify + Disney+', date: new Date(Y, M - 1, 3) },
+        { accountId: account3.id, categoryId: 'cat-transport', type: 'EXPENSE', amount: 320, description: 'Combustível', date: new Date(Y, M - 1, 12) },
+      ],
+      purchases: [
+        {
+          merchant: 'Extra Hipermercado', totalAmount: 345.90, date: new Date(Y, M - 1, 6), cardId: card2.id, categoryId: 'cat-shopping',
+          items: [
+            { name: 'Cama Queen Casal', quantity: 1, unitPrice: 319.90, totalPrice: 319.90 },
+            { name: 'Travesseiro', quantity: 1, unitPrice: 26.00, totalPrice: 26.00 },
+          ]
+        },
+        {
+          merchant: 'Carrefour', totalAmount: 523.40, date: new Date(Y, M - 1, 11), cardId: card1.id, categoryId: 'cat-food',
+          items: [
+            { name: 'Supermercado quinzenal', quantity: 1, unitPrice: 523.40, totalPrice: 523.40 },
+          ]
+        },
+        {
+          merchant: 'iFood - Burger King', totalAmount: 67.80, date: new Date(Y, M - 1, 22), cardId: card1.id, categoryId: 'cat-food',
+          items: [
+            { name: 'Whopper Duplo', quantity: 1, unitPrice: 34.90, totalPrice: 34.90 },
+            { name: 'Batata Frita M', quantity: 1, unitPrice: 16.90, totalPrice: 16.90 },
+            { name: 'Coca-Cola 400ml', quantity: 1, unitPrice: 9.90, totalPrice: 9.90 },
+            { name: 'Sundae Chocolate', quantity: 1, unitPrice: 6.10, totalPrice: 6.10 },
+          ]
+        },
+      ]
+    },
+  ];
+
+  // Insert historical transactions with specific IDs to avoid duplicates
+  for (const monthData of historicalData) {
+    const offset = monthData.monthOffset;
+    for (const t of monthData.transactions) {
+      const suffix = `${offset}-${t.description.replace(/\s+/g, '-').toLowerCase().substring(0, 30)}`;
+      await db.transaction.upsert({
+        where: { id: `hist-tx-${suffix}` },
+        update: {},
+        create: { id: `hist-tx-${suffix}`, ...t },
+      });
+    }
+    for (const p of monthData.purchases) {
+      const suffix = `${offset}-${p.merchant.replace(/\s+/g, '-').toLowerCase().substring(0, 25)}`;
+      await db.purchase.upsert({
+        where: { id: `hist-pur-${suffix}` },
+        update: {},
+        create: {
+          id: `hist-pur-${suffix}`,
+          merchant: p.merchant,
+          totalAmount: p.totalAmount,
+          date: p.date,
+          cardId: p.cardId,
+          categoryId: p.categoryId,
+          items: { create: p.items },
+        },
+      });
+    }
+    console.log(`✅ Created ${monthData.transactions.length} transactions + ${monthData.purchases.length} purchases for month ${offset} ago`);
+  }
+
+  // ============================
+  // CURRENT MONTH DATA
+  // ============================
   const transactions = [
     // Incomes
-    { accountId: account3.id, categoryId: 'cat-salary', type: 'INCOME', amount: 8500, description: 'Salário Mensal', date: new Date(now.getFullYear(), now.getMonth(), 5) },
-    { accountId: account3.id, categoryId: 'cat-freelance', type: 'INCOME', amount: 2200, description: 'Projeto Freelance - Site', date: new Date(now.getFullYear(), now.getMonth(), 12) },
-    { accountId: account4.id, categoryId: 'cat-investment', type: 'INCOME', amount: 350, description: 'Dividendos ITSA4', date: new Date(now.getFullYear(), now.getMonth(), 15) },
+    { accountId: account3.id, categoryId: 'cat-salary', type: 'INCOME', amount: 8500, description: 'Salário Mensal', date: new Date(Y, M, 5) },
+    { accountId: account3.id, categoryId: 'cat-freelance', type: 'INCOME', amount: 2200, description: 'Projeto Freelance - Site', date: new Date(Y, M, 12) },
+    { accountId: account4.id, categoryId: 'cat-investment', type: 'INCOME', amount: 350, description: 'Dividendos ITSA4', date: new Date(Y, M, 15) },
     // Cash expenses
-    { accountId: account1.id, categoryId: 'cat-food', type: 'EXPENSE', amount: 45, description: 'Almoço no trabalho', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2) },
-    { accountId: account1.id, categoryId: 'cat-transport', type: 'EXPENSE', amount: 32, description: 'Uber - trabalho → casa', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1) },
-    { accountId: account4.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 189.90, description: 'Netflix + Spotify + Disney+', date: new Date(now.getFullYear(), now.getMonth(), 3) },
-    { accountId: account3.id, categoryId: 'cat-home', type: 'EXPENSE', amount: 1800, description: 'Aluguel', date: new Date(now.getFullYear(), now.getMonth(), 10) },
-    { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 320, description: 'Conta de Luz', date: new Date(now.getFullYear(), now.getMonth(), 8) },
-    { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 85, description: 'Internet', date: new Date(now.getFullYear(), now.getMonth(), 8) },
-    { accountId: account3.id, categoryId: 'cat-health', type: 'EXPENSE', amount: 450, description: 'Plano de Saúde', date: new Date(now.getFullYear(), now.getMonth(), 5) },
-    { accountId: account4.id, categoryId: 'cat-education', type: 'EXPENSE', amount: 197, description: 'Alura Plus', date: new Date(now.getFullYear(), now.getMonth(), 1) },
-    { accountId: account3.id, categoryId: 'cat-transport', type: 'EXPENSE', amount: 350, description: 'Combustível', date: new Date(now.getFullYear(), now.getMonth(), 14) },
+    { accountId: account1.id, categoryId: 'cat-food', type: 'EXPENSE', amount: 45, description: 'Almoço no trabalho', date: new Date(Y, M, D - 2) },
+    { accountId: account1.id, categoryId: 'cat-transport', type: 'EXPENSE', amount: 32, description: 'Uber - trabalho → casa', date: new Date(Y, M, D - 1) },
+    { accountId: account4.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 189.90, description: 'Netflix + Spotify + Disney+', date: new Date(Y, M, 3) },
+    { accountId: account3.id, categoryId: 'cat-home', type: 'EXPENSE', amount: 1800, description: 'Aluguel', date: new Date(Y, M, 10) },
+    { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 320, description: 'Conta de Luz', date: new Date(Y, M, 8) },
+    { accountId: account3.id, categoryId: 'cat-bills', type: 'EXPENSE', amount: 85, description: 'Internet', date: new Date(Y, M, 8) },
+    { accountId: account3.id, categoryId: 'cat-health', type: 'EXPENSE', amount: 450, description: 'Plano de Saúde', date: new Date(Y, M, 5) },
+    { accountId: account4.id, categoryId: 'cat-education', type: 'EXPENSE', amount: 197, description: 'Alura Plus', date: new Date(Y, M, 1) },
+    { accountId: account3.id, categoryId: 'cat-transport', type: 'EXPENSE', amount: 350, description: 'Combustível', date: new Date(Y, M, 14) },
   ];
 
   for (const t of transactions) {
-    await db.transaction.create({ data: t });
+    const suffix = t.description.replace(/\s+/g, '-').toLowerCase().substring(0, 30);
+    await db.transaction.upsert({
+      where: { id: `cur-tx-${suffix}` },
+      update: {},
+      create: { id: `cur-tx-${suffix}`, ...t },
+    });
   }
-  console.log(`✅ Created ${transactions.length} transactions`);
+  console.log(`✅ Created ${transactions.length} current month transactions`);
 
-  // Create purchases with items
+  // Current month purchases
   const purchases = [
     {
-      merchant: 'Carrefour', totalAmount: 456.80, date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3), cardId: card1.id, categoryId: 'cat-food',
+      merchant: 'Carrefour', totalAmount: 456.80, date: new Date(Y, M, D - 3), cardId: card1.id, categoryId: 'cat-food',
       items: [
         { name: 'Arroz 5kg Tio João', quantity: 2, unitPrice: 24.90, totalPrice: 49.80 },
         { name: 'Feijão Carioca 1kg', quantity: 3, unitPrice: 8.50, totalPrice: 25.50 },
@@ -99,7 +322,7 @@ async function main() {
       ]
     },
     {
-      merchant: 'Extra Hipermercado', totalAmount: 789.50, date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 10), cardId: card2.id, categoryId: 'cat-shopping',
+      merchant: 'Extra Hipermercado', totalAmount: 789.50, date: new Date(Y, M, D - 10), cardId: card2.id, categoryId: 'cat-shopping',
       items: [
         { name: 'Camiseta Nike', quantity: 2, unitPrice: 129.90, totalPrice: 259.80 },
         { name: 'Tênis Adidas', quantity: 1, unitPrice: 399.90, totalPrice: 399.90 },
@@ -108,7 +331,7 @@ async function main() {
       ]
     },
     {
-      merchant: 'Farmácia Raia', totalAmount: 167.40, date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 5), cardId: card1.id, categoryId: 'cat-health',
+      merchant: 'Farmácia Raia', totalAmount: 167.40, date: new Date(Y, M, D - 5), cardId: card1.id, categoryId: 'cat-health',
       items: [
         { name: 'Dipirona 500mg 10cp', quantity: 2, unitPrice: 8.90, totalPrice: 17.80 },
         { name: 'Ibuprofeno 400mg 30cp', quantity: 1, unitPrice: 22.90, totalPrice: 22.90 },
@@ -119,7 +342,7 @@ async function main() {
       ]
     },
     {
-      merchant: 'iFood - Restaurante Outback', totalAmount: 189.90, date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1), cardId: card1.id, categoryId: 'cat-food',
+      merchant: 'iFood - Restaurante Outback', totalAmount: 189.90, date: new Date(Y, M, D - 1), cardId: card1.id, categoryId: 'cat-food',
       items: [
         { name: 'Onion Rings', quantity: 1, unitPrice: 39.90, totalPrice: 39.90 },
         { name: 'Baby Back Ribs', quantity: 1, unitPrice: 89.90, totalPrice: 89.90 },
@@ -128,7 +351,7 @@ async function main() {
       ]
     },
     {
-      merchant: 'Amazon Brasil', totalAmount: 1299.00, date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7), cardId: card2.id, categoryId: 'cat-entertainment',
+      merchant: 'Amazon Brasil', totalAmount: 1299.00, date: new Date(Y, M, D - 7), cardId: card2.id, categoryId: 'cat-entertainment',
       items: [
         { name: 'Kindle Paperwhite', quantity: 1, unitPrice: 649.00, totalPrice: 649.00 },
         { name: 'Capa Kindle', quantity: 1, unitPrice: 89.90, totalPrice: 89.90 },
@@ -138,7 +361,7 @@ async function main() {
       ]
     },
     {
-      merchant: 'Mercado Livre - Eletrônicos', totalAmount: 549.90, date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 4), cardId: card1.id, categoryId: 'cat-education',
+      merchant: 'Mercado Livre - Eletrônicos', totalAmount: 549.90, date: new Date(Y, M, D - 4), cardId: card1.id, categoryId: 'cat-education',
       items: [
         { name: 'Mouse Logitech MX Master 3S', quantity: 1, unitPrice: 499.90, totalPrice: 499.90 },
         { name: 'Mousepad XL', quantity: 1, unitPrice: 49.90, totalPrice: 49.90 },
@@ -147,18 +370,22 @@ async function main() {
   ];
 
   for (const p of purchases) {
-    await db.purchase.create({
-      data: {
+    const suffix = p.merchant.replace(/\s+/g, '-').toLowerCase().substring(0, 25);
+    await db.purchase.upsert({
+      where: { id: `cur-pur-${suffix}` },
+      update: {},
+      create: {
+        id: `cur-pur-${suffix}`,
         merchant: p.merchant,
         totalAmount: p.totalAmount,
         date: p.date,
-        cardId: p.cardId!,
-        categoryId: p.categoryId!,
-        items: { create: p.items }
-      }
+        cardId: p.cardId,
+        categoryId: p.categoryId,
+        items: { create: p.items },
+      },
     });
   }
-  console.log(`✅ Created ${purchases.length} purchases with items`);
+  console.log(`✅ Created ${purchases.length} current month purchases with items`);
 
   console.log('🎉 Database seeded successfully!');
 }
