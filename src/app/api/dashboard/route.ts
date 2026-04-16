@@ -26,6 +26,7 @@ export async function GET() {
       categoryExpenseTransactions,
       monthlyPurchases,
       categoryExpensePurchases,
+      allBudgetGoals,
     ] = await Promise.all([
       // 1. All accounts for totalBalance and accountBalances
       db.account.findMany({
@@ -142,6 +143,12 @@ export async function GET() {
           totalAmount: true,
         },
       }),
+
+      // 12. All budget goals with category
+      db.budgetGoal.findMany({
+        include: { category: true },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
     // Calculate totals
@@ -236,6 +243,18 @@ export async function GET() {
       expenseByCategory.sort((a, b) => b.total - a.total);
     }
 
+    // Budget goal stats
+    const activeGoals = allBudgetGoals.filter((g) => !g.isCompleted).length;
+    const completedGoals = allBudgetGoals.filter((g) => g.isCompleted).length;
+    const budgetGoals = allBudgetGoals.slice(0, 3).map((g) => ({
+      id: g.id,
+      name: g.name,
+      targetAmount: g.targetAmount,
+      currentAmount: g.currentAmount,
+      isCompleted: g.isCompleted,
+      category: g.category ? { id: g.category.id, name: g.category.name, color: g.category.color } : null,
+    }));
+
     return NextResponse.json({
       totalBalance,
       totalCardBalance,
@@ -247,6 +266,9 @@ export async function GET() {
       expenseByCategory,
       monthlyTrend,
       accountBalances,
+      activeGoals,
+      completedGoals,
+      budgetGoals,
     });
   } catch (error) {
     console.error("Error fetching dashboard data:", error);

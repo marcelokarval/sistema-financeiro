@@ -29,6 +29,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { BudgetGoalsWidget } from './budget-goals';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -558,6 +559,11 @@ export function DashboardView() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Budget Goals Widget */}
+      <motion.div variants={item}>
+        <BudgetGoalsWidget />
+      </motion.div>
     </motion.div>
   );
 }
