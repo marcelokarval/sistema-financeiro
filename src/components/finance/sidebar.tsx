@@ -113,7 +113,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
           {!collapsed && (
             <div className="flex items-center gap-2 px-3 text-xs text-muted-foreground">
               <Settings className="w-3.5 h-3.5" />
-              <span>v1.0.0</span>
+              <span>v2.0.0</span>
             </div>
           )}
         </div>

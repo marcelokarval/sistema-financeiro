@@ -387,6 +387,76 @@ async function main() {
   }
   console.log(`✅ Created ${purchases.length} current month purchases with items`);
 
+  // ============================
+  // BUDGET GOALS
+  // ============================
+  const budgetGoals = [
+    {
+      id: 'goal-emergency',
+      name: 'Reserva de Emergência',
+      description: '6 meses de gastos essenciais guardados para imprevistos',
+      targetAmount: 35000,
+      currentAmount: 12500,
+      categoryId: null,
+      startDate: new Date(Y, M - 3, 1),
+      endDate: new Date(Y + 1, M, 0),
+      isCompleted: false,
+    },
+    {
+      id: 'goal-vacation',
+      name: 'Viagem para Europa',
+      description: 'Passagens + hospedagem + passeios por 15 dias',
+      targetAmount: 18000,
+      currentAmount: 6400,
+      categoryId: 'cat-entertainment',
+      startDate: new Date(Y, M - 4, 1),
+      endDate: new Date(Y + 1, 5, 0),
+      isCompleted: false,
+    },
+    {
+      id: 'goal-notebook',
+      name: 'MacBook Pro M4',
+      description: 'Novo notebook para trabalho freelancer',
+      targetAmount: 14000,
+      currentAmount: 10500,
+      categoryId: 'cat-education',
+      startDate: new Date(Y, M - 2, 1),
+      endDate: new Date(Y, M + 1, 0),
+      isCompleted: false,
+    },
+    {
+      id: 'goal-car',
+      name: 'Entrada do Carro',
+      description: 'Reserva para entrada de um carro novo',
+      targetAmount: 25000,
+      currentAmount: 3200,
+      categoryId: null,
+      startDate: new Date(Y, M - 5, 1),
+      endDate: new Date(Y + 2, 0, 0),
+      isCompleted: false,
+    },
+    {
+      id: 'goal-courses',
+      name: 'Cursos e Certificações',
+      description: 'Investimento em qualificação profissional',
+      targetAmount: 5000,
+      currentAmount: 5000,
+      categoryId: 'cat-education',
+      startDate: new Date(Y, M - 6, 1),
+      endDate: new Date(Y, M - 1, 0),
+      isCompleted: true,
+    },
+  ];
+
+  for (const g of budgetGoals) {
+    await db.budgetGoal.upsert({
+      where: { id: g.id },
+      update: {},
+      create: g,
+    });
+  }
+  console.log(`✅ Created ${budgetGoals.length} budget goals`);
+
   console.log('🎉 Database seeded successfully!');
 }
 

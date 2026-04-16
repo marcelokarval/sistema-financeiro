@@ -363,3 +363,127 @@ Unresolved Issues / Next Steps:
 5. [MEDIUM] Receipt/PDF export for purchases
 6. [LOW] Recurring transaction support
 7. [LOW] Multi-currency support
+
+---
+Task ID: CR3-notifications
+Agent: Frontend Developer
+Task: Build self-contained notification panel component showing recent financial activity
+
+Work Log:
+- Read dashboard-view.tsx and purchases-view.tsx to understand codebase patterns (currencyFmt, dateFmt, motion variants, color scheme)
+- Read /api/transactions and /api/purchases API routes to understand response shapes
+- Created /src/components/finance/notification-panel.tsx as a self-contained, named-export component:
+  - Props: `{ isOpen: boolean; onClose: () => void }` for dropdown toggle control
+  - Self-fetching: parallel fetch from /api/transactions and /api/purchases on panel open
+  - Combines both sources into unified NotificationItem array, sorted by date desc, limited to 10
+  - Three notification kinds with distinct icon/color: income (ArrowUpRight, emerald), expense (ArrowDownRight, rose), purchase (ShoppingBag, violet)
+  - Each notification shows: kind icon in colored circle, description, relative time (date-fns formatDistanceToNow with pt-BR locale), kind label badge, amount with prefix and color
+  - AnimatePresence with smooth open/close animation (opacity, y, scale with spring-like easing)
+  - Staggered list entry animation (staggerChildren: 0.04, x: -10 → 0)
+  - Header with Bell icon, "Notificações" title, count Badge, and "Fechar" button
+  - "Ler tudo" button in footer with BookOpen icon
+  - Empty state: large Bell icon in muted circle, "Nenhuma notificação" message, subtitle
+  - Loading state: 5 skeleton rows matching notification layout
+  - ScrollArea for max-h-[340px] overflow
+  - Separator between header/content/footer
+  - All text in Portuguese Brazilian, currency in BRL
+  - Positioned absolutely (right-0, top-full) for dropdown behavior, responsive width (380px, max-w calc)
+- Verified zero lint errors (`bun run lint`)
+- Verified clean dev server compilation (no errors in dev.log)
+
+Stage Summary:
+- NotificationPanel component ready for integration into any parent component
+- Consistent styling with existing codebase (icons, colors, shadows, rounded-2xl panel)
+- Framer Motion animations throughout (open/close, staggered list, hover scale)
+- All 14 requirements met
+
+---
+Task ID: CR3-reports
+Agent: Full-Stack Developer
+Task: Build financial reports widget with monthly summary comparison and API endpoint
+
+Work Log:
+- Read dashboard-view.tsx, /api/dashboard/route.ts, and lib/db.ts to understand codebase patterns (currencyFmt, recharts usage, Prisma queries, pt-BR locale, motion variants)
+- Read prisma/schema.prisma to understand Transaction and Purchase models and their relations
+- Created /src/app/api/reports/route.ts (GET endpoint):
+  - Accepts `months` query param (default 6, range 1-24)
+  - Parallel fetch of all transactions, purchases, and categories in the date range
+  - Builds monthlyData array with: month label (pt-BR short format), income, expense, net, transactionCount, purchaseCount, avgDailySpend, savingsRate
+  - Aggregates expense categories across transactions and purchases, sorted by total descending
+  - Computes topExpenseCategory, topCategories (top 3), avgDailySpend (current month), highestExpense, lowestIncome, savingsRateTrend, ticketMedio
+  - Proper try/catch with Portuguese error messages
+- Created /src/components/finance/financial-reports.tsx as FinancialReportsWidget:
+  - Self-contained component that fetches from /api/reports?months=6
+  - Header with Calendar icon, "Relatórios Financeiros" title, gradient top border (violet→purple→fuchsia)
+  - Tabs component with "Visão Mensal" and "Análise" tabs
+  - Monthly View tab:
+    - Recharts BarChart comparing Receitas (green) vs Despesas (orange) per month with rounded bars
+    - Monthly detail list with: month label, income (green) with ↑/↓ % change, expense (red) with ↑/↓ % change, net (colored), transaction count
+    - Month-over-month change indicators with ArrowUpRight/ArrowDownRight icons
+  - Analysis tab:
+    - 4 key metrics cards in 2x2 / 4-col grid: Ticket Médio (violet), Gasto Médio/dia (amber), Maior Despesa (rose), Menor Receita (emerald)
+    - Top 3 expense categories with colored progress bars and percentage badges
+    - Savings rate trend with horizontal progress bars color-coded: green (≥30%), amber (0-30%), red (<0%)
+  - Framer Motion animations: container/item stagger, whileHover card spring, animated progress bars, staggered list items
+  - Loading skeleton matching component layout
+  - All text in Portuguese Brazilian, currency formatted in BRL (pt-BR)
+  - Uses shadcn/ui: Card, CardContent, CardHeader, CardTitle, Badge, Button, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, Progress
+- Ran `bun run lint`: zero errors
+- Verified clean dev server compilation
+
+Stage Summary:
+- /api/reports endpoint returning monthly comparison data with category analysis
+- FinancialReportsWidget component ready for integration into any view
+- Consistent styling with existing codebase (shadows, gradients, progress bars, animations)
+- All requirements met: two tabs, bar chart, month-over-month changes, key metrics, top categories, savings trend
+
+---
+Task ID: CR3-search
+Agent: Frontend Developer
+Task: Build self-contained global search component (command palette style)
+
+Work Log:
+- Read dashboard-view.tsx, accounts-view.tsx, and page.tsx to understand codebase patterns
+- Read all 5 API route files (transactions, purchases, accounts, cards, categories) to understand response shapes
+- Read store.ts to understand ViewType and state management patterns
+- Created /src/components/finance/global-search.tsx with all 15 requirements met:
+
+Features implemented:
+1. Self-contained component with command palette style (Dialog overlay)
+2. Uses existing shadcn/ui components (Dialog, Input, Badge, ScrollArea)
+3. Framer Motion AnimatePresence for open/close animation with spring-based panel entry
+4. Parallel data fetching on mount from all 5 API endpoints
+5. Search input at top with Search icon and ESC keyboard hint
+6. Results grouped by type: Transações, Compras, Contas, Cartões, Categorias
+7. Each result shows: relevant icon in colored background, name/description, secondary info (amount for txns/purchases, balance for accounts, type for cards)
+8. Full keyboard navigation: ArrowUp/Down to navigate, Enter to select, Escape to close
+9. Clicking a result triggers onSelect callback with entity type and ID
+10. Props: { isOpen: boolean; onClose: () => void; onSelect?: (type: string, id: string) => void }
+11. "Nenhum resultado encontrado" message when no results
+12. AnimatePresence for open/close with scale + opacity + y animation
+13. All text in Portuguese Brazilian
+14. Currency formatting in BRL (pt-BR)
+15. Exported as named export: GlobalSearch
+
+Additional UX details:
+- Loading state with spinner and "Buscando dados..." message
+- Empty initial state with "Comece a digitar para buscar" and entity type badges
+- Group headers with colored icons and result count badges
+- Active item highlighting (bg-primary/10)
+- Mouse hover updates active index for keyboard continuity
+- Footer with result count and keyboard shortcut hints (Navegar, Selecionar)
+- Auto-focus input on open
+- Auto-scroll active item into view during keyboard navigation
+- Staggered result entry animation
+- Responsive panel sizing (max-w-[560px], max-h-[70vh] sm:max-h-[80vh])
+- Backdrop blur and border-less design for modern look
+
+- Verified zero lint errors (bun run lint)
+- Verified clean dev server compilation (no errors in dev.log)
+
+Stage Summary:
+- GlobalSearch component ready for integration via isOpen/onClose/onSelect props
+- Consistent styling with existing codebase (shadows, rounded corners, color scheme)
+- Framer Motion animations throughout (panel entry/exit, staggered results, hover effects)
+- All 15 requirements met
+- Zero lint errors
