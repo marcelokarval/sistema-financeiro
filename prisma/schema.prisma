@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// =====================
+// ACCOUNTS (Cash/Bank)
+// =====================
+model Account {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("CASH") // CASH, BANK, DIGITAL_WALLET
+  balance   Float    @default(0)
+  color     String   @default("#6366f1")
+  icon      String   @default("wallet")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions  Transaction[]
+}
+
+// =====================
+// CARDS (Credit/Debit)
+// =====================
+model Card {
+  id             String   @id @default(cuid())
+  name           String
+  type           String   @default("CREDIT") // CREDIT, DEBIT
+  brand          String   @default("VISA")   // VISA, MASTERCARD, ELO, AMEX, HIPER
+  lastFourDigits String
+  creditLimit    Float    @default(0)
+  currentBalance Float    @default(0)
+  closingDay     Int      @default(1)        // day of month the statement closes
+  dueDay         Int      @default(10)       // day of month payment is due
+  color          String   @default("#8b5cf6")
+  flag           String   @default("")       // optional flag name
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transactions  Transaction[]
+  purchases     Purchase[]
+}
+
+// =====================
+// CATEGORIES
+// =====================
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String   @default("tag")
+  type      String   @default("EXPENSE") // INCOME, EXPENSE
+  color     String   @default("#6b7280")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions  Transaction[]
+  purchases     Purchase[]
+}
+
+// =====================
+// TRANSACTIONS
+// =====================
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String   // INCOME, EXPENSE, TRANSFER
+  amount      Float
+  description String
+  date        DateTime @default(now())
+  notes       String   @default("")
+
+  categoryId  String?
+  category    Category?  @relation(fields: [categoryId], references: [id])
+  accountId   String?
+  account     Account?   @relation(fields: [accountId], references: [id])
+  cardId      String?
+  card        Card?      @relation(fields: [cardId], references: [id])
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// =====================
+// PURCHASES (Card purchases with item detail)
+// =====================
+model Purchase {
+  id          String   @id @default(cuid())
+  merchant    String
+  totalAmount Float
+  date        DateTime @default(now())
+  notes       String   @default("")
+  installmentNumber Int @default(1) // 1 = one-time, >1 = installment plan
+  installmentTotal  Int @default(1) // total installments
+
+  cardId      String?
+  card        Card?      @relation(fields: [cardId], references: [id])
+  accountId   String?
+  categoryId  String?
+  category    Category?  @relation(fields: [categoryId], references: [id])
+
+  items       PurchaseItem[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// =====================
+// PURCHASE ITEMS
+// =====================
+model PurchaseItem {
+  id          String   @id @default(cuid())
+  name        String
+  quantity    Int      @default(1)
+  unitPrice   Float
+  totalPrice  Float
+
+  purchaseId  String
+  purchase    Purchase   @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
