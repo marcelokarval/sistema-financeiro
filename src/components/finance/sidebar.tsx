@@ -8,6 +8,10 @@ import {
   CreditCard,
   ShoppingCart,
   Tag,
+  TrendingUp,
+  CalendarClock,
+  Building2,
+  PiggyBank,
   ChevronLeft,
   Sparkles,
   Activity,
@@ -22,12 +26,16 @@ import {
 } from '@/components/ui/tooltip';
 import { motion } from 'framer-motion';
 
-const navItems: { view: ViewType; label: string; icon: React.ElementType; color: string }[] = [
-  { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'from-emerald-500 to-teal-500' },
-  { view: 'accounts', label: 'Contas', icon: Wallet, color: 'from-violet-500 to-purple-500' },
-  { view: 'cards', label: 'Cartões', icon: CreditCard, color: 'from-orange-500 to-rose-500' },
-  { view: 'purchases', label: 'Compras', icon: ShoppingCart, color: 'from-sky-500 to-cyan-500' },
-  { view: 'categories', label: 'Categorias', icon: Tag, color: 'from-amber-500 to-orange-500' },
+const navItems: { view: ViewType; label: string; icon: React.ElementType; color: string; group?: string }[] = [
+  { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'from-emerald-500 to-teal-500', group: 'Principal' },
+  { view: 'accounts', label: 'Contas', icon: Wallet, color: 'from-violet-500 to-purple-500', group: 'Principal' },
+  { view: 'cards', label: 'Cartões', icon: CreditCard, color: 'from-orange-500 to-rose-500', group: 'Principal' },
+  { view: 'purchases', label: 'Compras', icon: ShoppingCart, color: 'from-sky-500 to-cyan-500', group: 'Principal' },
+  { view: 'categories', label: 'Categorias', icon: Tag, color: 'from-amber-500 to-orange-500', group: 'Principal' },
+  { view: 'investments', label: 'Investimentos', icon: TrendingUp, color: 'from-emerald-500 to-cyan-500', group: 'Financeiro' },
+  { view: 'installments', label: 'Parcelas', icon: CalendarClock, color: 'from-violet-500 to-fuchsia-500', group: 'Financeiro' },
+  { view: 'consortiums', label: 'Consórcios', icon: Building2, color: 'from-teal-500 to-emerald-500', group: 'Financeiro' },
+  { view: 'savings', label: 'Caixinhas', icon: PiggyBank, color: 'from-rose-500 to-pink-500', group: 'Financeiro' },
 ];
 
 interface SidebarProps {
@@ -38,6 +46,73 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
   const { currentView } = useAppStore();
+
+  const principalItems = navItems.filter(i => i.group === 'Principal');
+  const financeiroItems = navItems.filter(i => i.group === 'Financeiro');
+
+  const renderNavItem = (item: typeof navItems[0]) => {
+    const isActive = currentView === item.view;
+    const Icon = item.icon;
+
+    const button = (
+      <motion.button
+        key={item.view}
+        onClick={() => onNavigate(item.view)}
+        initial={false}
+        whileHover={{ x: 4 }}
+        whileTap={{ scale: 0.98 }}
+        className={cn(
+          'flex items-center w-full gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative',
+          isActive
+            ? 'bg-primary/10 text-primary shadow-sm'
+            : 'text-muted-foreground/80 hover:text-foreground hover:bg-accent/40'
+        )}
+      >
+        {isActive && (
+          <motion.div
+            layoutId="sidebar-active"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary"
+            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+          />
+        )}
+        <div className={cn(
+          'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-all duration-200',
+          isActive
+            ? `bg-gradient-to-br ${item.color} shadow-md shadow-primary/10`
+            : 'bg-muted/50'
+        )}>
+          <Icon className={cn(
+            'w-4 h-4 transition-all duration-200',
+            isActive ? 'text-white' : ''
+          )} />
+        </div>
+        {!collapsed && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className={cn(
+              'whitespace-nowrap transition-colors duration-200',
+              isActive ? 'text-foreground font-semibold' : ''
+            )}
+          >
+            {item.label}
+          </motion.span>
+        )}
+      </motion.button>
+    );
+
+    if (collapsed) {
+      return (
+        <Tooltip key={item.view}>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            {item.label}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+    return button;
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -79,76 +154,22 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
         <Separator className="opacity-50" />
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-3 space-y-0.5">
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+          {/* Principal section */}
           {!collapsed && (
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 mb-2">
-              Menu
+              Principal
             </p>
           )}
-          {navItems.map((item, index) => {
-            const isActive = currentView === item.view;
-            const Icon = item.icon;
+          {principalItems.map(renderNavItem)}
 
-            const button = (
-              <motion.button
-                key={item.view}
-                onClick={() => onNavigate(item.view)}
-                initial={false}
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.98 }}
-                className={cn(
-                  'flex items-center w-full gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative',
-                  isActive
-                    ? 'bg-primary/10 text-primary shadow-sm'
-                    : 'text-muted-foreground/80 hover:text-foreground hover:bg-accent/40'
-                )}
-              >
-                {/* Active indicator bar */}
-                {isActive && (
-                  <motion.div
-                    layoutId="sidebar-active"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary"
-                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                  />
-                )}
-                <div className={cn(
-                  'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-all duration-200',
-                  isActive
-                    ? `bg-gradient-to-br ${item.color} shadow-md shadow-primary/10`
-                    : 'bg-muted/50'
-                )}>
-                  <Icon className={cn(
-                    'w-4 h-4 transition-all duration-200',
-                    isActive ? 'text-white' : ''
-                  )} />
-                </div>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className={cn(
-                      'whitespace-nowrap transition-colors duration-200',
-                      isActive ? 'text-foreground font-semibold' : ''
-                    )}
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-              </motion.button>
-            );
-
-            if (collapsed) {
-              return (
-                <Tooltip key={item.view}>
-                  <TooltipTrigger asChild>{button}</TooltipTrigger>
-                  <TooltipContent side="right" className="font-medium">
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            }
-            return button;
-          })}
+          {/* Financeiro section */}
+          {!collapsed && (
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 mt-4 mb-2">
+              Financeiro
+            </p>
+          )}
+          {financeiroItems.map(renderNavItem)}
         </nav>
 
         {/* Status card */}
@@ -167,7 +188,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
                   </div>
                   <span className="text-[10px] text-muted-foreground/70">Conectado</span>
                 </div>
-                <span className="text-[10px] font-mono text-primary/60 font-semibold">v2.4.0</span>
+                <span className="text-[10px] font-mono text-primary/60 font-semibold">v3.0.0</span>
               </div>
             </div>
           </div>

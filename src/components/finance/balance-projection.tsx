@@ -358,12 +358,12 @@ export function BalanceProjection() {
                   </defs>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
+                    stroke="var(--border)"
                     vertical={false}
                   />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={false}
                     interval={0}
@@ -372,7 +372,7 @@ export function BalanceProjection() {
                     height={50}
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={shortCurrency}
@@ -386,7 +386,7 @@ export function BalanceProjection() {
                   {/* Reference line at current month (index 0) */}
                   <ReferenceLine
                     x={data.monthLabels[0]}
-                    stroke="hsl(var(--muted-foreground))"
+                    stroke="var(--muted-foreground)"
                     strokeDasharray="4 4"
                     strokeWidth={1}
                   />
@@ -399,7 +399,7 @@ export function BalanceProjection() {
                       strokeWidth={2}
                       strokeDasharray="0"
                       fill={`url(#grad-${acc.accountId})`}
-                      dot={{ r: 3, fill: acc.accountColor, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                      dot={{ r: 3, fill: acc.accountColor, strokeWidth: 2, stroke: 'var(--background)' }}
                       activeDot={{ r: 5, fill: acc.accountColor, strokeWidth: 2, stroke: '#fff' }}
                     />
                   ))}

@@ -13,7 +13,30 @@ async function main() {
   await db.budgetGoal.deleteMany({
     where: { id: { startsWith: 'goal-' } },
   });
-  console.log('🧹 Cleaned up old transactions, purchases, and budget goals');
+
+  // Clean up new feature seed data
+  await db.investmentTransaction.deleteMany({
+    where: { investmentId: { startsWith: 'inv-' } },
+  });
+  await db.investment.deleteMany({
+    where: { id: { startsWith: 'inv-' } },
+  });
+  await db.installment.deleteMany({
+    where: { installmentPlanId: { startsWith: 'inst-' } },
+  });
+  await db.installmentPlan.deleteMany({
+    where: { id: { startsWith: 'inst-' } },
+  });
+  await db.consortiumInstallment.deleteMany({
+    where: { consortiumId: { startsWith: 'cons-' } },
+  });
+  await db.consortium.deleteMany({
+    where: { id: { startsWith: 'cons-' } },
+  });
+  await db.savingsGoal.deleteMany({
+    where: { id: { startsWith: 'sav-' } },
+  });
+  console.log('🧹 Cleaned up old transactions, purchases, budget goals, and new feature data');
 
   // Create categories
   const categories = await Promise.all([
@@ -547,6 +570,393 @@ async function main() {
     });
   }
   console.log(`✅ Created ${recurringTransactions.length} recurring transactions`);
+
+  // ============================
+  // INVESTMENTS
+  // ============================
+  const investment1 = await db.investment.upsert({
+    where: { id: 'inv-stock-1' },
+    update: {},
+    create: {
+      id: 'inv-stock-1',
+      name: 'Ações PETR4',
+      type: 'STOCK',
+      description: 'Petrobras PN - Ações',
+      investedAmount: 15000,
+      currentBalance: 18500,
+      yieldRate: 12.5,
+      ticker: 'PETR4',
+      brokerage: 'XP Investimentos',
+      accountId: account2.id,
+      categoryId: 'cat-investment',
+      isActive: true,
+    },
+  });
+
+  // PETR4 transactions: 3 aportes + 2 dividendos
+  const petr4Transactions = [
+    { id: 'inv-tx-stock-1', type: 'APORTE', amount: 5000, quantity: 200, unitPrice: 25.0, date: new Date(Y, M - 3, 10), description: 'Aporte PETR4' },
+    { id: 'inv-tx-stock-2', type: 'APORTE', amount: 5000, quantity: 190, unitPrice: 26.32, date: new Date(Y, M - 2, 10), description: 'Aporte PETR4' },
+    { id: 'inv-tx-stock-3', type: 'APORTE', amount: 5000, quantity: 185, unitPrice: 27.03, date: new Date(Y, M - 1, 10), description: 'Aporte PETR4' },
+    { id: 'inv-tx-stock-4', type: 'DIVIDENDO', amount: 350, quantity: 0, unitPrice: 0, date: new Date(Y, M - 2, 15), description: 'Dividendo PETR4' },
+    { id: 'inv-tx-stock-5', type: 'DIVIDENDO', amount: 420, quantity: 0, unitPrice: 0, date: new Date(Y, M - 1, 15), description: 'Dividendo PETR4' },
+  ];
+  for (const t of petr4Transactions) {
+    await db.investmentTransaction.upsert({
+      where: { id: t.id },
+      update: {},
+      create: { ...t, investmentId: investment1.id, accountId: account2.id },
+    });
+  }
+
+  const investment2 = await db.investment.upsert({
+    where: { id: 'inv-fii-1' },
+    update: {},
+    create: {
+      id: 'inv-fii-1',
+      name: 'FII MXRF11',
+      type: 'FII',
+      description: 'Maxi Renda - Fundo Imobiliário',
+      investedAmount: 25000,
+      currentBalance: 27800,
+      yieldRate: 9.8,
+      ticker: 'MXRF11',
+      brokerage: 'Rico',
+      accountId: account2.id,
+      categoryId: 'cat-investment',
+      isActive: true,
+    },
+  });
+
+  // MXRF11 transactions: 2 aportes + 3 dividendos mensais
+  const mxrf11Transactions = [
+    { id: 'inv-tx-fii-1', type: 'APORTE', amount: 15000, quantity: 300, unitPrice: 50.0, date: new Date(Y, M - 3, 5), description: 'Aporte MXRF11' },
+    { id: 'inv-tx-fii-2', type: 'APORTE', amount: 10000, quantity: 195, unitPrice: 51.28, date: new Date(Y, M - 1, 5), description: 'Aporte MXRF11' },
+    { id: 'inv-tx-fii-3', type: 'DIVIDENDO', amount: 210, quantity: 0, unitPrice: 0, date: new Date(Y, M - 3, 20), description: 'Dividendo Mensal MXRF11' },
+    { id: 'inv-tx-fii-4', type: 'DIVIDENDO', amount: 225, quantity: 0, unitPrice: 0, date: new Date(Y, M - 2, 20), description: 'Dividendo Mensal MXRF11' },
+    { id: 'inv-tx-fii-5', type: 'DIVIDENDO', amount: 235, quantity: 0, unitPrice: 0, date: new Date(Y, M - 1, 20), description: 'Dividendo Mensal MXRF11' },
+  ];
+  for (const t of mxrf11Transactions) {
+    await db.investmentTransaction.upsert({
+      where: { id: t.id },
+      update: {},
+      create: { ...t, investmentId: investment2.id, accountId: account2.id },
+    });
+  }
+
+  const investment3 = await db.investment.upsert({
+    where: { id: 'inv-cdb-1' },
+    update: {},
+    create: {
+      id: 'inv-cdb-1',
+      name: 'CDB Banco Inter',
+      type: 'CDB',
+      description: 'CDB 120% CDI Banco Inter',
+      investedAmount: 50000,
+      currentBalance: 52400,
+      yieldRate: 14.2,
+      brokerage: 'Banco Inter',
+      accountId: account2.id,
+      categoryId: 'cat-investment',
+      isActive: true,
+    },
+  });
+
+  // CDB transactions: 1 aporte
+  await db.investmentTransaction.upsert({
+    where: { id: 'inv-tx-cdb-1' },
+    update: {},
+    create: {
+      id: 'inv-tx-cdb-1',
+      type: 'APORTE',
+      amount: 50000,
+      quantity: 1,
+      unitPrice: 50000,
+      date: new Date(Y, M - 6, 1),
+      description: 'Aporte CDB Banco Inter',
+      investmentId: investment3.id,
+      accountId: account2.id,
+    },
+  });
+
+  console.log('✅ Created 3 investments with transactions');
+
+  // ============================
+  // INSTALLMENT PLANS
+  // ============================
+  const installmentPlan1 = await db.installmentPlan.upsert({
+    where: { id: 'inst-fin-1' },
+    update: {},
+    create: {
+      id: 'inst-fin-1',
+      description: 'Financiamento Honda Civic',
+      totalAmount: 120000,
+      installmentCount: 60,
+      paidInstallments: 12,
+      monthlyValue: 2000,
+      interestRate: 1.5,
+      startDate: new Date(Y, M - 12, 1),
+      nextPaymentDate: new Date(Y, M + 1, 10),
+      type: 'FINANCING',
+      status: 'ACTIVE',
+      categoryId: 'cat-transport',
+      isActive: true,
+    },
+  });
+
+  // Generate 60 installments for Financiamento Honda Civic
+  for (let i = 1; i <= 60; i++) {
+    const dueDate = new Date(Y, M - 12 + i, 10);
+    const isPaid = i <= 12;
+    await db.installment.upsert({
+      where: { id: `inst-fin-1-parc-${i}` },
+      update: {},
+      create: {
+        id: `inst-fin-1-parc-${i}`,
+        number: i,
+        amount: 2000,
+        dueDate,
+        paidDate: isPaid ? new Date(dueDate.getTime() - 86400000 * 2) : null,
+        status: isPaid ? 'PAID' : 'PENDING',
+        installmentPlanId: installmentPlan1.id,
+      },
+    });
+  }
+
+  const installmentPlan2 = await db.installmentPlan.upsert({
+    where: { id: 'inst-card-1' },
+    update: {},
+    create: {
+      id: 'inst-card-1',
+      description: 'iPhone 15 Pro 12x',
+      totalAmount: 9600,
+      installmentCount: 12,
+      paidInstallments: 7,
+      monthlyValue: 800,
+      interestRate: 0,
+      startDate: new Date(Y, M - 7, 15),
+      nextPaymentDate: new Date(Y, M + 1, 15),
+      type: 'CARD_INSTALLMENT',
+      status: 'ACTIVE',
+      cardId: card1.id,
+      categoryId: 'cat-shopping',
+      isActive: true,
+    },
+  });
+
+  // Generate 12 installments for iPhone
+  for (let i = 1; i <= 12; i++) {
+    const dueDate = new Date(Y, M - 7 + i, 15);
+    const isPaid = i <= 7;
+    await db.installment.upsert({
+      where: { id: `inst-card-1-parc-${i}` },
+      update: {},
+      create: {
+        id: `inst-card-1-parc-${i}`,
+        number: i,
+        amount: 800,
+        dueDate,
+        paidDate: isPaid ? new Date(dueDate.getTime() - 86400000) : null,
+        status: isPaid ? 'PAID' : 'PENDING',
+        installmentPlanId: installmentPlan2.id,
+      },
+    });
+  }
+
+  const installmentPlan3 = await db.installmentPlan.upsert({
+    where: { id: 'inst-loan-1' },
+    update: {},
+    create: {
+      id: 'inst-loan-1',
+      description: 'Empréstimo Pessoal',
+      totalAmount: 10000,
+      installmentCount: 24,
+      paidInstallments: 0,
+      monthlyValue: 500,
+      interestRate: 2.0,
+      startDate: new Date(Y, M, 1),
+      nextPaymentDate: new Date(Y, M + 1, 5),
+      type: 'PERSONAL',
+      status: 'ACTIVE',
+      categoryId: 'cat-other',
+      isActive: true,
+    },
+  });
+
+  // Generate 24 installments for Empréstimo Pessoal - all PENDING
+  for (let i = 1; i <= 24; i++) {
+    const dueDate = new Date(Y, M + i, 5);
+    await db.installment.upsert({
+      where: { id: `inst-loan-1-parc-${i}` },
+      update: {},
+      create: {
+        id: `inst-loan-1-parc-${i}`,
+        number: i,
+        amount: 500,
+        dueDate,
+        paidDate: null,
+        status: 'PENDING',
+        installmentPlanId: installmentPlan3.id,
+      },
+    });
+  }
+
+  console.log('✅ Created 3 installment plans with installments');
+
+  // ============================
+  // CONSORTIUMS
+  // ============================
+  const consortium1 = await db.consortium.upsert({
+    where: { id: 'cons-car-1' },
+    update: {},
+    create: {
+      id: 'cons-car-1',
+      description: 'Honda Civic Touring 2024',
+      group: 'Grupo 1234',
+      quota: 'Cota 015',
+      administrator: 'Banco Honda',
+      totalAmount: 150000,
+      fundedAmount: 27000,
+      monthlyPayment: 2500,
+      installmentCount: 60,
+      paidInstallments: 10,
+      startDate: new Date(Y, M - 10, 1),
+      endDate: new Date(Y, M + 50, 1),
+      nextAssemblyDate: new Date(Y, M + 1, 15),
+      assembliesAttended: 10,
+      status: 'ACTIVE',
+      categoryId: 'cat-transport',
+      isActive: true,
+    },
+  });
+
+  // Generate 60 consortium installments for Honda Civic
+  for (let i = 1; i <= 60; i++) {
+    const dueDate = new Date(Y, M - 10 + i, 10);
+    const isPaid = i <= 10;
+    await db.consortiumInstallment.upsert({
+      where: { id: `cons-car-1-inst-${i}` },
+      update: {},
+      create: {
+        id: `cons-car-1-inst-${i}`,
+        number: i,
+        amount: 2500,
+        dueDate,
+        paidDate: isPaid ? new Date(dueDate.getTime() + 86400000 * 5) : null,
+        status: isPaid ? 'PAID' : 'PENDING',
+        assemblyDate: isPaid ? new Date(dueDate.getTime() + 86400000 * 5) : null,
+        consortiumId: consortium1.id,
+      },
+    });
+  }
+
+  const consortium2 = await db.consortium.upsert({
+    where: { id: 'cons-imovel-1' },
+    update: {},
+    create: {
+      id: 'cons-imovel-1',
+      description: 'Apartamento 3 quartos São Paulo',
+      group: 'Grupo 5678',
+      quota: 'Cota 042',
+      administrator: 'Caixa Econômica',
+      totalAmount: 350000,
+      fundedAmount: 42000,
+      monthlyPayment: 3500,
+      installmentCount: 100,
+      paidInstallments: 12,
+      startDate: new Date(Y, M - 12, 1),
+      endDate: new Date(Y, M + 88, 1),
+      assembliesAttended: 12,
+      status: 'ACTIVE',
+      categoryId: 'cat-home',
+      isActive: true,
+    },
+  });
+
+  // Generate 100 consortium installments for Apartamento
+  for (let i = 1; i <= 100; i++) {
+    const dueDate = new Date(Y, M - 12 + i, 10);
+    const isPaid = i <= 12;
+    await db.consortiumInstallment.upsert({
+      where: { id: `cons-imovel-1-inst-${i}` },
+      update: {},
+      create: {
+        id: `cons-imovel-1-inst-${i}`,
+        number: i,
+        amount: 3500,
+        dueDate,
+        paidDate: isPaid ? new Date(dueDate.getTime() + 86400000 * 3) : null,
+        status: isPaid ? 'PAID' : 'PENDING',
+        assemblyDate: isPaid ? new Date(dueDate.getTime() + 86400000 * 3) : null,
+        consortiumId: consortium2.id,
+      },
+    });
+  }
+
+  console.log('✅ Created 2 consortiums with installments');
+
+  // ============================
+  // SAVINGS GOALS
+  // ============================
+  const savingsGoals = [
+    {
+      id: 'sav-emerg-1',
+      name: 'Reserva de Emergência',
+      description: 'Reserva para imprevistos - 6 meses de gastos',
+      type: 'EMERGENCY_FUND',
+      targetAmount: 50000,
+      currentAmount: 32500,
+      monthlyContribution: 1500,
+      yieldRate: 12.5,
+      accountId: account2.id,
+      color: '#22c55e',
+    },
+    {
+      id: 'sav-viagem-1',
+      name: 'Viagem Europa',
+      description: 'Passagens + hospedagem + passeios por 15 dias',
+      type: 'SAVINGS',
+      targetAmount: 20000,
+      currentAmount: 8500,
+      monthlyContribution: 1000,
+      yieldRate: 0,
+      accountId: account3.id,
+      color: '#3b82f6',
+    },
+    {
+      id: 'sav-cdi-1',
+      name: 'Conta CDI 100%',
+      description: 'Rendimento atrelado ao CDI 100%',
+      type: 'CDI',
+      targetAmount: 100000,
+      currentAmount: 45000,
+      monthlyContribution: 3000,
+      yieldRate: 14.0,
+      accountId: account2.id,
+      color: '#06b6d4',
+    },
+    {
+      id: 'sav-pig-1',
+      name: 'Porquinho Natal',
+      description: 'Economia para presentes de Natal',
+      type: 'PIGGY_BANK',
+      targetAmount: 3000,
+      currentAmount: 1200,
+      monthlyContribution: 300,
+      yieldRate: 0,
+      accountId: account1.id,
+      color: '#f59e0b',
+    },
+  ];
+
+  for (const g of savingsGoals) {
+    await db.savingsGoal.upsert({
+      where: { id: g.id },
+      update: {},
+      create: g,
+    });
+  }
+  console.log('✅ Created 4 savings goals');
 
   console.log('🎉 Database seeded successfully!');
 }

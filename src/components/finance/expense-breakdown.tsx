@@ -332,10 +332,11 @@ export function ExpenseBreakdown() {
                       name,
                     ]}
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
+                      backgroundColor: 'var(--card)',
+                      border: '1px solid var(--border)',
                       borderRadius: '12px',
                       fontSize: '12px',
+                      color: 'var(--card-foreground)',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                     }}
                   />
@@ -490,19 +491,19 @@ export function ExpenseBreakdown() {
                                 >
                                   <CartesianGrid
                                     strokeDasharray="3 3"
-                                    stroke="hsl(var(--border))"
+                                    stroke="var(--border)"
                                     vertical={false}
                                   />
                                   <XAxis
                                     dataKey="month"
                                     tick={{ fontSize: 10 }}
-                                    stroke="hsl(var(--muted-foreground))"
+                                    stroke="var(--muted-foreground)"
                                     tickLine={false}
                                     axisLine={false}
                                   />
                                   <YAxis
                                     tick={{ fontSize: 10 }}
-                                    stroke="hsl(var(--muted-foreground))"
+                                    stroke="var(--muted-foreground)"
                                     tickLine={false}
                                     axisLine={false}
                                     tickFormatter={shortCurrency}
@@ -515,11 +516,12 @@ export function ExpenseBreakdown() {
                                     ]}
                                     contentStyle={{
                                       backgroundColor:
-                                        'hsl(var(--card))',
+                                        'var(--card)',
                                       border:
-                                        '1px solid hsl(var(--border))',
+                                        '1px solid var(--border)',
                                       borderRadius: '12px',
                                       fontSize: '11px',
+                                      color: 'var(--card-foreground)',
                                       boxShadow:
                                         '0 4px 12px rgba(0,0,0,0.15)',
                                     }}

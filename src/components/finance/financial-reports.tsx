@@ -200,16 +200,17 @@ export function FinancialReportsWidget() {
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} barGap={2} barCategoryGap="20%">
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} tickFormatter={shortCurrency} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} tickFormatter={shortCurrency} />
                       <RechartsTooltip
                         formatter={(value: number, name: string) => [currencyFmt(value), name]}
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
+                          backgroundColor: 'var(--card)',
+                          border: '1px solid var(--border)',
                           borderRadius: '12px',
                           fontSize: '12px',
+                          color: 'var(--card-foreground)',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                         }}
                       />

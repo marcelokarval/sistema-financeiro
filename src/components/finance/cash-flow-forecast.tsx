@@ -304,10 +304,10 @@ export function CashFlowForecast() {
                       <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={false}
                     interval={0}
@@ -316,7 +316,7 @@ export function CashFlowForecast() {
                     height={50}
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={shortCurrency}
@@ -335,7 +335,7 @@ export function CashFlowForecast() {
                     strokeWidth={2}
                     strokeDasharray="6 3"
                     fill="url(#gradIncome)"
-                    dot={{ r: 4, fill: '#22c55e', strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                    dot={{ r: 4, fill: '#22c55e', strokeWidth: 2, stroke: 'var(--background)' }}
                     activeDot={{ r: 6, fill: '#22c55e', strokeWidth: 2, stroke: '#fff' }}
                   />
                   {/* Expense — orange dashed */}
@@ -346,7 +346,7 @@ export function CashFlowForecast() {
                     strokeWidth={2}
                     strokeDasharray="6 3"
                     fill="url(#gradExpense)"
-                    dot={{ r: 4, fill: '#f97316', strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                    dot={{ r: 4, fill: '#f97316', strokeWidth: 2, stroke: 'var(--background)' }}
                     activeDot={{ r: 6, fill: '#f97316', strokeWidth: 2, stroke: '#fff' }}
                   />
                   {/* Net — cyan solid */}
@@ -356,7 +356,7 @@ export function CashFlowForecast() {
                     stroke="#06b6d4"
                     strokeWidth={2.5}
                     fill="url(#gradNet)"
-                    dot={{ r: 4, fill: '#06b6d4', strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                    dot={{ r: 4, fill: '#06b6d4', strokeWidth: 2, stroke: 'var(--background)' }}
                     activeDot={{ r: 6, fill: '#06b6d4', strokeWidth: 2, stroke: '#fff' }}
                   />
                 </AreaChart>

@@ -11,6 +11,10 @@ import { AccountsView } from '@/components/finance/accounts-view';
 import { CardsView } from '@/components/finance/cards-view';
 import { PurchasesView } from '@/components/finance/purchases-view';
 import { CategoriesView } from '@/components/finance/categories-view';
+import { InvestmentsView } from '@/components/finance/investments-view';
+import { InstallmentsView } from '@/components/finance/installments-view';
+import { ConsortiumsView } from '@/components/finance/consortiums-view';
+import { SavingsView } from '@/components/finance/savings-view';
 import { NotificationPanel } from '@/components/finance/notification-panel';
 import { GlobalSearch } from '@/components/finance/global-search';
 import { QuickActions } from '@/components/finance/quick-actions';
@@ -43,6 +47,13 @@ import {
   Shield,
   Wifi,
   WifiOff,
+  TrendingUp,
+  CalendarClock,
+  Building2,
+  PiggyBank,
+  Brain,
+  EyeOff,
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -52,6 +63,10 @@ const viewLabels: Record<ViewType, string> = {
   cards: 'Cartões',
   purchases: 'Compras',
   categories: 'Categorias',
+  investments: 'Investimentos',
+  installments: 'Parcelas',
+  consortiums: 'Consórcios',
+  savings: 'Caixinhas',
 };
 
 const viewSubtitles: Record<ViewType, string> = {
@@ -60,6 +75,10 @@ const viewSubtitles: Record<ViewType, string> = {
   cards: 'Acompanhe cartões e faturas',
   purchases: 'Controle detalhado de compras',
   categories: 'Organize receitas e despesas',
+  investments: 'Aportes, dividendos e rendimentos',
+  installments: 'Financiamentos e parcelamentos',
+  consortiums: 'Controle de consórcios',
+  savings: 'Metas e caixinhas de poupança',
 };
 
 const viewIcons: Record<ViewType, React.ElementType> = {
@@ -68,19 +87,27 @@ const viewIcons: Record<ViewType, React.ElementType> = {
   cards: CreditCard,
   purchases: ShoppingCart,
   categories: Tag,
+  investments: TrendingUp,
+  installments: CalendarClock,
+  consortiums: Building2,
+  savings: PiggyBank,
 };
 
 const viewColors: Record<ViewType, string> = {
   dashboard: 'from-emerald-500 to-cyan-500',
   accounts: 'from-violet-500 to-purple-500',
   cards: 'from-orange-500 to-rose-500',
-  purchases: 'from-blue-500 to-indigo-500',
+  purchases: 'from-sky-500 to-cyan-500',
   categories: 'from-amber-500 to-orange-500',
+  investments: 'from-emerald-500 to-cyan-500',
+  installments: 'from-violet-500 to-fuchsia-500',
+  consortiums: 'from-teal-500 to-emerald-500',
+  savings: 'from-rose-500 to-pink-500',
 };
 
 function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewType) => void; onClose: () => void }) {
   const { currentView } = useAppStore();
-  const views: ViewType[] = ['dashboard', 'accounts', 'cards', 'purchases', 'categories'];
+  const allViews: ViewType[] = ['dashboard', 'accounts', 'cards', 'purchases', 'categories', 'investments', 'installments', 'consortiums', 'savings'];
 
   return (
     <div className="flex flex-col h-full">
@@ -93,8 +120,9 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
           <p className="text-[10px] text-muted-foreground/80 leading-tight">Gestão Inteligente</p>
         </div>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {views.map((view, i) => {
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 mb-2">Principal</p>
+        {allViews.slice(0, 5).map((view, i) => {
           const isActive = currentView === view;
           const Icon = viewIcons[view];
           return (
@@ -102,7 +130,29 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
               key={view}
               initial={{ opacity: 0, x: -12 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.25 }}
+              transition={{ delay: i * 0.04, duration: 0.25 }}
+              onClick={() => { onNavigate(view); onClose(); }}
+              className={`flex items-center w-full gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{viewLabels[view]}</span>
+            </motion.button>
+          );
+        })}
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 mt-4 mb-2">Financeiro</p>
+        {allViews.slice(5).map((view, i) => {
+          const isActive = currentView === view;
+          const Icon = viewIcons[view];
+          return (
+            <motion.button
+              key={view}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: (i + 5) * 0.04, duration: 0.25 }}
               onClick={() => { onNavigate(view); onClose(); }}
               className={`flex items-center w-full gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                 isActive
@@ -123,7 +173,7 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Zap className="w-3.5 h-3.5" />
-          <span>v2.5.0</span>
+          <span>v3.0.0</span>
         </div>
       </div>
     </div>
@@ -131,7 +181,7 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
 }
 
 export default function Page() {
-  const { currentView, setCurrentView } = useAppStore();
+  const { currentView, setCurrentView, aiAssistantVisible, toggleAiAssistant } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [sidebarCollapsedState, setSidebarCollapsed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -155,7 +205,6 @@ export default function Page() {
     () => false,
   );
 
-  // Keyboard shortcut for search
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -169,13 +218,8 @@ export default function Page() {
 
   if (!mounted) return null;
 
-  const handleNavigate = (view: ViewType) => {
-    setCurrentView(view);
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+  const handleNavigate = (view: ViewType) => setCurrentView(view);
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   const renderView = () => {
     switch (currentView) {
@@ -184,6 +228,10 @@ export default function Page() {
       case 'cards': return <CardsView />;
       case 'purchases': return <PurchasesView />;
       case 'categories': return <CategoriesView />;
+      case 'investments': return <InvestmentsView />;
+      case 'installments': return <InstallmentsView />;
+      case 'consortiums': return <ConsortiumsView />;
+      case 'savings': return <SavingsView />;
       default: return <DashboardView />;
     }
   };
@@ -195,7 +243,6 @@ export default function Page() {
         <SmartInsights />
         <CashFlowForecast />
         <SpendingTimeline />
-        <AIAdvisor />
         <SavingsChallenge />
         <ExpenseBreakdown />
         <BalanceProjection />
@@ -224,7 +271,6 @@ export default function Page() {
         {/* Header */}
         <header className="h-16 border-b border-border/40 bg-card/50 backdrop-blur-2xl flex items-center justify-between px-4 lg:px-6 shrink-0 z-30">
           <div className="flex items-center gap-3">
-            {/* Mobile menu */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden hover:bg-accent/50">
@@ -233,14 +279,10 @@ export default function Page() {
               </SheetTrigger>
               <SheetContent side="left" className="w-[280px] p-0">
                 <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
-                <MobileSidebarContent
-                  onNavigate={handleNavigate}
-                  onClose={() => {}}
-                />
+                <MobileSidebarContent onNavigate={handleNavigate} onClose={() => {}} />
               </SheetContent>
             </Sheet>
 
-            {/* Page title with icon */}
             <div className="flex items-center gap-3">
               <motion.div
                 key={currentView}
@@ -252,86 +294,48 @@ export default function Page() {
                 <CurrentIcon className="w-4.5 h-4.5 text-white" />
               </motion.div>
               <div>
-                <h1 className="text-base font-semibold leading-tight">{currentLabel}</h1>
+                <h1 className="text-base font-semibold leading-tight text-foreground">{currentLabel}</h1>
                 <p className="text-[11px] text-muted-foreground leading-tight hidden sm:block">{currentSubtitle}</p>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Connection status indicator */}
-            <div className="flex items-center gap-1.5 mr-1">
-              <motion.div
-                initial={false}
-                animate={{ scale: isConnected ? [1, 1.3, 1] : 1 }}
-                transition={{ duration: 0.4 }}
-                className="flex items-center justify-center w-7 h-7 rounded-full"
-              >
-                <div className={`relative flex items-center justify-center`}>
-                  {isConnected ? (
-                    <Wifi className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <WifiOff className="w-4 h-4 text-rose-400" />
-                  )}
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-background ${
-                    isConnected ? 'bg-emerald-500' : 'bg-rose-400'
-                  }`} />
-                </div>
-              </motion.div>
+            {/* Connection status */}
+            <div className="flex items-center justify-center w-7 h-7 rounded-full">
+              <div className="relative flex items-center justify-center">
+                {isConnected ? (
+                  <Wifi className="w-4 h-4 text-emerald-500" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-rose-400" />
+                )}
+                <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-background ${isConnected ? 'bg-emerald-500' : 'bg-rose-400'}`} />
+              </div>
             </div>
 
-            {/* Search trigger */}
-            <motion.div whileTap={{ scale: 0.95 }}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden sm:flex items-center gap-2 h-9 px-3 bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                onClick={() => setShowSearch(true)}
-              >
+            {/* Search */}
+            <motion.div whileTap={{ scale: 0.95 }} className="hidden sm:block">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 px-3 bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/50" onClick={() => setShowSearch(true)}>
                 <Search className="w-3.5 h-3.5" />
                 <span className="text-xs">Buscar...</span>
-                <kbd className="pointer-events-none ml-1 inline-flex h-5 items-center gap-0.5 rounded border border-border/50 bg-muted/50 px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                  ⌘K
-                </kbd>
+                <kbd className="pointer-events-none ml-1 inline-flex h-5 items-center gap-0.5 rounded border border-border/50 bg-muted/50 px-1.5 font-mono text-[10px] font-medium text-muted-foreground">⌘K</kbd>
               </Button>
             </motion.div>
-
-            {/* Mobile search */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="sm:hidden"
-              onClick={() => setShowSearch(true)}
-            >
+            <Button variant="ghost" size="icon" className="sm:hidden" onClick={() => setShowSearch(true)}>
               <Search className="w-5 h-5" />
             </Button>
 
             {/* Notifications */}
             <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative hover:bg-accent/50"
-                onClick={() => setShowNotifications(!showNotifications)}
-              >
+              <Button variant="ghost" size="icon" className="relative hover:bg-accent/50" onClick={() => setShowNotifications(!showNotifications)}>
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-background" />
               </Button>
-
-              {/* Notification dropdown */}
-              <NotificationPanel
-                isOpen={showNotifications}
-                onClose={() => setShowNotifications(false)}
-              />
+              <NotificationPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
             </div>
 
             {/* Theme toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="hover:bg-accent/50"
-            >
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="hover:bg-accent/50">
               <AnimatePresence mode="wait">
                 {theme === 'dark' ? (
                   <motion.div key="sun" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
@@ -352,6 +356,39 @@ export default function Page() {
           </div>
         </header>
 
+        {/* AI Assistant Bar - Persistent across all views */}
+        <AnimatePresence>
+          {aiAssistantVisible && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="overflow-hidden border-b border-border/30 shrink-0"
+            >
+              <AIAdvisor />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* AI Advisor Toggle (visible when hidden) */}
+        {!aiAssistantVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between px-4 lg:px-6 py-1.5 bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-b border-border/20 shrink-0"
+          >
+            <button
+              onClick={toggleAiAssistant}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Brain className="w-3.5 h-3.5 text-violet-500" />
+              <span>Assistente IA</span>
+              <span className="text-[10px] bg-violet-500/10 text-violet-500 px-1.5 py-0.5 rounded-full">Clique para abrir</span>
+            </button>
+          </motion.div>
+        )}
+
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto main-gradient">
           <div className="p-4 lg:p-6 max-w-7xl mx-auto">
@@ -369,17 +406,16 @@ export default function Page() {
           </div>
         </main>
 
-        {/* Footer - Polished */}
+        {/* Footer */}
         <footer className="relative border-t border-border/40 glass-enhanced px-4 lg:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20">
-          {/* Subtle top gradient line */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
                 <Sparkles className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
-              <span className="font-medium">FinanceApp</span>
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.5</Badge>
+              <span className="font-medium text-foreground">FinanceApp</span>
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v3.0</Badge>
             </div>
             <span className="hidden sm:block text-muted-foreground/60">·</span>
             <span className="hidden sm:flex items-center gap-1">
@@ -414,6 +450,7 @@ export default function Page() {
           else if (type === 'purchase') setCurrentView('purchases');
           else if (type === 'transaction') setCurrentView('accounts');
           else if (type === 'category') setCurrentView('categories');
+          else if (type === 'investment') setCurrentView('investments');
         }}
       />
     </div>

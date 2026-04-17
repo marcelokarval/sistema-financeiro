@@ -21,8 +21,11 @@ model Account {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  transactions          Transaction[]
-  recurringTransactions  RecurringTransaction[]
+  transactions              Transaction[]
+  recurringTransactions      RecurringTransaction[]
+  investments                Investment[]
+  investmentTransactions     InvestmentTransaction[]
+  savingsGoals               SavingsGoal[]
 }
 
 // =====================
@@ -47,6 +50,7 @@ model Card {
   transactions          Transaction[]
   purchases             Purchase[]
   recurringTransactions  RecurringTransaction[]
+  installmentPlans       InstallmentPlan[]
 }
 
 // =====================
@@ -66,6 +70,9 @@ model Category {
   purchases             Purchase[]
   budgetGoals           BudgetGoal[]
   recurringTransactions  RecurringTransaction[]
+  investments           Investment[]
+  installmentPlans       InstallmentPlan[]
+  consortiums           Consortium[]
 }
 
 // =====================
@@ -168,4 +175,170 @@ model BudgetGoal {
   isCompleted   Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// =====================
+// INVESTMENTS
+// =====================
+model Investment {
+  id              String    @id @default(cuid())
+  name            String
+  type            String    @default("STOCK") // STOCK, BOND, FII, CDB, LCI, LCA, TESOURO, CRYPTO, ETF, OTHER
+  description     String    @default("")
+  currentBalance  Float     @default(0)
+  investedAmount  Float     @default(0)
+  yieldRate       Float     @default(0)      // annual yield %
+  brokerage       String    @default("")      // brokerage name
+  ticker          String    @default("")      // e.g. PETR4, VBVA11
+  accountId       String?
+  account         Account?  @relation(fields: [accountId], references: [id])
+  categoryId      String?
+  category        Category? @relation(fields: [categoryId], references: [id])
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  transactions    InvestmentTransaction[]
+}
+
+// =====================
+// INVESTMENT TRANSACTIONS
+// =====================
+model InvestmentTransaction {
+  id            String     @id @default(cuid())
+  type          String     // APORTE, DIVIDENDO, VENDA, REINVESTIMENTO, TAXA, BONUS
+  amount        Float
+  quantity      Float      @default(0)     // shares/units
+  unitPrice     Float      @default(0)
+  date          DateTime   @default(now())
+  description   String     @default("")
+  notes         String     @default("")
+
+  investmentId  String
+  investment    Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  accountId     String?
+  account       Account?   @relation(fields: [accountId], references: [id])
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+// =====================
+// INSTALLMENT PLANS (Financiamentos / Parcelamentos)
+// =====================
+model InstallmentPlan {
+  id                String    @id @default(cuid())
+  description       String
+  totalAmount       Float     // total financed amount
+  installmentCount  Int       // total number of installments
+  paidInstallments  Int       @default(0)
+  monthlyValue      Float     // value per installment
+  interestRate      Float     @default(0)    // monthly interest rate %
+  startDate         DateTime  @default(now())
+  nextPaymentDate   DateTime?
+  type              String    @default("FINANCING") // FINANCING, CARD_INSTALLMENT, LOAN, PERSONAL, RENTAL
+  status            String    @default("ACTIVE")   // ACTIVE, COMPLETED, CANCELLED, OVERDUE
+
+  cardId            String?
+  card              Card?      @relation(fields: [cardId], references: [id])
+  accountId         String?
+  categoryId        String?
+  category          Category? @relation(fields: [categoryId], references: [id])
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  installments      Installment[]
+}
+
+// =====================
+// INSTALLMENTS (Individual parcels)
+// =====================
+model Installment {
+  id                String    @id @default(cuid())
+  number            Int       // installment number (1-based)
+  amount            Float
+  dueDate           DateTime
+  paidDate          DateTime?
+  status            String    @default("PENDING") // PAID, PENDING, OVERDUE
+  notes             String    @default("")
+
+  installmentPlanId String
+  installmentPlan   InstallmentPlan @relation(fields: [installmentPlanId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// =====================
+// CONSORTIUM (Consórcios)
+// =====================
+model Consortium {
+  id                String    @id @default(cuid())
+  description       String    // e.g. "Honda Civic 2024"
+  group             String    @default("")     // group identifier
+  quota             String    @default("")     // quota number
+  administrator     String    @default("")     // administrator company
+  totalAmount       Float     // total value of the asset
+  fundedAmount      Float     @default(0)      // amount already paid
+  monthlyPayment    Float     // monthly installment value
+  installmentCount  Int       // total months
+  paidInstallments  Int       @default(0)
+  startDate         DateTime  @default(now())
+  endDate           DateTime?
+  nextAssemblyDate  DateTime?
+  assembliesAttended Int     @default(0)
+  status            String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED, CONTEMPLATED
+
+  categoryId        String?
+  category          Category? @relation(fields: [categoryId], references: [id])
+  accountId         String?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  installments      ConsortiumInstallment[]
+}
+
+// =====================
+// CONSORTIUM INSTALLMENTS
+// =====================
+model ConsortiumInstallment {
+  id              String    @id @default(cuid())
+  number          Int       // installment number
+  amount          Float
+  dueDate         DateTime
+  paidDate        DateTime?
+  status          String    @default("PENDING") // PAID, PENDING, OVERDUE
+  notes           String    @default("")
+  assemblyDate    DateTime? // if payment was discussed in assembly
+  assemblyResult  String    @default("") // notes about assembly result
+
+  consortiumId    String
+  consortium      Consortium @relation(fields: [consortiumId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// =====================
+// SAVINGS GOALS (Caixinhas / Metas de Poupança)
+// =====================
+model SavingsGoal {
+  id                String    @id @default(cuid())
+  name              String
+  description       String    @default("")
+  type              String    @default("SAVINGS") // SAVINGS, PIGGY_BANK, CDI, INVESTMENT, EMERGENCY_FUND
+  targetAmount      Float
+  currentAmount     Float     @default(0)
+  monthlyContribution Float    @default(0)
+  yieldRate         Float     @default(0)      // annual yield % for CDI etc.
+  startDate         DateTime  @default(now())
+  targetDate        DateTime?
+  accountId         String?
+  account           Account?  @relation(fields: [accountId], references: [id])
+  isCompleted       Boolean   @default(false)
+  color             String    @default("#22c55e")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }

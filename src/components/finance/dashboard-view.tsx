@@ -240,7 +240,7 @@ export function DashboardView() {
           <div className="absolute top-1/3 right-1/4 w-16 h-16 rounded-full bg-white/5 animate-breathe" style={{ animationDelay: '0.5s' }} />
           {/* Grid pattern overlay */}
           <div className="absolute inset-0 opacity-[0.04]" style={{
-            backgroundImage: 'linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)',
             backgroundSize: '40px 40px'
           }} />
         </div>
@@ -604,12 +604,12 @@ export function DashboardView() {
                         <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} tickFormatter={shortCurrency} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} tickFormatter={shortCurrency} />
                     <RechartsTooltip
                       formatter={(value: number, name: string) => [currencyFmt(value), name === 'income' ? 'Receitas' : 'Despesas']}
-                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                      contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px', color: 'var(--card-foreground)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                     />
                     <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIncome)" name="Receitas" dot={{ r: 3, fill: '#22c55e', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#22c55e', strokeWidth: 2, stroke: '#fff' }} />
                     <Area type="monotone" dataKey="expense" stroke="#f97316" strokeWidth={2.5} fillOpacity={1} fill="url(#colorExpense)" name="Despesas" dot={{ r: 3, fill: '#f97316', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#f97316', strokeWidth: 2, stroke: '#fff' }} />
@@ -647,7 +647,7 @@ export function DashboardView() {
                     </Pie>
                     <RechartsTooltip
                       formatter={(value: number) => currencyFmt(value)}
-                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', fontSize: '12px' }}
+                      contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px', color: 'var(--card-foreground)' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>

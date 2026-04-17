@@ -152,7 +152,7 @@ function SavingsRateRing({ rate }: { rate: number }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="hsl(var(--muted))"
+          stroke="var(--muted)"
           strokeWidth={strokeWidth}
           opacity={0.25}
         />

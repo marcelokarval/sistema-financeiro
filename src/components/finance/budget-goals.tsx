@@ -112,7 +112,7 @@ function CircularProgress({
         cy={size / 2}
         r={radius}
         fill="none"
-        stroke="hsl(var(--muted))"
+        stroke="var(--muted)"
         strokeWidth={strokeWidth}
         opacity={0.3}
       />
