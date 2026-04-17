@@ -9,6 +9,11 @@ async function main() {
   await db.purchase.deleteMany({});
   await db.transaction.deleteMany({});
 
+  // Clean up old monthly budgets
+  await db.monthlyBudget.deleteMany({
+    where: { id: { startsWith: 'mb-' } },
+  });
+
   // Remove old budget goals with previous "goal-*" IDs
   await db.budgetGoal.deleteMany({
     where: { id: { startsWith: 'goal-' } },
@@ -894,6 +899,27 @@ async function main() {
   }
 
   console.log('✅ Created 2 consortiums with installments');
+
+  // ============================
+  // MONTHLY BUDGETS (mb-* prefix)
+  // ============================
+  const monthlyBudgets = [
+    { id: 'mb-alimentacao', categoryId: 'cat-food', amount: 1500, month: M + 1, year: Y },
+    { id: 'mb-transporte', categoryId: 'cat-transport', amount: 800, month: M + 1, year: Y },
+    { id: 'mb-entretenimento', categoryId: 'cat-entertainment', amount: 500, month: M + 1, year: Y },
+    { id: 'mb-educacao', categoryId: 'cat-education', amount: 1200, month: M + 1, year: Y },
+    { id: 'mb-saude', categoryId: 'cat-health', amount: 600, month: M + 1, year: Y },
+    { id: 'mb-moradia', categoryId: 'cat-home', amount: 3000, month: M + 1, year: Y },
+  ];
+
+  for (const b of monthlyBudgets) {
+    await db.monthlyBudget.upsert({
+      where: { id: b.id },
+      update: { amount: b.amount },
+      create: b,
+    });
+  }
+  console.log(`✅ Created ${monthlyBudgets.length} monthly budgets`);
 
   // ============================
   // SAVINGS GOALS

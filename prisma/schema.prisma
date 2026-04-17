@@ -73,6 +73,7 @@ model Category {
   investments           Investment[]
   installmentPlans       InstallmentPlan[]
   consortiums           Consortium[]
+  monthlyBudgets        MonthlyBudget[]
 }
 
 // =====================
@@ -319,6 +320,22 @@ model ConsortiumInstallment {
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+// =====================
+// MONTHLY BUDGETS
+// =====================
+model MonthlyBudget {
+  id          String   @id @default(cuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount      Float    // budget limit for this category
+  month       Int      // 1-12
+  year        Int      // e.g. 2026
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([categoryId, month, year])
 }
 
 // =====================

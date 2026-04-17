@@ -41,8 +41,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import {
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -51,7 +49,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
   Area,
   AreaChart,
 } from 'recharts';

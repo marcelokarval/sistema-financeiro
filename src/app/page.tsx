@@ -30,9 +30,13 @@ import { FinancialCalendar } from '@/components/finance/financial-calendar';
 import { BalanceProjection } from '@/components/finance/balance-projection';
 import { NetworthEvolution } from '@/components/finance/networth-evolution';
 import { DebtOverview } from '@/components/finance/debt-overview';
+import { TransactionAnalytics } from '@/components/finance/transaction-analytics';
+import { UpcomingBills } from '@/components/finance/upcoming-bills';
 import { ReceiptGenerator } from '@/components/finance/receipt-generator';
+import { AchievementBadges } from '@/components/finance/achievement-badges';
+import { MonthlyBudgetTracker } from '@/components/finance/monthly-budget-tracker';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import {
   Menu,
@@ -56,8 +60,6 @@ import {
   Building2,
   PiggyBank,
   Brain,
-  EyeOff,
-  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -184,6 +186,28 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
   );
 }
 
+function DashboardWithWidgets() {
+  return (
+    <div className="space-y-6">
+      <DashboardView />
+      <SmartInsights />
+      <CashFlowForecast />
+      <SpendingTimeline />
+      <SavingsChallenge />
+      <ExpenseBreakdown />
+      <BalanceProjection />
+      <FinancialCalendar />
+      <NetworthEvolution />
+      <DebtOverview />
+      <TransactionAnalytics />
+      <MonthlyBudgetTracker />
+      <UpcomingBills />
+      <ReceiptGenerator />
+      <AchievementBadges />
+    </div>
+  );
+}
+
 export default function Page() {
   const { currentView, setCurrentView, aiAssistantVisible, toggleAiAssistant } = useAppStore();
   const { theme, setTheme } = useTheme();
@@ -191,6 +215,7 @@ export default function Page() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [footerData, setFooterData] = useState<{ netWorth: number; savingsRate: number } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const toastShownRef = useRef<string | null>(null);
   const { isConnected, refreshCounter } = useRealtime({
     onEvent: (event) => {
@@ -255,27 +280,9 @@ export default function Page() {
       case 'installments': return <InstallmentsView />;
       case 'consortiums': return <ConsortiumsView />;
       case 'savings': return <SavingsView />;
-      default: return <DashboardView />;
+      default: return <DashboardWithWidgets />;
     }
   };
-
-  function DashboardWithWidgets() {
-    return (
-      <div className="space-y-6">
-        <DashboardView />
-        <SmartInsights />
-        <CashFlowForecast />
-        <SpendingTimeline />
-        <SavingsChallenge />
-        <ExpenseBreakdown />
-        <BalanceProjection />
-        <FinancialCalendar />
-        <NetworthEvolution />
-        <DebtOverview />
-        <ReceiptGenerator />
-      </div>
-    );
-  }
 
   const CurrentIcon = viewIcons[currentView];
   const currentLabel = viewLabels[currentView];
@@ -296,7 +303,7 @@ export default function Page() {
         {/* Header */}
         <header className="h-16 border-b border-border/40 bg-card/50 backdrop-blur-2xl flex items-center justify-between px-4 lg:px-6 shrink-0 z-30">
           <div className="flex items-center gap-3">
-            <Sheet>
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden hover:bg-accent/50">
                   <Menu className="w-5 h-5" />
@@ -304,7 +311,10 @@ export default function Page() {
               </SheetTrigger>
               <SheetContent side="left" className="w-[280px] p-0">
                 <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
-                <MobileSidebarContent onNavigate={handleNavigate} onClose={() => {}} />
+                <MobileSidebarContent
+                  onNavigate={(v) => { handleNavigate(v); setMobileMenuOpen(false); }}
+                  onClose={() => setMobileMenuOpen(false)}
+                />
               </SheetContent>
             </Sheet>
 

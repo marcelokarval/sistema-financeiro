@@ -11,7 +11,6 @@ import {
   Smartphone,
   ArrowUpRight,
   ArrowDownRight,
-  X,
   ArrowLeft,
   ArrowLeftRight,
   TrendingUp,
@@ -306,21 +305,27 @@ export function AccountsView() {
   };
 
   const saveAccount = async () => {
+    if (!form.name.trim()) {
+      toast.error('Nome da conta é obrigatório');
+      return;
+    }
     try {
       const body = { ...form, balance: parseFloat(form.balance) || 0 };
       if (editingAccount) {
-        await fetch('/api/accounts', {
+        const res = await fetch('/api/accounts', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: editingAccount.id, ...body }),
         });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao atualizar conta'); return; }
         toast.success('Conta atualizada!');
       } else {
-        await fetch('/api/accounts', {
+        const res = await fetch('/api/accounts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao criar conta'); return; }
         toast.success('Conta criada!');
       }
       setShowAccountDialog(false);
@@ -333,11 +338,12 @@ export function AccountsView() {
 
   const deleteAccount = async (id: string) => {
     try {
-      await fetch('/api/accounts', {
+      const res = await fetch('/api/accounts', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao excluir conta'); return; }
       toast.success('Conta excluída!');
       setShowDeleteDialog(null);
       if (selectedAccount?.id === id) setSelectedAccount(null);
