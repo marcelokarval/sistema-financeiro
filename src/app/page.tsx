@@ -11,6 +11,7 @@ import { PurchasesView } from '@/components/finance/purchases-view';
 import { CategoriesView } from '@/components/finance/categories-view';
 import { NotificationPanel } from '@/components/finance/notification-panel';
 import { GlobalSearch } from '@/components/finance/global-search';
+import { QuickActions } from '@/components/finance/quick-actions';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -291,7 +292,7 @@ export default function Page() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto main-gradient">
           <div className="p-4 lg:p-6 max-w-7xl mx-auto">
             <AnimatePresence mode="wait">
               <motion.div
@@ -315,7 +316,7 @@ export default function Page() {
                 <Sparkles className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
               <span className="font-medium">FinanceApp</span>
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.0</Badge>
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.1</Badge>
             </div>
             <span className="hidden sm:block text-muted-foreground/60">·</span>
             <span className="hidden sm:flex items-center gap-1">
@@ -332,6 +333,12 @@ export default function Page() {
           </div>
         </footer>
       </div>
+
+      {/* Quick Actions FAB */}
+      <QuickActions
+        onNavigate={(view) => setCurrentView(view as ViewType)}
+        onExport={() => { window.open('/api/export?type=transactions&format=csv', '_blank'); }}
+      />
 
       {/* Global Search Overlay */}
       <GlobalSearch

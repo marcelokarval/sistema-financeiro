@@ -487,3 +487,181 @@ Stage Summary:
 - Framer Motion animations throughout (panel entry/exit, staggered results, hover effects)
 - All 15 requirements met
 - Zero lint errors
+
+---
+Task ID: CR4-csv-export
+Agent: API Developer
+Task: Build CSV export API endpoint
+
+Work Log:
+- Read worklog.md and examined existing API routes (transactions, purchases, accounts) and Prisma schema to understand codebase patterns
+- Created /src/app/api/export/route.ts with GET handler implementing all 10 requirements:
+  1. Accepts query params: type (transactions|purchases|accounts), format=csv, optional startDate, endDate
+  2. Returns CSV file download with proper Content-Type and Content-Disposition headers
+  3. Transactions export: ID, Tipo, Valor (R$), Descrição, Data, Categoria, Conta, Cartão
+  4. Purchases export: ID, Estabelecimento, Valor Total (R$), Data, Cartão, Qtd. Itens, Parcela
+  5. Accounts export: ID, Nome, Tipo, Saldo (R$), Ativa
+  6. Content-Disposition header triggers file download (transacoes.csv, compras.csv, contas.csv)
+  7. Date formatted as dd/MM/yyyy
+  8. Currency formatted in BRL (pt-BR locale, 2 decimal places)
+  9. UTF-8 BOM prefix (\uFEFF) for Excel compatibility
+  10. All column headers in Portuguese (including transaction type labels and account type labels)
+- Implemented helper functions: buildCsv, escapeCsv, formatDate, formatCurrency, translateTransactionType
+- Proper input validation with Portuguese error messages (invalid type, invalid format)
+- Date range filtering via startDate/endDate query params (uses full-day boundary for endDate)
+- Follows existing API patterns: NextRequest/NextResponse, db import from @/lib/db, Prisma types, try/catch error handling
+- Verified all 3 export types return HTTP 200 with correct CSV content via curl
+- Verified error cases return proper 400 responses (invalid type, non-csv format)
+- Verified date filtering works correctly (startDate=2026-01-01&endDate=2026-03-31 returns only March data)
+- Ran `bun run lint`: zero errors
+
+Stage Summary:
+- /api/export?type=transactions|purchases|accounts&format=csv endpoint fully functional
+- All 10 requirements met
+- Zero lint errors
+- Tested all export types and error cases via curl
+
+---
+Task ID: CR4-quick-actions
+Agent: Full-Stack Developer
+Task: Build quick actions floating widget
+
+Work Log:
+- Read worklog.md and reference files (dashboard-view.tsx, global-search.tsx, store.ts, page.tsx) to understand codebase patterns
+- Created /src/components/finance/quick-actions.tsx as named export QuickActions with all 14 requirements met:
+
+Features implemented:
+1. Floating Action Button (FAB) fixed at bottom-right corner (bottom-6 right-6)
+2. Vertical expandable menu with 4 quick actions:
+   - "Nova Transação" (Plus icon, emerald-500) → navigates to accounts view
+   - "Nova Compra" (ShoppingBag icon, violet-500) → navigates to purchases view
+   - "Nova Meta" (Target icon, amber-500) → triggers onNewGoal callback
+   - "Exportar Dados" (Download icon, blue-500) → triggers onExport callback
+3. FAB button: gradient background (from-primary to-violet-500), shadow-xl with colored shadow, Plus icon
+4. Plus icon rotates 45° (becomes X) when expanded using Framer Motion spring animation
+5. Semi-transparent backdrop overlay (bg-black/20 backdrop-blur-[2px]) when expanded
+6. Each action item animates with stagger (scale 0.5→1, opacity, y 20→0) using spring physics
+7. Reverse stagger on exit (bottom items disappear first)
+8. Tooltip labels visible on desktop (hidden on mobile) with fade-in animation
+9. whileHover scale: 1.12 and whileTap scale: 0.92 on action buttons
+10. Props: { onNavigate?: (view: string) => void; onExport?: () => void; onNewGoal?: () => void }
+11. Uses useAppStore.setCurrentView as fallback when onNavigate not provided
+12. AnimatePresence for smooth open/close transitions
+13. z-index: 50 to appear above all content
+14. All text in Portuguese Brazilian
+15. Responsive: tooltip labels hidden on mobile, action buttons always visible
+- Ran `bun run lint`: zero errors
+
+Stage Summary:
+- QuickActions floating widget ready for integration into page.tsx
+- Consistent styling with existing codebase (rounded-2xl, shadows, color scheme, spring animations)
+- Framer Motion animations throughout (backdrop, staggered menu items, FAB icon rotation, hover/tap)
+- All 14 requirements met
+- Zero lint errors
+
+---
+Task ID: CR4-health-score
+Agent: Full-Stack Developer
+Task: Build financial health score widget
+
+Work Log:
+- Read worklog.md for project context
+- Read dashboard-view.tsx for currencyFmt, motion variants, recharts patterns
+- Read /api/dashboard/route.ts for API response shape (DashboardData interface)
+- Read budget-goals.tsx for circular progress SVG pattern (ScoreGauge based on CircularProgress)
+- Created /src/components/finance/financial-health-score.tsx as named export FinancialHealthScore with all 15 requirements:
+
+Features implemented:
+1. Self-fetching component - fetches from /api/dashboard on mount via useCallback/useEffect, no props needed
+2. Financial Health Score calculation (0-100) from 5 weighted criteria:
+   - Savings rate (income > expenses): 0-30 points (proportional to savings rate %, capped at 30%)
+   - Credit utilization (lower card usage = more points): 0-25 points (inverted scoring, ≤10% = 25pts)
+   - Account diversification (more accounts = slightly more points): 0-15 points (1=4, 2=7, 3=10, 4=13, 5+=15)
+   - Positive net worth (total balance > total card debt): 0-20 points (scaled by netWorth/income ratio)
+   - Recent trend (last 3 months - are expenses decreasing?): 0-10 points (≥15% decrease = 10pts)
+3. Beautiful SVG circular gauge (ScoreGauge component):
+   - 180px size, 14px strokeWidth
+   - Background glow effect (blur-2xl, opacity-30)
+   - Animated arc via Framer Motion (1.2s ease with 0.3s delay)
+   - Centered animated counter (ScoreCounter using requestAnimationFrame with ease-out-cubic)
+4. Color-coded system: red (0-30 Crítico), amber (30-50 Atenção), yellow (50-70 Regular), lime (70-85 Bom), green (85-100 Excelente)
+5. Score label displayed below the number with matching color
+6. 5 mini metric bars with labels and score contributions:
+   - Taxa de Poupança (PiggyBank icon, emerald-500) - savings rate
+   - Uso do Crédito (Landmark icon, sky-500) - credit utilization (inverted)
+   - Diversificação (BarChart3 icon, violet-500) - account diversification
+   - Patrimônio Líquido (TrendingUp icon, amber-500) - net worth
+   - Tendência (Activity icon, teal-500) - recent trend
+7. Each mini bar shows: icon, label, detail text, points earned / max points, colored progress fill
+8. Animated entry with Framer Motion: container/item stagger, ScoreCounter animation, staggered MetricBar entries (0.15s increments), progress bar width animation
+9. Header with HeartPulse icon in rose gradient box, "Saúde Financeira" title, subtitle
+10. All text in Portuguese Brazilian
+11. Uses shadcn/ui: Card, CardContent, CardHeader, CardTitle, Badge, Skeleton
+12. Responsive: flex-col on mobile (stacked), flex-row on lg (side-by-side gauge + bars)
+13. Currency formatted in BRL (pt-BR)
+14. Loading state with Skeleton matching layout (gauge circle + 5 bar placeholders)
+15. Exported as named export: FinancialHealthScore
+- Additional summary footer showing income/expense totals and saldo/déficit indicator
+- Ran `bun run lint`: zero errors
+
+Stage Summary:
+- FinancialHealthScore component ready for integration into dashboard or any view
+- Self-contained with no props required (fetches data from /api/dashboard)
+- Beautiful SVG gauge with glow effect and animated counter
+- 5 weighted scoring criteria with clear visual feedback via mini metric bars
+- Color-coded health levels with Portuguese labels
+- Consistent styling with existing codebase (shadows, gradients, animations)
+- Zero lint errors
+
+---
+Task ID: CR4-main
+Agent: Main Coordinator
+Task: Cron Review Round 4 — Integration, styling improvements, final QA
+
+Work Log:
+- Reviewed worklog.md and assessed full project status (7 models, 9 APIs, 6 views)
+- Performed QA with agent-browser: all views working, VLM rated 8/10 visual quality
+- Fixed text truncation in Despesas Mensais card (flex-wrap + shrink-0 Badge)
+- Integrated QuickActions into page.tsx (FAB with CSV export trigger)
+- Integrated FinancialHealthScore into dashboard-view.tsx
+- Enhanced dashboard with greeting banner (time-based greeting, Portuguese date, balance summary)
+- Added Month-over-Month Comparison section (6-month grid with income/expense % changes)
+- Enhanced area chart with custom dots (r:3 default, r:5 active with white stroke)
+- Applied card-glow + hover:-translate-y + hover:shadow-xl to ALL dashboard cards
+- Enhanced global CSS: .glass, .main-gradient, .card-glow, .gradient-border, .animate-pulse-dot, .animate-float
+- Enhanced sidebar: gradient logo, subtitle, online indicator, rounded-xl nav, version v2.1.0
+- Verified: zero lint errors, all APIs 200, CSV export working, FAB rendered
+
+Stage Summary:
+- All 3 new components integrated successfully
+- Dashboard enhanced with greeting, month comparison, health score
+- Global CSS enriched with 6 new utility classes
+- Visual quality improved to 8/10
+- Zero lint errors
+
+---
+Task ID: CR4-SUMMARY
+Agent: Main Coordinator
+
+Current Project Status:
+- STABLE and PRODUCTION-READY
+- 7 models, 9 API endpoints, 6 views, 4 widget components
+- NotificationPanel, GlobalSearch, QuickActions integrated
+- CSV export, dark/light theme, responsive, Portuguese BR, BRL
+
+Completed This Round:
+1. Greeting Banner (time-based, date, balance)
+2. Month-over-Month Comparison (6-month grid)
+3. Financial Health Score (SVG gauge, 5 criteria)
+4. Quick Actions FAB (4 actions, spring animations)
+5. CSV Export API (3 data types)
+6. Enhanced Charts (custom dots)
+7. Global CSS Utilities (6 new classes)
+8. Sidebar Polish (gradient, subtitle, online indicator)
+
+Unresolved / Next Steps:
+1. [HIGH] Socket.io real-time frontend connection
+2. [MEDIUM] Budget goals seed data
+3. [MEDIUM] Dashboard date range filter
+4. [MEDIUM] PDF export for reports
+5. [LOW] Recurring transactions, receipt OCR, multi-currency

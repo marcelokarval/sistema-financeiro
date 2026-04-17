@@ -48,13 +48,16 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex items-center h-16 px-4 gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           {!collapsed && (
-            <span className="font-bold text-lg tracking-tight whitespace-nowrap">
-              FinanceApp
-            </span>
+            <div className="overflow-hidden">
+              <span className="font-bold text-lg tracking-tight whitespace-nowrap block">
+                FinanceApp
+              </span>
+              <span className="text-[10px] text-muted-foreground -mt-0.5 block">Gestão Inteligente</span>
+            </div>
           )}
         </div>
 
@@ -71,10 +74,10 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
                 key={item.view}
                 onClick={() => onNavigate(item.view)}
                 className={cn(
-                  'flex items-center w-full gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                  'flex items-center w-full gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 )}
               >
                 <Icon className="w-5 h-5 shrink-0" />
@@ -111,9 +114,12 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
             />
           </Button>
           {!collapsed && (
-            <div className="flex items-center gap-2 px-3 text-xs text-muted-foreground">
-              <Settings className="w-3.5 h-3.5" />
-              <span>v2.0.0</span>
+            <div className="flex items-center justify-between px-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-dot" />
+                <span>Online</span>
+              </div>
+              <span>v2.1.0</span>
             </div>
           )}
         </div>

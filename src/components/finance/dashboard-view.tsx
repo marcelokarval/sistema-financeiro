@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/card';
 import { BudgetGoalsWidget } from './budget-goals';
 import { FinancialReportsWidget } from './financial-reports';
+import { FinancialHealthScore } from './financial-health-score';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -88,6 +89,13 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return '☀️ Bom dia!';
+  if (hour < 18) return '🌤️ Boa tarde!';
+  return '🌙 Boa noite!';
+};
+
 export function DashboardView() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,29 +145,57 @@ export function DashboardView() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Visão Geral</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Acompanhe suas finanças em um só lugar
-          </p>
+      {/* Greeting Banner */}
+      <motion.div
+        variants={item}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 via-primary/80 to-violet-600/90 p-6 sm:p-8 text-primary-foreground shadow-xl shadow-primary/10"
+      >
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white" />
+          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white" />
+          <div className="absolute top-1/2 right-1/4 w-20 h-20 rounded-full bg-white" />
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowValues(!showValues)}>
-            {showValues ? <Eye className="w-4 h-4 mr-1.5" /> : <EyeOff className="w-4 h-4 mr-1.5" />}
-            {showValues ? 'Ocultar' : 'Mostrar'}
-          </Button>
-          <Button variant="outline" size="icon" onClick={fetchDashboard}>
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-primary-foreground/80">
+              {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold mt-1 tracking-tight">
+              {getGreeting()}
+            </h2>
+            <p className="text-sm text-primary-foreground/70 mt-1.5">
+              {data && (
+                <>Saldo total: <span className="font-semibold text-white">{mask(currencyFmt(data.totalBalance))}</span>
+                {netMonth >= 0 ? (
+                  <span className="ml-2 inline-flex items-center gap-1 text-emerald-200">
+                    <TrendingUp className="w-3 h-3" /> Superávit de {mask(currencyFmt(netMonth))} este mês
+                  </span>
+                ) : (
+                  <span className="ml-2 inline-flex items-center gap-1 text-rose-200">
+                    <TrendingDown className="w-3 h-3" /> Déficit de {mask(currencyFmt(Math.abs(netMonth)))} este mês
+                  </span>
+                )}
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => setShowValues(!showValues)} className="bg-white/10 border-white/20 text-primary-foreground hover:bg-white/20 hover:text-white">
+              {showValues ? <Eye className="w-4 h-4 mr-1.5" /> : <EyeOff className="w-4 h-4 mr-1.5" />}
+              {showValues ? 'Ocultar' : 'Mostrar'}
+            </Button>
+            <Button variant="outline" size="icon" onClick={fetchDashboard} className="bg-white/10 border-white/20 text-primary-foreground hover:bg-white/20 hover:text-white">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <motion.div variants={item}>
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
             <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
@@ -184,7 +220,7 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
             <div className="h-1 bg-gradient-to-r from-rose-500 to-pink-500" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
@@ -213,7 +249,7 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
             <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
@@ -236,7 +272,7 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
             <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
@@ -250,12 +286,12 @@ export function DashboardView() {
                   <TrendingDown className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-3">
-                <Badge variant={netMonth >= 0 ? 'default' : 'destructive'} className="text-[10px]">
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <Badge variant={netMonth >= 0 ? 'default' : 'destructive'} className="text-[10px] shrink-0">
                   {netMonth >= 0 ? 'Superavit' : 'Deficit'}: {mask(currencyFmt(Math.abs(netMonth)))}
                 </Badge>
                 <span className="text-[10px] text-muted-foreground">
-                  Taxa poupança: {savingsRate.toFixed(0)}%
+                  Poupança: {savingsRate.toFixed(0)}%
                 </span>
               </div>
             </CardContent>
@@ -311,10 +347,75 @@ export function DashboardView() {
         </Card>
       </div>
 
+      {/* Month-over-Month Trend */}
+      {data.monthlyTrend.length >= 2 && (
+        <motion.div variants={item}>
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <ArrowLeftRight className="w-4 h-4 text-primary" />
+                    Comparativo Mensal
+                  </CardTitle>
+                  <CardDescription>Variação mês a mês nos últimos 6 meses</CardDescription>
+                </div>
+                <Badge variant="secondary" className="text-[10px]">
+                  {data.monthlyTrend.length} meses
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {data.monthlyTrend.map((m: any, idx: number) => {
+                  const prevIdx = idx - 1;
+                  const incomeChange = prevIdx >= 0 && data.monthlyTrend[prevIdx].income > 0
+                    ? ((m.income - data.monthlyTrend[prevIdx].income) / data.monthlyTrend[prevIdx].income) * 100
+                    : 0;
+                  const expenseChange = prevIdx >= 0 && data.monthlyTrend[prevIdx].expense > 0
+                    ? ((m.expense - data.monthlyTrend[prevIdx].expense) / data.monthlyTrend[prevIdx].expense) * 100
+                    : 0;
+
+                  return (
+                    <div key={m.month} className="text-center p-3 rounded-xl bg-muted/30 border border-border/30">
+                      <p className="text-xs text-muted-foreground font-medium truncate">{m.month}</p>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-[9px] text-emerald-500">↑</span>
+                          <span className="text-xs font-bold text-emerald-500">
+                            {incomeChange >= 0 ? '+' : ''}{incomeChange.toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-center gap-1">
+                          <span className={`text-[9px] ${expenseChange <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {expenseChange <= 0 ? '↓' : '↑'}
+                          </span>
+                          <span className={`text-xs font-bold ${expenseChange <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {expenseChange >= 0 ? '+' : ''}{expenseChange.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground mt-1.5">
+                        {mask(currencyFmt(m.income - m.expense))}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Financial Health Score */}
+      <motion.div variants={item}>
+        <FinancialHealthScore />
+      </motion.div>
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div variants={item} className="lg:col-span-2">
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
@@ -344,8 +445,8 @@ export function DashboardView() {
                       formatter={(value: number, name: string) => [currencyFmt(value), name === 'income' ? 'Receitas' : 'Despesas']}
                       contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                     />
-                    <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Receitas" />
-                    <Area type="monotone" dataKey="expense" stroke="#f97316" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" name="Despesas" />
+                    <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIncome)" name="Receitas" dot={{ r: 3, fill: '#22c55e', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#22c55e', strokeWidth: 2, stroke: '#fff' }} />
+                    <Area type="monotone" dataKey="expense" stroke="#f97316" strokeWidth={2.5} fillOpacity={1} fill="url(#colorExpense)" name="Despesas" dot={{ r: 3, fill: '#f97316', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#f97316', strokeWidth: 2, stroke: '#fff' }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -354,7 +455,7 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md h-full">
+          <Card className="border-0 shadow-md h-full hover:shadow-xl transition-all duration-300 card-glow">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold">Despesas por Categoria</CardTitle>
               <CardDescription>Distribuição no mês</CardDescription>
@@ -404,7 +505,7 @@ export function DashboardView() {
       {/* Account Balances */}
       {data.accountBalances.length > 0 && (
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">Distribuição por Conta</CardTitle>
             </CardHeader>
@@ -444,7 +545,7 @@ export function DashboardView() {
       {/* Recent Transactions & Purchases */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Últimas Transações</CardTitle>
@@ -489,7 +590,7 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Compras Recentes</CardTitle>
