@@ -35,6 +35,8 @@ import { UpcomingBills } from '@/components/finance/upcoming-bills';
 import { ReceiptGenerator } from '@/components/finance/receipt-generator';
 import { AchievementBadges } from '@/components/finance/achievement-badges';
 import { MonthlyBudgetTracker } from '@/components/finance/monthly-budget-tracker';
+import { GoalsDashboard } from '@/components/finance/goals-dashboard';
+import { QuickStatsOverview } from '@/components/finance/quick-stats-overview';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -189,6 +191,7 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
 function DashboardWithWidgets() {
   return (
     <div className="space-y-6">
+      <QuickStatsOverview />
       <DashboardView />
       <SmartInsights />
       <CashFlowForecast />
@@ -201,6 +204,7 @@ function DashboardWithWidgets() {
       <DebtOverview />
       <TransactionAnalytics />
       <MonthlyBudgetTracker />
+      <GoalsDashboard />
       <UpcomingBills />
       <ReceiptGenerator />
       <AchievementBadges />
@@ -301,7 +305,7 @@ export default function Page() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-16 border-b border-border/40 bg-card/50 backdrop-blur-2xl flex items-center justify-between px-4 lg:px-6 shrink-0 z-30">
+        <header className="h-16 border-b border-border/40 bg-card/50 backdrop-blur-2xl flex items-center justify-between px-4 lg:px-6 shrink-0 z-30 glass-card">
           <div className="flex items-center gap-3">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -362,7 +366,7 @@ export default function Page() {
 
             {/* Notifications */}
             <div className="relative">
-              <Button variant="ghost" size="icon" className="relative hover:bg-accent/50" onClick={() => setShowNotifications(!showNotifications)}>
+              <Button variant="ghost" size="icon" className="relative hover:bg-accent/50 hover-scale-sm" onClick={() => setShowNotifications(!showNotifications)}>
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-background" />
               </Button>
@@ -464,7 +468,7 @@ export default function Page() {
                 <div className="flex items-center gap-1.5 text-muted-foreground/70">
                   <TrendingUp className="w-3 h-3 text-emerald-500" />
                   <span>Patrimônio Líquido:</span>
-                  <span className="font-semibold text-foreground tabular-nums">
+                  <span className="font-semibold text-foreground tabular-nums number-ticker">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(footerData.netWorth)}
                   </span>
                 </div>
@@ -473,7 +477,7 @@ export default function Page() {
                   <PiggyBank className="w-3 h-3 text-amber-500" />
                   <span>Taxa de Poupança:</span>
                   <span className={cn(
-                    'font-semibold tabular-nums',
+                    'font-semibold tabular-nums number-ticker',
                     footerData.savingsRate >= 0 ? 'text-emerald-500' : 'text-rose-500'
                   )}>
                     {footerData.savingsRate.toFixed(1)}%

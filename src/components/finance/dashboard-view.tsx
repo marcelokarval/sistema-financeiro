@@ -356,13 +356,13 @@ export function DashboardView() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 reveal-stagger">
         <motion.div variants={item} className="reveal-on-scroll">
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
+          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow card-spotlight hover-scale-sm">
             <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Total em Contas</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums">{mask(currencyFmt(data.totalBalance))}</p>
+                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums number-ticker">{mask(currencyFmt(data.totalBalance))}</p>
                 </div>
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
                   <Wallet className="w-5 h-5 text-white" />
@@ -381,13 +381,13 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item} className="reveal-on-scroll">
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
+          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow card-spotlight hover-scale-sm">
             <div className="h-1 bg-gradient-to-r from-rose-500 to-pink-500" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Fatura Cartões</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-rose-500">
+                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-rose-500 number-ticker">
                     {mask(currencyFmt(data.totalCardBalance))}
                   </p>
                 </div>
@@ -410,13 +410,13 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item} className="reveal-on-scroll">
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
+          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow card-spotlight hover-scale-sm">
             <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Renda Mensal</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-emerald-500">
+                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-emerald-500 number-ticker">
                     {mask(currencyFmt(data.monthIncome))}
                   </p>
                 </div>
@@ -435,13 +435,13 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item} className="reveal-on-scroll">
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
+          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow card-spotlight hover-scale-sm">
             <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Despesas Mensais</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-rose-500">
+                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-rose-500 number-ticker">
                     {mask(currencyFmt(data.monthExpense))}
                   </p>
                 </div>
@@ -461,6 +461,8 @@ export function DashboardView() {
           </Card>
         </motion.div>
       </div>
+
+      <div className="divider-gradient" />
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -585,10 +587,12 @@ export function DashboardView() {
         </Card>
       </div>
 
+      <div className="divider-gradient" />
+
       {/* Month-over-Month Trend */}
       {data.monthlyTrend.length >= 2 && (
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -653,7 +657,7 @@ export function DashboardView() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div variants={item} className="lg:col-span-2">
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
@@ -693,7 +697,7 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md h-full hover:shadow-xl transition-all duration-300 card-glow">
+          <Card className="border-0 shadow-md h-full hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold">Despesas por Categoria</CardTitle>
               <CardDescription>Distribuição no mês</CardDescription>
@@ -743,7 +747,7 @@ export function DashboardView() {
       {/* Account Balances */}
       {data.accountBalances.length > 0 && (
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">Distribuição por Conta</CardTitle>
             </CardHeader>
@@ -783,7 +787,7 @@ export function DashboardView() {
       {/* Recent Transactions & Purchases */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Últimas Transações</CardTitle>
@@ -828,7 +832,7 @@ export function DashboardView() {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
+          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Compras Recentes</CardTitle>

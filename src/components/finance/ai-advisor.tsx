@@ -88,7 +88,7 @@ function TypingIndicator() {
       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 shadow-md shadow-violet-500/20">
         <Brain className="w-4 h-4 text-white" />
       </div>
-      <div className="bg-muted/80 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]">
+      <div className="bg-muted/80 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%] shimmer">
         <div className="flex items-center gap-1.5">
           {[0, 1, 2].map((i) => (
             <motion.span
@@ -268,7 +268,7 @@ export function AIAdvisor() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show">
-      <Card className="border-0 shadow-md overflow-hidden">
+      <Card className="border-0 shadow-md overflow-hidden glass-card">
         {/* Gradient Header */}
         <CardHeader
           className="p-0 cursor-pointer select-none"

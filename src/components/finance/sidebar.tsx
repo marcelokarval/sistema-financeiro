@@ -63,7 +63,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
         whileHover={{ x: 4 }}
         whileTap={{ scale: 0.98 }}
         className={cn(
-          'flex items-center w-full gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative',
+          'flex items-center w-full gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative hover-scale-sm',
           isActive
             ? 'bg-primary/10 text-primary shadow-sm'
             : 'text-muted-foreground/80 hover:text-foreground hover:bg-accent/40'
@@ -123,7 +123,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <div
         className={cn(
-          'hidden md:flex flex-col h-screen border-r border-border/60 bg-gradient-to-b from-card via-card to-card/80 transition-all duration-300 ease-in-out relative',
+          'hidden md:flex flex-col h-screen border-r border-border/60 bg-gradient-to-b from-card via-card to-card/80 transition-all duration-300 ease-in-out relative glass-card',
           collapsed ? 'w-[72px]' : 'w-[250px]'
         )}
       >
@@ -156,7 +156,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
           )}
         </div>
 
-        <Separator className="opacity-50" />
+        <Separator className="opacity-50 divider-gradient" />
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
@@ -187,7 +187,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div className="relative status-glow-success rounded-full">
+                  <div className="relative status-glow-success badge-glow rounded-full">
                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
                     <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75" />
                   </div>
@@ -217,7 +217,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
                 Recarregar
               </TooltipContent>
             </Tooltip>
-            <div className="relative status-glow-success">
+            <div className="relative status-glow-success badge-glow">
               <div className="w-2 h-2 rounded-full bg-emerald-500" />
             </div>
           </div>
@@ -225,7 +225,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
 
         {/* Collapse toggle */}
         <div className="px-3 pb-3">
-          <Separator className="mb-2 opacity-50" />
+          <Separator className="mb-2 opacity-50 divider-gradient" />
           <Button
             variant="ghost"
             size="sm"
