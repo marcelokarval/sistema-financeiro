@@ -342,9 +342,14 @@ export function SpendingTimeline() {
                             </div>
                           )}
                           {!hasItems && (
-                            <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-                              Sem movimentações
-                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="w-4 h-4 rounded-full bg-muted/50 flex items-center justify-center">
+                                <Minus className="w-2.5 h-2.5 text-muted-foreground/40" />
+                              </div>
+                              <p className="text-[11px] text-muted-foreground/60">
+                                Sem movimentações
+                              </p>
+                            </div>
                           )}
                         </div>
                       </div>

@@ -1096,3 +1096,52 @@ Stage Summary:
 - /api/savings-challenge endpoint returning savings challenge data
 - SavingsChallenge widget with SVG gauge, 3 gamified challenge cards, daily tracking
 - Integrated into dashboard page, zero lint errors
+
+---
+Task ID: CR7-expense-breakdown
+Agent: Full-Stack Developer
+Task: Build Detailed Expense Breakdown Widget with interactive donut chart and drill-down
+
+Work Log:
+- Read worklog.md, page.tsx, prisma/schema.prisma, db.ts, reports API route, and financial-reports.tsx for codebase patterns
+- Created /src/app/api/expense-breakdown/route.ts (GET endpoint):
+  - Accepts `months` query param (default 6, range 1-24)
+  - Fetches all EXPENSE transactions and purchases within date range in parallel with categories
+  - Groups expenses by category combining transaction EXPENSE + purchases
+  - Computes per-category totals, percentages, transaction/purchase counts
+  - Returns: categories array with { categoryId, categoryName, categoryColor, total, percentage, transactionCount, purchaseCount }, totalExpense, topCategory, monthlyData[]
+  - All labels in Portuguese, proper error handling
+- Created /src/components/finance/expense-breakdown.tsx as named export ExpenseBreakdown:
+
+Features implemented:
+1. Self-fetching from /api/expense-breakdown?months=6 with useCallback/useEffect
+2. Card with gradient top border (rose→orange→amber)
+3. Large interactive donut chart (Recharts PieChart, innerRadius=75, outerRadius=130) showing top 8 categories + "Outros" for the rest
+4. Center text inside donut showing total expense amount and "Total Gasto" label
+5. Active category hover state: non-active slices dimmed to 25% opacity, center shows hovered category name + percentage
+6. Category detail list below chart with:
+   - Color dot matching donut (scales on hover/active)
+   - Category name + transaction count badge
+   - Amount in BRL + percentage
+   - Animated percentage progress bar (width from 0 to %)
+   - ChevronDown/Up indicator
+   - Click to expand: shows monthly breakdown bar chart (Recharts BarChart with rounded bars)
+7. "Outros" row when more than 8 categories exist
+8. Summary row: Top 3 categories with Trophy/Medal/Award icons (amber/slate/amber-700 colors)
+9. Monthly trend toggle: "Mês Atual" / "6 Meses" buttons (pills in bg-muted/50)
+10. Refresh button in header
+11. Framer Motion animations: container/item stagger, whileHover scale spring, animated progress bar width, AnimatePresence for expanded content, animated center text
+12. Loading skeleton matching full layout (donut circle + 5 category rows + trophy summary)
+13. All text in Portuguese Brazilian
+14. Uses shadcn/ui: Card, CardContent, CardHeader, CardTitle, Badge, Button, Skeleton
+15. Responsive: single column on mobile, max-w-[320px] donut
+- Integrated ExpenseBreakdown into DashboardWithWidgets in page.tsx (after SavingsChallenge)
+- Ran `bun run lint`: zero errors
+- Verified clean dev server compilation (GET /api/expense-breakdown?months=6 returning 200)
+
+Stage Summary:
+- /api/expense-breakdown endpoint returning category-grouped expense data with monthly breakdown
+- ExpenseBreakdown component with interactive donut chart, category list with drill-down, top 3 summary
+- All requirements met: donut chart, center text, category list, percentage bars, expand/collapse, monthly trend toggle, trophy summary
+- Integrated into dashboard page after SavingsChallenge
+- Zero lint errors
