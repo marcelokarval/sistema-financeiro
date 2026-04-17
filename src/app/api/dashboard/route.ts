@@ -1,17 +1,46 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { Prisma } from "@prisma/client";
 
-// GET /api/dashboard - Aggregated dashboard data
-export async function GET() {
+// GET /api/dashboard - Aggregated dashboard data with optional date range filter
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = request.nextUrl;
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // Start and end of current month
-    const monthStart = new Date(currentYear, currentMonth, 1);
-    const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+    // Determine date range
+    let rangeStart: Date;
+    let rangeEnd: Date;
+    let isCustomRange = false;
+
+    if (fromParam && toParam) {
+      rangeStart = new Date(fromParam);
+      rangeEnd = new Date(toParam);
+      rangeEnd.setHours(23, 59, 59, 999);
+      isCustomRange = true;
+      // Validate dates
+      if (isNaN(rangeStart.getTime()) || isNaN(rangeEnd.getTime())) {
+        return NextResponse.json(
+          { error: "Datas inválidas. Use o formato YYYY-MM-DD." },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Default: current month
+      rangeStart = new Date(currentYear, currentMonth, 1);
+      rangeEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+    }
+
+    // For monthly trend, determine how far back to look
+    // If custom range, calculate the number of months in the range and show those months
+    const monthsDiff = (rangeEnd.getFullYear() - rangeStart.getFullYear()) * 12
+      + (rangeEnd.getMonth() - rangeStart.getMonth());
+    const trendMonths = Math.max(monthsDiff + 1, 1); // At least 1 month
+    const trendStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
 
     // Run all queries in parallel for performance
     const [
@@ -44,36 +73,37 @@ export async function GET() {
         },
       }),
 
-      // 3. Current month income transactions
+      // 3. Income transactions in date range
       db.transaction.aggregate({
         where: {
           type: "INCOME",
-          date: { gte: monthStart, lte: monthEnd },
+          date: { gte: rangeStart, lte: rangeEnd },
         },
         _sum: { amount: true },
       }),
 
-      // 4. Current month expense transactions
+      // 4. Expense transactions in date range
       db.transaction.aggregate({
         where: {
           type: "EXPENSE",
-          date: { gte: monthStart, lte: monthEnd },
+          date: { gte: rangeStart, lte: rangeEnd },
         },
         _sum: { amount: true },
       }),
 
-      // 5. Current month purchases (expenses)
+      // 5. Purchases in date range
       db.purchase.aggregate({
         where: {
-          date: { gte: monthStart, lte: monthEnd },
+          date: { gte: rangeStart, lte: rangeEnd },
         },
         _sum: { totalAmount: true },
       }),
 
-      // 6. Recent 10 transactions
+      // 6. Recent 10 transactions (filtered by date range if custom)
       db.transaction.findMany({
         take: 10,
         orderBy: { date: "desc" },
+        where: isCustomRange ? { date: { gte: rangeStart, lte: rangeEnd } } : undefined,
         include: {
           category: true,
           account: true,
@@ -81,10 +111,11 @@ export async function GET() {
         },
       }),
 
-      // 7. Recent 10 purchases (now includes category)
+      // 7. Recent 10 purchases (filtered by date range if custom)
       db.purchase.findMany({
         take: 10,
         orderBy: { date: "desc" },
+        where: isCustomRange ? { date: { gte: rangeStart, lte: rangeEnd } } : undefined,
         include: {
           items: { orderBy: { createdAt: "asc" } },
           card: true,
@@ -92,11 +123,12 @@ export async function GET() {
         },
       }),
 
-      // 8. All transactions for monthly trend (last 6 months)
+      // 8. Transactions for monthly trend (from trendStart to rangeEnd)
       db.transaction.findMany({
         where: {
           date: {
-            gte: new Date(currentYear, currentMonth - 5, 1),
+            gte: trendStart,
+            lte: rangeEnd,
           },
         },
         select: {
@@ -106,11 +138,11 @@ export async function GET() {
         },
       }),
 
-      // 9. Current month expense transactions grouped by category
+      // 9. Expense transactions grouped by category in date range
       db.transaction.findMany({
         where: {
           type: "EXPENSE",
-          date: { gte: monthStart, lte: monthEnd },
+          date: { gte: rangeStart, lte: rangeEnd },
           categoryId: { not: null },
         },
         select: {
@@ -119,11 +151,12 @@ export async function GET() {
         },
       }),
 
-      // 10. All purchases for monthly trend (last 6 months)
+      // 10. Purchases for monthly trend (from trendStart to rangeEnd)
       db.purchase.findMany({
         where: {
           date: {
-            gte: new Date(currentYear, currentMonth - 5, 1),
+            gte: trendStart,
+            lte: rangeEnd,
           },
         },
         select: {
@@ -132,10 +165,10 @@ export async function GET() {
         },
       }),
 
-      // 11. Current month purchases grouped by category
+      // 11. Purchases grouped by category in date range
       db.purchase.findMany({
         where: {
-          date: { gte: monthStart, lte: monthEnd },
+          date: { gte: rangeStart, lte: rangeEnd },
           categoryId: { not: null },
         },
         select: {
@@ -166,11 +199,11 @@ export async function GET() {
       balance: acc.balance,
     }));
 
-    // Monthly trend - last 6 months (includes both transactions and purchases)
+    // Monthly trend - iterate through each month in the date range
     const monthlyTrend = [];
-    for (let i = 5; i >= 0; i--) {
-      const trendMonth = new Date(currentYear, currentMonth - i, 1);
-      const trendMonthEnd = new Date(currentYear, currentMonth - i + 1, 0, 23, 59, 59, 999);
+    for (let i = 0; i < trendMonths; i++) {
+      const trendMonth = new Date(trendStart.getFullYear(), trendStart.getMonth() + i, 1);
+      const trendMonthEnd = new Date(trendStart.getFullYear(), trendStart.getMonth() + i + 1, 0, 23, 59, 59, 999);
       const monthLabel = trendMonth.toLocaleString("pt-BR", {
         month: "short",
         year: "2-digit",
@@ -204,7 +237,7 @@ export async function GET() {
       });
     }
 
-    // Expense by category - current month (includes both transactions and purchases)
+    // Expense by category - within date range (includes both transactions and purchases)
     const allCategoryIds = [
       ...new Set([
         ...categoryExpenseTransactions.map((t) => t.categoryId!),

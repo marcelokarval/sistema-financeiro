@@ -8,7 +8,12 @@ async function main() {
   await db.purchaseItem.deleteMany({});
   await db.purchase.deleteMany({});
   await db.transaction.deleteMany({});
-  console.log('🧹 Cleaned up old transactions and purchases');
+
+  // Remove old budget goals with previous "goal-*" IDs
+  await db.budgetGoal.deleteMany({
+    where: { id: { startsWith: 'goal-' } },
+  });
+  console.log('🧹 Cleaned up old transactions, purchases, and budget goals');
 
   // Create categories
   const categories = await Promise.all([
@@ -388,33 +393,33 @@ async function main() {
   console.log(`✅ Created ${purchases.length} current month purchases with items`);
 
   // ============================
-  // BUDGET GOALS
+  // BUDGET GOALS (cur-bg-* prefix)
   // ============================
   const budgetGoals = [
     {
-      id: 'goal-emergency',
-      name: 'Reserva de Emergência',
-      description: '6 meses de gastos essenciais guardados para imprevistos',
-      targetAmount: 35000,
-      currentAmount: 12500,
-      categoryId: null,
-      startDate: new Date(Y, M - 3, 1),
-      endDate: new Date(Y + 1, M, 0),
+      id: 'cur-bg-cursos',
+      name: 'Cursos e Certificações',
+      description: 'Investimento em qualificação profissional',
+      targetAmount: 5000,
+      currentAmount: 5000,
+      categoryId: 'cat-education',
+      startDate: new Date(Y, M - 6, 1),
+      endDate: new Date(Y, M - 1, 0),
+      isCompleted: true,
+    },
+    {
+      id: 'cur-bg-carro',
+      name: 'Entrada do Carro',
+      description: 'Reserva para entrada de um carro novo',
+      targetAmount: 25000,
+      currentAmount: 3200,
+      categoryId: 'cat-transport',
+      startDate: new Date(Y, M - 5, 1),
+      endDate: new Date(Y + 2, 0, 0),
       isCompleted: false,
     },
     {
-      id: 'goal-vacation',
-      name: 'Viagem para Europa',
-      description: 'Passagens + hospedagem + passeios por 15 dias',
-      targetAmount: 18000,
-      currentAmount: 6400,
-      categoryId: 'cat-entertainment',
-      startDate: new Date(Y, M - 4, 1),
-      endDate: new Date(Y + 1, 5, 0),
-      isCompleted: false,
-    },
-    {
-      id: 'goal-notebook',
+      id: 'cur-bg-macbook',
       name: 'MacBook Pro M4',
       description: 'Novo notebook para trabalho freelancer',
       targetAmount: 14000,
@@ -425,26 +430,37 @@ async function main() {
       isCompleted: false,
     },
     {
-      id: 'goal-car',
-      name: 'Entrada do Carro',
-      description: 'Reserva para entrada de um carro novo',
-      targetAmount: 25000,
-      currentAmount: 3200,
-      categoryId: null,
-      startDate: new Date(Y, M - 5, 1),
-      endDate: new Date(Y + 2, 0, 0),
+      id: 'cur-bg-europa',
+      name: 'Viagem para Europa',
+      description: 'Passagens + hospedagem + passeios por 15 dias',
+      targetAmount: 18000,
+      currentAmount: 6400,
+      categoryId: 'cat-entertainment',
+      startDate: new Date(Y, M - 4, 1),
+      endDate: new Date(Y + 1, 5, 0),
       isCompleted: false,
     },
     {
-      id: 'goal-courses',
-      name: 'Cursos e Certificações',
-      description: 'Investimento em qualificação profissional',
-      targetAmount: 5000,
-      currentAmount: 5000,
-      categoryId: 'cat-education',
-      startDate: new Date(Y, M - 6, 1),
-      endDate: new Date(Y, M - 1, 0),
-      isCompleted: true,
+      id: 'cur-bg-emergencia',
+      name: 'Reserva de Emergência',
+      description: '6 meses de gastos essenciais guardados para imprevistos',
+      targetAmount: 35000,
+      currentAmount: 12500,
+      categoryId: 'cat-home',
+      startDate: new Date(Y, M - 3, 1),
+      endDate: new Date(Y + 1, M, 0),
+      isCompleted: false,
+    },
+    {
+      id: 'cur-bg-investimentos',
+      name: 'Investimentos em Ações',
+      description: 'Carteira diversificada de ações para longo prazo',
+      targetAmount: 50000,
+      currentAmount: 15000,
+      categoryId: 'cat-investment',
+      startDate: new Date(Y, M - 8, 1),
+      endDate: new Date(Y + 2, 5, 0),
+      isCompleted: false,
     },
   ];
 
@@ -456,6 +472,81 @@ async function main() {
     });
   }
   console.log(`✅ Created ${budgetGoals.length} budget goals`);
+
+  // ============================
+  // RECURRING TRANSACTIONS
+  // ============================
+  const recurringTransactions = [
+    {
+      id: 'rec-salary',
+      description: 'Salário Mensal',
+      amount: 8500,
+      type: 'INCOME',
+      frequency: 'MONTHLY',
+      nextDate: new Date(Y, M + 1, 5),
+      categoryId: 'cat-salary',
+      accountId: account3.id,
+      cardId: null,
+      isActive: true,
+    },
+    {
+      id: 'rec-rent',
+      description: 'Aluguel',
+      amount: 1800,
+      type: 'EXPENSE',
+      frequency: 'MONTHLY',
+      nextDate: new Date(Y, M + 1, 10),
+      categoryId: 'cat-home',
+      accountId: account3.id,
+      cardId: null,
+      isActive: true,
+    },
+    {
+      id: 'rec-health',
+      description: 'Plano de Saúde',
+      amount: 450,
+      type: 'EXPENSE',
+      frequency: 'MONTHLY',
+      nextDate: new Date(Y, M + 1, 5),
+      categoryId: 'cat-health',
+      accountId: account3.id,
+      cardId: null,
+      isActive: true,
+    },
+    {
+      id: 'rec-internet',
+      description: 'Internet',
+      amount: 85,
+      type: 'EXPENSE',
+      frequency: 'MONTHLY',
+      nextDate: new Date(Y, M + 1, 8),
+      categoryId: 'cat-bills',
+      accountId: account3.id,
+      cardId: null,
+      isActive: true,
+    },
+    {
+      id: 'rec-netflix',
+      description: 'Netflix',
+      amount: 55.90,
+      type: 'EXPENSE',
+      frequency: 'MONTHLY',
+      nextDate: new Date(Y, M + 1, 3),
+      categoryId: 'cat-entertainment',
+      accountId: account4.id,
+      cardId: null,
+      isActive: true,
+    },
+  ];
+
+  for (const r of recurringTransactions) {
+    await db.recurringTransaction.upsert({
+      where: { id: r.id },
+      update: {},
+      create: r,
+    });
+  }
+  console.log(`✅ Created ${recurringTransactions.length} recurring transactions`);
 
   console.log('🎉 Database seeded successfully!');
 }

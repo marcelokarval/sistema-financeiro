@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useSyncExternalStore, useEffect } from 'react';
+import { useState, useSyncExternalStore, useEffect, useRef } from 'react';
 import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
 import { useAppStore, type ViewType } from '@/lib/store';
+import { useRealtime } from '@/hooks/use-realtime';
 import { Sidebar } from '@/components/finance/sidebar';
 import { DashboardView } from '@/components/finance/dashboard-view';
 import { AccountsView } from '@/components/finance/accounts-view';
@@ -27,10 +29,11 @@ import {
   Tag,
   LayoutDashboard,
   Search,
-
   Heart,
   Zap,
   Shield,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -124,7 +127,18 @@ export default function Page() {
   const [sidebarCollapsedState, setSidebarCollapsed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-
+  const toastShownRef = useRef<string | null>(null);
+  const { isConnected, refreshCounter } = useRealtime({
+    onEvent: (event) => {
+      if (toastShownRef.current !== event.timestamp) {
+        toastShownRef.current = event.timestamp;
+        const isDashboardEvent = event.type === 'dashboard:updated' || event.type === 'dashboard:refresh';
+        if (isDashboardEvent) {
+          toast.success('Dados atualizados');
+        }
+      }
+    },
+  });
 
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -219,6 +233,27 @@ export default function Page() {
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Connection status indicator */}
+            <div className="flex items-center gap-1.5 mr-1">
+              <motion.div
+                initial={false}
+                animate={{ scale: isConnected ? [1, 1.3, 1] : 1 }}
+                transition={{ duration: 0.4 }}
+                className="flex items-center justify-center w-7 h-7 rounded-full"
+              >
+                <div className={`relative flex items-center justify-center`}>
+                  {isConnected ? (
+                    <Wifi className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <WifiOff className="w-4 h-4 text-rose-400" />
+                  )}
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-background ${
+                    isConnected ? 'bg-emerald-500' : 'bg-rose-400'
+                  }`} />
+                </div>
+              </motion.div>
+            </div>
+
             {/* Search trigger */}
             <motion.div whileTap={{ scale: 0.95 }}>
               <Button
@@ -296,7 +331,7 @@ export default function Page() {
           <div className="p-4 lg:p-6 max-w-7xl mx-auto">
             <AnimatePresence mode="wait">
               <motion.div
-                key={currentView}
+                key={`${currentView}-${refreshCounter}`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}

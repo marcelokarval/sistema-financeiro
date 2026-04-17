@@ -251,7 +251,7 @@ export function CategoriesView() {
       >
         {/* Total */}
         <motion.div variants={itemVariants}>
-          <Card className="shadow-sm">
+          <Card className="shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Layers className="w-5 h-5 text-primary" />
@@ -266,7 +266,7 @@ export function CategoriesView() {
 
         {/* Income */}
         <motion.div variants={itemVariants}>
-          <Card className="shadow-sm">
+          <Card className="shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-emerald-500" />
@@ -283,7 +283,7 @@ export function CategoriesView() {
 
         {/* Expense */}
         <motion.div variants={itemVariants}>
-          <Card className="shadow-sm">
+          <Card className="shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
                 <TrendingDown className="w-5 h-5 text-rose-500" />
@@ -300,7 +300,7 @@ export function CategoriesView() {
 
         {/* Most Used */}
         <motion.div variants={itemVariants}>
-          <Card className="shadow-sm">
+          <Card className="shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
                 <Trophy className="w-5 h-5 text-amber-500" />
@@ -417,7 +417,7 @@ export function CategoriesView() {
                   whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                   layout
                 >
-                  <Card className="group shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+                  <Card className="group shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow overflow-hidden">
                     <CardContent className="p-0">
                       {/* Left accent bar */}
                       <div className="flex">

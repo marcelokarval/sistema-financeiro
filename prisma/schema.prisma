@@ -21,7 +21,8 @@ model Account {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  transactions  Transaction[]
+  transactions          Transaction[]
+  recurringTransactions  RecurringTransaction[]
 }
 
 // =====================
@@ -43,8 +44,9 @@ model Card {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  transactions  Transaction[]
-  purchases     Purchase[]
+  transactions          Transaction[]
+  purchases             Purchase[]
+  recurringTransactions  RecurringTransaction[]
 }
 
 // =====================
@@ -60,9 +62,10 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  transactions  Transaction[]
-  purchases     Purchase[]
-  budgetGoals   BudgetGoal[]
+  transactions          Transaction[]
+  purchases             Purchase[]
+  budgetGoals           BudgetGoal[]
+  recurringTransactions  RecurringTransaction[]
 }
 
 // =====================
@@ -126,6 +129,27 @@ model PurchaseItem {
 
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+}
+
+// =====================
+// RECURRING TRANSACTIONS
+// =====================
+model RecurringTransaction {
+  id          String    @id @default(cuid())
+  description String
+  amount      Float
+  type        String    // INCOME, EXPENSE
+  frequency   String    // WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, YEARLY
+  nextDate    DateTime
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  accountId   String?
+  account     Account?  @relation(fields: [accountId], references: [id])
+  cardId      String?
+  card        Card?     @relation(fields: [cardId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 // =====================

@@ -296,7 +296,7 @@ export function CardsView() {
         </Card>
 
         {/* Purchases */}
-        <Card className="border-0 shadow-md">
+        <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow">
           <div className="flex items-center justify-between p-4 pb-3">
             <h3 className="text-base font-semibold">Compras no Cartão</h3>
             <Badge variant="outline" className="text-[10px]">{purchases.length} compras</Badge>

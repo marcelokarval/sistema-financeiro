@@ -257,7 +257,7 @@ export function PurchasesView() {
 
       {/* Spending Insights */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
           <CardContent className="p-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
               <ShoppingBag className="w-4 h-4 text-violet-500" />
@@ -268,7 +268,7 @@ export function PurchasesView() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
           <CardContent className="p-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
               <TrendingUp className="w-4 h-4 text-emerald-500" />
@@ -279,7 +279,7 @@ export function PurchasesView() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
           <CardContent className="p-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
               <Store className="w-4 h-4 text-blue-500" />
@@ -290,7 +290,7 @@ export function PurchasesView() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
           <CardContent className="p-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
               <BarChart3 className="w-4 h-4 text-amber-500" />
@@ -305,7 +305,7 @@ export function PurchasesView() {
 
       {/* Top Merchants */}
       {topMerchants.length > 0 && (
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 card-glow">
           <div className="flex items-center justify-between p-4 pb-3">
             <h3 className="text-sm font-semibold">Top Estabelecimentos</h3>
             <Store className="w-4 h-4 text-muted-foreground" />

@@ -788,7 +788,7 @@ export function AccountsView() {
           className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
         >
           <motion.div variants={summaryItem}>
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
               <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
@@ -815,7 +815,7 @@ export function AccountsView() {
           </motion.div>
 
           <motion.div variants={summaryItem}>
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
               <div className="h-1 bg-gradient-to-r from-cyan-500 to-cyan-400" />
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
@@ -842,7 +842,7 @@ export function AccountsView() {
           </motion.div>
 
           <motion.div variants={summaryItem}>
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
               <div className="h-1 bg-gradient-to-r from-rose-500 to-pink-500" />
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
@@ -869,7 +869,7 @@ export function AccountsView() {
           </motion.div>
 
           <motion.div variants={summaryItem}>
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
               <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-400" />
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
@@ -928,7 +928,7 @@ export function AccountsView() {
                   transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 >
                   <Card
-                    className="cursor-pointer shadow-md hover:shadow-lg transition-shadow group relative overflow-hidden border-0"
+                    className="cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow group relative overflow-hidden border-0"
                     onClick={() => openAccount(acc)}
                   >
                     <div

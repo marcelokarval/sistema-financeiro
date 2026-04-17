@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { format, parseISO } from 'date-fns';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { format, parseISO, startOfMonth, startOfYear, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import {
@@ -21,6 +21,8 @@ import {
   ArrowLeftRight,
   Eye,
   EyeOff,
+  Calendar,
+  Filter,
 } from 'lucide-react';
 import {
   Card,
@@ -32,6 +34,7 @@ import {
 import { BudgetGoalsWidget } from './budget-goals';
 import { FinancialReportsWidget } from './financial-reports';
 import { FinancialHealthScore } from './financial-health-score';
+import { RecurringTransactionsWidget } from './recurring-transactions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -96,24 +99,102 @@ const getGreeting = () => {
   return '🌙 Boa noite!';
 };
 
+// Quick filter presets
+const QUICK_FILTERS = [
+  { label: 'Este Mês', key: 'month' },
+  { label: 'Últimos 3 Meses', key: 'quarter' },
+  { label: 'Últimos 6 Meses', key: 'halfyear' },
+  { label: 'Este Ano', key: 'year' },
+  { label: 'Tudo', key: 'all' },
+] as const;
+
+type QuickFilterKey = typeof QUICK_FILTERS[number]['key'];
+
+const getQuickFilterRange = (key: QuickFilterKey) => {
+  const now = new Date();
+  switch (key) {
+    case 'month':
+      return {
+        from: startOfMonth(now),
+        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+      };
+    case 'quarter':
+      return {
+        from: startOfMonth(subMonths(now, 2)),
+        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+      };
+    case 'halfyear':
+      return {
+        from: startOfMonth(subMonths(now, 5)),
+        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+      };
+    case 'year':
+      return {
+        from: startOfYear(now),
+        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+      };
+    case 'all':
+      return {
+        from: new Date(2000, 0, 1),
+        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+      };
+  }
+};
+
 export function DashboardView() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedPurchase, setExpandedPurchase] = useState<string | null>(null);
   const [showValues, setShowValues] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<QuickFilterKey>('month');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+
+  // Compute effective date range from active filter or custom dates
+  const dateRange = useMemo(() => {
+    if (customFrom && customTo) {
+      return { from: new Date(customFrom), to: new Date(customTo) };
+    }
+    return getQuickFilterRange(activeFilter);
+  }, [activeFilter, customFrom, customTo]);
+
+  // Format the active range for display
+  const filterLabel = useMemo(() => {
+    const from = dateRange.from;
+    const to = dateRange.to;
+    const fromStr = format(from, 'MMM/yy', { locale: ptBR });
+    const toStr = format(to, 'MMM/yy', { locale: ptBR });
+    if (fromStr === toStr) return fromStr;
+    return `${fromStr} - ${toStr}`;
+  }, [dateRange]);
 
   const fetchDashboard = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/dashboard');
+      const fromISO = dateRange.from.toISOString().split('T')[0];
+      const toISO = dateRange.to.toISOString().split('T')[0];
+      const res = await fetch(`/api/dashboard?from=${fromISO}&to=${toISO}`);
       if (res.ok) setData(await res.json());
     } catch (e) {
       console.error('Failed to fetch dashboard', e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRange]);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+
+  const handleQuickFilter = (key: QuickFilterKey) => {
+    setActiveFilter(key);
+    setCustomFrom('');
+    setCustomTo('');
+  };
+
+  const handleCustomFilter = () => {
+    if (customFrom && customTo) {
+      setActiveFilter('all'); // Deselect quick filters
+    }
+  };
 
   if (loading) {
     return (
@@ -190,6 +271,82 @@ export function DashboardView() {
             </Button>
           </div>
         </div>
+      </motion.div>
+
+      {/* Date Range Filter Bar */}
+      <motion.div
+        variants={item}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0, transition: { duration: 0.35, delay: 0.1 } }}
+      >
+        <Card className="border shadow-sm bg-card/80 backdrop-blur-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              {/* Quick filter pills */}
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                {QUICK_FILTERS.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => handleQuickFilter(f.key)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 whitespace-nowrap ${
+                      activeFilter === f.key && !customFrom && !customTo
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Separator */}
+              <div className="hidden sm:block w-px h-6 bg-border shrink-0" />
+
+              {/* Custom date inputs */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="date-from" className="text-xs text-muted-foreground font-medium">De</label>
+                  <input
+                    id="date-from"
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    className="h-8 px-2 text-xs border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="date-to" className="text-xs text-muted-foreground font-medium">Até</label>
+                  <input
+                    id="date-to"
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    className="h-8 px-2 text-xs border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleCustomFilter}
+                  disabled={!customFrom || !customTo}
+                  className="h-8 px-3 text-xs gap-1.5"
+                >
+                  <Filter className="w-3 h-3" />
+                  Filtrar
+                </Button>
+              </div>
+
+              {/* Active filter indicator */}
+              {(customFrom && customTo) || activeFilter !== 'month' ? (
+                <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                  <Calendar className="w-3 h-3 text-primary" />
+                  <span className="text-xs text-primary font-medium">
+                    Filtrado: {filterLabel}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Summary Cards */}
@@ -665,6 +822,11 @@ export function DashboardView() {
       {/* Financial Reports Widget */}
       <motion.div variants={item}>
         <FinancialReportsWidget />
+      </motion.div>
+
+      {/* Recurring Transactions Widget */}
+      <motion.div variants={item}>
+        <RecurringTransactionsWidget />
       </motion.div>
 
       {/* Budget Goals Widget */}
