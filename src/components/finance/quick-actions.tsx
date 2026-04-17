@@ -194,22 +194,27 @@ export function QuickActions({ onNavigate, onExport, onNewGoal }: QuickActionsPr
       </AnimatePresence>
 
       {/* FAB button */}
-      <motion.button
-        onClick={() => setIsOpen((prev) => !prev)}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.95 }}
-        className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-violet-500 text-white shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 transition-shadow flex items-center justify-center"
-        aria-label={isOpen ? 'Fechar ações rápidas' : 'Abrir ações rápidas'}
+      <motion.div
+        animate={{ scale: [1, 1.03, 1] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
       >
-        <motion.span
-          variants={fabIconVariants}
-          animate={isOpen ? 'open' : 'closed'}
-          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          className="flex items-center justify-center"
+        <motion.button
+          onClick={() => setIsOpen((prev) => !prev)}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+          className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-violet-500 text-white shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 transition-shadow flex items-center justify-center"
+          aria-label={isOpen ? 'Fechar ações rápidas' : 'Abrir ações rápidas'}
         >
-          <Plus className="w-6 h-6" strokeWidth={2.5} />
-        </motion.span>
-      </motion.button>
+          <motion.span
+            variants={fabIconVariants}
+            animate={isOpen ? 'open' : 'closed'}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="flex items-center justify-center"
+          >
+            <Plus className="w-6 h-6" strokeWidth={2.5} />
+          </motion.span>
+        </motion.button>
+      </motion.div>
     </div>
   );
 }

@@ -1064,3 +1064,35 @@ Unresolved Issues / Next Steps:
 2. [LOW] PDF export for reports
 3. [LOW] Multi-currency support
 4. [LOW] Receipt OCR integration
+
+---
+Task ID: savings-challenge
+Agent: Full-Stack Developer
+Task: Build Savings Challenge Widget (API + UI)
+
+Work Log:
+- Read worklog.md, page.tsx, prisma schema, db.ts, financial-health-score.tsx, smart-insights.tsx for project context and patterns
+- Created /src/app/api/savings-challenge/route.ts (GET endpoint):
+  - Computes current month income/expenses from transactions + purchases via parallel Prisma queries
+  - Calculates: currentMonthSavings, dailyAverageExpense, projectedMonthExpense, projectedSavings, savingsRate, daysRemaining
+  - Also fetches today spending (transactions + purchases)
+  - Generates 3 challenge targets with progress:
+    1. Gastar menos hoje - spend under 80% of daily average
+    2. Economizar R$500 este mes - save R$500
+    3. Taxa de poupanca acima de 20% - keep savings rate above 20%
+- Created /src/components/finance/savings-challenge.tsx as named export SavingsChallenge:
+  - Self-fetching component, no props needed
+  - Card with border-0 shadow-md, gradient top border (emerald to teal), Target icon header
+  - Animated SVG circular progress ring showing savings rate with glow effect
+  - Animated counter using requestAnimationFrame with ease-out-cubic
+  - Color-coded savings rate levels (Excelente/Bom/Atencao/Baixo/Negativo)
+  - 4 quick stats row, 3 challenge cards with progress bars, daily tracking, motivational message
+  - Framer Motion animations: container/item stagger, hover lift, progress bar width
+  - Loading skeleton, all text in Portuguese Brazilian, BRL currency
+- Integrated SavingsChallenge into DashboardWithWidgets in page.tsx
+- Ran bun run lint: zero errors
+
+Stage Summary:
+- /api/savings-challenge endpoint returning savings challenge data
+- SavingsChallenge widget with SVG gauge, 3 gamified challenge cards, daily tracking
+- Integrated into dashboard page, zero lint errors

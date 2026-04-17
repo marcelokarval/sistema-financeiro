@@ -140,7 +140,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
           isUser
             ? 'bg-primary text-primary-foreground rounded-tr-sm'
-            : 'bg-muted/80 rounded-tl-sm'
+            : 'bg-violet-50 dark:bg-violet-950/40 text-foreground rounded-tl-sm border border-violet-200/50 dark:border-violet-800/30'
         }`}
       >
         <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
@@ -331,7 +331,7 @@ export function AIAdvisor() {
                         whileTap={{ scale: 0.97 }}
                         onClick={() => handleSuggestionClick(suggestion)}
                         disabled={isLoading}
-                        className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-colors border border-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-colors border border-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                       >
                         {suggestion}
                       </motion.button>
@@ -381,7 +381,7 @@ export function AIAdvisor() {
                     >
                       IA Powered
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground/40">
+                    <span className="text-[10px] text-muted-foreground/40 hidden sm:inline">
                       Dados atualizados do sistema
                     </span>
                   </div>

@@ -18,6 +18,8 @@ import { CashFlowForecast } from '@/components/finance/cash-flow-forecast';
 import { SmartInsights } from '@/components/finance/smart-insights';
 import { AIAdvisor } from '@/components/finance/ai-advisor';
 import { SpendingTimeline } from '@/components/finance/spending-timeline';
+import { SavingsChallenge } from '@/components/finance/savings-challenge';
+import { ReceiptGenerator } from '@/components/finance/receipt-generator';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -118,7 +120,7 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Zap className="w-3.5 h-3.5" />
-          <span>v2.3.0</span>
+          <span>v2.4.0</span>
         </div>
       </div>
     </div>
@@ -191,6 +193,8 @@ export default function Page() {
         <CashFlowForecast />
         <SpendingTimeline />
         <AIAdvisor />
+        <SavingsChallenge />
+        <ReceiptGenerator />
       </div>
     );
   }
@@ -369,7 +373,7 @@ export default function Page() {
                 <Sparkles className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
               <span className="font-medium">FinanceApp</span>
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.3</Badge>
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.4</Badge>
             </div>
             <span className="hidden sm:block text-muted-foreground/60">·</span>
             <span className="hidden sm:flex items-center gap-1">

@@ -94,7 +94,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
                 key={item.view}
                 onClick={() => onNavigate(item.view)}
                 initial={false}
-                whileHover={{ x: 2 }}
+                whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
                 className={cn(
                   'flex items-center w-full gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative',
@@ -167,7 +167,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
                   </div>
                   <span className="text-[10px] text-muted-foreground/70">Conectado</span>
                 </div>
-                <span className="text-[10px] font-mono text-primary/60 font-semibold">v2.3.0</span>
+                <span className="text-[10px] font-mono text-primary/60 font-semibold">v2.4.0</span>
               </div>
             </div>
           </div>

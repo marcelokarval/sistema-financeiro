@@ -35,6 +35,7 @@ import { BudgetGoalsWidget } from './budget-goals';
 import { FinancialReportsWidget } from './financial-reports';
 import { FinancialHealthScore } from './financial-health-score';
 import { RecurringTransactionsWidget } from './recurring-transactions';
+import { useScrollReveal } from '@/hooks/use-scroll-reveal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -142,6 +143,7 @@ const getQuickFilterRange = (key: QuickFilterKey) => {
 };
 
 export function DashboardView() {
+  useScrollReveal();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedPurchase, setExpandedPurchase] = useState<string | null>(null);
@@ -355,15 +357,15 @@ export function DashboardView() {
       </motion.div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <motion.div variants={item}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 reveal-stagger">
+        <motion.div variants={item} className="reveal-on-scroll">
           <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
             <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Total em Contas</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight">{mask(currencyFmt(data.totalBalance))}</p>
+                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums">{mask(currencyFmt(data.totalBalance))}</p>
                 </div>
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
                   <Wallet className="w-5 h-5 text-white" />
@@ -381,14 +383,14 @@ export function DashboardView() {
           </Card>
         </motion.div>
 
-        <motion.div variants={item}>
+        <motion.div variants={item} className="reveal-on-scroll">
           <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
             <div className="h-1 bg-gradient-to-r from-rose-500 to-pink-500" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Fatura Cartões</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight text-rose-500">
+                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-rose-500">
                     {mask(currencyFmt(data.totalCardBalance))}
                   </p>
                 </div>
@@ -410,14 +412,14 @@ export function DashboardView() {
           </Card>
         </motion.div>
 
-        <motion.div variants={item}>
+        <motion.div variants={item} className="reveal-on-scroll">
           <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
             <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Renda Mensal</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight text-emerald-500">
+                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-emerald-500">
                     {mask(currencyFmt(data.monthIncome))}
                   </p>
                 </div>
@@ -435,14 +437,14 @@ export function DashboardView() {
           </Card>
         </motion.div>
 
-        <motion.div variants={item}>
+        <motion.div variants={item} className="reveal-on-scroll">
           <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
             <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-400" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Despesas Mensais</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight text-rose-500">
+                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-rose-500">
                     {mask(currencyFmt(data.monthExpense))}
                   </p>
                 </div>
