@@ -14,6 +14,8 @@ import { CategoriesView } from '@/components/finance/categories-view';
 import { NotificationPanel } from '@/components/finance/notification-panel';
 import { GlobalSearch } from '@/components/finance/global-search';
 import { QuickActions } from '@/components/finance/quick-actions';
+import { CashFlowForecast } from '@/components/finance/cash-flow-forecast';
+import { SmartInsights } from '@/components/finance/smart-insights';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -75,13 +77,13 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-border">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
+      <div className="flex items-center gap-3 px-4 h-[68px] border-b border-border/60">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
           <Sparkles className="w-5 h-5 text-primary-foreground" />
         </div>
         <div>
-          <span className="font-bold text-lg tracking-tight">FinanceApp</span>
-          <p className="text-[10px] text-muted-foreground -mt-0.5">Gestão Inteligente</p>
+          <span className="font-bold text-[17px] tracking-tight leading-tight">FinanceApp</span>
+          <p className="text-[10px] text-muted-foreground/80 leading-tight">Gestão Inteligente</p>
         </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
@@ -114,7 +116,7 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Zap className="w-3.5 h-3.5" />
-          <span>v2.0.0</span>
+          <span>v2.2.0</span>
         </div>
       </div>
     </div>
@@ -170,7 +172,7 @@ export default function Page() {
 
   const renderView = () => {
     switch (currentView) {
-      case 'dashboard': return <DashboardView />;
+      case 'dashboard': return <DashboardWithWidgets />;
       case 'accounts': return <AccountsView />;
       case 'cards': return <CardsView />;
       case 'purchases': return <PurchasesView />;
@@ -178,6 +180,16 @@ export default function Page() {
       default: return <DashboardView />;
     }
   };
+
+  function DashboardWithWidgets() {
+    return (
+      <div className="space-y-6">
+        <DashboardView />
+        <SmartInsights />
+        <CashFlowForecast />
+      </div>
+    );
+  }
 
   const currentIcon = viewIcons[currentView];
   const currentLabel = viewLabels[currentView];
@@ -196,7 +208,7 @@ export default function Page() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-16 border-b border-border/50 bg-card/40 backdrop-blur-xl flex items-center justify-between px-4 lg:px-6 shrink-0 z-30">
+        <header className="h-16 border-b border-border/40 bg-card/50 backdrop-blur-2xl flex items-center justify-between px-4 lg:px-6 shrink-0 z-30">
           <div className="flex items-center gap-3">
             {/* Mobile menu */}
             <Sheet>
@@ -344,14 +356,14 @@ export default function Page() {
         </main>
 
         {/* Footer - Polished */}
-        <footer className="border-t border-border/50 bg-card/40 backdrop-blur-sm px-4 lg:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20">
+        <footer className="border-t border-border/40 bg-card/60 backdrop-blur-md px-4 lg:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
                 <Sparkles className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
               <span className="font-medium">FinanceApp</span>
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.1</Badge>
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.2</Badge>
             </div>
             <span className="hidden sm:block text-muted-foreground/60">·</span>
             <span className="hidden sm:flex items-center gap-1">

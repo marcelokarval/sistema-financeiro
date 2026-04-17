@@ -833,3 +833,56 @@ Verification:
 Unresolved / Next Steps:
 1. [MEDIUM] PDF export for reports
 2. [LOW] Receipt photo upload, multi-currency, user auth
+
+---
+Task ID: CR6-insights
+Agent: Full-Stack Developer
+Task: Build Smart Financial Insights API endpoint and self-contained UI widget
+
+Work Log:
+- Read worklog.md, /api/dashboard/route.ts, and financial-health-score.tsx to understand project patterns (currencyFmt, Prisma queries, motion variants, self-fetching widget pattern, shadcn/ui components)
+- Read prisma/schema.prisma to understand all 8 models and their relations
+- Created /src/app/api/insights/route.ts (GET endpoint):
+  - Parallel fetch of 11 data sources: accounts, cards, categories, month expenses/income/purchases, 3-month expenses/purchases, previous month expenses/purchases, recurring transactions, budget goals
+  - Computes 9 dynamic financial insights:
+    1. Emergency fund coverage (total balance / avg monthly expense → months covered; success ≥6mo, info ≥3mo, warning <3mo)
+    2. Category overspending (current month vs 3-month avg per category; warning if >20% above avg)
+    3. Credit card utilization (per card; warning if >70%, danger if >90%)
+    4. Income vs expense comparison (success if surplus, danger if deficit)
+    5. Recurring transactions summary (count + total monthly amount)
+    6. Category trend analysis (first half vs second half of last 3 months; warning >30%, danger >60%)
+    7. Budget goal progress (closest-to-completion active goal shown)
+    8. Bank accounts overview (count + total balance)
+    9. Total card debt vs limit overview
+    10. Month-over-month expense comparison
+  - Each insight: { id, type, icon (lucide), title, description, metric, trend, action }
+  - Fixed Portuguese grammar: "transações recorrentes" (not "transaçãoões"), "cartões" (not "cartãoões")
+- Created /src/components/finance/smart-insights.tsx as named export SmartInsights:
+  - 'use client' directive, self-fetching from /api/insights on mount
+  - Header: Brain icon in violet gradient box + Sparkles icon, "Insights Inteligentes" title, subtitle
+  - Total insights count Badge in header
+  - Filter tabs using shadcn Tabs: "Todos", "Positivos" (success), "Alertas" (warning + danger), "Info"
+  - Each tab shows count badge (computed from insights array)
+  - Insight cards with: colored icon circle (emerald/amber/rose/sky), title, description, metric Badge, TrendIndicator (TrendingUp/TrendingDown/dot)
+  - Optional action button at bottom of card with Lightbulb icon
+  - Icon mapping for 13 lucide icons used in insights
+  - Color config per type: bg, text, border, badge classes
+  - Framer Motion animations: container/item stagger (0.07s), header entry, AnimatePresence for tab switching
+  - whileHover lift effect (y: -3) with spring physics on each card
+  - Loading skeleton: header + tabs bar + 6 placeholder cards matching layout
+  - Empty state: Brain icon in muted circle + contextual message
+  - Responsive grid: 1 col mobile, 2 cols md, 3 cols lg
+  - All text in Portuguese Brazilian, currency in BRL (pt-BR)
+  - Uses shadcn/ui: Card, CardContent, CardHeader, CardTitle, Badge, Button, Skeleton, Tabs, TabsList, TabsTrigger
+- Verified API returns 9 insights with correct data via curl (200 response)
+- Ran `bun run lint`: zero errors
+- Verified clean dev server compilation (no errors in dev.log)
+
+Stage Summary:
+- /api/insights endpoint computing 9 contextual financial insights from all data sources
+- SmartInsights widget ready for integration (named export, no props needed)
+- Consistent styling with existing codebase (shadow-md cards, violet gradient header, color-coded types)
+- Framer Motion animations throughout (stagger, hover lift, tab transitions)
+- Filter tabs with count badges for quick insight categorization
+- Responsive grid layout for insight cards
+- Zero lint errors
