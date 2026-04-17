@@ -229,13 +229,18 @@ export function DashboardView() {
       {/* Greeting Banner */}
       <motion.div
         variants={item}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 via-primary/80 to-violet-600/90 p-6 sm:p-8 text-primary-foreground shadow-xl shadow-primary/10"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 via-primary/80 to-violet-600/90 p-6 sm:p-8 text-primary-foreground shadow-xl shadow-primary/10 glass-enhanced"
       >
-        {/* Background decoration */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white" />
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white" />
-          <div className="absolute top-1/2 right-1/4 w-20 h-20 rounded-full bg-white" />
+        {/* Background decoration with animated mesh */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/10 animate-breathe" />
+          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10 animate-breathe" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/3 right-1/4 w-16 h-16 rounded-full bg-white/5 animate-breathe" style={{ animationDelay: '0.5s' }} />
+          {/* Grid pattern overlay */}
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: 'linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)',
+            backgroundSize: '40px 40px'
+          }} />
         </div>
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -420,9 +425,11 @@ export function DashboardView() {
                   <TrendingUp className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <div className="flex items-center gap-1 mt-3">
-                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="text-xs text-muted-foreground">Entradas do mês</span>
+              <div className="flex items-center gap-1.5 mt-3">
+                <div className="w-5 h-5 rounded-md bg-emerald-500/10 flex items-center justify-center">
+                  <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+                </div>
+                <span className="text-xs text-foreground/60 font-medium">Entradas do mês</span>
               </div>
             </CardContent>
           </Card>
@@ -443,11 +450,11 @@ export function DashboardView() {
                   <TrendingDown className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 mt-3">
+              <div className="flex items-center gap-2 mt-3 min-w-0">
                 <Badge variant={netMonth >= 0 ? 'default' : 'destructive'} className="text-[10px] shrink-0">
-                  {netMonth >= 0 ? 'Superavit' : 'Deficit'}: {mask(currencyFmt(Math.abs(netMonth)))}
+                  {netMonth >= 0 ? 'Superávit' : 'Déficit'}: {mask(currencyFmt(Math.abs(netMonth)))}
                 </Badge>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                   Poupança: {savingsRate.toFixed(0)}%
                 </span>
               </div>
@@ -458,9 +465,9 @@ export function DashboardView() {
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
+        <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 card-elevated hover-lift focus-gradient">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center transition-all duration-300">
               <PiggyBank className="w-4 h-4 text-emerald-500" />
             </div>
             <div>
@@ -469,9 +476,9 @@ export function DashboardView() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-500/20">
+        <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-500/20 card-elevated hover-lift focus-gradient">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center transition-all duration-300">
               <Receipt className="w-4 h-4 text-violet-500" />
             </div>
             <div>
@@ -480,9 +487,9 @@ export function DashboardView() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 card-elevated hover-lift focus-gradient">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center transition-all duration-300">
               <ArrowLeftRight className="w-4 h-4 text-blue-500" />
             </div>
             <div>
@@ -491,9 +498,9 @@ export function DashboardView() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20">
+        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 card-elevated hover-lift focus-gradient">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center transition-all duration-300">
               <CircleDollarSign className="w-4 h-4 text-amber-500" />
             </div>
             <div>

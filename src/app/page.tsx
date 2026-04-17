@@ -16,6 +16,8 @@ import { GlobalSearch } from '@/components/finance/global-search';
 import { QuickActions } from '@/components/finance/quick-actions';
 import { CashFlowForecast } from '@/components/finance/cash-flow-forecast';
 import { SmartInsights } from '@/components/finance/smart-insights';
+import { AIAdvisor } from '@/components/finance/ai-advisor';
+import { SpendingTimeline } from '@/components/finance/spending-timeline';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -116,7 +118,7 @@ function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewTyp
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Zap className="w-3.5 h-3.5" />
-          <span>v2.2.0</span>
+          <span>v2.3.0</span>
         </div>
       </div>
     </div>
@@ -187,11 +189,13 @@ export default function Page() {
         <DashboardView />
         <SmartInsights />
         <CashFlowForecast />
+        <SpendingTimeline />
+        <AIAdvisor />
       </div>
     );
   }
 
-  const currentIcon = viewIcons[currentView];
+  const CurrentIcon = viewIcons[currentView];
   const currentLabel = viewLabels[currentView];
   const currentSubtitle = viewSubtitles[currentView];
   const currentGradient = viewColors[currentView];
@@ -235,7 +239,7 @@ export default function Page() {
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 className={`hidden sm:flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br ${currentGradient} shadow-lg`}
               >
-                <currentIcon className="w-4.5 h-4.5 text-white" />
+                <CurrentIcon className="w-4.5 h-4.5 text-white" />
               </motion.div>
               <div>
                 <h1 className="text-base font-semibold leading-tight">{currentLabel}</h1>
@@ -356,14 +360,16 @@ export default function Page() {
         </main>
 
         {/* Footer - Polished */}
-        <footer className="border-t border-border/40 bg-card/60 backdrop-blur-md px-4 lg:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20">
+        <footer className="relative border-t border-border/40 glass-enhanced px-4 lg:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20">
+          {/* Subtle top gradient line */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
                 <Sparkles className="w-2.5 h-2.5 text-primary-foreground" />
               </div>
               <span className="font-medium">FinanceApp</span>
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.2</Badge>
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v2.3</Badge>
             </div>
             <span className="hidden sm:block text-muted-foreground/60">·</span>
             <span className="hidden sm:flex items-center gap-1">

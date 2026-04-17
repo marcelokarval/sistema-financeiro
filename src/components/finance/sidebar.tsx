@@ -154,20 +154,20 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
         {/* Status card */}
         {!collapsed && (
           <div className="px-3 mb-2">
-            <div className="rounded-xl bg-muted/30 border border-border/40 p-3 space-y-2">
+            <div className="rounded-xl bg-muted/30 border border-border/40 p-3 space-y-2 card-elevated">
               <div className="flex items-center gap-2">
                 <Activity className="w-3.5 h-3.5 text-emerald-500" />
                 <span className="text-[11px] font-medium text-foreground/80">Status do Sistema</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div className="relative">
+                  <div className="relative status-glow-success rounded-full">
                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
                     <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75" />
                   </div>
                   <span className="text-[10px] text-muted-foreground/70">Conectado</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground/50 font-mono">v2.2.0</span>
+                <span className="text-[10px] font-mono text-primary/60 font-semibold">v2.3.0</span>
               </div>
             </div>
           </div>

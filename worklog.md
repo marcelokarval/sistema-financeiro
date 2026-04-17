@@ -692,9 +692,48 @@ Stage Summary:
 - API verified returning correct data with category includes
 - Zero errors
 
-Unresolved / Next Steps:
-1. [MEDIUM] PDF export for reports
-2. [LOW] Recurring transactions, receipt OCR, multi-currency
+---
+Task ID: CR6-ai-advisor
+Agent: Full-Stack Developer
+Task: Build AI Financial Advisor chatbot
+
+Work Log:
+- Read worklog.md, page.tsx, prisma schema, db.ts, and multiple existing components/API routes for context
+- Learned z-ai-web-dev-sdk LLM usage patterns from the LLM skill documentation
+- Created /src/app/api/advisor/route.ts (POST endpoint):
+  - Accepts { message: string, context?: string } in request body
+  - Fetches real financial data from Prisma in parallel: accounts, cards, recent transactions (30 days), recent purchases, current month income/expenses, budget goals, categories
+  - Computes financial summary: total balance, card debt/utilization, monthly income/expense/net, top 5 expense categories by amount and percentage
+  - Formats all monetary values in BRL (pt-BR) using Intl.NumberFormat
+  - Builds comprehensive financial context string with all data for LLM
+  - Calls z-ai-web-dev-sdk LLM with Brazilian financial advisor system prompt (14 instructions: pt-BR language, BRL currency, friendly/professional tone, personalized advice, budget optimization, practical tips, 50-30-20 rule, etc.)
+  - Returns { response: string } with the LLM's advice
+  - Proper error handling with Portuguese error messages
+- Created /src/components/finance/ai-advisor.tsx as named export AIAdvisor:
+  - Collapsible card with gradient header (from-violet-500 to-purple-600)
+  - Header with Brain icon, "Assistente Financeiro IA" title, animated online status dot (emerald ping animation), Sparkles icon, ChevronUp/ChevronDown toggle
+  - Quick suggestion chips below header: "Como economizar mais?", "Análise dos meus gastos", "Meta de investimento", "Dicas para reduzir despesas"
+  - Chat messages area with max-h-96 overflow-y-auto
+  - Message types: user (right-aligned, primary bg, User icon) and assistant (left-aligned, muted bg, Brain icon)
+  - Each message shows avatar icon, text content (whitespace-pre-wrap), and timestamp
+  - Typing indicator with 3 bouncing dots animation (staggered, using Framer Motion)
+  - Input area with text input + gradient send button at bottom
+  - "IA Powered" badge and "Dados atualizados do sistema" label
+  - Welcome message from assistant on first load
+  - Auto-scroll to bottom on new messages
+  - Staggered entry animation for messages (Framer Motion variants)
+  - AnimatePresence for smooth open/close of collapsible panel
+  - Uses shadcn/ui: Card, CardContent, CardHeader, Button, Input, ScrollArea, Badge
+  - All text in Portuguese Brazilian
+- Integrated AIAdvisor into DashboardWithWidgets in page.tsx (after SpendingTimeline)
+- Ran `bun run lint`: zero errors
+- Verified clean dev server compilation (no errors in dev.log)
+
+Stage Summary:
+- /api/advisor POST endpoint ready - fetches real user financial data and generates AI-powered advice via z-ai-web-dev-sdk LLM
+- AIAdvisor chat panel component with all requested features: collapsible, gradient header, online status, quick suggestions, chat messages with typing indicator, auto-scroll, staggered animations
+- Integrated into dashboard page
+- Zero lint errors
 
 ---
 Task ID: CR5-recurring
@@ -886,3 +925,142 @@ Stage Summary:
 - Filter tabs with count badges for quick insight categorization
 - Responsive grid layout for insight cards
 - Zero lint errors
+
+---
+Task ID: CR6-styling
+Agent: Frontend Styling Expert
+Task: Comprehensive styling enhancements — CSS animations, component polish
+
+Work Log:
+- Added 15 new CSS utility classes to globals.css:
+  - .counter-glow: Animated text-shadow glow for number counters (3s infinite)
+  - .card-shimmer: Shimmer loading effect for cards (gradient sweep)
+  - .animate-breathe: Breathing pulse for status indicators (scale 1→1.15, opacity)
+  - .text-gradient-primary: Primary-colored gradient text with background-clip
+  - .card-elevated: Elevated card with multi-layer box-shadow and hover lift (-1px)
+  - .hover-lift: Smooth translateY(-2px) hover with enhanced shadow
+  - .focus-gradient: Focus-within border color and ring shadow
+  - .animated-underline: Hover-triggered underline with gradient fill (width 0→100%)
+  - .dark ::-webkit-scrollbar-thumb: Improved scrollbar styling for dark mode
+  - @keyframes ripple: Ripple click effect (scale 0→4 with fade)
+  - .page-enter: Smooth page entry animation (opacity + translateY)
+  - @keyframes float-particle: Floating particle background animation
+  - .status-glow-success/warning/error: Colored glow box-shadows for status badges
+  - .glass-enhanced: Enhanced glassmorphism (blur 20px, saturate 200%, subtle border)
+- Enhanced Dashboard Greeting Banner (dashboard-view.tsx):
+  - Added glass-enhanced class for glassmorphism effect
+  - Replaced static background circles with animated breathe circles (3 with staggered delays)
+  - Added grid pattern overlay (40px grid at 4% opacity)
+- Enhanced Quick Stats Row (dashboard-view.tsx):
+  - Added card-elevated, hover-lift, focus-gradient classes to all 4 stat cards
+  - Added transition-all duration-300 to all icon containers
+- Enhanced Footer (page.tsx):
+  - Added glass-enhanced class replacing bg-card/60 backdrop-blur-md
+  - Added subtle gradient top line (via-primary/30, transparent edges)
+- Enhanced Sidebar Status Card (sidebar.tsx):
+  - Added card-elevated class to status card
+  - Added status-glow-success to online indicator container
+- Ran `bun run lint`: zero errors
+
+Stage Summary:
+- 15 new CSS animation and utility classes available for use across the app
+- Dashboard greeting banner now features animated mesh background with breathing circles
+- Quick stats cards have refined depth, hover lift, and focus states
+- Footer features glassmorphism with gradient accent line
+- Sidebar status card has enhanced depth and glowing online indicator
+
+---
+Task ID: CR6-ai-advisor
+Agent: Full-Stack Developer
+Task: Build AI Financial Advisor chatbot
+
+Work Log:
+- Created /api/advisor/route.ts POST endpoint
+- Fetches 9 data sources from Prisma in parallel (accounts, cards, transactions, purchases, budgets, categories)
+- Computes financial summary (balances, income/expense, top categories, budget progress)
+- Calls z-ai-web-dev-sdk LLM with Portuguese financial advisor system prompt (14 instructions)
+- Fixed variable name conflict (monthExpenseTransactions redefinition) causing 500 error
+- Fixed system prompt role from "assistant" to "system" for proper LLM context
+- Created /src/components/finance/ai-advisor.tsx as AIAdvisor component
+- Collapsible card with gradient header (violet→purple), Brain icon, typing indicator
+- Quick suggestion chips: "Como economizar mais?", "Análise dos meus gastos", etc.
+- Chat messages area with auto-scroll, staggered animations
+- Integrated into DashboardWithWidgets in page.tsx
+- Verified: API returns personalized financial advice using real data
+
+Stage Summary:
+- /api/advisor endpoint working with real financial data context
+- AIAdvisor widget with chat interface, suggestion chips, typing animation
+- Zero lint errors
+
+---
+Task ID: CR6-timeline
+Agent: Full-Stack Developer
+Task: Build spending timeline / cash flow calendar widget
+
+Work Log:
+- Created /api/timeline/route.ts GET endpoint accepting ?days=30 (default 30, max 90)
+- Groups transactions + purchases by date with income/expense/net/runningBalance
+- Returns daily entries sorted by date desc with individual items
+- Created /src/components/finance/spending-timeline.tsx as SpendingTimeline component
+- Card with gradient top border, CalendarDays icon, "Linha do Tempo" title
+- Quick filter pills: 7/15/30 days
+- Mini bar chart with Framer Motion staggered bars (green positive, red negative)
+- Scrollable timeline with expandable daily items, category badges
+- Running balance footer with progress bar
+- Loading skeleton, empty state handling
+- Integrated into DashboardWithWidgets in page.tsx
+
+Stage Summary:
+- /api/timeline endpoint returning grouped daily financial data
+- SpendingTimeline widget with bar chart, timeline list, running balance
+- Zero lint errors
+
+---
+Task ID: CR6-SUMMARY
+Agent: Main Coordinator
+Task: Cron Review Round 6 — Final integration, bug fixes, QA
+
+Work Log:
+- Reviewed worklog.md and assessed full project status (v2.2.0, 13 API endpoints, 8+ widget components)
+- Performed QA with agent-browser: all views working, screenshots saved
+- VLM analysis: Dashboard 7/10, Accounts 8/10, Cards 8/10
+- Fixed bugs found during QA:
+  - Text truncation in "Despesas Mensais" card (Badge overflow, changed to single-line with min-w-0)
+  - Accent on "Superavit" → "Superávit", "Deficit" → "Déficit"
+  - Low contrast in "Renda Mensal" card (enhanced icon container with bg color)
+  - React casing warning: currentIcon → CurrentIcon (PascalCase for JSX components)
+  - Advisor API 500 error: monthExpenseTransactions variable redefinition → renamed to monthExpenseTxTotal/monthExpensePurchaseTotal
+  - Advisor API: system prompt role fixed from "assistant" to "system"
+- Launched 3 parallel subagents for new features and styling:
+  - AI Financial Advisor chatbot (LLM-powered with real data context)
+  - Spending Timeline widget (daily cash flow visualization)
+  - Comprehensive CSS styling enhancements (15 new utility classes)
+- Bumped version to v2.3.0 (sidebar, footer, mobile sidebar)
+- Verified: zero lint errors, 13 API endpoints returning 200, AI advisor working
+
+Completed This Round:
+1. AI Financial Advisor (LLM chatbot with real financial data context)
+2. Spending Timeline Widget (daily cash flow with bar chart + expandable items)
+3. 15 New CSS Utilities (glass-enhanced, card-elevated, hover-lift, status-glow, animated-underline, etc.)
+4. Enhanced Greeting Banner (animated breathing circles + grid mesh overlay)
+5. Enhanced Quick Stats Cards (card-elevated + hover-lift + focus-gradient)
+6. Enhanced Footer (glass-enhanced + gradient accent line)
+7. Enhanced Sidebar Status (card-elevated + status-glow-success)
+8. Bug Fixes (text truncation, contrast, React casing, advisor API)
+
+Current Project Status:
+- STABLE at v2.3.0
+- 8 database models, 13 API endpoints, 6 views, 8+ widget components
+- All features: Dashboard, Accounts, Cards, Purchases, Categories
+- Widgets: Budget Goals, Financial Reports, Health Score, Recurring Transactions, Smart Insights, Cash Flow Forecast, AI Advisor, Spending Timeline
+- Global: QuickActions FAB, GlobalSearch, NotificationPanel, CSV Export
+- Dark/light theme, fully responsive, Portuguese BR, BRL
+- Socket.io real-time connected
+- Zero lint errors, all APIs 200 OK
+
+Unresolved Issues / Next Steps:
+1. [LOW] React 19 useSyncExternalStore getServerSnapshot warning (known edge case)
+2. [LOW] PDF export for reports
+3. [LOW] Multi-currency support
+4. [LOW] Receipt OCR integration
