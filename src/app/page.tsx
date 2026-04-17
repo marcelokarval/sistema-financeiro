@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore, useEffect, useRef } from 'react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { useAppStore, type ViewType } from '@/lib/store';
+import { cn } from '@/lib/utils';
 import { useRealtime } from '@/hooks/use-realtime';
 import { Sidebar } from '@/components/finance/sidebar';
 import { DashboardView } from '@/components/finance/dashboard-view';
@@ -18,6 +19,7 @@ import { SavingsView } from '@/components/finance/savings-view';
 import { NotificationPanel } from '@/components/finance/notification-panel';
 import { GlobalSearch } from '@/components/finance/global-search';
 import { QuickActions } from '@/components/finance/quick-actions';
+import { MobileNav } from '@/components/finance/mobile-nav';
 import { CashFlowForecast } from '@/components/finance/cash-flow-forecast';
 import { SmartInsights } from '@/components/finance/smart-insights';
 import { AIAdvisor } from '@/components/finance/ai-advisor';
@@ -26,6 +28,8 @@ import { SavingsChallenge } from '@/components/finance/savings-challenge';
 import { ExpenseBreakdown } from '@/components/finance/expense-breakdown';
 import { FinancialCalendar } from '@/components/finance/financial-calendar';
 import { BalanceProjection } from '@/components/finance/balance-projection';
+import { NetworthEvolution } from '@/components/finance/networth-evolution';
+import { DebtOverview } from '@/components/finance/debt-overview';
 import { ReceiptGenerator } from '@/components/finance/receipt-generator';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
@@ -185,6 +189,7 @@ export default function Page() {
   const { theme, setTheme } = useTheme();
   const [sidebarCollapsedState, setSidebarCollapsed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [footerData, setFooterData] = useState<{ netWorth: number; savingsRate: number } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const toastShownRef = useRef<string | null>(null);
   const { isConnected, refreshCounter } = useRealtime({
@@ -214,6 +219,24 @@ export default function Page() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Fetch footer quick stats
+  useEffect(() => {
+    async function fetchFooterData() {
+      try {
+        const res = await fetch('/api/dashboard');
+        if (res.ok) {
+          const d = await res.json();
+          const net = d.totalBalance - d.totalCardBalance;
+          const rate = d.monthIncome > 0 ? ((d.monthIncome - d.monthExpense) / d.monthIncome) * 100 : 0;
+          setFooterData({ netWorth: net, savingsRate: rate });
+        }
+      } catch {
+        // silently ignore
+      }
+    }
+    fetchFooterData();
   }, []);
 
   if (!mounted) return null;
@@ -247,6 +270,8 @@ export default function Page() {
         <ExpenseBreakdown />
         <BalanceProjection />
         <FinancialCalendar />
+        <NetworthEvolution />
+        <DebtOverview />
         <ReceiptGenerator />
       </div>
     );
@@ -407,7 +432,7 @@ export default function Page() {
         </main>
 
         {/* Footer */}
-        <footer className="relative border-t border-border/40 glass-enhanced px-4 lg:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20">
+        <footer className="relative border-t border-border/40 glass-enhanced px-4 lg:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20 md:pb-3 pb-20">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
@@ -422,13 +447,37 @@ export default function Page() {
               Feito com <Heart className="w-3 h-3 text-rose-400 fill-rose-400" /> no Brasil
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden md:flex items-center gap-1.5 text-muted-foreground/70">
+          {/* Desktop-only quick stats */}
+          <div className="hidden md:flex items-center gap-4">
+            {footerData && (
+              <>
+                <div className="flex items-center gap-1.5 text-muted-foreground/70">
+                  <TrendingUp className="w-3 h-3 text-emerald-500" />
+                  <span>Patrimônio Líquido:</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(footerData.netWorth)}
+                  </span>
+                </div>
+                <span className="text-muted-foreground/40">·</span>
+                <div className="flex items-center gap-1.5 text-muted-foreground/70">
+                  <PiggyBank className="w-3 h-3 text-amber-500" />
+                  <span>Taxa de Poupança:</span>
+                  <span className={cn(
+                    'font-semibold tabular-nums',
+                    footerData.savingsRate >= 0 ? 'text-emerald-500' : 'text-rose-500'
+                  )}>
+                    {footerData.savingsRate.toFixed(1)}%
+                  </span>
+                </div>
+                <span className="text-muted-foreground/40">·</span>
+              </>
+            )}
+            <span className="flex items-center gap-1.5 text-muted-foreground/70">
               <Shield className="w-3 h-3" />
               Dados seguros
             </span>
-            <span className="hidden lg:block text-muted-foreground/60">·</span>
-            <span className="hidden lg:block">© {new Date().getFullYear()}</span>
+            <span className="text-muted-foreground/60">·</span>
+            <span>© {new Date().getFullYear()}</span>
           </div>
         </footer>
       </div>
@@ -453,6 +502,9 @@ export default function Page() {
           else if (type === 'investment') setCurrentView('investments');
         }}
       />
+
+      {/* Mobile Bottom Navigation */}
+      <MobileNav />
     </div>
   );
 }

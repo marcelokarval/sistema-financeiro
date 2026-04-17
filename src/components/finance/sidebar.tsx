@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   Sparkles,
   Activity,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -76,7 +77,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
           />
         )}
         <div className={cn(
-          'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-all duration-200',
+          'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-all duration-200 relative',
           isActive
             ? `bg-gradient-to-br ${item.color} shadow-md shadow-primary/10`
             : 'bg-muted/50'
@@ -85,6 +86,10 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
             'w-4 h-4 transition-all duration-200',
             isActive ? 'text-white' : ''
           )} />
+          {/* Unread badge dot on Dashboard icon (decorative) */}
+          {item.view === 'dashboard' && !isActive && (
+            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-card status-glow-success" />
+          )}
         </div>
         {!collapsed && (
           <motion.span
@@ -190,6 +195,30 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
                 </div>
                 <span className="text-[10px] font-mono text-primary/60 font-semibold">v3.0.0</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Collapsed status area with Recarregar button */}
+        {collapsed && (
+          <div className="px-2 mb-2 flex flex-col items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.92 }}
+                  className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted/40 hover:bg-accent/40 transition-colors"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                </motion.button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">
+                Recarregar
+              </TooltipContent>
+            </Tooltip>
+            <div className="relative status-glow-success">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
             </div>
           </div>
         )}

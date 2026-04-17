@@ -467,47 +467,122 @@ export function DashboardView() {
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 card-elevated hover-lift focus-gradient">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center transition-all duration-300">
+        <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 card-elevated hover-lift focus-gradient hover-shimmer">
+          <CardContent className="p-5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center transition-all duration-300">
               <PiggyBank className="w-4 h-4 text-emerald-500" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Patrimônio Total</p>
-              <p className="text-sm font-bold">{mask(currencyFmt(data.totalBalance - data.totalCardBalance))}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm font-bold truncate">{mask(currencyFmt(data.totalBalance - data.totalCardBalance))}</p>
+                {data.monthlyTrend.length >= 2 && (() => {
+                  const curr = data.monthlyTrend[data.monthlyTrend.length - 1];
+                  const prev = data.monthlyTrend[data.monthlyTrend.length - 2];
+                  const netChange = prev.income > 0 ? ((curr.income - curr.expense) - (prev.income - prev.expense)) / prev.income * 100 : 0;
+                  return netChange >= 0 ? (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500 shrink-0">
+                      <ArrowUpRight className="w-2.5 h-2.5" />
+                      {Math.abs(netChange).toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-500 shrink-0">
+                      <ArrowDownRight className="w-2.5 h-2.5" />
+                      {Math.abs(netChange).toFixed(1)}%
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-500/20 card-elevated hover-lift focus-gradient">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center transition-all duration-300">
+        <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-500/20 card-elevated hover-lift focus-gradient hover-shimmer">
+          <CardContent className="p-5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center transition-all duration-300">
               <Receipt className="w-4 h-4 text-violet-500" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Compras no Mês</p>
-              <p className="text-sm font-bold">{data.recentPurchases.length} compras</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm font-bold">{data.recentPurchases.length} compras</p>
+                {data.monthlyTrend.length >= 2 && (() => {
+                  const curr = data.monthlyTrend[data.monthlyTrend.length - 1];
+                  const prev = data.monthlyTrend[data.monthlyTrend.length - 2];
+                  const change = prev.income > 0 ? ((curr.expense - prev.expense) / prev.income) * 100 : 0;
+                  return change <= 0 ? (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500 shrink-0">
+                      <ArrowDownRight className="w-2.5 h-2.5" />
+                      {Math.abs(change).toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-500 shrink-0">
+                      <ArrowUpRight className="w-2.5 h-2.5" />
+                      {Math.abs(change).toFixed(1)}%
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 card-elevated hover-lift focus-gradient">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center transition-all duration-300">
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 card-elevated hover-lift focus-gradient hover-shimmer">
+          <CardContent className="p-5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center transition-all duration-300">
               <ArrowLeftRight className="w-4 h-4 text-blue-500" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Transações</p>
-              <p className="text-sm font-bold">{data.recentTransactions.length} recentes</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm font-bold">{data.recentTransactions.length} recentes</p>
+                {data.monthlyTrend.length >= 2 && (() => {
+                  const curr = data.monthlyTrend[data.monthlyTrend.length - 1];
+                  const prev = data.monthlyTrend[data.monthlyTrend.length - 2];
+                  const txChange = prev.income > 0 ? ((curr.income + curr.expense) - (prev.income + prev.expense)) / (prev.income + prev.expense) * 100 : 0;
+                  return txChange >= 0 ? (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500 shrink-0">
+                      <ArrowUpRight className="w-2.5 h-2.5" />
+                      {Math.abs(txChange).toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-500 shrink-0">
+                      <ArrowDownRight className="w-2.5 h-2.5" />
+                      {Math.abs(txChange).toFixed(1)}%
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 card-elevated hover-lift focus-gradient">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center transition-all duration-300">
+        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 card-elevated hover-lift focus-gradient hover-shimmer">
+          <CardContent className="p-5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center transition-all duration-300">
               <CircleDollarSign className="w-4 h-4 text-amber-500" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Gasto Médio/dia</p>
-              <p className="text-sm font-bold">{mask(currencyFmt(data.monthExpense / new Date().getDate()))}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm font-bold">{mask(currencyFmt(data.monthExpense / new Date().getDate()))}</p>
+                {data.monthlyTrend.length >= 2 && (() => {
+                  const curr = data.monthlyTrend[data.monthlyTrend.length - 1];
+                  const prev = data.monthlyTrend[data.monthlyTrend.length - 2];
+                  const dayOfMonth = new Date().getDate();
+                  const currDaily = curr.expense / Math.max(dayOfMonth, 1);
+                  const prevDaily = prev.expense / 30;
+                  const dailyChange = prevDaily > 0 ? ((currDaily - prevDaily) / prevDaily) * 100 : 0;
+                  return dailyChange <= 0 ? (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500 shrink-0">
+                      <ArrowDownRight className="w-2.5 h-2.5" />
+                      {Math.abs(dailyChange).toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-500 shrink-0">
+                      <ArrowUpRight className="w-2.5 h-2.5" />
+                      {Math.abs(dailyChange).toFixed(1)}%
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
           </CardContent>
         </Card>
