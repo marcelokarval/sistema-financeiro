@@ -1,0 +1,833 @@
+# Plano de Transformação: accelerate → Z.ai
+
+> **Versão:** 1.0.0
+> **Data:** 2026-06-22
+> **Autor:** Marcelo Karval & Z.ai Code Agent
+> **Fonte:** [github.com/marcelokarval/accelerate](https://github.com/marcelokarval/accelerate)
+> **Alvo:** Plataforma Z.ai (5 subagentes, 71 skills, 2 payload kinds)
+
+---
+
+## 0. Resumo Executivo
+
+### Objetivo
+Transformar o `accelerate` — um skill de orquestração de engenharia nativo para o mundo Codex/Claude — em uma versão nativa para o Z.ai. O resultado será um conjunto de **skills** (não um monolito) que replicam o controle de qualidade e disciplina de execução do accelerate dentro das restrições do runtime Z.ai.
+
+### Nome
+**`accelerate`** — nome mantido. É curto, expressivo, e o prefixo "z-" não é necessário porque a instalação em `skills/accelerate/` já o coloca no contexto Z.ai.
+
+### Princípio Norteador
+> **Não é um fork. É uma reinterpretação.**
+
+O accelerate original assume: agentes com `*.toml`, workflow adapter Linear/GitHub, `AGENTS.md` como bootstrap, persona model com ativação automática. O Z.ai não tem nenhuma dessas coisas. O `accelerate` para Z.ai deve atingir os **mesmos objetivos** usando os **mecanismos disponíveis** no Z.ai.
+
+---
+
+## 1. Análise de Gap: accelerate (Codex) vs Z.ai
+
+### 1.1 Comparativo Arquitetural
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ACELERATE (CODEX/CLAUDE)                        │
+│                                                                     │
+│  MECANISMOS:                    │  Z.AI EQUIVALENTE:               │
+│  ─────────────────────────────  │  ────────────────────────────    │
+│  AGENTS.md (repo laws)         │  ❌ NÃO EXISTE                   │
+│  SKILL.md (always-on root)     │  ⚠️ skill normal (não always-on) │
+│  *.toml agents (bounded)       │  ❌ NÃO EXISTE                   │
+│  persona model (auto-activate) │  ❌ NÃO EXISTE                   │
+│  branch enforcement matrix     │  ⚠️ Via SKILL.md + payload.msg   │
+│  Linear/GitHub workflow adapter│  ❌ NÃO EXISTE (usa docs/)       │
+│  prompt-hardening (gate)       │  ✅ Skill existente              │
+│  proof stack (5 camadas)       │  ⚠️ Skills separadas existem     │
+│  subagent model (governed)     │  ✅ 5 subagentes Task tool       │
+│  self-evolution (auto-promote) │  ❌ Processo manual              │
+│  onboarding (discovery loop)   │  ⚠️ Via SKILL.md + docs/         │
+│  planning layer (executive)    │  ⚠️ Via docs/ + payload.msg      │
+│  .accelerate/ workspace        │  ❌ Usa docs/ + skills/           │
+│  references/ (inherited docs)  │  ❌ Usa docs/                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.2 Inventory do accelerate Original
+
+O repo accelerate contém **~30 módulos** em `core/` + `references/` + `docs/architecture/`:
+
+| Módulo (accelerate) | Categoria | Portabilidade para Z.ai |
+|---|---|---|
+| SKILL.md (root classifier) | Core | ✅ Direto — reescrever como SKILL.md Z.ai |
+| AGENTS.md (repo bootstrap) | Core | ⚠️ Embed no SKILL.md + docs/ |
+| branch-enforcement-matrix | Control Plane | ✅ Embed no SKILL.md (compactado) |
+| quick-invocation-map | Control Plane | ✅ Embed no SKILL.md |
+| issue-driven-mutation-stack | Issue Topology | ⚠️ Adaptar para docs/TASKS.md |
+| prompt-hardening | Hardening | ✅ Já existe — fortalecer referência |
+| subagent-model | Delegation | ✅ Mapear para 5 subagentes Z.ai |
+| qa-proof-stack | Proof | ✅ Referência cruzada com skills QA |
+| enforcement-surfaces | Risk | ⚠️ Embed no SKILL.md (compactado) |
+| operational-calibration | Workflows | ✅ Embed no SKILL.md |
+| self-evolution | Workflows | ❌ Processo manual — documentar |
+| maturity-control | Workflows | ❌ Processo manual — documentar |
+| workflow-catalog (19 workflows) | Workflows | ✅ Compactar para Z.ai |
+| product-critical-surfaces | Review | ✅ Referência cruzada |
+| premium-interface-production | Review | ✅ Referência cruzada |
+| workflow-change-approval-gate | Control Plane | ❌ Não aplicável (sem auto-evolution) |
+| SDD v1 | Planning | ✅ Adaptar para docs/SDD.md |
+| classification-matrix | Architecture | ✅ Simplificar para Z.ai |
+| migration-plan | Architecture | ❌ Não aplicável |
+| onboarding-model | Onboarding | ⚠️ Simplificar para Z.ai |
+| planning/ | Planning | ⚠️ Adaptar para docs/ |
+| adapters/workflow/ | Adapters | ❌ Não aplicável (usa docs/) |
+| adapters/runtime/ | Adapters | ❌ Não aplicável (usa bun) |
+
+### 1.3 Skills Z.ai Existentes que Mapeiam para accelerate
+
+| Skill Z.ai | Equivalente accelerate | Status |
+|---|---|---|
+| `prompt-hardening` | prompt-hardening gate | ✅ Existente — referenciar |
+| `napkin-discipline` | napkin runbook discipline | ✅ Existente — referenciar |
+| `coding-agent` | subagent implementation worker | ✅ Existente — referenciar |
+| `verification-before-completion` | closure discipline | ✅ Existente — referenciar |
+| `qa-release-gate` | proof stack layer 4-5 | ✅ Existente — referenciar |
+| `forensic-review` | forensic closure | ✅ Existente — referenciar |
+| `product-runtime-review` | product-critical surface | ✅ Existente — referenciar |
+| `regression-matrix` | persistent regression | ✅ Existente — referenciar |
+| `anti-abuse-review` | enforcement surface | ✅ Existente — referenciar |
+| `claim-verification` | proof evidence | ✅ Existente — referenciar |
+| `acceptance-verification` | acceptance gate | ✅ Existente — referenciar |
+| `nextjs-best-practices` | stack profile enforcement | ✅ Existente — referenciar |
+| `front-react-shadcn` | frontend enforcement | ✅ Existente — referenciar |
+| `fullstack-dev` | full-stack implementation | ✅ Existente — referenciar |
+| `ascii-wireframe` | wireframe gate | ✅ Existente — referenciar |
+| `test-driven-development` | implementation proof | ✅ Existente — referenciar |
+
+**Conclusão:** ~16 das ~30 funções do accelerate já existem como skills separadas no Z.ai. O trabalho é **orquestrá-las**, não recriá-las.
+
+### 1.4 Gaps Reais (o que NÃO existe e PRECISA ser criado)
+
+```
+❌ CLASSIFICAÇÃO DE REQUEST (trivial vs non-trivial vs orquestrado)
+❌ MATRIZ DE BRANCH ENFORCEMENT (qual skill abrir por tipo de trabalho)
+❌ ORDEM DE PROOF (qual prova vem primeiro)
+❌ INTEGRAÇÃO COM SUBAGENTES (quando usar qual dos 5)
+❌ PROTOCOLO DE EXECUÇÃO BOUNDED (scope → execute → verify → close)
+❌ RUNTIME PACKETS (visibilidade do estado da execução)
+❌ CALIBRAÇÃO OPERACIONAL (quanto processo é proporcional)
+❌ SELF-EVOLUTION PROTOCOL (como evoluir skills por evidência)
+```
+
+---
+
+## 2. Arquitetura da Solução
+
+### 2.1 Estratégia: "1 Skill Raiz + N Skills Satélite"
+
+O accelerate para Z.ai será distribuído em múltiplas skills, não um monolito:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  accelerate (SKILL RAIZ)                                    │
+│  ├── Classificação de requests                               │
+│  ├── Branch enforcement (compactado)                         │
+│  ├── Ordem de proof (compactado)                             │
+│  ├── Integração com subagentes                               │
+│  ├── Runtime packets template                                │
+│  ├── Calibração operacional                                  │
+│  └── Referências para skills satélite                        │
+│                                                               │
+│  SKILLS SATÉLITE (existentes, referenciadas):                 │
+│  ├── prompt-hardening          ← Gate de hardening            │
+│  ├── napkin-discipline         ← Guardrail de execução        │
+│  ├── coding-agent              ← Workflow de implementação    │
+│  ├── verification-before-completion ← Gate de fechamento      │
+│  ├── qa-release-gate           ← Gate de release              │
+│  ├── forensic-review           ← Forense                     │
+│  ├── product-runtime-review    ← Review de produto            │
+│  ├── regression-matrix         ← Regressão                   │
+│  ├── anti-abuse-review         ← Anti-abuso                  │
+│  ├── claim-verification        ← Verificação de claims       │
+│  ├── acceptance-verification   ← Verificação de aceite       │
+│  ├── test-driven-development   ← TDD                         │
+│  ├── nextjs-best-practices     ← Best practices              │
+│  ├── front-react-shadcn        ← UI patterns                 │
+│  ├── fullstack-dev             ← Full-stack dev               │
+│  └── ascii-wireframe           ← Wireframes                  │
+│                                                               │
+│  NOVOS ARTEFATOS (em docs/):                                 │
+│  ├── docs/accelerate-guide.md  ← Guia operacional            │
+│  ├── docs/accelerate-gaps.md   ← Gaps e limitações           │
+│  └── docs/TASKS.md             ← Template de tasks            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 Por que não um monolito?
+
+1. **Tamanho de contexto:** O SKILL.md completo do accelerate tem ~8000 palavras. Adicionar os 19 workflows e as matrizes completas explodiria o contexto.
+2. **Modularidade:** Skills separadas permitem ativação seletiva. O agente carrega só o que precisa.
+3. **Manutenibilidade:** Mudanças no proof stack não precisam tocar no classificador.
+4. **Composição:** O agente pode combinar accelerate + napkin + prompt-hardening + qa-release-gate sem sobrecarga.
+
+### 2.3 Mecanismo de Enforcement no Z.ai
+
+Como o Z.ai não tem "always-on" nem enforcement obrigatório, usamos 3 camadas:
+
+```
+CAMADA 1 — SKILL.md DESCRIPTION (passiva)
+├── Description forte na <available_skills> que faz o agente
+│   reconhecer quando accelerate é relevante
+│   Ex: "Use as the root orchestration discipline for any
+│        engineering work. Classifies requests, routes to
+│        correct workflow, enforces proof order."
+│
+
+CAMADA 2 — payload.message INSTRUCTIONS (ativa para crons)
+├── Ao criar crons, incluir instruções no payload.message:
+│   "Sempre use a skill accelerate para classificar o trabalho
+│    antes de executar. Siga branch enforcement e proof order."
+│
+
+CAMADA 3 — worklog.md REFERENCES (ativa entre sessões)
+├── Mencionar accelerate no worklog como instrução para
+│   próximas sessões:
+│   "Projetos deste repo devem usar accelerate como
+│    disciplina de orquestração. Veja skills/accelerate/"
+│
+```
+
+---
+
+## 3. Especificação Detalhada: Skill `accelerate`
+
+### 3.1 SKILL.md — Frontmatter
+
+```yaml
+---
+name: accelerate
+description: >
+  Root orchestration discipline for engineering work. Classifies every
+  request as conversational, trivial bounded, or orchestrated non-trivial.
+  Routes into correct branch, opens mandatory skills, enforces proof order
+  (impl → QA → browser → regression → forensic), governs subagent
+  delegation, and blocks closure until all gates pass. Always classify
+  BEFORE executing. Never skip proof layers. Reference adjacent skills:
+  prompt-hardening, napkin-discipline, coding-agent, verification-before-completion,
+  qa-release-gate, forensic-review, product-runtime-review, regression-matrix.
+metadata:
+  category: orchestration
+  origin: rewritten-from-codex
+  version: 1.0.0-zai
+  platform: z-ai
+---
+```
+
+### 3.2 SKILL.md — Corpo (Constituição Compacta)
+
+Abaixo está a estrutura do corpo do SKILL.md. O documento completo será escrito durante a implementação.
+
+```markdown
+# Accelerate — Z.ai Root Orchestration Discipline
+
+Classify first. Execute second. Proof third. Close last.
+
+## 1. Classification Contract
+
+Every engineering request MUST be classified before execution continues.
+
+### Decision Tree:
+1. Is this engineering work? → No → Conversational path, respond normally
+2. Is it trivial? (single file, clear scope, no cross-surface) → Yes → Trivial Bounded
+3. Is it ambiguous, long, multi-phase, or architecture-heavy? → Yes → Prompt Hardening first
+4. Otherwise → Orchestrated Non-Trivial
+
+### Trivial Bounded:
+- Execute directly with the relevant stack skill
+- No issue topology required
+- Validation: lint + type-check (if applicable)
+- Self-review, then close
+- Runtime packet: 1-line status update
+
+### Orchestrated Non-Trivial:
+- Mandatory: prompt-hardening (if ambiguous)
+- Mandatory: issue identification (in docs/TASKS.md or explicit)
+- Mandatory: proof stack in correct order
+- Mandatory: forensic closure before Done
+
+## 2. Branch Selection (Compact Matrix)
+
+| Branch Type | Mandatory Skills | Proof Required |
+|---|---|---|
+| trivial bounded | stack skill only | lint + self-review |
+| ambiguous/long | prompt-hardening | hardened artifact |
+| issue-driven | coding-agent + verification-before-completion | full proof stack |
+| bug/regression | forensic-review + regression-matrix | full proof stack |
+| product-critical | product-runtime-review + front-react-shadcn | browser-proof mandatory |
+| premium interface | product-runtime-review + ascii-wireframe | wireframe → impl → visual QA |
+| security-sensitive | anti-abuse-review | security review + forensic |
+
+## 3. Proof Order (Mandatory Sequence)
+
+1. **Implementation Proof** — code compiles, tests pass, lint clean
+2. **Backend/Frontend QA** — type-check, query proof, state proof
+3. **Browser Truth** — agent-browser visual QA (when UI involved)
+4. **Persistent Regression** — regression-matrix assessment
+5. **Forensic Closure** — forensic-review before claiming Done
+
+⚠️ Never collapse these into "tested successfully". Each layer is distinct.
+⚠️ Browser truth comes BEFORE Playwright persistence.
+
+## 4. Subagent Integration (Z.ai Task Tool)
+
+| Subagent | Use When |
+|---|---|
+| `general-purpose` | Research, multi-step exploration, broad codebase search |
+| `Explore` | Quick file finding, structure understanding |
+| `Plan` | Architecture decisions, trade-offs, design reviews |
+| `frontend-styling-expert` | CSS, Tailwind, responsive, visual issues, animations |
+| `full-stack-developer` | Feature implementation (API + UI + DB), large refactors |
+
+### Delegation Rules:
+- Master ALWAYS owns: global plan, integration, final review, closure
+- Spawn when: subtask is bounded, parallel value exists, write scope is clear
+- Do NOT spawn when: task is on critical path, scope is vague, too small to justify
+- Max 2-3 parallel subagents. More requires explicit justification.
+- Every subagent must return: scope, files changed, evidence, self-review, risks
+
+## 5. Runtime Packets
+
+Non-trivial runs should expose visible state:
+
+```
+RUNTIME PACKET:
+  Branch: [active branch]
+  Classification: [trivial | non-trivial]
+  Active Skills: [list]
+  Phase: [shaping | planning | executing | proving | closing]
+  Proof Status:
+    Implementation: [✅/❌]
+    Backend QA: [✅/❌/N/A]
+    Frontend QA: [✅/❌/N/A]
+    Browser Proof: [✅/❌/N/A]
+    Regression: [✅/❌/N/A]
+    Forensic: [✅/❌]
+  Blockers: [list or "none"]
+  Closure Status: [blocked | ready | done]
+```
+
+## 6. Calibration (Proportionality)
+
+Use the smallest valid process that still protects correctness:
+
+| Work Size | Process |
+|---|---|
+| One-liner fix | Just fix, lint, self-review |
+| Small feature (1-2 files) | Trivial bounded, lint + browser QA |
+| Medium feature (3-5 files) | Issue ID + full proof stack |
+| Large feature / architecture | Prompt hardening + planning artifact + full proof + forensic |
+
+Do NOT load orchestration for trivial work.
+Do NOT skip proof for large work.
+
+## 7. Closure Rules
+
+Before claiming "Done":
+- [ ] All proof layers satisfied (or explicitly N/A with reason)
+- [ ] Runtime packet shows no blockers
+- [ ] Self-forensic-review completed
+- [ ] worklog.md updated with Stage Summary
+- [ ] docs/TASKS.md updated (if applicable)
+
+## 8. Reference Map (Adjacent Z.ai Skills)
+
+| Need | Skill |
+|---|---|
+| Prompt shaping | prompt-hardening |
+| Execution guardrail | napkin-discipline |
+| Implementation workflow | coding-agent |
+| Pre-close verification | verification-before-completion |
+| Release gate | qa-release-gate |
+| Security review | anti-abuse-review |
+| Product review | product-runtime-review |
+| Forensic review | forensic-review |
+| Regression assessment | regression-matrix |
+| Claim verification | claim-verification |
+| Acceptance check | acceptance-verification |
+| Wireframe discipline | ascii-wireframe |
+| TDD discipline | test-driven-development |
+| Stack enforcement | nextjs-best-practices |
+| UI patterns | front-react-shadcn |
+| Full-stack dev | fullstack-dev |
+
+## 9. What Accelerate Is NOT
+
+- Not an implementation skill (delegates to stack skills)
+- Not a replacement for adjacent domain skills
+- Not mandatory always-on (enforced via description + payload.message)
+- Not an orchestrator payload (no such thing in Z.ai — use agentTurn/webDevReview)
+- Not a guarantee of zero bugs
+- Not a license for unnecessary ceremony on trivial work
+```
+
+### 3.3 Tamanho Estimado do SKILL.md
+
+| Seção | Palavras estimadas |
+|---|---|
+| Frontmatter | 80 |
+| Classification | 200 |
+| Branch Matrix | 150 |
+| Proof Order | 200 |
+| Subagent Integration | 200 |
+| Runtime Packets | 150 |
+| Calibration | 100 |
+| Closure Rules | 80 |
+| Reference Map | 120 |
+| What It Is Not | 60 |
+| **TOTAL** | **~1,340** |
+
+Isso é **6x mais compacto** que o accelerate original (~8,000 palavras no SKILL.md + README.md combinados). A compacidade é essencial porque o SKILL.md inteiro é carregado no contexto quando invocado.
+
+---
+
+## 4. Documentos Complementares em `docs/`
+
+### 4.1 `docs/accelerate-guide.md`
+
+Guia operacional expandido (equivalente ao README.md do accelerate original). Inclui:
+
+- **Exemplos concretos** de classificação para cada branch
+- **Templates** de runtime packets para diferentes cenários
+- **Checklist** de closure por branch type
+- **Integração com crons** — exemplos de payload.message que reforçam accelerate
+- **Integração com worklog.md** — como mencionar accelerate para próximas sessões
+- **Self-evolution protocol** — como o humano evolui as skills por evidência repetida
+- **FAQ** — diferenças entre accelerate Codex vs Z.ai
+
+### 4.2 `docs/accelerate-gaps.md`
+
+Documento honesto sobre o que **não pode** ser replicado:
+
+```
+GAPS DO ACELERATE-TO-ZAI (IMPOSSÍVEL DE REPLICAR):
+├── ❌ Always-on enforcement (Z.ai carrega skills sob demanda)
+├── ❌ Agent promotion (não há *.toml, agents são 5 subagentes fixos)
+├── ❌ Workflow adapter (Linear/GitHub — não há issue tracker nativo)
+├── ❌ Auto self-evolution (skills são arquivos estáticos, não se auto-modificam)
+├── ❌ Persona model com ativação automática (o agente decide quando usar)
+├── ❌ Branch enforcement obrigatório (é recomendação, não gate)
+├── ❌ Proof stack como gate de bloqueio (é checklist, não bloqueio)
+└── ❌ Onboarding loop interativo (não há UI para descoberta automatizada)
+
+MITIGAÇÕES:
+├── ✅ Descrição forte no SKILL.md → inferência mais frequente
+├── ✅ payload.message em crons → instrução direta
+├── ✅ worklog.md → memória entre sessões
+├── ✅ docs/ → documentação expandida quando necessário
+├── ✅ Human-in-the-loop → o humano decide quando enforce
+└── ✅ Multiple skills existentes → já cobrem 16 das 30 funções
+```
+
+---
+
+## 5. Plano de Implementação (Fases)
+
+### Fase 0 — Preparação
+**Objetivo:** Garantir base limpa
+
+| # | Ação | Artefato |
+|---|---|---|
+| 0.1 | Criar branch `feat/accelerate-zai` | git |
+| 0.2 | Backup do `docs/analise-360-accelerate.md` existente | docs/ |
+| 0.3 | Documentar skills existentes que mapeiam para accelerate | docs/accelerate-gaps.md |
+
+### Fase 1 — Skill Raiz `accelerate`
+**Objetivo:** Criar o SKILL.md raiz compacto
+
+| # | Ação | Artefato | Estimativa |
+|---|---|---|---|
+| 1.1 | Escrever frontmatter (name, description, metadata) | skills/accelerate/SKILL.md | ~30min |
+| 1.2 | Escrever Classification Contract (decision tree) | skills/accelerate/SKILL.md | ~45min |
+| 1.3 | Escrever Branch Selection Matrix (compactada) | skills/accelerate/SKILL.md | ~30min |
+| 1.4 | Escrever Proof Order (5 camadas) | skills/accelerate/SKILL.md | ~30min |
+| 1.5 | Escrever Subagent Integration (5 → Z.ai mapping) | skills/accelerate/SKILL.md | ~30min |
+| 1.6 | Escrever Runtime Packets template | skills/accelerate/SKILL.md | ~20min |
+| 1.7 | Escrever Calibration rules | skills/accelerate/SKILL.md | ~20min |
+| 1.8 | Escrever Closure Rules | skills/accelerate/SKILL.md | ~15min |
+| 1.9 | Escrever Reference Map (adjacent skills) | skills/accelerate/SKILL.md | ~20min |
+| 1.10 | Validação: descreve acuradamente Z.ai constraints | skills/accelerate/SKILL.md | ~30min |
+
+### Fase 2 — Documentação Complementar
+**Objetivo:** Guias operacionais em docs/
+
+| # | Ação | Artefato | Estimativa |
+|---|---|---|---|
+| 2.1 | Criar guia operacional expandido | docs/accelerate-guide.md | ~2h |
+| 2.2 | Criar documento de gaps e limitações | docs/accelerate-gaps.md | ~1h |
+| 2.3 | Atualizar manual-agente-humano.md com seção accelerate | docs/manual-agente-humano.md | ~30min |
+
+### Fase 3 — Fortalecimento de Skills Existentes
+**Objetivo:** Garantir que skills referenciadas estejam atualizadas
+
+| # | Ação | Artefato | Estimativa |
+|---|---|---|---|
+| 3.1 | Revisar prompt-hardening — adicionar referência a accelerate | skills/prompt-hardening/SKILL.md | ~20min |
+| 3.2 | Revisar napkin-discipline — adicionar referência a accelerate | skills/napkin-discipline/SKILL.md | ~20min |
+| 3.3 | Revisar coding-agent — adicionar referência a accelerate | skills/coding-agent/SKILL.md | ~20min |
+| 3.4 | Revisar verification-before-completion — proof order reference | skills/verification-before-completion/SKILL.md | ~15min |
+| 3.5 | Revisar qa-release-gate — proof stack reference | skills/qa-release-gate/SKILL.md | ~15min |
+
+### Fase 4 — Templates e Integração
+**Objetivo:** Templates prontos para uso
+
+| # | Ação | Artefato | Estimativa |
+|---|---|---|---|
+| 4.1 | Template de payload.message para crons com accelerate | docs/accelerate-guide.md | ~30min |
+| 4.2 | Template de worklog.md com runtime packet | docs/accelerate-guide.md | ~20min |
+| 4.3 | Template de docs/TASKS.md com classification | docs/accelerate-guide.md | ~30min |
+| 4.4 | Template de cron para webDevReview + accelerate | docs/accelerate-guide.md | ~20min |
+
+### Fase 5 — Validação e Teste
+**Objetivo:** Verificar que funciona no runtime Z.ai
+
+| # | Ação | Artefato | Estimativa |
+|---|---|---|---|
+| 5.1 | Teste: pedir ao agente para classificar uma request trivial | Conversa Z.ai | ~10min |
+| 5.2 | Teste: pedir ao agente para classificar uma request non-trivial | Conversa Z.ai | ~10min |
+| 5.3 | Teste: verificar se accelerate é inferida pela description | Conversa Z.ai | ~10min |
+| 5.4 | Teste: criar cron com accelerate no payload.message | Cron Z.ai | ~10min |
+| 5.5 | Ajustar descrição do SKILL.md se inferência estiver fraca | skills/accelerate/SKILL.md | ~30min |
+
+### Fase 6 — Publicação
+**Objetivo:** Disponibilizar no GitHub
+
+| # | Ação | Artefato | Estimativa |
+|---|---|---|---|
+| 6.1 | Commit final com todos os artefatos | git | ~15min |
+| 6.2 | Push para branch feat/accelerate-zai | GitHub | ~10min |
+| 6.3 | Criar PR com descrição completa | GitHub PR | ~30min |
+| 6.4 | (Opcional) Publicar como skill standalone em repo separado | Novo repo | ~1h |
+
+---
+
+## 6. Mapeamento Detalhado: Workflows accelerate → Z.ai
+
+### 6.1 Dos 19 Workflows Originais
+
+| # | Workflow (accelerate) | Z.ai Equivalente |
+|---|---|---|
+| 1 | Entry-Shaping | accelerate classification + prompt-hardening |
+| 2 | Issue-Bootstrap | docs/TASKS.md (manual) |
+| 3 | Prompt-Hardening | prompt-hardening skill |
+| 4 | Planning-Artifact | docs/SDD.md + docs/TASKS.md |
+| 5 | Wireframe-Gate | ascii-wireframe skill |
+| 5b | Design-Artifact | ascii-wireframe + product-runtime-review |
+| 6 | Backend-Implementation | fullstack-dev skill |
+| 7 | Frontend-Implementation | frontend-styling-expert subagent + front-react-shadcn |
+| 7b | Implementation-Handoff | coding-agent skill |
+| 8 | Backend-QA | bun run lint + type-check |
+| 9 | Frontend-QA | bun run lint + agent-browser |
+| 10 | Browser-Proof | agent-browser |
+| 11 | Playwright-Persistence | ❌ Não disponível no Z.ai |
+| 12 | Security-Review | anti-abuse-review skill |
+| 13 | Anti-Abuse | anti-abuse-review skill |
+| 14 | Contract-Governance | claim-verification skill |
+| 15 | Query-Shape | ❌ N/A (usa SQLite, não Django ORM) |
+| 15b | Governance-Audit | forensic-review skill |
+| 15c | Admin/Operator | N/A (Z.ai não tem admin surfaces) |
+| 16 | Provider-Runtime-Audit | N/A |
+| 16b | Performance/Observability | N/A |
+| 17 | Legacy-Transplant | N/A |
+| 18 | Feature-Flag/Rollout | N/A |
+| 19 | Incident/Hotfix | accelerate classification (branch: bug/regression) |
+| 19b | Incident Re-Entry | accelerate classification |
+
+**Cobertura:** 14/19 workflows têm equivalente direto. 5 são N/A (específicos de Django/Linear/infra).
+
+### 6.2 Dos 12 Branches Originais
+
+| Branch | Z.ai Implementation |
+|---|---|
+| trivial bounded | Classificação → execução direta → lint → close |
+| ambiguous/long/epic | prompt-hardening → plan → execute → proof |
+| issue-driven delivery | docs/TASKS.md → execute → proof → close |
+| bug/failure/regression | forensic-review → fix → regression-matrix → close |
+| adversarial/security | anti-abuse-review → fix → forensic → close |
+| architecture/governance | Plan subagent → docs/SDD.md → execute → proof |
+| runtime/product-heavy | product-runtime-review → fix → browser QA → close |
+| product-critical surface | product-runtime-review + front-react-shadcn → visual QA |
+| premium interface | ascii-wireframe → product-runtime-review → visual QA |
+| untrusted ingress/upload | anti-abuse-review → validation → forensic |
+| persisted-modeling/contract | claim-verification → verify → forensic |
+| browser-proof audit | agent-browser → full route audit → report |
+
+**Cobertura:** 12/12 branches — todos têm implementação viável no Z.ai.
+
+---
+
+## 7. Diferenças Fundamentais (Codex vs Z.ai)
+
+### 7.1 Modelo de Memória
+
+```
+CODEX/CLAUDE:                    Z.AI:
+├── Sessão longa (mesmo chat)    ├── Sessões isoladas (stateless)
+├── Contexto acumula             ├── Contexto reseta a cada sessão
+├── Linear persiste issues       ├── worklog.md é a única memória
+├── *.toml agents carregados     ├── Skills carregadas sob demanda
+└── .accelerate/ workspace       └── docs/ + skills/
+```
+
+**Implicação:** No Z.ai, TUDO precisa ser escrito em arquivo. O accelerate não pode depender de "o agente lembra da última sessão".
+
+### 7.2 Modelo de Delegação
+
+```
+CODEX/CLAUDE:                    Z.AI:
+├── Agents são arquivos *.toml   ├── 5 subagentes via Task tool
+├── Cada agent tem skill set     ├── Todos têm MESMO tool set
+├── Persona model define papéis  ├── Diferem APENAS no system prompt
+├── Agent pode criar outros      ├── Agente principal spawna via Task
+├── Integration via issue #      ├── Integration via worklog.md
+└── Review hierarchy (5 níveis)  └── Review = agente revisa output
+```
+
+**Implicação:** O subagent-model do accelerate precisa ser simplificado. Não há "Implementation Worker" como entidade separada — é um `full-stack-developer` com instruções específicas no prompt.
+
+### 7.3 Modelo de Proof
+
+```
+CODEX/CLAUDE:                    Z.AI:
+├── Chrome DevTools manual       ├── agent-browser automatizado
+├── Playwright (persistente)     ├── ❌ Não disponível
+├── manage.py check (Django)     ├── bun run lint
+├── type-check (npm)             ├── bun run lint (inclui TS)
+├── EXPLAIN (PostgreSQL)         ├── ❌ N/A (SQLite)
+├── AI Review Report (Linear)    ├── worklog.md Stage Summary
+└── Forensic closure             ├── forensic-review skill
+```
+
+**Implicação:** O proof stack é reduzido de 5 para 3-4 camadas viáveis. Playwright e EXPLAIN não existem. Browser proof é via agent-browser (automatizado, não manual).
+
+---
+
+## 8. Cron Integration (Exemplos Práticos)
+
+### 8.1 Cron com accelerate (agentTurn)
+
+```
+payload.message:
+"Siga a disciplina accelerate para este projeto:
+
+1. Antes de QUALQUER execução, classifique a request:
+   - Trivial (1-2 arquivos, scope claro) → execute direto
+   - Non-trivial (3+ arquivos, cross-surface) → proof stack completo
+
+2. Siga docs/TASKS.md para identificar próxima task pendente
+3. Execute seguindo critérios de aceite
+4. Proof stack: lint → browser QA (se UI) → self-review → forensic
+5. Atualize worklog.md com runtime packet completo
+6. Marque ✅ em docs/TASKS.md
+
+NÃO:
+- Invente tasks extras
+- Skip proof layers
+- Claim 'Done' sem runtime packet"
+```
+
+### 8.2 Cron com accelerate (webDevReview)
+
+```
+payload.message:
+"Siga a disciplina accelerate com webDevReview:
+
+1. Classifique o trabalho atual (leia worklog.md)
+2. Execute agent-browser para QA visual
+3. Se bugs: corrija seguindo branch bug/regression
+4. Se estável: proponha melhorias following accelerate classification
+5. Proof: browser QA → lint → self-review → forensic
+6. Runtime packet no worklog.md
+7. [Mandatory] Melhore estilo com mais detalhes
+8. [Mandatory] Adicione mais features e funcionalidade"
+```
+
+---
+
+## 9. Self-Evolution Protocol (Manual)
+
+Como o Z.ai não suporta auto-evolution de skills, o processo é humano-dirigido:
+
+### 9.1 Coleta de Evidência
+
+```
+Após cada sessão de trabalho com accelerate, o humano deve:
+
+1. Revisar worklog.md — o runtime packet foi preenchido?
+2. Identificar falhas:
+   - O agente pulou proof layers? → enforcement weak
+   - O agente classificou errado? → description needs tuning
+   - O agente inventou trabalho? → closure rules too loose
+   - O agente não usou accelerate? → description not strong enough
+3. Verificar padrões repetidos (3+ sessões)
+```
+
+### 9.2 Ciclo de Evolução
+
+```
+EVIDÊNCIA REPETIDA → DECISÃO HUMANA → AÇÃO:
+
+"O agente sempre pula browser-proof" → Description forte no SKILL.md
+"O agente não classifica requests"   → payload.message mais explicito
+"O proof stack é pesado demais"      → Calibration rules mais flexíveis
+"Falta skill para X"                 → Criar nova skill satélite
+"Branch Y nunca é usado"             → Remover do SKILL.md
+```
+
+### 9.3 Registro de Evolução
+
+Cada evolução deve ser registrada em `docs/accelerate-guide.md` na seção "Evolution Log":
+
+```markdown
+## Evolution Log
+
+### 2026-06-XX — v1.1
+- **Trigger:** Agent consistently skipped browser-proof on trivial work
+- **Root Cause:** Calibration rules too strict for small changes
+- **Fix:** Added "browser QA optional for trivial bounded" to calibration
+- **Evidence:** 5 sessions where browser-proof added no value
+```
+
+---
+
+## 10. Riscos e Mitigações
+
+| Risco | Probabilidade | Impacto | Mitigação |
+|---|---|---|---|
+| Agente nunca usa accelerate | Média | Alto | Description forte + payload.message + worklog reference |
+| SKILL.md muito longo para contexto | Baixa | Médio | Manter <1500 palavras, docs expandidos separadamente |
+| Proof stack ignorado em crons | Média | Alto | Incluir proof checklist no payload.message do cron |
+| Classificação errada (trivial → non-trivial) | Baixa | Baixo | Calibração gentil — excesso de processo é melhor que falta |
+| Skills satélite desatualizadas | Baixa | Médio | Fase 3 garante referências cruzadas |
+| Conflito com napkin-discipline | Baixa | Baixo | Coexistência: accelerate = orchestration, napkin = execution guardrail |
+| Usuário espera feature-parity completa | Média | Baixo | docs/accelerate-gaps.md documenta honestamente |
+
+---
+
+## 11. Métricas de Sucesso
+
+### 11.1 Métricas Qualitativas
+- [ ] Agente classifica requests antes de executar (observação em 5+ sessões)
+- [ ] Runtime packets são preenchidos em worklog.md
+- [ ] Proof stack é seguido (não colapsado em "tested")
+- [ ] Closure rules são respeitadas (nenhum "Done" prematuro)
+
+### 11.2 Métricas Quantitativas
+- [ ] Taxa de inferência: accelerate é carregada em >80% das sessões de engenharia
+- [ ] SKILL.md < 1,500 palavras (context budget)
+- [ ] Zero conflitos com skills existentes
+- [ ] Redução de bugs introduzidos por crons (baseline: worklog.md antes/depois)
+
+---
+
+## 12. Cronograma
+
+```
+SEMANA 1:
+  ├── Fase 0: Preparação (1h)
+  ├── Fase 1: Skill raiz accelerate (5h)
+  └── Fase 2: Documentação (3h)
+
+SEMANA 2:
+  ├── Fase 3: Fortalecimento de skills existentes (2h)
+  ├── Fase 4: Templates e integração (2h)
+  └── Fase 5: Validação e teste (1h)
+
+SEMANA 3:
+  └── Fase 6: Publicação (2h)
+      ├── Commit + Push
+      ├── PR com descrição
+      └── (Opcional) Repo standalone
+
+TOTAL ESTIMADO: ~16 horas de trabalho humano + agente
+```
+
+---
+
+## 13. Anexo: Mapa Completo de Referências
+
+### 13.1 accelerate Original → Z.ai
+
+| Arquivo accelerate (GitHub) | Destino no Z.ai |
+|---|---|
+| `SKILL.md` | `skills/accelerate/SKILL.md` (reescrito) |
+| `AGENTS.md` | Embed no SKILL.md + `docs/accelerate-guide.md` |
+| `README.md` | `docs/accelerate-guide.md` (adaptado) |
+| `core/control-plane/branch-enforcement-matrix.md` | Embed compacto no SKILL.md |
+| `core/control-plane/quick-invocation-map.md` | Embed compacto no SKILL.md |
+| `core/issue-topology/issue-driven-mutation-stack.md` | `docs/accelerate-guide.md` (adaptado) |
+| `core/hardening/prompt-hardening.md` | Referência a `skills/prompt-hardening/` |
+| `core/delegation/subagent-model.md` | Embed compacto no SKILL.md |
+| `core/runtime-packets/qa-proof-stack.md` | Embed compacto no SKILL.md |
+| `core/risk/enforcement-surfaces.md` | Embed compacto no SKILL.md |
+| `core/workflows/operational-calibration.md` | Embed compacto no SKILL.md |
+| `core/workflows/self-evolution.md` | `docs/accelerate-guide.md` (protocolo manual) |
+| `core/workflows/maturity-control.md` | `docs/accelerate-guide.md` (protocolo manual) |
+| `core/workflows/catalog.md` | Referência cruzada no SKILL.md |
+| `core/review/product-critical-surfaces.md` | Referência a `skills/product-runtime-review/` |
+| `core/review/premium-interface-production.md` | Referência cruzada no SKILL.md + `ascii-wireframe` |
+| `docs/architecture/accelerate-sdd-v1.md` | `docs/accelerate-guide.md` (adaptado) |
+| `docs/architecture/accelerate-pre-agents-baseline.md` | N/A (Z.ai já é "pre-agents") |
+| `docs/architecture/accelerate-classification-matrix.md` | Embed compacto no SKILL.md |
+| `references/*` | N/A (doctrine inherited, não relevante para Z.ai) |
+
+### 13.2 Skills Z.ai Existentes — Grau de Compatibilidade
+
+```
+COMPATÍVEL DIRETO (não precisa mudança):
+├── prompt-hardening
+├── napkin-discipline
+├── coding-agent
+├── verification-before-completion
+├── qa-release-gate
+├── forensic-review
+├── product-runtime-review
+├── regression-matrix
+├── anti-abuse-review
+├── claim-verification
+├── acceptance-verification
+├── test-driven-development
+├── ascii-wireframe
+├── nextjs-best-practices
+├── front-react-shadcn
+└── fullstack-dev
+
+PRECISA DE AJUSTE MENOR (adicionar referência a accelerate):
+├── prompt-hardening      → "Orquestrado por accelerate quando ativo"
+├── napkin-discipline     → "Complementa accelerate como guardrail"
+├── coding-agent          → "Execução dentro do workflow accelerate"
+└── verification-before-completion → "Gate de closure do accelerate"
+
+NÃO PRECISA DE AJUSTE (domínio diferente):
+├── ASR, TTS, VLM, LLM   → AI skills, não relacionadas
+├── image-generation, video-generation → Media skills
+├── web-reader, web-search → Info skills
+├── pdf, docx, ppt, xlsx  → Document skills
+├── finance               → Domain skill
+├── agent-browser         → Tool, não skill de workflow
+└── skill-creator, skill-vetter → Meta skills
+```
+
+---
+
+## 14. Decisões Arquiteturais Pendentes
+
+| # | Decisão | Opções | Recomendação |
+|---|---|---|---|
+| D1 | Nome final | `accelerate`, `z-accelerate`, `accel` | `accelerate` (curto, reconhecível) |
+| D2 | SKILL.md monolito vs multi-arquivo | Um SKILL.md ou SKILL.md + extras/ | Um SKILL.md compacto (<1500 palavras) |
+| D3 | Incluir exemplos no SKILL.md | Sim (mais pesado) ou Não (mais leve) | Não — exemplos ficam em docs/ |
+| D4 | Criar skill `accelerate-qa` separada | Sim (modular) ou Não (compacto) | Não — referenciar skills existentes |
+| D5 | Publicar como repo standalone | Sim (distribuição) ou Não (local) | Fase 6 (opcional) |
+| D6 | Versionar o SKILL.md | Sim (changelog) ou Não | Sim — metadata.version |
+
+---
+
+> *Este plano é um documento vivo. Atualize conforme a implementação revelar novos insights.*
+> *Próxima revisão: após conclusão da Fase 1.*
