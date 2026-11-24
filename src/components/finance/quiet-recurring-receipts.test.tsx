@@ -5,6 +5,11 @@ import { readFileSync } from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RecurringPanel, RecurringTransactionsWidget } from './recurring-transactions';
+import { RecurringTransactionEditor } from './recurring-transaction-editor';
+import { RecurringDeleteConfirmation } from './recurring-delete-confirmation';
+import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { buildReceiptPrintHtml, ReceiptGenerator, ReceiptWorkspace } from './receipt-generator';
 import { buildReceiptFields } from './receipt-fields';
@@ -64,15 +69,79 @@ test('Recorrências distingue a leitura inicial da lista sem registros', () => {
   expect(recurringMarkup(false, [])).toContain('Nenhuma transação recorrente');
 });
 
-test('formulário de recorrência mantém Fechar no cabeçalho e Cancelar no rodapé, sem submissão', () => {
-  // O conteúdo do portal Radix não é renderizado no SSR; aqui verificamos a ligação dos controles ao diálogo.
-  const source = readFileSync(new URL('./recurring-transactions.tsx', import.meta.url), 'utf8');
-  const dialog = source.match(/<Dialog open=\{showFormDialog\}[\s\S]*?<\/Dialog>/)?.[0] ?? '';
-  const header = dialog.match(/<DialogHeader[\s\S]*?<\/DialogHeader>/)?.[0] ?? '';
-  const footer = dialog.match(/<DialogFooter[\s\S]*?<\/DialogFooter>/)?.[0] ?? '';
-  expect(header).toMatch(/<DialogClose asChild>\s*<Button(?=[^>]*type="button")(?=[^>]*aria-label="Fechar")[^>]*>/);
-  expect(footer).toMatch(/<DialogClose asChild>\s*<Button[^>]*>Cancelar<\/Button>/);
-  expect(dialog).toContain('onCloseAutoFocus={restoreFocus}');
+test('formulário de recorrência usa FinanceFormDialogShell com Fechar no cabeçalho, Cancelar sem submissão e onCloseAutoFocus', () => {
+  // O conteúdo do portal Radix não é renderizado no SSR; aqui verificamos o contrato dos módulos e casca.
+  expect(RecurringPanel).toBeTypeOf('function');
+  expect(RecurringTransactionsWidget).toBeTypeOf('function');
+
+  const onOpenChange = () => {};
+  const restoreFocus = () => {};
+  const onSave = () => {};
+  const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previousDispatcher = internals.H;
+  internals.H = { useId: () => 'test-id' };
+  let editor: any;
+  let shell: any;
+  try {
+    editor = RecurringTransactionEditor({
+      mode: 'create',
+      open: true,
+      submitting: false,
+      form: {
+        description: '',
+        amount: '',
+        type: 'EXPENSE',
+        frequency: 'MONTHLY',
+        nextDate: '2026-12-01',
+        categoryId: '',
+        accountId: '',
+        cardId: '',
+      },
+      categories: [],
+      accounts: [],
+      cards: [],
+      onFieldChange: noop,
+      onOpenChange,
+      onCloseAutoFocus: restoreFocus,
+      onSave,
+    });
+    expect(editor.type).toBe(FinanceFormDialogShell);
+    expect(editor.props.closeLabel).toBe('Fechar');
+    expect(editor.props.onCloseAutoFocus).toBe(restoreFocus);
+
+    shell = FinanceFormDialogShell(editor.props);
+  } finally {
+    internals.H = previousDispatcher;
+  }
+  expect(shell.type).toBe(Dialog);
+  const expand = (node: any, pred: (el: any) => boolean): any => {
+    if (!node || typeof node !== 'object') return undefined;
+    if (pred(node)) return node;
+    for (const child of React.Children.toArray(node.props?.children)) {
+      const hit = expand(child, pred);
+      if (hit) return hit;
+    }
+    return undefined;
+  };
+  const content = expand(shell, (e) => e.type === DialogContent);
+  expect(content?.props.showCloseButton).toBe(false);
+  expect(content?.props.onCloseAutoFocus).toBe(restoreFocus);
+  const header = expand(shell, (e) => e.type === DialogHeader);
+  const closeTrigger = expand(header, (e) => e.type === DialogClose);
+  const closeButton = expand(closeTrigger, (e) => e.props?.['aria-label'] === 'Fechar');
+  expect(closeButton?.props.type).toBe('button');
+  const footer = expand(shell, (e) => e.type === DialogFooter);
+  const cancelClose = expand(footer, (e) => e.type === DialogClose);
+  const cancelButton = expand(cancelClose, (e) => e.props?.children === 'Cancelar');
+  expect(cancelButton).toBeDefined();
+  expect(cancelButton.props.type).toBe('button');
+  expect(cancelButton.props.onClick).toBeUndefined();
+
+  const editorSource = readFileSync(new URL('./recurring-transaction-editor.tsx', import.meta.url), 'utf8');
+  const shellSource = readFileSync(new URL('../shared/finance-dialog-shell.tsx', import.meta.url), 'utf8');
+  expect(editorSource).toContain('<FinanceFormDialogShell');
+  expect(editorSource).toContain('closeLabel="Fechar"');
+  expect(shellSource).toMatch(/<DialogClose asChild>\s*<Button[^>]*type="button"[^>]*aria-label=\{closeLabel\}/);
 });
 
 test('Recibos identifica a origem, antecipa a prévia e só oferece saídas com documento', () => {
@@ -242,6 +311,26 @@ test('prévia, impressão, cópia e TXT conservam os campos de compra e transaç
   }
 });
 
+function findRecurringNode(node: any, predicate: (element: any) => boolean): any {
+  if (!node || typeof node !== 'object') return undefined;
+  if (predicate(node)) return node;
+  let children = node.props?.children;
+  if (node.type === RecurringTransactionEditor) {
+    children = RecurringTransactionEditor(node.props);
+  } else if (node.type === RecurringDeleteConfirmation) {
+    children = RecurringDeleteConfirmation(node.props);
+  } else if (node.type === FinanceFormDialogShell) {
+    children = FinanceFormDialogShell(node.props);
+  } else if (node.type === FinanceConfirmationDialogShell) {
+    children = FinanceConfirmationDialogShell(node.props);
+  }
+  for (const child of React.Children.toArray(children)) {
+    const found = findRecurringNode(child, predicate);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 // Exercita os handlers reais com respostas HTTP sintéticas, sem servidor ou banco.
 for (const method of ['POST', 'PUT'] as const) {
  for (const status of [503, 200]) {
@@ -273,15 +362,7 @@ for (const method of ['POST', 'PUT'] as const) {
       };
       return RecurringTransactionsWidget();
     };
-    const find = (node: any, predicate: (element: any) => boolean): any => {
-      if (!node || typeof node !== 'object') return undefined;
-      if (predicate(node)) return node;
-      for (const child of React.Children.toArray(node.props?.children)) {
-        const found = find(child, predicate);
-        if (found) return found;
-      }
-      return undefined;
-    };
+    const find = findRecurringNode;
     try {
       globalThis.fetch = (async (url: any, init?: any) => {
         requests.push({ url: String(url), method: init?.method, body: init?.body });
@@ -353,15 +434,7 @@ for (const operation of ['pause', 'activate', 'delete'] as const) {
         };
         return RecurringTransactionsWidget();
       };
-      const find = (node: any, predicate: (element: any) => boolean): any => {
-        if (!node || typeof node !== 'object') return undefined;
-        if (predicate(node)) return node;
-        for (const child of React.Children.toArray(node.props?.children)) {
-          const found = find(child, predicate);
-          if (found) return found;
-        }
-        return undefined;
-      };
+      const find = findRecurringNode;
       try {
         globalThis.fetch = (async (_url: any, init?: any) => {
           requests.push({ method: init?.method ?? 'GET', body: init?.body });
@@ -426,15 +499,7 @@ for (const operation of ['POST', 'PUT', 'DELETE-same', 'DELETE-other'] as const)
       };
       return RecurringTransactionsWidget();
     };
-    const find = (node: any, predicate: (element: any) => boolean): any => {
-      if (!node || typeof node !== 'object') return undefined;
-      if (predicate(node)) return node;
-      for (const child of React.Children.toArray(node.props?.children)) {
-        const found = find(child, predicate);
-        if (found) return found;
-      }
-      return undefined;
-    };
+    const find = findRecurringNode;
     const panel = (view: any) => find(view, (e) => e.type === RecurringPanel);
     const formDialog = (view: any) => find(view, (e) => typeof e.props?.open === 'boolean' && e.props?.onOpenChange && find(e, (child: any) => child.props?.placeholder === '0,00'));
     const deleteDialog = (view: any) => find(view, (e) => typeof e.props?.open === 'boolean' && e.props?.onOpenChange && find(e, (child: any) => child.props?.children === 'Excluir'));
@@ -503,14 +568,7 @@ test('DELETE impede cliques repetidos por id pendente e permite retry após 503'
     };
     return RecurringTransactionsWidget();
   };
-  const find = (node: any, predicate: (element: any) => boolean): any => {
-    if (!node || typeof node !== 'object') return undefined;
-    if (predicate(node)) return node;
-    for (const child of React.Children.toArray(node.props?.children)) {
-      const found = find(child, predicate); if (found) return found;
-    }
-    return undefined;
-  };
+  const find = findRecurringNode;
   try {
     globalThis.fetch = (async (_url: any, init?: any) => {
       if (!init?.method) return Response.json([]);
@@ -540,10 +598,11 @@ test('DELETE impede cliques repetidos por id pendente e permite retry após 503'
   }
 });
 
-// Portais Radix não aparecem no SSR; verificar o contrato das confirmações na view.
-for (const [file, count] of [["recurring-transactions.tsx",1]] as const) {
-  test(`${file}: confirmação destrutiva usa cores semânticas e hover legível`, async () => {
+// Portais Radix não aparecem no SSR; verificar o contrato das confirmações no módulo extraído.
+for (const [file, count] of [['recurring-delete-confirmation.tsx', 1]] as const) {
+  test(`${file}: confirmação destrutiva usa FinanceConfirmationDialogShell com cores semânticas e hover legível`, async () => {
     const source = await Bun.file(new URL(file, import.meta.url)).text();
+    expect(source).toContain('<FinanceConfirmationDialogShell');
     const actions = [...source.matchAll(/<AlertDialogAction\b([\s\S]*?)<\/AlertDialogAction>/g)];
     expect(actions).toHaveLength(count);
     for (const [, attrs] of actions) {
@@ -553,6 +612,22 @@ for (const [file, count] of [["recurring-transactions.tsx",1]] as const) {
       expect(attrs).toContain('hover:underline');
       expect(attrs).not.toMatch(/text-white|text-destructive-foreground|bg-rose-|hover:bg-destructive\/90/);
     }
+    const parentSource = await Bun.file(new URL('recurring-transactions.tsx', import.meta.url)).text();
+    expect(parentSource).not.toContain('<AlertDialogAction');
+    expect(parentSource).not.toContain('<Dialog ');
+
+    const confirm = RecurringDeleteConfirmation({
+      open: true,
+      onOpenChange: noop,
+      onCloseAutoFocus: noop,
+      onConfirm: noop,
+    });
+    expect(confirm.type).toBe(FinanceConfirmationDialogShell);
+    const alertDialog = findRecurringNode(confirm, (e) => e.type === AlertDialog);
+    expect(alertDialog).toBeDefined();
+    expect(findRecurringNode(confirm, (e) => e.type === AlertDialogContent)?.props.onCloseAutoFocus).toBe(noop);
+    expect(findRecurringNode(confirm, (e) => e.type === AlertDialogCancel)?.props.children).toBe('Cancelar');
+    expect(findRecurringNode(confirm, (e) => e.type === AlertDialogAction)?.props.children).toBe('Excluir');
   });
 }
 
@@ -599,14 +674,7 @@ test('recurring-transactions exibe erro com retry e bloqueia duplo clique durant
     };
     return RecurringTransactionsWidget();
   };
-  const find = (node: any, predicate: (element: any) => boolean): any => {
-    if (!node || typeof node !== 'object') return undefined;
-    if (predicate(node)) return node;
-    for (const child of React.Children.toArray(node.props?.children)) {
-      const found = find(child, predicate); if (found) return found;
-    }
-    return undefined;
-  };
+  const find = findRecurringNode;
   try {
     globalThis.fetch = (async (_url: any, init?: any) => {
       if (init?.method === 'POST') {
@@ -636,6 +704,188 @@ test('recurring-transactions exibe erro com retry e bloqueia duplo clique durant
     pendingPost.resolve(new Response('{}', { status: 201 }));
     await Promise.all([p1, p2]);
     expect(postCount).toBe(1);
+  } finally {
+    internals.H = previousDispatcher; globalThis.fetch = originalFetch; toast.success = originalSuccess; toast.error = originalError;
+  }
+});
+
+for (const method of ['POST', 'PUT', 'DELETE'] as const) {
+  test(`${method}: rejeição de transporte preserva abertura/rascunho e não dispara GET nem sucesso`, async () => {
+    const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const previousDispatcher = internals.H, originalFetch = globalThis.fetch;
+    const originalSuccess = toast.success, originalError = toast.error;
+    const states: any[] = [], refs: any[] = [];
+    let index = 0, refIndex = 0;
+    let successes = 0, errors = 0;
+    const requests: string[] = [];
+    const render = () => {
+      index = 0; refIndex = 0;
+      internals.H = {
+        useState: (initial: unknown) => {
+          const i = index++; if (!(i in states)) states[i] = initial;
+          return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
+        },
+        useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
+        useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+      };
+      return RecurringTransactionsWidget();
+    };
+    try {
+      globalThis.fetch = (async (_url: any, init?: any) => {
+        const reqMethod = init?.method ?? 'GET';
+        requests.push(reqMethod);
+        if (init?.method) throw new Error('Falha de transporte sintética');
+        return Response.json([]);
+      }) as typeof fetch;
+      toast.success = (() => { successes++; return 1; }) as typeof toast.success;
+      toast.error = (() => { errors++; return 1; }) as typeof toast.error;
+
+      let view = render();
+      const panel = findRecurringNode(view, (e) => e.type === RecurringPanel);
+      if (method === 'DELETE') {
+        panel.props.requestDelete('r1', { currentTarget: null });
+        view = render();
+        const dialog = findRecurringNode(view, (e) => e.type === RecurringDeleteConfirmation);
+        const action = findRecurringNode(dialog, (e) => e.props?.children === 'Excluir');
+        await action.props.onClick({ preventDefault: noop });
+        view = render();
+        const after = findRecurringNode(view, (e) => e.type === RecurringDeleteConfirmation);
+        expect(after.props.open).toBe(true);
+      } else {
+        if (method === 'POST') panel.props.openNew({ currentTarget: null });
+        else panel.props.openEdit(entries[0], { currentTarget: null });
+        view = render();
+        findRecurringNode(view, (e) => e.props?.placeholder === 'Ex: Salário, Aluguel, Netflix...').props.onChange({ target: { value: 'Rascunho transporte' } });
+        view = render();
+        findRecurringNode(view, (e) => e.props?.placeholder === '0,00').props.onChange({ target: { value: '42' } });
+        view = render();
+        const editor = findRecurringNode(view, (e) => e.type === RecurringTransactionEditor);
+        const submit = findRecurringNode(editor, (e) => e.props?.children === (method === 'POST' ? 'Criar' : 'Salvar'));
+        await submit.props.onClick();
+        view = render();
+        const after = findRecurringNode(view, (e) => e.type === RecurringTransactionEditor);
+        expect(after.props.open).toBe(true);
+        expect(after.props.form.description).toBe('Rascunho transporte');
+        expect(after.props.form.amount).toBe('42');
+      }
+      expect(requests).toEqual([method]);
+      expect(successes).toBe(0);
+      expect(errors).toBe(1);
+    } finally {
+      internals.H = previousDispatcher; globalThis.fetch = originalFetch; toast.success = originalSuccess; toast.error = originalError;
+    }
+  });
+}
+
+for (const operation of ['POST', 'PUT', 'DELETE'] as const) {
+  test(`${operation}: OK seguido de GET malsucedido anuncia sucesso só após API e não trata GET como falha de gravação`, async () => {
+    const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const previousDispatcher = internals.H, originalFetch = globalThis.fetch;
+    const originalSuccess = toast.success, originalError = toast.error;
+    const states: any[] = [], refs: any[] = [];
+    let index = 0, refIndex = 0;
+    const messages: string[] = [];
+    const requests: string[] = [];
+    const pendingWrite = Promise.withResolvers<Response>();
+    const render = () => {
+      index = 0; refIndex = 0;
+      internals.H = {
+        useState: (initial: unknown) => {
+          const i = index++; if (!(i in states)) states[i] = initial;
+          return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
+        },
+        useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
+        useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+      };
+      return RecurringTransactionsWidget();
+    };
+    try {
+      globalThis.fetch = (async (_url: any, init?: any) => {
+        const reqMethod = init?.method ?? 'GET';
+        requests.push(reqMethod);
+        if (init?.method) return pendingWrite.promise;
+        return new Response(null, { status: 503 });
+      }) as typeof fetch;
+      toast.success = ((msg: string) => { messages.push(`success:${msg}`); return 1; }) as typeof toast.success;
+      toast.error = ((msg: string) => { messages.push(`error:${msg}`); return 1; }) as typeof toast.error;
+
+      let view = render();
+      const panel = findRecurringNode(view, (e) => e.type === RecurringPanel);
+      let pending: Promise<unknown>;
+      if (operation === 'DELETE') {
+        panel.props.requestDelete('r1', { currentTarget: null });
+        view = render();
+        const dialog = findRecurringNode(view, (e) => e.type === RecurringDeleteConfirmation);
+        const action = findRecurringNode(dialog, (e) => e.props?.children === 'Excluir');
+        pending = action.props.onClick({ preventDefault: noop });
+      } else {
+        if (operation === 'POST') panel.props.openNew({ currentTarget: null });
+        else panel.props.openEdit(entries[0], { currentTarget: null });
+        view = render();
+        findRecurringNode(view, (e) => e.props?.placeholder === 'Ex: Salário, Aluguel, Netflix...').props.onChange({ target: { value: 'Validado' } });
+        view = render();
+        findRecurringNode(view, (e) => e.props?.placeholder === '0,00').props.onChange({ target: { value: '15' } });
+        view = render();
+        const editor = findRecurringNode(view, (e) => e.type === RecurringTransactionEditor);
+        const submit = findRecurringNode(editor, (e) => e.props?.children === (operation === 'POST' ? 'Criar' : 'Salvar'));
+        pending = submit.props.onClick();
+      }
+      expect(messages).toEqual([]);
+      pendingWrite.resolve(new Response('{}', { status: operation === 'POST' ? 201 : 200 }));
+      await pending;
+      await Promise.resolve();
+      view = render();
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toStartWith('success:');
+      expect(requests).toEqual([operation, 'GET']);
+      expect(findRecurringNode(view, (e) => e.type === RecurringPanel).props.error).toBe(true);
+    } finally {
+      internals.H = previousDispatcher; globalThis.fetch = originalFetch; toast.success = originalSuccess; toast.error = originalError;
+    }
+  });
+}
+
+test('PUT: envio pendente repetido no mesmo ID envia apenas 1 mutação', async () => {
+  const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previousDispatcher = internals.H, originalFetch = globalThis.fetch;
+  const originalSuccess = toast.success, originalError = toast.error;
+  const states: any[] = [], refs: any[] = [];
+  let index = 0, refIndex = 0;
+  let putCount = 0;
+  const pendingPut = Promise.withResolvers<Response>();
+  const render = () => {
+    index = 0; refIndex = 0;
+    internals.H = {
+      useState: (initial: unknown) => {
+        const i = index++; if (!(i in states)) states[i] = initial;
+        return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
+      },
+      useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
+      useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+    };
+    return RecurringTransactionsWidget();
+  };
+  try {
+    globalThis.fetch = (async (_url: any, init?: any) => {
+      if (init?.method === 'PUT') {
+        putCount++;
+        return pendingPut.promise;
+      }
+      return Response.json([]);
+    }) as typeof fetch;
+    toast.success = (() => 1) as typeof toast.success;
+    toast.error = (() => 1) as typeof toast.error;
+
+    let view = render();
+    findRecurringNode(view, (e) => e.type === RecurringPanel).props.openEdit(entries[0], { currentTarget: null });
+    view = render();
+    const editor = findRecurringNode(view, (e) => e.type === RecurringTransactionEditor);
+    const submit = findRecurringNode(editor, (e) => e.props?.children === 'Salvar');
+    const p1 = submit.props.onClick();
+    const p2 = submit.props.onClick();
+    pendingPut.resolve(new Response('{}', { status: 200 }));
+    await Promise.all([p1, p2]);
+    expect(putCount).toBe(1);
   } finally {
     internals.H = previousDispatcher; globalThis.fetch = originalFetch; toast.success = originalSuccess; toast.error = originalError;
   }

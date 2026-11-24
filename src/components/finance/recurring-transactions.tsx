@@ -1,38 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
-import { Plus, Pencil, Trash2, RotateCcw, Pause, Play, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, RotateCcw, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogClose,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { currencyFmt } from '@/lib/helpers';
+import {
+  RecurringTransactionEditor,
+  type RecurringTransactionDraft,
+} from './recurring-transaction-editor';
+import { RecurringDeleteConfirmation } from './recurring-delete-confirmation';
 
 const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)] motion-reduce:transition-none';
 
@@ -224,7 +201,6 @@ export function RecurringTransactionsWidget() {
   const [processing, setProcessing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const formId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLButtonElement | null>(null);
   const formOpening = useRef<object | null>(null);
@@ -248,7 +224,7 @@ export function RecurringTransactionsWidget() {
   defaultNextDate.setMonth(defaultNextDate.getMonth() + 1);
   const defaultNextDateStr = defaultNextDate.toISOString().split('T')[0];
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<RecurringTransactionDraft>({
     description: '',
     amount: '',
     type: 'EXPENSE',
@@ -468,185 +444,38 @@ export function RecurringTransactionsWidget() {
         toggleActive={toggleActive}
         onRetry={() => { setLoading(true); void fetchRecurring(); }}
       />
-      {/* Form Dialog */}
-      <Dialog open={showFormDialog} onOpenChange={(open) => { if (!open) formOpening.current = null; setShowFormDialog(open); }}>
-        <DialogContent showCloseButton={false} onCloseAutoFocus={restoreFocus} className="max-h-[90dvh] overflow-y-auto motion-reduce:animate-none">
-          <DialogHeader className="relative pe-12 text-start">
-            <DialogTitle>
-              {editing
-                ? 'Editar Transação Recorrente'
-                : 'Nova Transação Recorrente'}
-            </DialogTitle>
-            <DialogDescription>
-              {editing
-                ? 'Atualize os dados da transação recorrente'
-                : 'Configure uma nova transação que se repete automaticamente'}
-            </DialogDescription>
-            <DialogClose asChild>
-              <Button type="button" variant="ghost" size="icon" aria-label="Fechar" className={`absolute end-0 top-0 ${focusClass}`}>
-                <X aria-hidden="true" />
-              </Button>
-            </DialogClose>
-          </DialogHeader>
-          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor={`${formId}-type`}>Tipo</Label>
-              <Select
-                value={form.type}
-                onValueChange={(v) => setForm({ ...form, type: v })}
-              >
-                <SelectTrigger id={`${formId}-type`} className={`w-full ${focusClass}`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="EXPENSE">Despesa</SelectItem>
-                  <SelectItem value="INCOME">Receita</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor={`${formId}-description`}>Descrição</Label>
-              <Input id={`${formId}-description`}
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-                placeholder="Ex: Salário, Aluguel, Netflix..."
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${formId}-amount`}>Valor (R$)</Label>
-              <Input id={`${formId}-amount`}
-                type="number"
-                step="0.01"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                placeholder="0,00"
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${formId}-frequency`}>Frequência</Label>
-              <Select
-                value={form.frequency}
-                onValueChange={(v) => setForm({ ...form, frequency: v })}
-              >
-                <SelectTrigger id={`${formId}-frequency`} className={`w-full ${focusClass}`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="WEEKLY">Semanal</SelectItem>
-                  <SelectItem value="BIWEEKLY">Quinzenal</SelectItem>
-                  <SelectItem value="MONTHLY">Mensal</SelectItem>
-                  <SelectItem value="QUARTERLY">Trimestral</SelectItem>
-                  <SelectItem value="YEARLY">Anual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor={`${formId}-next-date`}>Próxima Data</Label>
-              <Input id={`${formId}-next-date`}
-                type="date"
-                value={form.nextDate}
-                onChange={(e) => setForm({ ...form, nextDate: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${formId}-category`}>Categoria</Label>
-              <Select
-                value={form.categoryId}
-                onValueChange={(v) => setForm({ ...form, categoryId: v })}
-              >
-                <SelectTrigger id={`${formId}-category`} className={`w-full ${focusClass}`}>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories
-                    .filter((c) => c.type === form.type)
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor={`${formId}-account`}>Conta</Label>
-              <Select
-                value={form.accountId}
-                onValueChange={(v) => setForm({ ...form, accountId: v })}
-              >
-                <SelectTrigger id={`${formId}-account`} className={`w-full ${focusClass}`}>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor={`${formId}-card`}>Cartão</Label>
-              <Select
-                value={form.cardId}
-                onValueChange={(v) => setForm({ ...form, cardId: v })}
-              >
-                <SelectTrigger id={`${formId}-card`} className={`w-full ${focusClass}`}>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {cards.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ****{c.lastFourDigits}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" disabled={submitting} className={focusClass}>Cancelar</Button>
-            </DialogClose>
-            <Button onClick={saveForm} disabled={submitting} className={focusClass}>
-              {submitting ? 'Salvando…' : editing ? 'Salvar' : 'Criar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RecurringTransactionEditor
+        mode={editing ? 'edit' : 'create'}
+        open={showFormDialog}
+        submitting={submitting}
+        form={form}
+        categories={categories}
+        accounts={accounts}
+        cards={cards}
+        onFieldChange={(field, value) => setForm((prev) => ({ ...prev, [field]: value }))}
+        onOpenChange={(open) => {
+          if (!open) formOpening.current = null;
+          setShowFormDialog(open);
+        }}
+        onCloseAutoFocus={restoreFocus}
+        onSave={saveForm}
+      />
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
+      <RecurringDeleteConfirmation
         open={showDeleteDialog !== null}
-        onOpenChange={(open) => { if (!open) { deleteOpening.current = null; setShowDeleteDialog(null); } }}
-      >
-        <AlertDialogContent onCloseAutoFocus={restoreFocus} className="motion-reduce:animate-none">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Transação Recorrente</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta transação recorrente? Esta ação
-              não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className={focusClass}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault();
-                if (showDeleteDialog) {
-                  return deleteRecurring(showDeleteDialog);
-                }
-              }}
-              className={`bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline ${focusClass}`}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onOpenChange={(open) => {
+          if (!open) {
+            deleteOpening.current = null;
+            setShowDeleteDialog(null);
+          }
+        }}
+        onCloseAutoFocus={restoreFocus}
+        onConfirm={() => {
+          if (showDeleteDialog) {
+            return deleteRecurring(showDeleteDialog);
+          }
+        }}
+      />
     </div>
   );
 }
