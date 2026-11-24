@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { readFileSync } from 'node:fs';
 import { useAppStore } from '@/lib/store';
 import { AccountsView, reconcileTransactionDraft, transactionDraftForAccount } from './accounts-view';
+import { CardsView } from './cards-view';
 
 function markup(file: string) {
   const source = ts.createSourceFile(file, new TextDecoder().decode(readFile(file)), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -154,9 +155,9 @@ const required = (node: ReactNode, match: (element: Element) => boolean) => {
 };
 const nameIs = (name: string) => (element: Element) => element.props['aria-label'] === name;
 const buttonNamed = (name: string) => (element: Element) => element.props.onClick
-  && (React.Children.toArray(element.props.children).includes(name) || nameIs(name)(element));
+  && (React.Children.toArray(element.props.children).some((child) => typeof child === 'string' && child.trim() === name) || nameIs(name)(element));
 const dialogTitleIs = (name: string) => (element: Element) => element.props.open === true
-  && Boolean(find(element.props.children, (child) => child.props.children === name));
+  && Boolean(find(element.props.children, (child) => React.Children.toArray(child.props.children).includes(name)));
 const byId = (id: string) => (element: Element) => element.props.id === id;
 const collection = '/api/transactions';
 
@@ -216,7 +217,9 @@ async function exerciseAccounts(onRun: (testbed: {
     globalThis.fetch = (async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET';
       calls.push({ url, method, ...(typeof init?.body === 'string' ? { body: JSON.parse(init.body) } : {}) });
-      if (url === collection && (method === 'POST' || method === 'PUT')) return write();
+      if (method !== 'GET' && ['/api/accounts', '/api/transfer'].includes(url) || url.startsWith(collection) && ['POST', 'PUT', 'DELETE'].includes(method)) {
+        return write();
+      }
       if (method === 'GET') {
         if (url === '/api/accounts') return Response.json(accounts);
         if (url === '/api/categories') return Response.json(qaCategories);
@@ -459,4 +462,306 @@ test('Lançamento sem contas orienta o cadastro, sem gravar ao abrir/cancelar', 
     expect(find(render(), dialogTitleIs('Nova Conta'))).toBeUndefined();
     expect(writes(calls)).toEqual([]);
   }, []);
+});
+
+const qaCards = ['a', 'b'].map((id) => ({
+  id,
+  name: `Cartão ${id.toUpperCase()}`,
+  type: 'CREDIT',
+  brand: 'VISA',
+  lastFourDigits: id === 'a' ? '1111' : '2222',
+  creditLimit: 1000,
+  currentBalance: 100,
+  closingDay: 1,
+  dueDay: 10,
+  color: '#8b5cf6',
+  flag: '',
+}));
+
+async function exerciseCards(onRun: (testbed: {
+  render: () => Element;
+  calls: Call[];
+  feedback: string[];
+  answerWrite: (answer: () => Promise<Response>) => void;
+  answerPurchases: (answer: (url: string) => Promise<Response>) => void;
+}) => Promise<void>, cards = qaCards) {
+  const react = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const dispatcher = react.H;
+  const { fetch } = globalThis;
+  const { success, error } = toast;
+  const store = useAppStore.getState();
+  const state: unknown[] = [];
+  const refs: { current: unknown }[] = [];
+  const effects: (readonly unknown[] | undefined)[] = [];
+  const callbacks: { deps: readonly unknown[]; fn: unknown }[] = [];
+  const calls: Call[] = [];
+  const feedback: string[] = [];
+  let write = () => Promise.resolve(new Response(null, { status: 204 }));
+  let readPurchases = (url: string) => Promise.resolve(Response.json([
+    { id: `p-${url}`, merchant: `Compra ${url.split('=')[1]}`, totalAmount: 10, date: '2026-01-15', items: [] },
+  ]));
+  const sameDeps = (left: readonly unknown[] | undefined, right: readonly unknown[] | undefined) =>
+    left && right && left.length === right.length && left.every((dep, i) => Object.is(dep, right[i]));
+  function render() {
+    let s = 0, r = 0, e = 0, c = 0;
+    const afterRender: (() => void)[] = [];
+    react.H = {
+      useState(initial: unknown) {
+        const i = s++;
+        if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+        return [state[i], (next: unknown) => { state[i] = typeof next === 'function' ? next(state[i]) : next; }];
+      },
+      useRef: (current: unknown) => (refs[r++] ??= { current }),
+      useCallback(fn: unknown, deps: readonly unknown[]) {
+        const i = c++;
+        if (!sameDeps(callbacks[i]?.deps, deps)) callbacks[i] = { fn, deps };
+        return callbacks[i].fn;
+      },
+      useMemo: (factory: () => unknown) => factory(),
+      useDebugValue: () => {},
+      useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
+      useEffect(fn: () => void, deps?: readonly unknown[]) {
+        const i = e++;
+        if (!sameDeps(effects[i], deps)) afterRender.push(fn);
+        effects[i] = deps;
+      },
+    };
+    try {
+      const tree = CardsView();
+      afterRender.forEach((fn) => fn());
+      return tree as Element;
+    } finally { react.H = dispatcher; }
+  }
+  try {
+    useAppStore.setState({ currentView: 'cards', selectedCardId: null });
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      calls.push({ url, method, ...(typeof init?.body === 'string' ? { body: JSON.parse(init.body) } : {}) });
+      if (url === '/api/cards' && ['POST', 'PUT', 'DELETE'].includes(method)) return write();
+      if (method === 'GET') {
+        if (url === '/api/cards') return Response.json(cards);
+        if (url.startsWith('/api/purchases?cardId=')) return readPurchases(url);
+      }
+      throw new Error(`Chamada não prevista pela fixture de Cartões: ${method} ${url}`);
+    }) as typeof fetch;
+    toast.success = (text) => { feedback.push(`ok: ${text}`); return 'ok'; };
+    toast.error = (text) => { feedback.push(`erro: ${text}`); return 'erro'; };
+    render();
+    await settle();
+    await onRun({
+      render,
+      calls,
+      feedback,
+      answerWrite: (answer) => { write = answer; },
+      answerPurchases: (answer) => { readPurchases = answer; },
+    });
+  } finally {
+    globalThis.fetch = fetch;
+    toast.success = success;
+    toast.error = error;
+    useAppStore.setState(store, true);
+  }
+}
+
+test('Contas e Cartões usam useKeyedMutationLock compartilhado sem duplicar usePendingMutations', async () => {
+  for (const file of ['accounts-view.tsx', 'cards-view.tsx']) {
+    const source = await Bun.file(new URL(file, import.meta.url)).text();
+    expect(source).toContain("from '@/hooks/use-keyed-mutation-lock'");
+    expect(source).toContain('useKeyedMutationLock()');
+    expect(source).not.toContain('usePendingMutations');
+  }
+});
+
+test('Contas CRUD e exclusão de transação: trava síncrona, chaves distintas, liberação em erro e guarda de abertura', async () => {
+  await exerciseAccounts(async ({ render, calls, feedback, answerWrite }) => {
+    const openCreate = () => required(render(), buttonNamed('Nova conta')).props.onClick({ currentTarget: null });
+    const createDialog = () => required(render(), dialogTitleIs('Nova Conta'));
+
+    // Duas ativações síncronas antes de re-renderizar disparam apenas 1 POST e refletem pending.
+    openCreate();
+    required(createDialog(), byId('account-name')).props.onChange({ target: { value: 'Conta Nova' } });
+    const heldCreate = heldResponse();
+    answerWrite(() => heldCreate.promise);
+    const submitCreate = required(createDialog(), buttonNamed('Criar')).props.onClick;
+    submitCreate();
+    submitCreate();
+    expect(writes(calls)).toHaveLength(1);
+    expect(required(createDialog(), buttonNamed('Criar')).props['aria-disabled']).toBe(true);
+    heldCreate.reject(new Error('Falha de transporte'));
+    await settle();
+    expect(feedback.at(-1)).toBe('erro: Erro ao salvar conta');
+    expect(required(createDialog(), buttonNamed('Criar')).props['aria-disabled']).toBe(false);
+
+    // Após erro no finally, novo envio funciona e fecha somente a abertura vigente.
+    answerWrite(async () => new Response(null, { status: 204 }));
+    required(createDialog(), buttonNamed('Criar')).props.onClick();
+    await settle();
+    expect(find(render(), dialogTitleIs('Nova Conta'))).toBeUndefined();
+    expect(feedback.at(-1)).toBe('ok: Conta criada!');
+
+    // Chaves distintas de edição/exclusão progridem independentemente e resposta antiga não fecha abertura B.
+    const editA = heldResponse();
+    const editB = heldResponse();
+    required(render(), nameIs('Editar conta Conta A')).props.onClick({ currentTarget: null });
+    let editDialog = required(render(), dialogTitleIs('Editar Conta'));
+    required(editDialog, byId('account-name')).props.onChange({ target: { value: 'Conta A Editada' } });
+    answerWrite(() => editA.promise);
+    required(editDialog, buttonNamed('Atualizar')).props.onClick();
+    required(editDialog, buttonNamed('Cancelar')).props.onClick();
+
+    required(render(), nameIs('Editar conta Conta B')).props.onClick({ currentTarget: null });
+    editDialog = required(render(), dialogTitleIs('Editar Conta'));
+    required(editDialog, byId('account-name')).props.onChange({ target: { value: 'Conta B Editada' } });
+    answerWrite(() => editB.promise);
+    required(editDialog, buttonNamed('Atualizar')).props.onClick();
+    expect(writes(calls)).toHaveLength(4);
+
+    editA.resolve(new Response(null, { status: 204 }));
+    await settle();
+    expect(required(render(), dialogTitleIs('Editar Conta'))).toBeDefined();
+    expect(required(required(render(), dialogTitleIs('Editar Conta')), byId('account-name')).props.value).toBe('Conta B Editada');
+    editB.resolve(new Response(null, { status: 204 }));
+    await settle();
+    expect(find(render(), dialogTitleIs('Editar Conta'))).toBeUndefined();
+
+    // Exclusão de conta: duas ativações síncronas antes do render + liberação no erro + exclusão de transação.
+    const delHeld = heldResponse();
+    required(render(), nameIs('Excluir conta Conta A')).props.onClick({ currentTarget: null });
+    const delDialog = () => required(render(), dialogTitleIs('Excluir conta?'));
+    answerWrite(() => delHeld.promise);
+    const confirmDelete = required(delDialog(), buttonNamed('Excluir')).props.onClick;
+    confirmDelete({ preventDefault() {} });
+    confirmDelete({ preventDefault() {} });
+    expect(writes(calls)).toHaveLength(5);
+    expect(required(delDialog(), buttonNamed('Excluir')).props['aria-disabled']).toBe(true);
+    delHeld.resolve(Response.json({ error: 'Bloqueio sintético' }, { status: 503 }));
+    await settle();
+    expect(feedback.at(-1)).toBe('erro: Bloqueio sintético');
+    expect(required(delDialog(), buttonNamed('Excluir')).props['aria-disabled']).toBe(false);
+    delDialog().props.onOpenChange(false);
+
+    // Transferência: duas ativações síncronas antes do render -> 1 envio; erro libera em finally.
+    required(render(), buttonNamed('Transferir')).props.onClick({ currentTarget: null });
+    const transferDialog = () => required(render(), dialogTitleIs('Transferir entre Contas'));
+    const transferSelect = (selectId: string) =>
+      find(transferDialog(), (node) => node.props.onValueChange && !!find(node.props.children, byId(selectId)))!;
+    transferSelect('transfer-from').props.onValueChange('a');
+    transferSelect('transfer-to').props.onValueChange('b');
+    required(transferDialog(), byId('transfer-amount')).props.onChange({ target: { value: '5' } });
+    const transferHeld = heldResponse();
+    answerWrite(() => transferHeld.promise);
+    const submitTransfer = required(transferDialog(), buttonNamed('Transferir')).props.onClick;
+    submitTransfer();
+    submitTransfer();
+    expect(writes(calls)).toHaveLength(6);
+    expect(required(transferDialog(), buttonNamed('Transferir')).props['aria-disabled']).toBe(true);
+    transferHeld.resolve(Response.json({ error: 'Saldo insuficiente' }, { status: 503 }));
+    await settle();
+    expect(feedback.at(-1)).toBe('erro: Saldo insuficiente');
+    expect(required(transferDialog(), buttonNamed('Transferir')).props['aria-disabled']).toBe(false);
+    required(transferDialog(), buttonNamed('Cancelar')).props.onClick();
+
+    await openDetail(render);
+    const txDelHeld = heldResponse();
+    required(render(), nameIs('Excluir transação Transação sintética')).props.onClick({ currentTarget: null });
+    const txDelDialog = () => required(render(), dialogTitleIs('Excluir transação?'));
+    answerWrite(() => txDelHeld.promise);
+    const confirmTxDelete = required(txDelDialog(), buttonNamed('Excluir')).props.onClick;
+    confirmTxDelete({ preventDefault() {} });
+    confirmTxDelete({ preventDefault() {} });
+    expect(writes(calls)).toHaveLength(7);
+    expect(required(txDelDialog(), buttonNamed('Excluir')).props['aria-disabled']).toBe(true);
+    txDelHeld.resolve(new Response(null, { status: 204 }));
+    await settle();
+    expect(find(render(), dialogTitleIs('Excluir transação?'))).toBeUndefined();
+    expect(feedback.at(-1)).toBe('ok: Transação excluída!');
+  });
+});
+
+test('Cartões: trava síncrona em POST/PUT/DELETE, chaves distintas, liberação em erro e isolamento de compras', async () => {
+  await exerciseCards(async ({ render, calls, feedback, answerWrite, answerPurchases }) => {
+    // POST: duas ativações síncronas antes do render -> 1 envio; erro libera e permite retry.
+    required(render(), buttonNamed('Novo cartão')).props.onClick({ currentTarget: null });
+    const createDialog = () => required(render(), dialogTitleIs('Novo Cartão'));
+    required(createDialog(), byId('card-name')).props.onChange({ target: { value: 'Cartão Novo' } });
+    const heldCreate = heldResponse();
+    answerWrite(() => heldCreate.promise);
+    const submitCreate = required(createDialog(), buttonNamed('Adicionar')).props.onClick;
+    submitCreate();
+    submitCreate();
+    expect(writes(calls)).toHaveLength(1);
+    expect(required(createDialog(), buttonNamed('Adicionar')).props['aria-disabled']).toBe(true);
+    heldCreate.resolve(new Response(null, { status: 503 }));
+    await settle();
+    expect(feedback.at(-1)).toBe('erro: Erro ao salvar cartão');
+    expect(required(createDialog(), buttonNamed('Adicionar')).props['aria-disabled']).toBe(false);
+
+    answerWrite(async () => new Response(null, { status: 204 }));
+    required(createDialog(), buttonNamed('Adicionar')).props.onClick();
+    await settle();
+    expect(find(render(), dialogTitleIs('Novo Cartão'))).toBeUndefined();
+    expect(feedback.at(-1)).toBe('ok: Cartão adicionado!');
+
+    // PUT: chaves distintas edit:a e edit:b progridem em paralelo; resposta de A não fecha B.
+    const editA = heldResponse();
+    const editB = heldResponse();
+    required(render(), nameIs('Editar cartão Cartão A')).props.onClick({ currentTarget: null });
+    let editDialog = required(render(), dialogTitleIs('Editar Cartão'));
+    required(editDialog, byId('card-name')).props.onChange({ target: { value: 'Cartão A Editado' } });
+    answerWrite(() => editA.promise);
+    required(editDialog, buttonNamed('Atualizar')).props.onClick();
+    required(editDialog, buttonNamed('Cancelar')).props.onClick();
+
+    required(render(), nameIs('Editar cartão Cartão B')).props.onClick({ currentTarget: null });
+    editDialog = required(render(), dialogTitleIs('Editar Cartão'));
+    required(editDialog, byId('card-name')).props.onChange({ target: { value: 'Cartão B Editado' } });
+    answerWrite(() => editB.promise);
+    required(editDialog, buttonNamed('Atualizar')).props.onClick();
+    expect(writes(calls)).toHaveLength(4);
+
+    editA.resolve(new Response(null, { status: 204 }));
+    await settle();
+    expect(required(render(), dialogTitleIs('Editar Cartão'))).toBeDefined();
+    expect(required(required(render(), dialogTitleIs('Editar Cartão')), byId('card-name')).props.value).toBe('Cartão B Editado');
+    editB.resolve(new Response(null, { status: 204 }));
+    await settle();
+    expect(find(render(), dialogTitleIs('Editar Cartão'))).toBeUndefined();
+
+    // DELETE: clique duplo síncrono dispara 1 chamada, rejeição libera no finally e reabertura funciona.
+    const delHeld = heldResponse();
+    required(render(), nameIs('Excluir cartão Cartão A')).props.onClick({ currentTarget: null });
+    const delDialog = () => required(render(), dialogTitleIs('Excluir cartão?'));
+    answerWrite(() => delHeld.promise);
+    const confirmDelete = required(delDialog(), buttonNamed('Excluir')).props.onClick;
+    confirmDelete({ preventDefault() {} });
+    confirmDelete({ preventDefault() {} });
+    expect(writes(calls)).toHaveLength(5);
+    expect(required(delDialog(), buttonNamed('Excluir')).props['aria-disabled']).toBe(true);
+    delHeld.reject(new Error('Falha de transporte'));
+    await settle();
+    expect(feedback.at(-1)).toBe('erro: Erro ao excluir cartão');
+    expect(required(delDialog(), buttonNamed('Excluir')).props['aria-disabled']).toBe(false);
+
+    answerWrite(async () => new Response(null, { status: 204 }));
+    required(delDialog(), buttonNamed('Excluir')).props.onClick({ preventDefault() {} });
+    await settle();
+    expect(find(render(), dialogTitleIs('Excluir cartão?'))).toBeUndefined();
+    expect(feedback.at(-1)).toBe('ok: Cartão excluído!');
+
+    // Compras de outro cartão não vazam quando a resposta chega atrasada.
+    const purA = heldResponse();
+    const purB = heldResponse();
+    answerPurchases((url) => (url.endsWith('=a') ? purA.promise : purB.promise));
+    required(render(), nameIs('Abrir cartão Cartão A')).props.onClick();
+    required(render(), (node) => node.props.onClick && React.Children.toArray(node.props.children).includes(' Voltar para cartões')).props.onClick();
+    required(render(), nameIs('Abrir cartão Cartão B')).props.onClick();
+    purB.resolve(Response.json([{ id: 'pb', merchant: 'Compra B Vigente', totalAmount: 25, date: '2026-01-15', items: [] }]));
+    await settle();
+    purA.resolve(Response.json([{ id: 'pa', merchant: 'Compra A Atrasada', totalAmount: 99, date: '2026-01-15', items: [] }]));
+    await settle();
+    expect(find(render(), (node) => node.props.children === 'Compra B Vigente')).toBeDefined();
+    expect(find(render(), (node) => node.props.children === 'Compra A Atrasada')).toBeUndefined();
+  });
 });

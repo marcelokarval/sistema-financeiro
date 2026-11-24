@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { currencyFmt } from '@/lib/helpers';
 import { purchaseDateForInput } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
+import { useKeyedMutationLock } from '@/hooks/use-keyed-mutation-lock';
 import { AccountTransactionFields, type AccountTransactionForm } from './account-transaction-fields';
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -138,23 +139,6 @@ const emptyTransactionForm = (): AccountTransactionForm => ({
 type TransactionDraft = BoundTransactionDraft<AccountTransactionForm> & { session: symbol };
 
 // ── Component ──────────────────────────────────────────────────────
-// The ref owns the synchronous lock; state exposes it without moving keyboard focus.
-function usePendingMutations() {
-  const locks = useRef(new Set<string>());
-  const [pending, setPending] = useState<ReadonlySet<string>>(() => new Set());
-  const begin = (key: string) => {
-    if (locks.current.has(key)) return false;
-    locks.current.add(key);
-    setPending(new Set(locks.current));
-    return true;
-  };
-  const end = (key: string) => {
-    locks.current.delete(key);
-    setPending(new Set(locks.current));
-  };
-  return { pending, begin, end };
-}
-
 export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose: () => void; refreshCounter: number }) {
   const newTransactionRequested = useAppStore((state) => state.newTransactionRequested);
   const clearNewTransactionRequest = useAppStore((state) => state.clearNewTransactionRequest);
@@ -182,7 +166,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
   const [txError, setTxError] = useState(false);
 
   // Dialogs
-  const { pending, begin, end } = usePendingMutations();
+  const { pending, tryAcquire, release } = useKeyedMutationLock();
   const [showAccountDialog, setAccountDialogOpen] = useState(false);
   const accountOpening = useRef(0);
   const setShowAccountDialog = (open: boolean) => {
@@ -427,7 +411,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       toast.error('Nome da conta é obrigatório');
       return;
     }
-    if (!begin(saveKey)) return;
+    if (!tryAcquire(saveKey)) return;
     const opening = accountOpening.current;
     try {
       const body = { ...form, balance: parseFloat(form.balance) || 0 };
@@ -454,13 +438,13 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     } catch {
       toast.error('Erro ao salvar conta');
     } finally {
-      end(saveKey);
+      release(saveKey);
     }
   };
 
   const deleteAccount = async (id: string) => {
     const key = `delete:${id}`;
-    if (!begin(key)) return;
+    if (!tryAcquire(key)) return;
     const opening = deleteOpening.current;
     try {
       const res = await fetch('/api/accounts', {
@@ -478,7 +462,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     } catch {
       toast.error('Erro ao excluir conta');
     } finally {
-      end(key);
+      release(key);
     }
   };
 
@@ -497,7 +481,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       return;
     }
     const key = `transaction:${eligible.accountId}`;
-    if (!begin(key)) return;
+    if (!tryAcquire(key)) return;
     try {
       const body = {
         ...eligible.data,
@@ -522,7 +506,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     } catch {
       toast.error('Erro ao registrar transação');
     } finally {
-      end(key);
+      release(key);
     }
   };
 
@@ -551,7 +535,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       return;
     }
     const key = `tx-edit:${editingTransaction.id}`;
-    if (!begin(key)) return;
+    if (!tryAcquire(key)) return;
     const opening = editTxOpening.current;
     try {
       const res = await fetch('/api/transactions', {
@@ -581,13 +565,13 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     } catch {
       toast.error('Erro ao atualizar transação');
     } finally {
-      end(key);
+      release(key);
     }
   };
 
   const deleteTransaction = async (id: string) => {
     const key = `tx-delete:${id}`;
-    if (!begin(key)) return;
+    if (!tryAcquire(key)) return;
     const opening = deleteTxOpening.current;
     try {
       const res = await fetch(`/api/transactions?id=${encodeURIComponent(id)}`, {
@@ -608,12 +592,12 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     } catch {
       toast.error('Erro ao excluir transação');
     } finally {
-      end(key);
+      release(key);
     }
   };
 
   const saveTransfer = async () => {
-    if (!begin('transfer')) return;
+    if (!tryAcquire('transfer')) return;
     const opening = transferOpening.current;
     try {
       const body = {
@@ -653,7 +637,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     } catch {
       toast.error('Erro ao realizar transferência');
     } finally {
-      end('transfer');
+      release('transfer');
     }
   };
 

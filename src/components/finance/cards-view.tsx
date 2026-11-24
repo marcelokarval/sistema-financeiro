@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
+import { useKeyedMutationLock } from '@/hooks/use-keyed-mutation-lock';
 
 const cardColors = [
   ['#8b5cf6', 'Roxo'], ['#f97316', 'Laranja'], ['#ef4444', 'Vermelho'], ['#3b82f6', 'Azul'],
@@ -88,23 +89,6 @@ interface Purchase {
   items: { id: string; name: string; quantity: number; unitPrice: number; totalPrice: number }[];
 }
 
-// The ref owns the synchronous lock; state exposes it without moving keyboard focus.
-function usePendingMutations() {
-  const locks = useRef(new Set<string>());
-  const [pending, setPending] = useState<ReadonlySet<string>>(() => new Set());
-  const begin = (key: string) => {
-    if (locks.current.has(key)) return false;
-    locks.current.add(key);
-    setPending(new Set(locks.current));
-    return true;
-  };
-  const end = (key: string) => {
-    locks.current.delete(key);
-    setPending(new Set(locks.current));
-  };
-  return { pending, begin, end };
-}
-
 export function CardsView() {
   const storeSelectedCardId = useAppStore((state) => state.selectedCardId);
   const setStoreSelectedCardId = useAppStore((state) => state.setSelectedCardId);
@@ -122,7 +106,7 @@ export function CardsView() {
   const [cardsError, setCardsError] = useState(false);
   const [purchasesLoading, setPurchasesLoading] = useState(false);
   const [purchasesError, setPurchasesError] = useState(false);
-  const { pending, begin, end } = usePendingMutations();
+  const { pending, tryAcquire, release } = useKeyedMutationLock();
   const [showCardDialog, setCardDialogOpen] = useState(false);
   const cardOpening = useRef(0);
   const setShowCardDialog = (open: boolean) => {
@@ -226,7 +210,7 @@ export function CardsView() {
       toast.error('Nome do cartão é obrigatório');
       return;
     }
-    if (!begin(saveKey)) return;
+    if (!tryAcquire(saveKey)) return;
     const opening = cardOpening.current;
     try {
       const body = {
@@ -248,13 +232,13 @@ export function CardsView() {
       if (cardOpening.current === opening) setShowCardDialog(false);
       fetchCards();
     } catch { toast.error('Erro ao salvar cartão'); } finally {
-      end(saveKey);
+      release(saveKey);
     }
   };
 
   const deleteCard = async (id: string) => {
     const key = `delete:${id}`;
-    if (!begin(key)) return;
+    if (!tryAcquire(key)) return;
     const opening = deleteOpening.current;
     try {
       const res = await fetch('/api/cards', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
@@ -268,7 +252,7 @@ export function CardsView() {
     } catch {
       toast.error('Erro ao excluir cartão');
     } finally {
-      end(key);
+      release(key);
     }
   };
 
