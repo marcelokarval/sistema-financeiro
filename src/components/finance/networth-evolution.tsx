@@ -24,6 +24,10 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { currencyFmt } from '@/lib/helpers';
+import {
+  FinanceChartTooltip,
+  type FinanceChartTooltipRow,
+} from '@/components/shared/finance-chart-tooltip';
 // ─── Helpers ───────────────────────────────────────────────────────
 const shortCurrency = (v: number) => {
   const abs = Math.abs(v);
@@ -44,29 +48,43 @@ interface NetworthResponse {
   monthlyData: MonthlyDataPoint[];
 }
 // ─── Custom Tooltip ────────────────────────────────────────────────
-function ChartTooltip({
+export function NetworthEvolutionTooltip({
   active,
   payload,
   label,
+  showValues = true,
 }: {
   active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string; dataKey: string }>;
+  payload?: Array<{ name?: string; value?: unknown; color?: string; dataKey?: string | number }>;
   label?: string;
+  showValues?: boolean;
 }) {
-  if (!active || !payload?.length) return null;
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+
+  const rows: FinanceChartTooltipRow[] = payload.flatMap((entry) => {
+    const key = entry?.dataKey != null ? String(entry.dataKey) : entry?.name;
+    const rowLabel = entry?.dataKey === 'netWorth' ? 'Patrimônio' : entry?.name;
+    if (typeof entry?.value !== 'number' || !Number.isFinite(entry.value) || !key || !rowLabel) {
+      return [];
+    }
+    return [{
+      key,
+      label: rowLabel,
+      value: currencyFmt(entry.value),
+      color: entry.color,
+    }];
+  });
+
+  if (rows.length === 0) return null;
+
   return (
-    <div className="bg-background border border-border rounded-xl p-3">
-      <p className="text-xs font-medium mb-2 capitalize">{label}</p>
-      {payload.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span className="text-muted-foreground">
-            {entry.dataKey === 'netWorth' ? 'Patrimônio' : entry.name}:
-          </span>
-          <span className="font-mono font-semibold tabular-nums">{currencyFmt(entry.value)}</span>
-        </div>
-      ))}
-    </div>
+    <FinanceChartTooltip
+      active={active}
+      title={label}
+      capitalizeTitle
+      rows={rows}
+      showValues={showValues}
+    />
   );
 }
 // ─── Main Component ────────────────────────────────────────────────
@@ -110,6 +128,7 @@ export function NetworthEvolutionContent({
   onSelectMonths,
   fetchData,
   onRetry,
+  showValues = true,
 }: {
   data: NetworthResponse | null;
   loading: boolean;
@@ -117,6 +136,7 @@ export function NetworthEvolutionContent({
   onSelectMonths: (months: number) => void;
   fetchData: (months: number) => void;
   onRetry?: () => void;
+  showValues?: boolean;
 }) {
   const handleRetry = onRetry ?? (() => fetchData(selectedMonths));
   // ─── Loading Skeleton ─────────────────────────────────────────────
@@ -313,7 +333,7 @@ export function NetworthEvolutionContent({
                     tickFormatter={shortCurrency}
                     domain={['dataMin - 5000', 'dataMax + 5000']}
                   />
-                  <RechartsTooltip content={<ChartTooltip />} />
+                  <RechartsTooltip content={<NetworthEvolutionTooltip showValues={showValues} />} />
                   {/* Reference line at y=0 if any month is negative */}
                   {hasAnyNegative && (
                     <ReferenceLine

@@ -22,6 +22,10 @@ import {
 } from 'recharts';
 import { currencyFmt } from '@/lib/helpers';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
+import {
+  FinanceChartTooltip,
+  type FinanceChartTooltipRow,
+} from '@/components/shared/finance-chart-tooltip';
 
 // ─── Helpers ───────────────────────────────────────────────────────
 
@@ -102,19 +106,41 @@ function TrendIndicator({ direction }: { direction: string }) {
 }
 
 // ─── Custom Tooltip ────────────────────────────────────────────────
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
-  if (!active || !payload?.length) return null;
+export function CashFlowForecastTooltip({
+  active,
+  payload,
+  label,
+  showValues = true,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: unknown; color?: string; dataKey?: string | number }>;
+  label?: string;
+  showValues?: boolean;
+}) {
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+
+  const rows: FinanceChartTooltipRow[] = payload.flatMap((entry, index) => {
+    if (typeof entry?.value !== 'number' || !Number.isFinite(entry.value) || !entry.name) {
+      return [];
+    }
+    return [{
+      key: String(entry.dataKey ?? entry.name ?? index),
+      label: entry.name,
+      value: currencyFmt(entry.value),
+      color: entry.color,
+    }];
+  });
+
+  if (rows.length === 0) return null;
+
   return (
-    <div className="bg-background border border-border rounded-lg p-3">
-      <p className="text-xs font-medium mb-2 capitalize">{label}</p>
-      {payload.map((entry) => (
-        <div key={entry.name} className="flex items-center gap-2 text-xs">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span className="text-muted-foreground">{entry.name}:</span>
-          <span className="font-mono font-semibold tabular-nums">{currencyFmt(entry.value)}</span>
-        </div>
-      ))}
-    </div>
+    <FinanceChartTooltip
+      active={active}
+      title={label}
+      capitalizeTitle
+      rows={rows}
+      showValues={showValues}
+    />
   );
 }
 
@@ -153,11 +179,13 @@ export function CashFlowForecastContent({
   loading,
   error,
   onRetry,
+  showValues = true,
 }: {
   data: ForecastData | null;
   loading: boolean;
   error?: boolean;
   onRetry: () => void;
+  showValues?: boolean;
 }) {
   const status: QueryPanelStatus = loading
     ? 'loading'
@@ -257,7 +285,7 @@ export function CashFlowForecastContent({
                     axisLine={false}
                     tickFormatter={shortCurrency}
                   />
-                  <RechartsTooltip content={<ChartTooltip />} />
+                  <RechartsTooltip content={<CashFlowForecastTooltip showValues={showValues} />} />
                   <Legend
                     iconType="line"
                     iconSize={12}

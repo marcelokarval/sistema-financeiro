@@ -86,6 +86,8 @@ import * as cashFlow from './cash-flow-forecast';
 import * as balanceProj from './balance-projection';
 import * as timeline from './spending-timeline';
 import { FinanceRow } from '@/components/shared/finance-row';
+import { FinanceChartTooltip } from '@/components/shared/finance-chart-tooltip';
+import { Tooltip as RechartsTooltip } from 'recharts';
 
 test('smart-insights conecta ação do insight à navegação da store e exibe erro com retry', () => {
   useAppStore.setState(useAppStore.getInitialState(), true);
@@ -238,4 +240,141 @@ test('SpendingTimelineContent adota FinanceRow nos itens expandidos mantendo sin
   );
   expect(maskedTimelineRow).toContain('R$ ••••••');
   expect(maskedTimelineRow).not.toMatch(/85|50/);
+});
+
+function findTooltipNode(node: unknown): { props: Record<string, any> } | undefined {
+  if (!node || typeof node !== 'object') return undefined;
+  const el = node as { type?: unknown; props?: Record<string, any> };
+  if (el.type === RechartsTooltip) return el as { props: Record<string, any> };
+  for (const child of React.Children.toArray(el.props?.children)) {
+    const hit = findTooltipNode(child);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+test('CashFlowForecastContent e BalanceProjectionContent adotam FinanceChartTooltip preservando formato, sinal, máscara e retorno nulo', () => {
+  for (const file of ['cash-flow-forecast.tsx', 'balance-projection.tsx']) {
+    const src = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8');
+    expect(src).toContain("from '@/components/shared/finance-chart-tooltip'");
+  }
+
+  const tooltipSrc = readFileSync(new URL('../shared/finance-chart-tooltip.tsx', import.meta.url), 'utf8');
+  expect(tooltipSrc).not.toMatch(/from 'framer-motion'|shadow-lg|\bmin-h-8\b|\bfont-bold\b|currencyFmt|shortCurrency/);
+  expect(typeof FinanceChartTooltip).toBe('function');
+
+  const CashContent = (cashFlow as Record<string, any>).CashFlowForecastContent;
+  const cashTree = CashContent({
+    loading: false,
+    onRetry: () => {},
+    data: {
+      forecastMonths: [{ month: 'março', projectedIncome: 4200, projectedExpense: 4550, projectedNet: -350, confidence: 85 }],
+      topExpenseCategories: [],
+      riskAlerts: [],
+      trendDirection: 'declining',
+    },
+  });
+  const cashTooltipNode = findTooltipNode(cashTree);
+  expect(cashTooltipNode).toBeDefined();
+  expect(cashTooltipNode?.props.content?.type).toBe((cashFlow as Record<string, any>).CashFlowForecastTooltip);
+
+  const CashTooltip = (cashFlow as Record<string, any>).CashFlowForecastTooltip;
+  expect(typeof CashTooltip).toBe('function');
+  const cashActiveHtml = renderToStaticMarkup(
+    <CashTooltip
+      active
+      label="março"
+      payload={[
+        { name: 'Receita', dataKey: 'Receita', value: 4200, color: 'var(--ds-accent-positive)' },
+        { name: 'Saldo', dataKey: 'Saldo', value: -350, color: 'var(--primary)' },
+      ]}
+    />,
+  );
+  expect(cashActiveHtml).toContain('bg-card');
+  expect(cashActiveHtml).toContain('border-border');
+  expect(cashActiveHtml).toContain('março');
+  expect(cashActiveHtml).toContain('Receita:');
+  expect(cashActiveHtml).toContain('R$ 4.200,00');
+  expect(cashActiveHtml).toContain('Saldo:');
+  expect(cashActiveHtml).toContain('-R$ 350,00');
+
+  expect(renderToStaticMarkup(<CashTooltip active={false} label="março" payload={[{ name: 'Receita', value: 4200 }]} />)).toBe('');
+  expect(renderToStaticMarkup(<CashTooltip active label="março" payload={[]} />)).toBe('');
+  expect(renderToStaticMarkup(<CashTooltip active label="março" payload={[{ name: 'Receita', value: undefined }]} />)).toBe('');
+
+  const cashMaskedHtml = renderToStaticMarkup(
+    <CashTooltip
+      active
+      label="março"
+      showValues={false}
+      payload={[
+        { name: 'Receita', dataKey: 'Receita', value: 4200, color: 'var(--ds-accent-positive)' },
+        { name: 'Saldo', dataKey: 'Saldo', value: -350, color: 'var(--primary)' },
+      ]}
+    />,
+  );
+  expect(cashMaskedHtml).toContain('R$ ••••••');
+  expect(cashMaskedHtml).not.toMatch(/4\.200|350/);
+
+  const BalContent = (balanceProj as Record<string, any>).BalanceProjectionContent;
+  const balTree = BalContent({
+    loading: false,
+    selectedMonths: 6,
+    onSelectMonths: () => {},
+    onRetry: () => {},
+    data: {
+      accounts: [
+        {
+          accountId: 'acc-1',
+          accountName: 'Conta Corrente',
+          accountColor: '#0ea5e9',
+          accountType: 'CHECKING',
+          currentBalance: 1000,
+          projectedBalances: [1850.5],
+          avgMonthlyIncome: 2000,
+          avgMonthlyExpense: 1149.5,
+          monthlyNet: 850.5,
+          trend: 'up',
+        },
+      ],
+      monthLabels: ['abr/26'],
+      totalCurrentBalance: 1000,
+      totalProjected: 1850.5,
+      averageMonthlySavings: 850.5,
+      savingsRate: 42.5,
+      riskLevel: 'low',
+      months: 6,
+    },
+  });
+  const balTooltipNode = findTooltipNode(balTree);
+  expect(balTooltipNode).toBeDefined();
+  expect(balTooltipNode?.props.content?.type).toBe((balanceProj as Record<string, any>).BalanceProjectionTooltip);
+
+  const BalTooltip = (balanceProj as Record<string, any>).BalanceProjectionTooltip;
+  expect(typeof BalTooltip).toBe('function');
+  const balActiveHtml = renderToStaticMarkup(
+    <BalTooltip
+      active
+      label="abr/26"
+      payload={[{ name: 'Conta Corrente', dataKey: 'Conta Corrente', value: 1850.5, color: '#0ea5e9' }]}
+    />,
+  );
+  expect(balActiveHtml).toContain('abr/26');
+  expect(balActiveHtml).toContain('Conta Corrente:');
+  expect(balActiveHtml).toContain('R$ 1.850,50');
+
+  expect(renderToStaticMarkup(<BalTooltip active={false} label="abr/26" payload={[{ name: 'Conta Corrente', dataKey: 'Conta Corrente', value: 1850.5 }]} />)).toBe('');
+  expect(renderToStaticMarkup(<BalTooltip active label="abr/26" payload={[]} />)).toBe('');
+  expect(renderToStaticMarkup(<BalTooltip active label="abr/26" payload={[{ name: 'Conta Corrente', dataKey: 'Conta Corrente', value: null }]} />)).toBe('');
+
+  const balMaskedHtml = renderToStaticMarkup(
+    <BalTooltip
+      active
+      label="abr/26"
+      showValues={false}
+      payload={[{ name: 'Conta Corrente', dataKey: 'Conta Corrente', value: 1850.5, color: '#0ea5e9' }]}
+    />,
+  );
+  expect(balMaskedHtml).toContain('R$ ••••••');
+  expect(balMaskedHtml).not.toMatch(/1\.850|50/);
 });

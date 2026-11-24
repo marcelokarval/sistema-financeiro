@@ -214,6 +214,8 @@ test('financial-calendar usa ChevronRight, botão retry no erro e tamanhos acess
 });
 
 import { QueryPanel } from '@/components/shared/query-panel';
+import { FinanceChartTooltip } from '@/components/shared/finance-chart-tooltip';
+import { Tooltip as RechartsTooltip } from 'recharts';
 import * as balanceProj from './balance-projection';
 import * as cashFlow from './cash-flow-forecast';
 import * as expenseBk from './expense-breakdown';
@@ -567,4 +569,129 @@ test('caracterização eb76f7d (divergência aberta, não conformidade Quiet): b
       globalThis.fetch = originalFetch;
     }
   }
+});
+
+function findElementByType(node: unknown, targetType: unknown): { props: Record<string, any> } | undefined {
+  if (!node || typeof node !== 'object') return undefined;
+  const el = node as { type?: unknown; props?: Record<string, any> };
+  if (el.type === targetType) return el as { props: Record<string, any> };
+  for (const child of React.Children.toArray(el.props?.children)) {
+    const hit = findElementByType(child, targetType);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+test('FinanceChartTooltip renderiza ponto ativo formatado, preserva sinal/unidade/máscara e retorna null sem ponto ativo ou payload incompatível', () => {
+  const inactiveHtml = renderToStaticMarkup(
+    <FinanceChartTooltip
+      active={false}
+      title="fev"
+      rows={[{ key: 'netWorth', label: 'Patrimônio', value: 'R$ 1.250,00', color: 'var(--ds-chart-2)' }]}
+    />,
+  );
+  expect(inactiveHtml).toBe('');
+
+  const emptyHtml = renderToStaticMarkup(
+    <FinanceChartTooltip active title="fev" rows={[]} />,
+  );
+  expect(emptyHtml).toBe('');
+
+  const invalidRowsHtml = renderToStaticMarkup(
+    <FinanceChartTooltip
+      active
+      title="fev"
+      rows={[{ key: 'netWorth', label: 'Patrimônio', value: '' }]}
+    />,
+  );
+  expect(invalidRowsHtml).toBe('');
+
+  const activeHtml = renderToStaticMarkup(
+    <FinanceChartTooltip
+      active
+      title="fev"
+      capitalizeTitle
+      rows={[
+        { key: 'income', label: 'Receita', value: '+R$ 1.250,00', color: 'var(--ds-accent-positive)' },
+        { key: 'net', label: 'Saldo', value: '−R$ 400,00', color: 'var(--primary)' },
+        { key: 'rate', label: 'Taxa', value: '25.0%' },
+      ]}
+    />,
+  );
+  expect(activeHtml).toContain('bg-card');
+  expect(activeHtml).toContain('border-border');
+  expect(activeHtml).toContain('fev');
+  expect(activeHtml).toContain('+R$ 1.250,00');
+  expect(activeHtml).toContain('−R$ 400,00');
+  expect(activeHtml).toContain('25.0%');
+
+  const maskedHtml = renderToStaticMarkup(
+    <FinanceChartTooltip
+      active
+      title="fev"
+      showValues={false}
+      rows={[
+        { key: 'income', label: 'Receita', value: '+R$ 1.250,00', color: 'var(--ds-accent-positive)' },
+        { key: 'rate', label: 'Taxa', value: '25.0%', maskedValue: '•••' },
+      ]}
+    />,
+  );
+  expect(maskedHtml).toContain('R$ ••••••');
+  expect(maskedHtml).toContain('•••');
+  expect(maskedHtml).not.toMatch(/1\.250|25\.0/);
+
+  const tooltipShellSrc = readFileSync(new URL('../shared/finance-chart-tooltip.tsx', import.meta.url), 'utf8');
+  expect(tooltipShellSrc).not.toMatch(/from 'recharts'|currencyFmt|shortCurrency|useState|useEffect/);
+});
+
+test('NetworthEvolutionContent adota FinanceChartTooltip sem alterar séries, escalas ou recortes', () => {
+  const nwSrc = source('networth-evolution');
+  expect(nwSrc).toContain("from '@/components/shared/finance-chart-tooltip'");
+
+  const NetworthView = (networth as Record<string, any>).NetworthEvolutionContent;
+  const tree = NetworthView({
+    loading: false,
+    selectedMonths: 6,
+    onSelectMonths: () => {},
+    fetchData: () => {},
+    onRetry: () => {},
+    data: {
+      monthlyData: [
+        { month: 'jan', netWorth: 20000, assets: 25000, liabilities: 5000, changePercent: 5, changeAmount: 1000 },
+        { month: 'fev', netWorth: -5000, assets: 5000, liabilities: 10000, changePercent: -125, changeAmount: -25000 },
+      ],
+    },
+  });
+  const tooltipEl = findElementByType(tree, RechartsTooltip);
+  expect(tooltipEl).toBeDefined();
+  expect(tooltipEl?.props.content?.type).toBe((networth as Record<string, any>).NetworthEvolutionTooltip);
+
+  const NetworthTooltip = (networth as Record<string, any>).NetworthEvolutionTooltip;
+  expect(typeof NetworthTooltip).toBe('function');
+
+  const activeHtml = renderToStaticMarkup(
+    <NetworthTooltip
+      active
+      label="fev"
+      payload={[{ name: 'Patrimônio Líquido', dataKey: 'netWorth', value: -5000, color: 'var(--ds-chart-2)' }]}
+    />,
+  );
+  expect(activeHtml).toContain('fev');
+  expect(activeHtml).toContain('Patrimônio:');
+  expect(activeHtml).toContain('-R$ 5.000,00');
+
+  expect(renderToStaticMarkup(<NetworthTooltip active={false} label="fev" payload={[{ name: 'Patrimônio Líquido', dataKey: 'netWorth', value: -5000 }]} />)).toBe('');
+  expect(renderToStaticMarkup(<NetworthTooltip active label="fev" payload={[]} />)).toBe('');
+  expect(renderToStaticMarkup(<NetworthTooltip active label="fev" payload={[{ name: 'Patrimônio Líquido', dataKey: 'netWorth', value: Number.NaN }]} />)).toBe('');
+
+  const maskedHtml = renderToStaticMarkup(
+    <NetworthTooltip
+      active
+      label="fev"
+      showValues={false}
+      payload={[{ name: 'Patrimônio Líquido', dataKey: 'netWorth', value: -5000, color: 'var(--ds-chart-2)' }]}
+    />,
+  );
+  expect(maskedHtml).toContain('R$ ••••••');
+  expect(maskedHtml).not.toMatch(/5\.000|5000/);
 });

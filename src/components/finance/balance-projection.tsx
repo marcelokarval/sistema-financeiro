@@ -23,6 +23,10 @@ import {
 } from 'recharts';
 import { currencyFmt } from '@/lib/helpers';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
+import {
+  FinanceChartTooltip,
+  type FinanceChartTooltipRow,
+} from '@/components/shared/finance-chart-tooltip';
 
 // ─── Helpers ───────────────────────────────────────────────────────
 
@@ -84,27 +88,42 @@ function RiskBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
 
 // ─── Trend Icon ────────────────────────────────────────────────────
 // ─── Custom Tooltip ────────────────────────────────────────────────
-function ChartTooltip({
+export function BalanceProjectionTooltip({
   active,
   payload,
   label,
+  showValues = true,
 }: {
   active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string; dataKey: string }>;
+  payload?: Array<{ name?: string; value?: unknown; color?: string; dataKey?: string | number }>;
   label?: string;
+  showValues?: boolean;
 }) {
-  if (!active || !payload?.length) return null;
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+
+  const rows: FinanceChartTooltipRow[] = payload.flatMap((entry) => {
+    const key = entry?.dataKey != null ? String(entry.dataKey) : entry?.name;
+    const rowLabel = entry?.name ?? (entry?.dataKey != null ? String(entry.dataKey) : undefined);
+    if (typeof entry?.value !== 'number' || !Number.isFinite(entry.value) || !key || !rowLabel) {
+      return [];
+    }
+    return [{
+      key,
+      label: rowLabel,
+      value: currencyFmt(entry.value),
+      color: entry.color,
+    }];
+  });
+
+  if (rows.length === 0) return null;
+
   return (
-    <div className="bg-background border border-border rounded-lg p-3">
-      <p className="text-xs font-medium mb-2">{label}</p>
-      {payload.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span className="text-muted-foreground">{entry.name}:</span>
-          <span className="font-mono font-semibold tabular-nums">{currencyFmt(entry.value)}</span>
-        </div>
-      ))}
-    </div>
+    <FinanceChartTooltip
+      active={active}
+      title={label}
+      rows={rows}
+      showValues={showValues}
+    />
   );
 }
 
@@ -184,6 +203,7 @@ export function BalanceProjectionContent({
   selectedMonths,
   onSelectMonths,
   onRetry,
+  showValues = true,
 }: {
   data: ProjectionData | null;
   loading: boolean;
@@ -191,6 +211,7 @@ export function BalanceProjectionContent({
   selectedMonths: number;
   onSelectMonths: (months: number) => void;
   onRetry: () => void;
+  showValues?: boolean;
 }) {
   const status: QueryPanelStatus = loading
     ? 'loading'
@@ -329,7 +350,7 @@ export function BalanceProjectionContent({
                   axisLine={false}
                   tickFormatter={shortCurrency}
                 />
-                <RechartsTooltip content={<ChartTooltip />} />
+                <RechartsTooltip content={<BalanceProjectionTooltip showValues={showValues} />} />
                 <Legend
                   iconType="line"
                   iconSize={12}
