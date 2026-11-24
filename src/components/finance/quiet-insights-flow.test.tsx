@@ -85,6 +85,7 @@ import * as smartInsights from './smart-insights';
 import * as cashFlow from './cash-flow-forecast';
 import * as balanceProj from './balance-projection';
 import * as timeline from './spending-timeline';
+import { FinanceRow } from '@/components/shared/finance-row';
 
 test('smart-insights conecta ação do insight à navegação da store e exibe erro com retry', () => {
   useAppStore.setState(useAppStore.getInitialState(), true);
@@ -180,4 +181,61 @@ test('widgets de fluxo e análise removem framer-motion, cores Tailwind fixas, s
     />,
   );
   expect(tlErrHtml).toContain('Tentar novamente');
+});
+
+test('SpendingTimelineContent adota FinanceRow nos itens expandidos mantendo sinal, BRL, tokens e máscara', () => {
+  const tlSrc = readFileSync(new URL('./spending-timeline.tsx', import.meta.url), 'utf8');
+  expect(tlSrc).toContain("from '@/components/shared/finance-row'");
+
+  const TimelineContent = timeline.SpendingTimelineContent;
+  const html = renderToStaticMarkup(
+    <TimelineContent
+      data={[
+        {
+          date: '2026-01-15',
+          income: 320,
+          expense: 85.5,
+          net: 234.5,
+          count: 2,
+          runningBalance: 1234.5,
+          items: [
+            { type: 'transaction', description: 'Freela', amount: 320, category: 'Renda Extra' },
+            { type: 'purchase', description: 'Padaria Central', amount: -85.5, category: 'Alimentação' },
+          ],
+        },
+      ]}
+      loading={false}
+      error={false}
+      activeDays={30}
+      expandedDay="2026-01-15"
+      onSelectDays={() => {}}
+      onToggleDay={() => {}}
+      onRetry={() => {}}
+    />,
+  );
+  expect(html).toContain('Freela');
+  expect(html).toContain('Padaria Central');
+  expect(html).toContain('Renda Extra');
+  expect(html).toContain('Alimentação');
+  expect(html).toContain('+R$');
+  expect(html).toContain('−R$');
+  expect(html).toContain('--ds-accent-positive');
+  expect(html).toContain('--ds-accent-danger');
+  expect(html).toMatch(/<ul[^>]*><li\b/);
+
+  const maskedTimelineRow = renderToStaticMarkup(
+    <ul>
+      <FinanceRow
+        variant="timeline"
+        tone="negative"
+        description="Padaria Central"
+        metadata="Alimentação"
+        amount={-85.5}
+        showValues={false}
+        ariaLabel="Padaria Central R$ 85,50"
+      />
+    </ul>,
+  );
+  expect(maskedTimelineRow).toContain('R$ ••••••');
+  expect(maskedTimelineRow).not.toMatch(/85|50/);
 });

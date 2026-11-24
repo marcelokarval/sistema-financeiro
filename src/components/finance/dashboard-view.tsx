@@ -5,8 +5,10 @@ import { format, parseISO } from 'date-fns';
 import { ArrowDownRight, ArrowUpRight, ChevronDown, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { FinanceRow } from '@/components/shared/finance-row';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
+import { cn } from '@/lib/utils';
 import { BudgetGoalsWidget } from './budget-goals';
 import { FinancialReportsWidget } from './financial-reports';
 import { FinancialHealthScore } from './financial-health-score';
@@ -125,7 +127,7 @@ export function DashboardContent({ query, showValues, retry, children, refreshCo
       </div>
       <div className="grid gap-[18px] xl:grid-cols-[minmax(0,1.45fr)_minmax(0,.75fr)]">
         <Panel title="Atividade recente" caption="Últimas transações do período selecionado.">
-          {data ? <RecentTransactions transactions={data.recentTransactions} money={money} /> : <QueryPlaceholder status={query.status} />}
+          {data ? <RecentTransactions transactions={data.recentTransactions} showValues={showValues} /> : <QueryPlaceholder status={query.status} />}
         </Panel>
         <MonthlyBudgetTracker showValues={showValues} refreshCounter={refreshCounter} />
       </div>
@@ -207,7 +209,7 @@ function Flow({ trend, showValues, money }: { trend: DashboardData['monthlyTrend
   );
 }
 
-function RecentTransactions({ transactions, money }: { transactions: DashboardData['recentTransactions']; money: Money }) {
+function RecentTransactions({ transactions, showValues }: { transactions: DashboardData['recentTransactions']; showValues: boolean }) {
   if (!transactions.length) return <p className={muted}>Nenhuma transação no período.</p>;
   return (
     <ul className="max-h-80 divide-y divide-border overflow-y-auto">
@@ -215,13 +217,16 @@ function RecentTransactions({ transactions, money }: { transactions: DashboardDa
         const income = transaction.type === 'INCOME';
         const Icon = income ? ArrowUpRight : ArrowDownRight;
         return (
-          <li key={transaction.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5">
-            <div className="flex min-w-0 flex-1 basis-40 items-start gap-2">
-              <Icon aria-hidden="true" className={`mt-0.5 size-4 shrink-0 ${income ? 'text-(--ds-accent-positive)' : 'text-(--ds-accent-danger)'}`} />
-              <div className="min-w-0"><p className="break-words text-sm font-medium">{transaction.description}</p><p className={muted}>{dayLabel(transaction.date)}{transaction.category && ` · ${transaction.category.name}`}</p></div>
-            </div>
-            <span className={`${moneyClass} ml-auto text-sm font-medium ${income ? 'text-(--ds-accent-positive)' : 'text-(--ds-accent-danger)'}`}>{income ? '+' : '−'}{money(transaction.amount)}</span>
-          </li>
+          <FinanceRow
+            key={transaction.id}
+            variant="compact"
+            tone={income ? 'positive' : 'negative'}
+            description={transaction.description}
+            metadata={`${dayLabel(transaction.date)}${transaction.category ? ` · ${transaction.category.name}` : ''}`}
+            amount={transaction.amount}
+            showValues={showValues}
+            leading={<Icon aria-hidden="true" className={cn('mt-0.5 size-4 shrink-0', income ? 'text-(--ds-accent-positive)' : 'text-(--ds-accent-danger)')} />}
+          />
         );
       })}
     </ul>

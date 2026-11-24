@@ -14,7 +14,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FinanceRow } from '@/components/shared/finance-row';
 import { currencyFmt } from '@/lib/helpers';
+import { cn } from '@/lib/utils';
 
 // ─── Helpers ───────────────────────────────────────────────────────
 
@@ -357,57 +359,48 @@ export function SpendingTimelineContent({
                   {/* Expanded items */}
                   {isExpanded && hasItems && (
                     <div className="border-t border-border/40 bg-muted/20">
-                      <div className="p-3 sm:p-4 space-y-1.5">
+                      <ul className="space-y-1.5 p-3 sm:p-4">
                         {day.items.map((txItem, idx) => {
                           const isIncomeItem = txItem.amount > 0;
                           return (
-                            <div
+                            <FinanceRow
                               key={`${day.date}-${idx}`}
-                              className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-muted/30"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                {/* Type icon */}
+                              variant="timeline"
+                              tone={isIncomeItem ? 'positive' : 'negative'}
+                              description={txItem.description}
+                              metadata={
+                                <Badge
+                                  variant="secondary"
+                                  className="h-5 px-1.5 py-0 text-xs"
+                                >
+                                  {txItem.category}
+                                </Badge>
+                              }
+                              amount={txItem.amount}
+                              leading={
                                 <div
-                                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                    txItem.type === 'transaction'
-                                      ? isIncomeItem
+                                  className={cn(
+                                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                                    txItem.type === 'purchase'
+                                      ? 'bg-primary/10'
+                                      : isIncomeItem
                                         ? 'bg-[var(--ds-accent-positive)]/10'
-                                        : 'bg-[var(--ds-accent-danger)]/10'
-                                      : 'bg-primary/10'
-                                  }`}
+                                        : 'bg-[var(--ds-accent-danger)]/10',
+                                  )}
                                 >
                                   {txItem.type === 'purchase' ? (
-                                    <ShoppingBag className="w-4 h-4 text-primary" />
+                                    <ShoppingBag aria-hidden="true" className="h-4 w-4 text-primary" />
                                   ) : isIncomeItem ? (
-                                    <ArrowUpRight className="w-4 h-4 text-[var(--ds-accent-positive)]" />
+                                    <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--ds-accent-positive)]" />
                                   ) : (
-                                    <ArrowDownRight className="w-4 h-4 text-[var(--ds-accent-danger)]" />
+                                    <ArrowDownRight aria-hidden="true" className="h-4 w-4 text-[var(--ds-accent-danger)]" />
                                   )}
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="break-words text-sm font-medium">
-                                    {txItem.description}
-                                  </p>
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs px-1.5 py-0 h-5 mt-0.5"
-                                  >
-                                    {txItem.category}
-                                  </Badge>
-                                </div>
-                              </div>
-                              <span
-                                className={`font-mono text-sm font-semibold tabular-nums whitespace-nowrap ml-2 ${
-                                  isIncomeItem ? 'text-[var(--ds-accent-positive)]' : 'text-[var(--ds-accent-danger)]'
-                                }`}
-                              >
-                                {isIncomeItem ? '+' : ''}
-                                {currencyFmt(txItem.amount)}
-                              </span>
-                            </div>
+                              }
+                            />
                           );
                         })}
-                      </div>
+                      </ul>
                     </div>
                   )}
                 </li>

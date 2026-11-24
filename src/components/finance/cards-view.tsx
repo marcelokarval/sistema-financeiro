@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { FinanceMetric } from '@/components/shared/finance-metric';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
@@ -44,15 +45,6 @@ const cardColors = [
 ];
 const cardPanel = 'min-w-0 rounded-xl border border-border bg-card';
 const dialogSurface = 'max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none';
-
-function CardMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 p-3 sm:p-4">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 wrap-anywhere font-mono text-base font-semibold tabular-nums sm:text-lg">{value}</dd>
-    </div>
-  );
-}
 
 function CardUsage({ value, high }: { value: number; high: boolean }) {
   return (
@@ -306,9 +298,9 @@ export function CardsView() {
           </div>
         </header>
         <dl aria-label="Posição do cartão" className={`${cardPanel} grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0`}>
-          <CardMetric label="Fatura atual" value={currencyFmt(selectedCard.currentBalance)} />
-          <CardMetric label="Limite" value={currencyFmt(selectedCard.creditLimit)} />
-          <CardMetric label="Disponível" value={currencyFmt(selectedCard.creditLimit - selectedCard.currentBalance)} />
+          <FinanceMetric variant="cell" label="Fatura atual" value={currencyFmt(selectedCard.currentBalance)} />
+          <FinanceMetric variant="cell" label="Limite" value={currencyFmt(selectedCard.creditLimit)} />
+          <FinanceMetric variant="cell" label="Disponível" value={currencyFmt(selectedCard.creditLimit - selectedCard.currentBalance)} />
         </dl>
         <section aria-label="Dados do cartão" className={`${cardPanel} space-y-3 p-4`}>
           <dl className="flex flex-wrap justify-between gap-x-6 gap-y-2 text-sm">
@@ -397,8 +389,8 @@ export function CardsView() {
         </div>
       )}
       <dl aria-label="Posição dos cartões" className={`${cardPanel} grid grid-cols-2 divide-x divide-border`}>
-        <CardMetric label="Total em faturas" value={currencyFmt(cards.reduce((s, c) => s + c.currentBalance, 0))} />
-        <CardMetric label="Limite total" value={currencyFmt(cards.reduce((s, c) => s + c.creditLimit, 0))} />
+        <FinanceMetric variant="cell" label="Total em faturas" value={currencyFmt(cards.reduce((s, c) => s + c.currentBalance, 0))} />
+        <FinanceMetric variant="cell" label="Limite total" value={currencyFmt(cards.reduce((s, c) => s + c.creditLimit, 0))} />
       </dl>
       <section aria-labelledby="card-list" className={cardPanel}>
         <h3 id="card-list" className="border-b border-border px-4 py-3 font-semibold">Cartões cadastrados</h3>
@@ -419,8 +411,8 @@ export function CardsView() {
                 </Button>
                 <div className="col-span-2 grid min-w-0 gap-1 md:col-span-1">
                   <dl className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="min-w-0"><dt className="text-muted-foreground">Fatura atual</dt><dd className="wrap-anywhere font-mono font-semibold tabular-nums">{currencyFmt(card.currentBalance)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">Disponível</dt><dd className="wrap-anywhere font-mono font-semibold tabular-nums">{currencyFmt(card.creditLimit - card.currentBalance)}</dd></div>
+                    <FinanceMetric variant="compact" label="Fatura atual" value={currencyFmt(card.currentBalance)} />
+                    <FinanceMetric variant="compact" label="Disponível" value={currencyFmt(card.creditLimit - card.currentBalance)} />
                   </dl>
                   <CardUsage value={usagePercent(card)} high={isOverLimit(card)} />
                 </div>

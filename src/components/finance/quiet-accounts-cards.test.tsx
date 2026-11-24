@@ -2,12 +2,15 @@
 
 import { expect, test } from 'bun:test';
 import React, { type ReactElement, type ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
 import { toast } from 'sonner';
 import { readFileSync } from 'node:fs';
 import { useAppStore } from '@/lib/store';
 import { AccountsView, reconcileTransactionDraft, transactionDraftForAccount } from './accounts-view';
 import { CardsView } from './cards-view';
+import { FinanceMetric } from '@/components/shared/finance-metric';
+import { FinanceRow } from '@/components/shared/finance-row';
 
 function markup(file: string) {
   const source = ts.createSourceFile(file, new TextDecoder().decode(readFile(file)), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -763,5 +766,58 @@ test('Cartões: trava síncrona em POST/PUT/DELETE, chaves distintas, liberaçã
     await settle();
     expect(find(render(), (node) => node.props.children === 'Compra B Vigente')).toBeDefined();
     expect(find(render(), (node) => node.props.children === 'Compra A Atrasada')).toBeUndefined();
+  });
+});
+
+test('Contas e Cartões adotam FinanceMetric e FinanceRow com variantes, semântica, ações e máscara', async () => {
+  const accountsSrc = await Bun.file(new URL('accounts-view.tsx', import.meta.url)).text();
+  const cardsSrc = await Bun.file(new URL('cards-view.tsx', import.meta.url)).text();
+  expect(accountsSrc).toContain("from '@/components/shared/finance-metric'");
+  expect(accountsSrc).toContain("from '@/components/shared/finance-row'");
+  expect(accountsSrc).not.toContain('function AccountMetric');
+  expect(cardsSrc).toContain("from '@/components/shared/finance-metric'");
+  expect(cardsSrc).not.toContain('function CardMetric');
+
+  const metricHtml = renderToStaticMarkup(
+    <dl>
+      <FinanceMetric variant="strip" label="Saldo em contas" value="R$ 1.500,00" />
+      <FinanceMetric variant="cell" label="Limite" value="R$ 3.000,00" />
+      <FinanceMetric variant="compact" label="Disponível" value="R$ 1.200,00" showValues={false} ariaLabel="Disponível R$ 1.200,00" />
+    </dl>,
+  );
+  expect(metricHtml).toContain('<dt');
+  expect(metricHtml).toContain('<dd');
+  expect(metricHtml).toContain('Saldo em contas');
+  expect(metricHtml).toContain('R$ 1.500,00');
+  expect(metricHtml).toContain('R$ 3.000,00');
+  expect(metricHtml).toContain('R$ ••••••');
+  expect(metricHtml).not.toMatch(/1\.?200/);
+
+  const rowHtml = renderToStaticMarkup(
+    <ul>
+      <FinanceRow
+        variant="default"
+        tone="positive"
+        description="Depósito"
+        metadata="Receita · 03/02/2026 · Salário"
+        amount={2500}
+        actions={<button type="button" aria-label="Editar transação Depósito">Editar</button>}
+      />
+    </ul>,
+  );
+  expect(rowHtml).toMatch(/^<ul><li\b/);
+  expect(rowHtml).toContain('Depósito');
+  expect(rowHtml).toContain('Receita · 03/02/2026 · Salário');
+  expect(rowHtml).toContain('+R$');
+  expect(rowHtml).toContain('--ds-accent-positive');
+  expect(rowHtml).toContain('aria-label="Editar transação Depósito"');
+
+  await exerciseAccounts(async ({ render }) => {
+    await openDetail(render);
+    const tree = render();
+    const row = find(tree, (node) => node.type === FinanceRow);
+    expect(row).toBeDefined();
+    expect(required(tree, nameIs('Editar transação Transação sintética'))).toBeDefined();
+    expect(required(tree, nameIs('Excluir transação Transação sintética'))).toBeDefined();
   });
 });

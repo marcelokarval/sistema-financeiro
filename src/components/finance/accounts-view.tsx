@@ -32,6 +32,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { FinanceMetric } from '@/components/shared/finance-metric';
+import { FinanceRow } from '@/components/shared/finance-row';
 import { currencyFmt } from '@/lib/helpers';
 import { purchaseDateForInput } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
@@ -67,15 +69,6 @@ const accountColors = [
 const accountPanel = 'min-w-0 rounded-xl border border-border bg-card';
 const accountStrip = `${accountPanel} grid grid-cols-2 sm:grid-cols-4`;
 const dialogSurface = 'max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none';
-
-function AccountMetric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="min-w-0 border-b border-border p-3 even:border-l nth-[n+3]:border-b-0 sm:border-b-0 sm:p-4 sm:[&:not(:first-child)]:border-l">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 wrap-anywhere font-mono text-base font-semibold tabular-nums sm:text-lg">{value}</dd>
-    </div>
-  );
-}
 
 // ── Interfaces ─────────────────────────────────────────────────────
 interface Account {
@@ -753,10 +746,10 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
           </div>
         </header>
         <dl aria-label="Posição da conta" className={accountStrip}>
-          <AccountMetric label="Saldo atual" value={currencyFmt(selectedAccount.balance)} />
-          <AccountMetric label="Receitas na lista" value={currencyFmt(accountStats.income)} />
-          <AccountMetric label="Despesas na lista" value={currencyFmt(accountStats.expense)} />
-          <AccountMetric label="Transações na lista" value={accountStats.count} />
+          <FinanceMetric variant="strip" label="Saldo atual" value={currencyFmt(selectedAccount.balance)} />
+          <FinanceMetric variant="strip" label="Receitas na lista" value={currencyFmt(accountStats.income)} />
+          <FinanceMetric variant="strip" label="Despesas na lista" value={currencyFmt(accountStats.expense)} />
+          <FinanceMetric variant="strip" label="Transações na lista" value={accountStats.count} />
         </dl>
 
         <section aria-labelledby="account-transactions" className={accountPanel}>
@@ -775,40 +768,36 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
           ) : (
             <ul aria-labelledby="account-transactions" className="divide-y divide-border">
               {transactions.map((tx) => (
-                <li key={tx.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3">
-                  <div className="min-w-0 flex-1 basis-32">
-                    <p className="wrap-anywhere text-sm font-medium">{tx.description}</p>
-                    <p className="wrap-anywhere text-xs text-muted-foreground">
-                      {tx.type === 'INCOME' ? 'Receita' : 'Despesa'} · {dateFmt(tx.date)}{tx.category && ` · ${tx.category.name}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className={`mr-1 wrap-anywhere font-mono text-sm font-medium tabular-nums ${tx.type === 'INCOME' ? 'text-[var(--ds-accent-positive)]' : 'text-[var(--destructive)]'}`}>
-                      {tx.type === 'INCOME' ? '+' : '-'}{currencyFmt(tx.amount)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Editar transação ${tx.description}`}
-                      onClick={(event) => { txActionOrigin.current = event.currentTarget; openEditTransaction(tx); }}
-                    >
-                      <Pencil aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Excluir transação ${tx.description}`}
-                      className="text-destructive hover:text-destructive"
-                      onClick={(event) => {
-                        txActionOrigin.current = event.currentTarget;
-                        ++deleteTxOpening.current;
-                        setDeletingTransaction(tx);
-                      }}
-                    >
-                      <Trash2 aria-hidden="true" />
-                    </Button>
-                  </div>
-                </li>
+                <FinanceRow
+                  key={tx.id}
+                  variant="default"
+                  tone={tx.type === 'INCOME' ? 'positive' : 'negative'}
+                  description={tx.description}
+                  metadata={`${tx.type === 'INCOME' ? 'Receita' : 'Despesa'} · ${dateFmt(tx.date)}${tx.category ? ` · ${tx.category.name}` : ''}`}
+                  amount={tx.amount}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Editar transação ${tx.description}`}
+                    onClick={(event) => { txActionOrigin.current = event.currentTarget; openEditTransaction(tx); }}
+                  >
+                    <Pencil aria-hidden="true" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Excluir transação ${tx.description}`}
+                    className="text-destructive hover:text-destructive"
+                    onClick={(event) => {
+                      txActionOrigin.current = event.currentTarget;
+                      ++deleteTxOpening.current;
+                      setDeletingTransaction(tx);
+                    }}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                </FinanceRow>
               ))}
             </ul>
           )}
@@ -935,10 +924,10 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       {(!accountsLoadFailed || accounts.length > 0) && (
         <>
           <dl aria-label="Posição das contas" className={accountStrip}>
-            <AccountMetric label="Saldo em contas" value={currencyFmt(summary.totalPatrimonio)} />
-            <AccountMetric label="Receitas do mês" value={currencyFmt(monthIncome)} />
-            <AccountMetric label="Despesas do mês" value={currencyFmt(monthExpense)} />
-            <AccountMetric label="Total de contas" value={summary.accountCount} />
+            <FinanceMetric variant="strip" label="Saldo em contas" value={currencyFmt(summary.totalPatrimonio)} />
+            <FinanceMetric variant="strip" label="Receitas do mês" value={currencyFmt(monthIncome)} />
+            <FinanceMetric variant="strip" label="Despesas do mês" value={currencyFmt(monthExpense)} />
+            <FinanceMetric variant="strip" label="Total de contas" value={summary.accountCount} />
           </dl>
           <section aria-labelledby="account-list" className={accountPanel}>
             <h3 id="account-list" className="border-b border-border px-4 py-3 font-semibold">Contas cadastradas</h3>

@@ -8,6 +8,8 @@ import type { DashboardData, QueryResult } from './dashboard-query';
 import { currencyFmt } from '@/lib/helpers';
 import { UpcomingBillsPanel } from './upcoming-bills';
 import { BudgetHeader } from './monthly-budget-tracker';
+import { FinanceRow } from '@/components/shared/finance-row';
+import { FinanceMetric } from '@/components/shared/finance-metric';
 
 const data: DashboardData = {
   totalBalance: 9876.54, totalCardBalance: 320.24, totalCardLimit: 800,
@@ -177,4 +179,64 @@ test('RecentTransactions aplica tokens semânticos positivos e negativos junto c
   expect(html).toContain('--ds-accent-danger');
   expect(html).toContain('+R$');
   expect(html).toContain('−R$');
+});
+
+test('FinanceRow e FinanceMetric suportam variantes, semântica, ações opcionais, hierarquia do saldo e privacidade', () => {
+  const rowsHtml = renderToStaticMarkup(
+    <ul>
+      <FinanceRow
+        variant="compact"
+        tone="positive"
+        description="Salário mensal"
+        metadata="12/01/2026 · Trabalho"
+        amount={5000}
+      />
+      <FinanceRow
+        variant="default"
+        tone="negative"
+        description="Mercado"
+        metadata="Despesa · 13/01/2026"
+        amount={250.5}
+        actions={<button type="button" aria-label="Editar transação Mercado">Editar</button>}
+      />
+    </ul>,
+  );
+  expect(rowsHtml).toMatch(/^<ul><li\b/);
+  expect(rowsHtml).toContain('Salário mensal');
+  expect(rowsHtml).toContain('12/01/2026 · Trabalho');
+  expect(rowsHtml).toContain(`+${currencyFmt(5000)}`);
+  expect(rowsHtml).toContain(`−${currencyFmt(250.5)}`);
+  expect(rowsHtml).toContain('--ds-accent-positive');
+  expect(rowsHtml).toContain('--ds-accent-danger');
+  expect(rowsHtml).toContain('aria-label="Editar transação Mercado"');
+
+  const maskedRowHtml = renderToStaticMarkup(
+    <ul>
+      <FinanceRow
+        tone="negative"
+        description="Aluguel"
+        metadata="10/01/2026"
+        amount={1987.65}
+        showValues={false}
+        ariaLabel="Aluguel R$ 1.987,65"
+      />
+    </ul>,
+  );
+  expect(maskedRowHtml).toContain('R$ ••••••');
+  expect(maskedRowHtml).not.toMatch(/1\.?987|65/);
+
+  const maskedMetricHtml = renderToStaticMarkup(
+    <dl>
+      <FinanceMetric label="Saldo" value={currencyFmt(4321.98)} showValues={false} ariaLabel="Saldo R$ 4.321,98" />
+    </dl>,
+  );
+  expect(maskedMetricHtml).toContain('<dt');
+  expect(maskedMetricHtml).toContain('<dd');
+  expect(maskedMetricHtml).toContain('R$ ••••••');
+  expect(maskedMetricHtml).not.toMatch(/4\.?321|98/);
+
+  const dashHtml = renderDashboard('ready');
+  expect(dashHtml).toMatch(/<dt[^>]*>Saldo em contas<\/dt><dd[^>]*text-4xl sm:text-5xl[^>]*>/);
+  const dashSrc = require('node:fs').readFileSync(new URL('./dashboard-view.tsx', import.meta.url), 'utf8');
+  expect(dashSrc).toContain("from '@/components/shared/finance-row'");
 });
