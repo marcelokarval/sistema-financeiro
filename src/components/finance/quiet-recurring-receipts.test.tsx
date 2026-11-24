@@ -6,7 +6,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RecurringPanel, RecurringTransactionsWidget } from './recurring-transactions';
 import { toast } from 'sonner';
-import { ReceiptGenerator, ReceiptWorkspace } from './receipt-generator';
+import { buildReceiptPrintHtml, ReceiptGenerator, ReceiptWorkspace } from './receipt-generator';
+import { buildReceiptFields } from './receipt-fields';
 
 const noop = () => {};
 const entries = [
@@ -34,7 +35,7 @@ function recurringMarkup(loading = false, fixture = entries) {
 
 function receiptMarkup(receiptData: React.ComponentProps<typeof ReceiptWorkspace>['receiptData'], error: string | null = null, isLoading = false, receiptId = 'p1') {
   return renderToStaticMarkup(<ReceiptWorkspace
-    receiptType="purchase" setReceiptType={noop} receiptId={receiptId} setReceiptId={noop}
+    receiptType={receiptData?.receiptType ?? 'purchase'} setReceiptType={noop} receiptId={receiptId} setReceiptId={noop}
     receiptData={receiptData} error={error} isLoading={isLoading} copied={false}
     generateReceipt={noop} handlePrint={noop} handleDownload={noop} handleCopy={noop}
   />);
@@ -93,21 +94,94 @@ test('Recibos identifica a origem, antecipa a prévia e só oferece saídas com 
 });
 test('preserva zero como valor total no documento de compra', () => {
   const data = { ...purchase.data, totalAmount: 'R$ 0,00', totalAmountRaw: 0 };
-  const html = receiptMarkup({ ...purchase, data });
-  expect(html).toMatch(/VALOR TOTAL<\/span><span[^>]*>R\$\u00a00,00<\/span>/u);
-  expect(html).not.toMatch(/NaN|undefined/);
+  const receipt = { ...purchase, data };
+  for (const html of [receiptMarkup(receipt), buildReceiptPrintHtml(receipt)]) {
+    expect(html).toMatch(/VALOR TOTAL<\/span>\s*<span[^>]*>R\$\u00a00,00<\/span>/u);
+    expect(html).not.toMatch(/NaN|undefined/);
+  }
 });
 
-test('copiar e baixar serializam o valor formatado de compra e transação', async () => {
+test('prévia e impressão sinalizam total indisponível sem inferir zero ou usar texto da API', () => {
+  for (const totalAmountRaw of [undefined, Number.NaN, Number.POSITIVE_INFINITY]) {
+    const receipt = { ...purchase, data: { ...purchase.data, totalAmountRaw } };
+    for (const html of [receiptMarkup(receipt), buildReceiptPrintHtml(receipt)]) {
+      expect(html).toMatch(/VALOR TOTAL<\/span>\s*<span[^>]*>Valor indisponível<\/span>/);
+    }
+  }
+});
+
+test('modelo puro de Recibos projeta campos de compra na ordem do documento', () => {
+  const fields = buildReceiptFields(purchase);
+  expect(fields.rows.map(({ label, value }) => [label, value])).toEqual([
+    ['Estabelecimento', 'Loja sintética'], ['Categoria', 'Mercado'], ['Cartão', 'Cartão sintético ****1234'],
+    ['Parcela', '1/2'], ['Data', '24/11/2026'],
+  ]);
+  expect(fields).toMatchObject({
+    total: { display: 'R$ 42,50', text: 'R$ 42,50' },
+    notes: 'Observação sintética',
+    items: { entries: [{ name: 'Item sintético', units: '2x R$ 21,25', total: { display: 'R$ 42,50', text: 'R$ 42,50' } }] },
+  });
+  expect(fields).not.toHaveProperty('data');
+});
+
+test('impressão usa o tamanho da lista quando a contagem de itens vem omitida', () => {
+  const receipt = { ...purchase, data: { ...purchase.data, itemsCount: undefined } };
+  expect(buildReceiptPrintHtml(receipt)).toContain('Itens (1)');
+});
+
+test('prévia, impressão, cópia e TXT conservam os campos de compra e transação', async () => {
+  // Horário local conhecido, sem depender do fuso do executor. Datas do registro são independentes.
+  const issuedAt = new Date(2026, 10, 24, 10, 35).toISOString();
   const transaction = {
-    receiptType: 'transaction' as const, receiptNumber: 'TXN-001', issuedAt: purchase.issuedAt,
-    data: { id: 't1', description: 'Transação sintética', type: 'Despesa', amount: 'R$ 17,30', amountRaw: 17.3, date: '24/11/2026', category: 'Mercado', categoryColor: '#888', account: 'Conta', card: null, notes: null },
+    receiptType: 'transaction' as const, receiptNumber: 'TXN-001', issuedAt,
+    data: {
+      id: 'ID-INTERNO-T1', description: 'Despesa <teste> & recibo', type: 'Despesa', rawType: 'EXPENSE-INTERNO',
+      amount: '-R$ 18,20', amountRaw: -17.3, date: '23/11/2026, 21:00', category: 'Mercado', categoryColor: '#888',
+      account: 'Conta sintética', card: null, notes: null,
+    },
   };
+  const purchaseWithHiddenFields = {
+    ...purchase, issuedAt,
+    data: {
+      ...purchase.data, id: 'ID-INTERNO-P1', cardBrand: 'BANDEIRA-INTERNA',
+      notes: 'Nota <sintética> & LOJA', totalAmount: 'R$ 43,60', itemsCount: 3,
+      items: [{ ...purchase.data.items[0], totalPrice: 'R$ 39,99', totalPriceRaw: 40.25 }],
+    },
+  };
+  const fixtures = [
+    { receipt: purchaseWithHiddenFields, displayTotal: 'R$ 42,50', textTotal: 'R$ 43,60', rows: [
+      ['Estabelecimento', 'Loja sintética'], ['Categoria', 'Mercado'], ['Cartão', 'Cartão sintético ****1234'],
+      ['Parcela', '1/2'], ['Data', '24/11/2026'],
+    ], extra: ['Itens (3)', 'Item sintético', '2x R$ 21,25', 'R$ 40,25', 'Observações', 'Nota <sintética> & LOJA'],
+    absent: ['Descrição', 'Conta sintética', 'ID-INTERNO-P1', 'BANDEIRA-INTERNA'] },
+    { receipt: transaction, displayTotal: '-R$ 17,30', textTotal: '-R$ 18,20', rows: [
+      ['Descrição', 'Despesa <teste> & recibo'], ['Tipo', 'Despesa'], ['Categoria', 'Mercado'],
+      ['Conta', 'Conta sintética'], ['Data', '23/11/2026, 21:00'],
+    ], extra: [], absent: ['Estabelecimento', 'Parcela', 'Cartão sintético', 'Observações', 'ID-INTERNO-T1', 'EXPENSE-INTERNO'] },
+  ];
+  const readText = (html: string) => html.replace(/<[^>]*>/g, ' ')
+    .replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&')
+    .replace(/\s+/g, ' ');
   const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
   const previousDispatcher = internals.H;
   const originals = Object.getOwnPropertyDescriptors(globalThis);
   try {
-    for (const [receipt, total] of [[purchase, 'R$ 42,50'], [transaction, 'R$ 17,30']] as const) {
+    for (const { receipt, displayTotal, textTotal, rows, extra, absent } of fixtures) {
+      // Renderizadores reais: a data do registro não deve ser reinterpretada como instante.
+      const preview = receiptMarkup(receipt);
+      const print = buildReceiptPrintHtml(receipt);
+      const previewText = readText(preview);
+      const printText = readText(print);
+      const issuance = '24/11/2026, 10:35';
+      for (const output of [previewText, printText]) {
+        expect(output).toContain(issuance);
+        expect(output).toContain(`${receipt.receiptNumber} `);
+        expect(output).toContain(`VALOR TOTAL ${displayTotal.replace('\u00a0', ' ')}`);
+        for (const [label, value] of rows) expect(output).toContain(`${label} ${value}`);
+        for (const field of extra) expect(output).toContain(field.replace('\u00a0', ' '));
+      }
+      expect(print).not.toMatch(/<sintética>|<teste>/);
+      expect(preview).not.toMatch(/<sintética>|<teste>/);
       let stateIndex = 0;
       internals.H = {
         useState: (initial: unknown) => [stateIndex++ === 2 ? receipt : initial, noop],
@@ -136,7 +210,22 @@ test('copiar e baixar serializam o valor formatado de compra e transação', asy
         expect(anchor.download).toBe(`recibo-${receipt.receiptNumber}.txt`);
         expect(downloaded).toBeDefined();
         const text = await downloaded!.text();
-        expect(text).toContain(`  VALOR TOTAL:  ${total}\n`);
+        expect(downloaded!.type).toBe('text/plain;charset=utf-8');
+        expect(text).toContain(`  VALOR TOTAL:  ${textTotal}\n`);
+        expect(text).toContain(`  Emissão: ${issuance}\n`);
+        expect(text).toContain(`  Nº: ${receipt.receiptNumber}\n`);
+        const width = receipt.receiptType === 'purchase' ? 17 : 12;
+        for (const [label, value] of rows) {
+          expect(text).toContain(`  ${(label + ':').padEnd(width)}${value}\n`);
+        }
+        if (receipt.receiptType === 'purchase') {
+          expect(text).toContain('ITENS (3)');
+          expect(text).toContain('  1. Item sintético\n     2x R$ 21,25 = R$ 39,99\n');
+          expect(text).toContain('  Observações: Nota <sintética> & LOJA\n');
+        }
+        for (const hidden of absent) {
+          for (const output of [preview, print, copied, text]) expect(output).not.toContain(hidden);
+        }
         expect(text).not.toContain('undefined');
         expect(copied).toBe(text);
       } finally {
@@ -467,7 +556,6 @@ for (const [file, count] of [["recurring-transactions.tsx",1]] as const) {
   });
 }
 
-import * as receiptModule from './receipt-generator';
 
 test('recurring-transactions exibe erro com retry e bloqueia duplo clique durante saveForm', async () => {
   const errHtml = renderToStaticMarkup(
@@ -556,8 +644,7 @@ test('recurring-transactions exibe erro com retry e bloqueia duplo clique durant
 test('receipt-generator gera HTML standalone para impressão, remove micro-tipografia e oferece seletor de registros', () => {
   const src = readFileSync(new URL('./receipt-generator.tsx', import.meta.url), 'utf8');
   expect(src).not.toMatch(/text-\[(10|11)px\]/);
-  expect(typeof (receiptModule as Record<string, any>).buildReceiptPrintHtml).toBe('function');
-  const html = (receiptModule as Record<string, any>).buildReceiptPrintHtml(purchase);
+  const html = buildReceiptPrintHtml(purchase);
   expect(html).toContain('<!DOCTYPE html>');
   expect(html).toContain('@media print');
   expect(html).toContain('QA-001');

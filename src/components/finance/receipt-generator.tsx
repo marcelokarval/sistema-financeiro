@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef, useId } from 'react';
-import { FileText, Printer, Download, Copy, Check, CreditCard, Wallet, AlertCircle } from 'lucide-react';
+import { FileText, Printer, Download, Copy, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -16,40 +15,8 @@ import {
 import { toast } from 'sonner';
 import { currencyFmt } from '@/lib/helpers';
 
-// --- Types ---
-interface ReceiptData {
-  receiptType: 'transaction' | 'purchase';
-  receiptNumber: string;
-  issuedAt: string;
-  data: {
-    id: string;
-    type?: string;
-    rawType?: string;
-    description?: string;
-    merchant?: string;
-    amount?: string;
-    totalAmount?: string;
-    amountRaw?: number;
-    totalAmountRaw?: number;
-    date: string;
-    category: string;
-    categoryColor: string;
-    account?: string;
-    accountColor?: string;
-    card: string | null;
-    cardBrand?: string | null;
-    installment?: string | null;
-    notes: string | null;
-    items?: Array<{
-      name: string;
-      quantity: number;
-      unitPrice: string;
-      totalPrice: string;
-      totalPriceRaw: number;
-    }>;
-    itemsCount?: number;
-  };
-}
+import { buildReceiptFields, type ReceiptData } from './receipt-fields';
+import { ReceiptPreview } from './receipt-preview';
 
 const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)] motion-reduce:transition-none';
 
@@ -63,56 +30,28 @@ function escapeHtml(value: string): string {
 }
 
 export function buildReceiptPrintHtml(receipt: ReceiptData): string {
-  const isPurchase = receipt.receiptType === 'purchase';
-  const d = receipt.data;
-  const total = isPurchase ? d.totalAmountRaw : d.amountRaw;
-  const formattedTotal = typeof total === 'number' && Number.isFinite(total) ? currencyFmt(total) : 'Valor indisponível';
-  const issuedDate = new Date(receipt.issuedAt).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const rows: Array<[string, string]> = isPurchase
-    ? [
-        ['Estabelecimento', d.merchant ?? '—'],
-        ['Categoria', d.category],
-        ...(d.card ? [['Cartão', d.card] as [string, string]] : []),
-        ...(d.installment ? [['Parcela', d.installment] as [string, string]] : []),
-        ['Data', d.date],
-      ]
-    : [
-        ['Descrição', d.description ?? '—'],
-        ['Tipo', d.type ?? '—'],
-        ['Categoria', d.category],
-        ...(d.account ? [['Conta', d.account] as [string, string]] : []),
-        ...(d.card ? [['Cartão', d.card] as [string, string]] : []),
-        ['Data', d.date],
-      ];
-
+  const { rows, items, notes, receiptNumber, issuedDate, total } = buildReceiptFields(receipt);
   const rowsHtml = rows
-    .map(([label, val]) => `<div class="receipt-row"><span class="receipt-label">${escapeHtml(label)}</span><span class="receipt-value">${escapeHtml(val)}</span></div>`)
+    .map(({ label, value }) => `<div class="receipt-row"><span class="receipt-label">${escapeHtml(label)}</span><span class="receipt-value">${escapeHtml(value ?? '—')}</span></div>`)
     .join('');
 
-  const itemsHtml = isPurchase && d.items && d.items.length > 0
+  const itemsHtml = items
     ? `<div class="receipt-divider"></div>
-       <p class="receipt-section-title">Itens (${d.itemsCount ?? d.items.length})</p>
-       ${d.items
+       <p class="receipt-section-title">Itens (${items.count ?? items.entries.length})</p>
+       ${items.entries
          .map(
            (item) => `<div class="receipt-row">
-             <span class="receipt-label">${escapeHtml(item.name)} (${item.quantity}x ${escapeHtml(item.unitPrice)})</span>
-             <span class="receipt-value">${escapeHtml(currencyFmt(item.totalPriceRaw))}</span>
+             <span class="receipt-label">${escapeHtml(item.name)} (${escapeHtml(item.units)})</span>
+             <span class="receipt-value">${escapeHtml(item.total.display)}</span>
            </div>`,
          )
          .join('')}`
     : '';
 
-  const notesHtml = d.notes
+  const notesHtml = notes
     ? `<div class="receipt-divider"></div>
        <p class="receipt-label">Observações</p>
-       <p class="receipt-notes">${escapeHtml(d.notes)}</p>`
+       <p class="receipt-notes">${escapeHtml(notes)}</p>`
     : '';
 
   return `<!DOCTYPE html>
@@ -154,7 +93,7 @@ export function buildReceiptPrintHtml(receipt: ReceiptData): string {
       <p class="receipt-brand">FinanceApp</p>
       <p class="receipt-subtitle">Gestão Financeira Inteligente</p>
       <p class="receipt-title">RECIBO</p>
-      <p class="receipt-meta">${escapeHtml(receipt.receiptNumber)} · ${escapeHtml(issuedDate)}</p>
+      <p class="receipt-meta">${escapeHtml(receiptNumber)} · ${escapeHtml(issuedDate)}</p>
     </div>
     <div class="receipt-divider"></div>
     ${rowsHtml}
@@ -163,200 +102,16 @@ export function buildReceiptPrintHtml(receipt: ReceiptData): string {
     <div class="receipt-divider"></div>
     <div class="receipt-total">
       <span>VALOR TOTAL</span>
-      <span>${escapeHtml(formattedTotal)}</span>
+      <span>${escapeHtml(total.display)}</span>
     </div>
     <div class="receipt-divider"></div>
     <div class="receipt-footer">
       <p>Obrigado pela preferência!</p>
       <p>Documento gerado automaticamente pelo FinanceApp</p>
-      <p>${escapeHtml(receipt.receiptNumber)}</p>
+      <p>${escapeHtml(receiptNumber)}</p>
     </div>
   </body>
 </html>`;
-}
-
-// --- Receipt Print View ---
-function ReceiptContent({ receipt }: { receipt: ReceiptData }) {
-  const isPurchase = receipt.receiptType === 'purchase';
-  const d = receipt.data;
-  const total = isPurchase ? d.totalAmountRaw : d.amountRaw;
-  const issuedDate = new Date(receipt.issuedAt).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return (
-    <div className="space-y-4 text-sm leading-relaxed [overflow-wrap:anywhere]">
-      {/* Header */}
-      <div className="text-center space-y-1.5">
-        <div className="flex items-center justify-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground">
-            <FileText aria-hidden="true" className="size-4" />
-          </div>
-          <div>
-            <p className="text-base font-semibold tracking-tight text-foreground">FinanceApp</p>
-            <p className="text-xs text-muted-foreground">Gestão Financeira Inteligente</p>
-          </div>
-        </div>
-        <div className="pt-2">
-          <h3 className="text-lg font-semibold tracking-wide text-foreground">RECIBO</h3>
-          <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
-            <Badge variant="outline" className="text-xs font-mono px-2 py-0 h-5">
-              {receipt.receiptNumber}
-            </Badge>
-            <span className="text-xs text-muted-foreground">{issuedDate}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Dashed divider */}
-      <div className="border-t border-border" />
-
-      {/* Details */}
-      <div className="space-y-2.5">
-        {isPurchase ? (
-          <>
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-muted-foreground text-xs">Estabelecimento</span>
-              <span className="font-semibold text-right max-w-[60%]">{d.merchant}</span>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-muted-foreground text-xs">Categoria</span>
-              <div className="flex min-w-0 items-center gap-1.5">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: d.categoryColor }}
-                />
-                <span className="min-w-0 text-right font-medium">{d.category}</span>
-              </div>
-            </div>
-            {d.card && (
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-muted-foreground text-xs">Cartão</span>
-                <span className="flex min-w-0 items-center gap-1 text-right font-medium">
-                  <CreditCard className="w-3 h-3" />
-                  {d.card}
-                </span>
-              </div>
-            )}
-            {d.installment && (
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-muted-foreground text-xs">Parcela</span>
-                <span className="min-w-0 text-right font-medium">{d.installment}</span>
-              </div>
-            )}
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-muted-foreground text-xs">Data</span>
-              <span className="min-w-0 text-right font-medium">{d.date}</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-muted-foreground text-xs">Descrição</span>
-              <span className="font-semibold text-right max-w-[60%]">{d.description}</span>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-muted-foreground text-xs">Tipo</span>
-              <span className="text-right font-semibold">
-                {d.type}
-              </span>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-muted-foreground text-xs">Categoria</span>
-              <div className="flex min-w-0 items-center gap-1.5">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: d.categoryColor }}
-                />
-                <span className="min-w-0 text-right font-medium">{d.category}</span>
-              </div>
-            </div>
-            {d.account && (
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-muted-foreground text-xs">Conta</span>
-                <span className="flex min-w-0 items-center gap-1 text-right font-medium">
-                  <Wallet className="w-3 h-3" />
-                  {d.account}
-                </span>
-              </div>
-            )}
-            {d.card && (
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-muted-foreground text-xs">Cartão</span>
-                <span className="flex min-w-0 items-center gap-1 text-right font-medium">
-                  <CreditCard className="w-3 h-3" />
-                  {d.card}
-                </span>
-              </div>
-            )}
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-muted-foreground text-xs">Data</span>
-              <span className="min-w-0 text-right font-medium">{d.date}</span>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Itemized list for purchases */}
-      {isPurchase && d.items && d.items.length > 0 && (
-        <>
-          <div className="border-t border-border" />
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground font-semibold tracking-wide uppercase">
-              Itens ({d.itemsCount})
-            </p>
-            {d.items.map((item, idx) => (
-              <div key={idx} className="flex items-start justify-between gap-3 text-xs py-0.5">
-                <div className="flex-1 min-w-0 pr-2">
-                  <span className="block">{item.name}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {item.quantity}x {item.unitPrice}
-                  </span>
-                </div>
-                <span className="min-w-0 text-right font-mono font-semibold tabular-nums">{currencyFmt(item.totalPriceRaw)}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Notes */}
-      {d.notes && (
-        <>
-          <div className="border-t border-border" />
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Observações</p>
-            <p className="text-xs italic">{d.notes}</p>
-          </div>
-        </>
-      )}
-
-      {/* Total */}
-      <div className="border-t border-border" />
-      <div className="flex items-start justify-between gap-3 py-1">
-        <span className="text-sm font-semibold">VALOR TOTAL</span>
-        <span className="min-w-0 text-right font-mono text-lg font-semibold tabular-nums">
-          {typeof total === 'number' && Number.isFinite(total) ? currencyFmt(total) : 'Valor indisponível'}
-        </span>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-border" />
-      <div className="text-center space-y-1.5 pt-1">
-        <p className="text-xs text-muted-foreground">Obrigado pela preferência!</p>
-        <p className="text-xs text-muted-foreground">
-          Documento gerado automaticamente pelo FinanceApp
-        </p>
-        <p className="text-xs text-muted-foreground font-mono">
-          {receipt.receiptNumber}
-        </p>
-      </div>
-    </div>
-  );
 }
 
 // --- Main Component ---
@@ -423,15 +178,7 @@ export function ReceiptGenerator() {
 
   const buildPlainText = useCallback((): string => {
     if (!receiptData) return '';
-    const r = receiptData;
-    const d = r.data;
-    const issuedDate = new Date(r.issuedAt).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const { receiptNumber, issuedDate, rows, receiptType, items, notes, total } = buildReceiptFields(receiptData);
 
     const divider = '─'.repeat(36);
     const dividerDashed = '-'.repeat(36);
@@ -442,46 +189,37 @@ export function ReceiptGenerator() {
     text += `     Gestão Financeira Inteligente\n`;
     text += `${divider}\n\n`;
     text += `             R E C I B O\n\n`;
-    text += `  Nº: ${r.receiptNumber}\n`;
+    text += `  Nº: ${receiptNumber}\n`;
     text += `  Emissão: ${issuedDate}\n\n`;
     text += `${dividerDashed}\n\n`;
 
-    if (r.receiptType === 'purchase') {
-      text += `  Estabelecimento: ${d.merchant}\n`;
-      text += `  Categoria:       ${d.category}\n`;
-      if (d.card) text += `  Cartão:          ${d.card}\n`;
-      if (d.installment) text += `  Parcela:         ${d.installment}\n`;
-      text += `  Data:            ${d.date}\n`;
-
-      if (d.items && d.items.length > 0) {
-        text += `\n${dividerDashed}\n`;
-        text += `  ITENS (${d.itemsCount})\n`;
-        text += `${dividerDashed}\n`;
-        d.items.forEach((item, idx) => {
-          text += `  ${idx + 1}. ${item.name}\n`;
-          text += `     ${item.quantity}x ${item.unitPrice} = ${item.totalPrice}\n`;
-        });
-      }
-    } else {
-      text += `  Descrição:  ${d.description}\n`;
-      text += `  Tipo:       ${d.type}\n`;
-      text += `  Categoria:  ${d.category}\n`;
-      if (d.account) text += `  Conta:      ${d.account}\n`;
-      if (d.card) text += `  Cartão:     ${d.card}\n`;
-      text += `  Data:       ${d.date}\n`;
+    // Larguras das duas colunas do TXT legado, incluindo os dois-pontos.
+    const labelWidth = receiptType === 'purchase' ? 17 : 12;
+    for (const { label, value } of rows) {
+      text += `  ${(label + ':').padEnd(labelWidth)}${value}\n`;
     }
 
-    if (d.notes) {
+    if (items) {
       text += `\n${dividerDashed}\n`;
-      text += `  Observações: ${d.notes}\n`;
+      text += `  ITENS (${items.count})\n`;
+      text += `${dividerDashed}\n`;
+      items.entries.forEach((item, idx) => {
+        text += `  ${idx + 1}. ${item.name}\n`;
+        text += `     ${item.units} = ${item.total.text}\n`;
+      });
+    }
+
+    if (notes) {
+      text += `\n${dividerDashed}\n`;
+      text += `  Observações: ${notes}\n`;
     }
 
     text += `\n${divider}\n`;
-    text += `  VALOR TOTAL:  ${r.receiptType === 'purchase' ? d.totalAmount : d.amount}\n`;
+    text += `  VALOR TOTAL:  ${total.text}\n`;
     text += `${divider}\n\n`;
     text += `    Obrigado pela preferência!\n\n`;
     text += `  Documento gerado pelo FinanceApp\n`;
-    text += `  ${r.receiptNumber}\n`;
+    text += `  ${receiptNumber}\n`;
 
     return text;
   }, [receiptData]);
@@ -665,7 +403,7 @@ export function ReceiptWorkspace({
             ) : receiptData ? (
               <>
                 <div ref={receiptRef} className="min-w-0 rounded-lg border border-border bg-background p-3 sm:p-4">
-                  <ReceiptContent receipt={receiptData} />
+                  <ReceiptPreview fields={buildReceiptFields(receiptData)} />
                 </div>
                 <div role="group" aria-label="Ações do recibo" className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={handlePrint} className={focusClass}>
