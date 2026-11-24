@@ -1,11 +1,15 @@
 /// <reference types="bun-types" />
 
 import { describe, expect, test } from 'bun:test';
-import React from 'react';
+import React, { createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { Wallet } from 'lucide-react';
 import { Sidebar } from './sidebar';
 import { MobileNav } from './mobile-nav';
 import { QuickStatsOverview } from './quick-stats-overview';
+import { AppHeader } from './app-header';
+import { AppOverlays } from './app-overlays';
+import { GlobalSearchResult, SearchResults } from './global-search-result';
 import { readFileSync } from 'node:fs';
 import { useAppStore } from '@/lib/store';
 
@@ -54,6 +58,109 @@ describe('navegação e shell transversal Quiet Financial OS', () => {
     expect(searchSrc).toContain('formatPurchaseDate(t.date)');
     expect(notifSrc).toContain('Tentar novamente');
     expect(notifSrc).toContain('localStorage');
+    expect(notifSrc).toContain('QueryPanel');
+  });
+
+  test('AppHeader separa o cabeçalho com ações globais, notificação sem papel de dialog e indicador offline', () => {
+    const html = renderToStaticMarkup(
+      <AppHeader
+        currentView="cards"
+        isConnected={false}
+        darkTheme={false}
+        onToggleTheme={noop}
+        searchButtonRef={createRef()}
+        onOpenSearch={noop}
+        advisorButtonRef={createRef()}
+        aiAssistantVisible={false}
+        onOpenAdvisor={noop}
+        notificationButtonRef={createRef()}
+        showNotifications={true}
+        onToggleNotifications={noop}
+        onCloseNotifications={noop}
+        onDismissNotifications={noop}
+        onQuickNavigate={noop}
+        onNewGoal={noop}
+        onExport={noop}
+        newEntryButtonRef={createRef()}
+        onNewEntry={noop}
+      />,
+    );
+
+    expect(html).toContain('Cartões');
+    expect(html).toContain('Acompanhe cartões e faturas');
+    expect(html).toContain('Tempo real indisponível');
+    expect(html).toContain('aria-label="Abrir busca global"');
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).toContain('aria-label="Usar tema escuro"');
+    expect(html).toContain('aria-label="Abrir assistente financeiro IA"');
+    expect(html).toContain('aria-label="Notificações"');
+    expect(html).toContain('aria-label="Ações rápidas"');
+    expect(html).toContain('aria-label="Novo lançamento"');
+    expect(html).toContain('data-quiet-notifications');
+    expect(html).not.toMatch(/data-quiet-notifications[^>]*role="dialog"/);
+  });
+
+  test('AppOverlays monta AIAdvisor sob demanda em dialog nativo e preserva inert quando fechado', () => {
+    const closedHtml = renderToStaticMarkup(
+      <AppOverlays
+        advisorDialogRef={createRef()}
+        aiAssistantVisible={false}
+        advisorOpened={false}
+        onCloseAdvisor={noop}
+        onAdvisorDialogClose={noop}
+        showSearch={false}
+        onCloseSearch={noop}
+        onSelectSearch={noop}
+      />,
+    );
+    expect(closedHtml).toContain('<dialog');
+    expect(closedHtml).toContain('inert=""');
+    expect(closedHtml).not.toContain('data-quiet-advisor');
+
+    const demandHtml = renderToStaticMarkup(
+      <AppOverlays
+        advisorDialogRef={createRef()}
+        aiAssistantVisible={true}
+        advisorOpened={true}
+        onCloseAdvisor={noop}
+        onAdvisorDialogClose={noop}
+        showSearch={false}
+        onCloseSearch={noop}
+        onSelectSearch={noop}
+      />,
+    );
+    expect(demandHtml).toContain('data-quiet-advisor');
+    expect(demandHtml).toContain('aria-label="Fechar assistente financeiro"');
+  });
+
+  test('GlobalSearchResult e SearchResults preservam marcação tabular fora de categorias e estado ativo', () => {
+    const itemHtml = renderToStaticMarkup(
+      <ul>
+        <GlobalSearchResult
+          result={{ id: 'acc-1', type: 'accounts', label: 'Conta Principal', secondary: 'R$ 100,00 · Banco', icon: Wallet }}
+          index={0}
+          active={true}
+          onActivate={noop}
+          onSelect={noop}
+        />
+        <GlobalSearchResult
+          result={{ id: 'cat-1', type: 'categories', label: 'Mercado', secondary: 'Despesa', icon: Wallet }}
+          index={1}
+          active={false}
+          onActivate={noop}
+          onSelect={noop}
+        />
+      </ul>,
+    );
+    expect(itemHtml).toContain('data-result-index="0"');
+    expect(itemHtml).toContain('data-active="true"');
+    expect(itemHtml).toContain('font-mono tabular-nums');
+    expect(itemHtml).toContain('Mercado');
+
+    const statusHtml = renderToStaticMarkup(
+      <SearchResults groups={[]} query="" loading={false} activeIndex={0} onActivate={noop} onSelect={noop} />,
+    );
+    expect(statusHtml).toContain('Comece a digitar para buscar');
   });
 });
 

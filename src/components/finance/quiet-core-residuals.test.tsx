@@ -1,23 +1,70 @@
 /// <reference types="bun-types" />
 
 import { describe, expect, test } from 'bun:test';
-import React from 'react';
+import React, { createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { QuickStatsPanel } from './quick-stats-overview';
 import { InvestmentEntries } from './investments-view';
+import { AdvisorComposer } from './advisor-composer';
+import { NotificationPanel } from './notification-panel';
 
 describe('Wave 1 — remoção de framer-motion e residuais do core', () => {
   test('nenhum arquivo em src/ importa framer-motion', () => {
     for (const file of [
       '../../app/page.tsx',
+      './app-header.tsx',
+      './app-overlays.tsx',
       './global-search.tsx',
+      './global-search-result.tsx',
       './notification-panel.tsx',
+      './ai-advisor.tsx',
+      './advisor-composer.tsx',
     ]) {
       const source = readFileSync(new URL(file, import.meta.url), 'utf8');
       expect(source).not.toContain('framer-motion');
       expect(source).not.toMatch(/<motion\.|AnimatePresence|MotionConfig/);
     }
+  });
+
+  test('AdvisorComposer separa sugestões e envio com validação de rascunho e estado pendente', () => {
+    const emptyHtml = renderToStaticMarkup(
+      <AdvisorComposer
+        suggestions={['Como economizar mais?', 'Meta de investimento']}
+        inputValue="   "
+        isLoading={false}
+        inputRef={createRef()}
+        onInputChange={() => {}}
+        onSubmit={() => {}}
+        onSuggestionClick={() => {}}
+        onKeyDown={() => {}}
+      />,
+    );
+    expect(emptyHtml).toContain('Sugestões de perguntas');
+    expect(emptyHtml).toContain('Como economizar mais?');
+    expect(emptyHtml).toContain('aria-label="Sua dúvida financeira"');
+    expect(emptyHtml).toMatch(/<button[^>]*type="submit"[^>]*aria-label="Enviar mensagem"[^>]*disabled/);
+
+    const readyHtml = renderToStaticMarkup(
+      <AdvisorComposer
+        suggestions={['Como economizar mais?']}
+        inputValue="Resumo do mês"
+        isLoading={false}
+        onInputChange={() => {}}
+        onSubmit={() => {}}
+        onSuggestionClick={() => {}}
+        onKeyDown={() => {}}
+      />,
+    );
+    expect(readyHtml).not.toMatch(/<button[^>]*type="submit"[^>]*disabled/);
+  });
+
+  test('NotificationPanel adota QueryPanel preservando seção sem role=dialog e estado de carregamento', () => {
+    const html = renderToStaticMarkup(<NotificationPanel isOpen onClose={() => {}} />);
+    expect(html).toContain('<section');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('Carregando atividades…');
+    expect(html).not.toContain('role="dialog"');
   });
 
   test('QuickStatsPanel consome séries históricas reais (monthlySavingsHistory, investmentsHistory, cardDebtHistory) da API', () => {

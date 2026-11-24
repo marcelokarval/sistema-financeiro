@@ -3,15 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Brain,
-  Send,
   ChevronDown,
   ChevronUp,
   Loader2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { AdvisorComposer } from '@/components/finance/advisor-composer';
 
-// --- Types ---
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -19,7 +17,6 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-// --- Quick suggestions ---
 const quickSuggestions = [
   'Como economizar mais?',
   'Análise dos meus gastos',
@@ -44,7 +41,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   });
 
   return (
-    <article className={`rounded-md border px-3 py-2.5 ${isUser ? 'ml-5 border-border bg-muted' : 'mr-5 border-border bg-card'}`}>
+    <article className={cn('rounded-md border px-3 py-2.5', isUser ? 'ml-5 border-border bg-muted' : 'mr-5 border-border bg-card')}>
       <header className="mb-1 flex items-baseline justify-between gap-2">
         <span className="text-xs font-semibold">{isUser ? 'Você' : 'Assistente'}</span>
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{timeStr}</span>
@@ -53,7 +50,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     </article>
   );
 }
-// --- Main Component ---
+
 export function AIAdvisor() {
   const [isOpen, setIsOpen] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -70,7 +67,6 @@ export function AIAdvisor() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -190,46 +186,16 @@ export function AIAdvisor() {
             {isLoading && <TypingIndicator />}
           </div>
 
-          <div className="border-t border-border px-3 py-3 sm:px-4">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Sugestões de perguntas</p>
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {quickSuggestions.map((suggestion) => (
-                <Button
-                  key={suggestion}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  disabled={isLoading}
-                  className="h-auto min-h-9 whitespace-normal px-2.5 py-1 text-left text-xs"
-                >
-                  {suggestion}
-                </Button>
-              ))}
-            </div>
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <Input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                aria-label="Sua dúvida financeira"
-                placeholder="Digite sua dúvida financeira..."
-                disabled={isLoading}
-                className="h-10 min-w-0 flex-1 rounded-md"
-              />
-              <Button
-                type="submit"
-                aria-label="Enviar mensagem"
-                size="icon"
-                disabled={!inputValue.trim() || isLoading}
-                className="size-10 shrink-0"
-              >
-                <Send aria-hidden="true" className="size-4" />
-              </Button>
-            </form>
-          </div>
+          <AdvisorComposer
+            suggestions={quickSuggestions}
+            inputValue={inputValue}
+            isLoading={isLoading}
+            inputRef={inputRef}
+            onInputChange={setInputValue}
+            onSubmit={handleSubmit}
+            onSuggestionClick={handleSuggestionClick}
+            onKeyDown={handleKeyDown}
+          />
         </div>
       )}
     </section>

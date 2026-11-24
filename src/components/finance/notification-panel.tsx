@@ -12,10 +12,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
+import { QueryPanel } from '@/components/shared/query-panel';
 import { currencyFmt } from '@/lib/helpers';
-
-// ── Helpers ────────────────────────────────────────────────────────────
+import { cn } from '@/lib/utils';
 
 const relativeTime = (d: string) => {
   try {
@@ -24,8 +23,6 @@ const relativeTime = (d: string) => {
     return d;
   }
 };
-
-// ── Types ──────────────────────────────────────────────────────────────
 
 type NotificationKind = 'income' | 'expense' | 'purchase';
 
@@ -36,8 +33,6 @@ interface NotificationItem {
   amount: number;
   date: string;
 }
-
-// ── Icon / color maps ─────────────────────────────────────────────────
 
 const kindConfig: Record<NotificationKind, { icon: typeof ArrowUpRight; label: string; textClass: string }> = {
   income: {
@@ -65,7 +60,7 @@ export function NotificationList({ notifications }: { notifications: Notificatio
         const Icon = config.icon;
         return (
           <li key={notif.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2.5 py-2.5">
-            <Icon aria-hidden="true" className={`mt-0.5 size-4 ${config.textClass}`} />
+            <Icon aria-hidden="true" className={cn('mt-0.5 size-4', config.textClass)} />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{notif.description}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -81,8 +76,6 @@ export function NotificationList({ notifications }: { notifications: Notificatio
     </ul>
   );
 }
-
-// ── Component ──────────────────────────────────────────────────────────
 
 const READ_AT_STORAGE_KEY = 'finance-notifications-read-at';
 
@@ -123,7 +116,6 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
       const transactions: any[] = await txRes.json();
       const purchases: any[] = await purchaseRes.json();
 
-      // Map transactions to notification items (only INCOME and EXPENSE)
       const txItems: NotificationItem[] = transactions
         .filter((t) => t.type === 'INCOME' || t.type === 'EXPENSE')
         .map((t) => ({
@@ -134,7 +126,6 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
           date: t.date,
         }));
 
-      // Map purchases to notification items
       const purchaseItems: NotificationItem[] = purchases.map((p) => ({
         id: `purchase-${p.id}`,
         kind: 'purchase' as NotificationKind,
@@ -143,7 +134,6 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
         date: p.date,
       }));
 
-      // Combine, sort by date descending, take top 10
       const combined = [...txItems, ...purchaseItems]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 10);
@@ -157,7 +147,6 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
     }
   }, []);
 
-  // Fetch when panel opens
   useEffect(() => {
     if (isOpen) {
       fetchNotifications();
@@ -179,69 +168,62 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
     onClose();
   };
 
+  if (!isOpen) return null;
+
+  const status = loading ? 'loading' : error ? 'error' : notifications.length === 0 ? 'empty' : 'success';
+
   return (
-    <>
-      {isOpen && (
-        <div
-          data-quiet-notifications
-          className="absolute right-0 top-full z-50 mt-2 w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg transition-opacity duration-150 motion-reduce:transition-none"
-        >
-          <header className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
-            <div className="min-w-0">
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <Bell aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                Notificações
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Atividade recente
-                {!loading && !error && notifications.length > 0 && (
-                  <span className="font-mono tabular-nums">
-                    {unreadCount > 0 ? ` · ${unreadCount} nova${unreadCount !== 1 ? 's' : ''}` : ' · Todas lidas'}
-                  </span>
-                )}
-              </p>
-            </div>
-            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={onClose}>Fechar</Button>
-          </header>
-
-          {loading ? (
-            <div role="status" className="space-y-3 px-4 py-3">
-              <p className="text-xs text-muted-foreground">Carregando atividades…</p>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} aria-hidden="true" className="flex items-center justify-between gap-3">
-                  <Skeleton className="h-3 w-1/2 motion-reduce:animate-none" />
-                  <Skeleton className="h-3 w-16 motion-reduce:animate-none" />
-                </div>
-              ))}
-            </div>
-          ) : error ? (
-            <div role="alert" className="space-y-2 px-4 py-6">
-              <p className="text-sm font-medium text-destructive">Não foi possível carregar as notificações.</p>
-              <Button variant="outline" size="sm" onClick={() => void fetchNotifications()}>
-                Tentar novamente
-              </Button>
-            </div>
-          ) : notifications.length === 0 ? (
-            <div role="status" className="px-4 py-6">
-              <p className="text-sm font-medium">Nenhuma notificação</p>
-              <p className="mt-1 text-xs text-muted-foreground">Suas atividades financeiras aparecerão aqui.</p>
-            </div>
-          ) : (
-            <ScrollArea className="[&_[data-slot=scroll-area-viewport]]:max-h-[min(340px,50dvh)]">
-              <NotificationList notifications={notifications} />
-            </ScrollArea>
-          )}
-
-          {!loading && !error && notifications.length > 0 && (
-            <footer className="border-t border-border bg-muted/40 px-3 py-2">
-              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={markAllRead}>
-                <BookOpen aria-hidden="true" className="size-3.5" />
-                Ler tudo
-              </Button>
-            </footer>
-          )}
-        </div>
-      )}
-    </>
+    <div
+      data-quiet-notifications
+      className="absolute right-0 top-full z-50 mt-2 w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg transition-opacity duration-150 motion-reduce:transition-none"
+    >
+      <QueryPanel
+        titleId="notifications-panel-title"
+        title={
+          <span className="flex items-center gap-2">
+            <Bell aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+            Notificações
+          </span>
+        }
+        subtitle={
+          <>
+            Atividade recente
+            {!loading && !error && notifications.length > 0 && (
+              <span className="font-mono tabular-nums">
+                {unreadCount > 0 ? ` · ${unreadCount} nova${unreadCount !== 1 ? 's' : ''}` : ' · Todas lidas'}
+              </span>
+            )}
+          </>
+        }
+        controls={
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={onClose}>
+            Fechar
+          </Button>
+        }
+        status={status}
+        loadingMessage="Carregando atividades…"
+        errorMessage="Não foi possível carregar as notificações."
+        retryLabel="Tentar novamente"
+        onRetry={() => void fetchNotifications()}
+        emptyContent={
+          <div role="status" className="py-3">
+            <p className="text-sm font-medium">Nenhuma notificação</p>
+            <p className="mt-1 text-xs text-muted-foreground">Suas atividades financeiras aparecerão aqui.</p>
+          </div>
+        }
+        className="rounded-none border-0"
+        contentClassName="space-y-0 px-0 py-0 sm:px-0"
+      >
+        <ScrollArea className="[&_[data-slot=scroll-area-viewport]]:max-h-[min(340px,50dvh)]">
+          <NotificationList notifications={notifications} />
+        </ScrollArea>
+        <footer className="border-t border-border bg-muted/40 px-3 py-2">
+          <Button variant="ghost" size="sm" className="w-full text-xs" onClick={markAllRead}>
+            <BookOpen aria-hidden="true" className="size-3.5" />
+            Ler tudo
+          </Button>
+        </footer>
+      </QueryPanel>
+    </div>
   );
 }
