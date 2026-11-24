@@ -5,6 +5,7 @@ import React from 'react';
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as investments from './investments-view';
+import { InvestmentEntryEditor } from './investment-entry-editor';
 import * as installments from './installments-view';
 import { InstallmentPlanEditor } from './installment-plan-editor';
 import { InstallmentDeleteConfirmation } from './installment-delete-confirmation';
@@ -93,7 +94,7 @@ test('detalhe não oferece pagamento de parcela de outro plano', () => {
 
 // SSR não renderiza os portais Radix. Este contrato de markup não prova foco:
 // a interação do editor/confirmador pelos dois caminhos pertence ao QA no DOM.
-for (const editorFile of ['investment-editor.tsx', 'installment-plan-editor.tsx'] as const) {
+for (const editorFile of ['investment-editor.tsx', 'investment-entry-editor.tsx', 'installment-plan-editor.tsx'] as const) {
   test(`${editorFile}: formulário usa FinanceFormDialogShell com saída superior nomeada`, () => {
     const editorSource = readFileSync(new URL(editorFile, import.meta.url), 'utf8');
     expect(editorSource).toContain('<FinanceFormDialogShell');
@@ -106,12 +107,11 @@ for (const editorFile of ['investment-editor.tsx', 'installment-plan-editor.tsx'
   });
 }
 
-test('investments-view.tsx: formulário tem saída superior nomeada', () => {
+test('investments-view.tsx usa InvestmentEntryEditor e mantém exclusão de movimentação fora da extração', () => {
   const source = readFileSync(new URL('investments-view.tsx', import.meta.url), 'utf8');
-  const headers = source.split(/<DialogHeader[^>]*>/).slice(1).map((part) => part.split('</DialogHeader>')[0]);
-  expect(headers).toHaveLength(1);
-  expect(headers[0]).toContain('<DialogClose asChild>');
-  expect(headers[0]).toContain('aria-label="Fechar formulário"');
+  expect(source).toContain('<InvestmentEntryEditor');
+  expect(source).toContain('Excluir Transação');
+  expect(source).not.toContain('<Dialog ');
 });
 
 for (const [file, detailTitle, rowPrefix] of [
@@ -405,3 +405,64 @@ for (const failure of ['http', 'transport'] as const) {
     });
   });
 }
+
+test('InvestmentEntryEditor adota FinanceFormDialogShell com closeLabel, modos create/edit e pendência', () => {
+  const onOpenChange = () => {};
+  const onCloseAutoFocus = () => {};
+  const onSave = async () => {};
+  const createEl = InvestmentEntryEditor({
+    mode: 'create',
+    open: true,
+    saving: false,
+    investmentName: 'CDB sintético',
+    form: {
+      type: 'APORTE',
+      amount: '150',
+      quantity: '',
+      unitPrice: '',
+      date: '2026-05-01',
+      description: 'Aporte teste',
+      notes: '',
+    },
+    onFieldChange: () => {},
+    onOpenChange,
+    onCloseAutoFocus,
+    onSave,
+  });
+
+  expect(createEl.type).toBe(FinanceFormDialogShell);
+  expect(createEl.props.closeLabel).toBe('Fechar formulário');
+  expect(createEl.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  expect(createEl.props.onOpenChange).toBe(onOpenChange);
+  expect(createEl.props.title).toBe('Nova Transação');
+  expect(createEl.props.description).toBe('Registrar nova transação em CDB sintético');
+  const createSubmit = findElement(createEl, (e) => e.props.onClick === onSave);
+  expect(createSubmit?.props.disabled).toBe(false);
+  expect(createSubmit?.props.children).toBe('Registrar');
+
+  const editEl = InvestmentEntryEditor({
+    mode: 'edit',
+    open: true,
+    saving: true,
+    investmentName: 'CDB sintético',
+    form: {
+      type: 'DIVIDENDO',
+      amount: '45',
+      quantity: '1',
+      unitPrice: '45',
+      date: '2026-05-02',
+      description: 'Provento',
+      notes: 'Obs',
+    },
+    onFieldChange: () => {},
+    onOpenChange,
+    onCloseAutoFocus,
+    onSave,
+  });
+
+  expect(editEl.props.title).toBe('Editar Transação');
+  expect(editEl.props.description).toBe('Atualizar transação em CDB sintético');
+  const editSubmit = findElement(editEl, (e) => e.props.onClick === onSave);
+  expect(editSubmit?.props.disabled).toBe(true);
+  expect(editSubmit?.props.children).toBe('Salvando…');
+});

@@ -39,6 +39,8 @@ import { purchaseDateForInput } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
 import { useKeyedMutationLock } from '@/hooks/use-keyed-mutation-lock';
 import { AccountTransactionFields, type AccountTransactionForm } from './account-transaction-fields';
+import { AccountPicker } from './account-picker';
+import { AccountTransferDialog, type AccountTransferDraft } from './account-transfer-dialog';
 
 // ── Helpers ────────────────────────────────────────────────────────
 const dateFmt = (d: string) => {
@@ -188,13 +190,16 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
   const txActionOrigin = useRef<HTMLButtonElement | null>(null);
 
   // Transfer form
-  const [transferForm, setTransferForm] = useState({
+  const [transferForm, setTransferForm] = useState<AccountTransferDraft>({
     fromAccountId: '',
     toAccountId: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
     description: '',
   });
+  const changeTransferField = (field: keyof AccountTransferDraft, value: string) => {
+    setTransferForm((current) => ({ ...current, [field]: value }));
+  };
 
   // Form state
   const [form, setForm] = useState({
@@ -658,62 +663,32 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
   }, [selectedAccountId]);
 
   const chooser = (
-    <Dialog open={newTransactionRequested} onOpenChange={(open) => { if (!open) clearNewTransactionRequest(); }}>
-      <DialogContent
-        showCloseButton={false}
-        className="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          if (!launchDialog.current) onLaunchClose();
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>Novo lançamento</DialogTitle>
-          <DialogDescription>Escolha a conta em que deseja registrar a transação.</DialogDescription>
-        </DialogHeader>
-        {loading ? (
-          <p role="status" className="text-sm text-muted-foreground">Carregando contas…</p>
-        ) : accountsLoadFailed ? (
-          <div className="space-y-2 text-sm">
-            <p role="alert">Não foi possível carregar as contas.</p>
-            <Button variant="outline" onClick={() => { setLoading(true); void fetchAccounts(); }}>
-              Tentar novamente
-            </Button>
-          </div>
-        ) : accounts.length === 0 ? (
-          <div className="space-y-2 text-sm">
-            <p>Cadastre uma conta antes de registrar um lançamento.</p>
-            <Button onClick={() => {
-              launchDialog.current = 'account';
-              clearNewTransactionRequest();
-              openNewAccount();
-            }}>Cadastrar conta</Button>
-          </div>
-        ) : (
-          <ul className="space-y-1" aria-label="Contas disponíveis">
-            {accounts.map((account) => (
-              <li key={account.id}>
-                <Button
-                  variant="outline"
-                  className="h-auto min-h-10 w-full justify-start whitespace-normal text-left"
-                  onClick={() => {
-                    launchDialog.current = 'transaction';
-                    clearNewTransactionRequest();
-                    openAccount(account);
-                    openTransaction(account.id);
-                  }}
-                >
-                  <span className="min-w-0 wrap-anywhere">{account.name}</span>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <DialogFooter>
-          <Button variant="outline" onClick={clearNewTransactionRequest}>Cancelar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <AccountPicker
+      open={newTransactionRequested}
+      loading={loading}
+      loadFailed={accountsLoadFailed}
+      accounts={accounts}
+      onRetry={() => {
+        setLoading(true);
+        void fetchAccounts();
+      }}
+      onCreateAccount={() => {
+        launchDialog.current = 'account';
+        clearNewTransactionRequest();
+        openNewAccount();
+      }}
+      onSelectAccount={(account) => {
+        launchDialog.current = 'transaction';
+        clearNewTransactionRequest();
+        openAccount(account);
+        openTransaction(account.id);
+      }}
+      onClose={clearNewTransactionRequest}
+      onCloseAutoFocus={(event) => {
+        event.preventDefault();
+        if (!launchDialog.current) onLaunchClose();
+      }}
+    />
   );
 
   const withChooser = (content: ReactNode) => <>{chooser}{content}</>;
@@ -1047,139 +1022,16 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
         </DialogContent>
       </Dialog>
 
-      {/* Transfer Dialog */}
-      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
-        <DialogContent className={dialogSurface} onCloseAutoFocus={restoreDialogFocus}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ArrowLeftRight className="w-5 h-5" />
-              Transferir entre Contas
-            </DialogTitle>
-            <DialogDescription>
-              Mova dinheiro de uma conta para outra
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="transfer-from">De (Origem)</Label>
-              <Select
-                value={transferForm.fromAccountId}
-                onValueChange={(v) =>
-                  setTransferForm({ ...transferForm, fromAccountId: v })
-                }
-              >
-                <SelectTrigger id="transfer-from">
-                  <SelectValue placeholder="Selecione a conta..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts
-                    .filter((a) => a.id !== transferForm.toAccountId)
-                    .map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: acc.color }}
-                          />
-                          <span>{acc.name}</span>
-                          <span className="text-muted-foreground text-xs ml-1">
-                            {currencyFmt(acc.balance)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="transfer-to">Para (Destino)</Label>
-              <Select
-                value={transferForm.toAccountId}
-                onValueChange={(v) =>
-                  setTransferForm({ ...transferForm, toAccountId: v })
-                }
-              >
-                <SelectTrigger id="transfer-to">
-                  <SelectValue placeholder="Selecione a conta..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts
-                    .filter((a) => a.id !== transferForm.fromAccountId)
-                    .map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: acc.color }}
-                          />
-                          <span>{acc.name}</span>
-                          <span className="text-muted-foreground text-xs ml-1">
-                            {currencyFmt(acc.balance)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="transfer-amount">Valor (R$)</Label>
-              <Input id="transfer-amount"
-                type="number"
-                step="0.01"
-                value={transferForm.amount}
-                onChange={(e) =>
-                  setTransferForm({ ...transferForm, amount: e.target.value })
-                }
-                placeholder="0,00"
-              />
-            </div>
-            <div>
-              <Label htmlFor="transfer-date">Data</Label>
-              <Input id="transfer-date"
-                type="date"
-                value={transferForm.date}
-                onChange={(e) =>
-                  setTransferForm({ ...transferForm, date: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="transfer-description">Descrição (opcional)</Label>
-              <Input id="transfer-description"
-                value={transferForm.description}
-                onChange={(e) =>
-                  setTransferForm({
-                    ...transferForm,
-                    description: e.target.value,
-                  })
-                }
-                placeholder="Ex: Transferência para investimento"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowTransferDialog(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              aria-disabled={pending.has('transfer')}
-              onClick={saveTransfer}
-              disabled={
-                !transferForm.fromAccountId ||
-                !transferForm.toAccountId ||
-                !transferForm.amount ||
-                parseFloat(transferForm.amount) <= 0
-              }
-            >
-              Transferir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AccountTransferDialog
+        open={showTransferDialog}
+        pending={pending.has('transfer')}
+        form={transferForm}
+        accounts={accounts}
+        onFieldChange={changeTransferField}
+        onOpenChange={setShowTransferDialog}
+        onCloseAutoFocus={restoreDialogFocus}
+        onSubmit={saveTransfer}
+      />
 
       {/* Delete Dialog */}
       <AlertDialog

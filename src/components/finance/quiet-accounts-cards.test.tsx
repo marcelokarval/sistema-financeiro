@@ -8,7 +8,11 @@ import { toast } from 'sonner';
 import { readFileSync } from 'node:fs';
 import { useAppStore } from '@/lib/store';
 import { AccountsView, reconcileTransactionDraft, transactionDraftForAccount } from './accounts-view';
+import { AccountPicker } from './account-picker';
+import { AccountTransferDialog } from './account-transfer-dialog';
 import { CardsView } from './cards-view';
+import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceRow } from '@/components/shared/finance-row';
 
@@ -145,9 +149,14 @@ function find(node: ReactNode, match: (element: Element) => boolean): Element | 
   for (const child of React.Children.toArray(node)) {
     if (!React.isValidElement<Element['props']>(child)) continue;
     if (match(child)) return child;
-    // Só expande a folha de campos, sem simular componentes Radix ou DOM.
-    const nested = find(typeof child.type === 'function' && child.type.name === 'AccountTransactionFields'
-      ? (child.type as (props: Element['props']) => ReactNode)(child.props) : child.props.children, match);
+    // Só expande as folhas próprias, sem simular componentes Radix ou DOM.
+    let expanded = child.props.children;
+    if (typeof child.type === 'function') {
+      if (child.type.name === 'AccountTransactionFields' || child.type === AccountPicker || child.type === AccountTransferDialog || child.type === FinanceFormDialogShell) {
+        expanded = (child.type as (props: Element['props']) => ReactNode)(child.props);
+      }
+    }
+    const nested = find(expanded, match);
     if (nested) return nested;
   }
 }
@@ -820,4 +829,96 @@ test('Contas e Cartões adotam FinanceMetric e FinanceRow com variantes, semânt
     expect(required(tree, nameIs('Editar transação Transação sintética'))).toBeDefined();
     expect(required(tree, nameIs('Excluir transação Transação sintética'))).toBeDefined();
   });
+});
+
+test('AccountPicker preserva showCloseButton={false}, estados loading/erro/vazio/lista e seleção sem gravar', () => {
+  let selectedId = '';
+  let retried = 0;
+  let created = 0;
+  let closed = 0;
+  const onCloseAutoFocus = () => {};
+
+  const listPicker = AccountPicker({
+    open: true,
+    loading: false,
+    loadFailed: false,
+    accounts: qaAccounts,
+    onRetry: () => { retried++; },
+    onCreateAccount: () => { created++; },
+    onSelectAccount: (acc) => { selectedId = acc.id; },
+    onClose: () => { closed++; },
+    onCloseAutoFocus,
+  });
+  expect(listPicker.type).toBe(Dialog);
+  const content = find(listPicker, (e) => e.type === DialogContent);
+  expect(content?.props.showCloseButton).toBe(false);
+  expect(content?.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  required(listPicker, (e) => e.props.onClick && !!find(e.props.children, (c) => c.props.children === 'Conta B')).props.onClick();
+  expect(selectedId).toBe('b');
+
+  const errorPicker = AccountPicker({
+    open: true,
+    loading: false,
+    loadFailed: true,
+    accounts: [],
+    onRetry: () => { retried++; },
+    onCreateAccount: () => { created++; },
+    onSelectAccount: () => {},
+    onClose: () => { closed++; },
+    onCloseAutoFocus,
+  });
+  required(errorPicker, buttonNamed('Tentar novamente')).props.onClick();
+  expect(retried).toBe(1);
+
+  const emptyPicker = AccountPicker({
+    open: true,
+    loading: false,
+    loadFailed: false,
+    accounts: [],
+    onRetry: () => {},
+    onCreateAccount: () => { created++; },
+    onSelectAccount: () => {},
+    onClose: () => {},
+    onCloseAutoFocus,
+  });
+  required(emptyPicker, buttonNamed('Cadastrar conta')).props.onClick();
+  expect(created).toBe(1);
+
+  listPicker.props.onOpenChange(false);
+  expect(closed).toBe(1);
+});
+
+test('AccountTransferDialog adota FinanceFormDialogShell, filtra origem/destino opostos e preserva pendência', () => {
+  const onOpenChange = () => {};
+  const onCloseAutoFocus = () => {};
+  const onSubmit = async () => {};
+  const changes: [string, string][] = [];
+  const element = AccountTransferDialog({
+    open: true,
+    pending: true,
+    form: {
+      fromAccountId: 'a',
+      toAccountId: '',
+      amount: '50',
+      date: '2026-05-01',
+      description: 'Reserva',
+    },
+    accounts: qaAccounts,
+    onFieldChange: (field, value) => changes.push([field, value]),
+    onOpenChange,
+    onCloseAutoFocus,
+    onSubmit,
+  });
+
+  expect(element.type).toBe(FinanceFormDialogShell);
+  expect(element.props.onOpenChange).toBe(onOpenChange);
+  expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  const submitBtn = find(element, buttonNamed('Transferir'));
+  expect(submitBtn?.props['aria-disabled']).toBe(true);
+  expect(submitBtn?.props.disabled).toBe(true); // toAccountId vazio desabilita envio
+  const toSelect = find(element, (node) => node.props.onValueChange && !!find(node.props.children, byId('transfer-to')))!;
+  expect(find(toSelect, (node) => node.props.value === 'a')).toBeUndefined();
+  expect(find(toSelect, (node) => node.props.value === 'b')).toBeDefined();
+  toSelect.props.onValueChange('b');
+  expect(changes).toEqual([['toAccountId', 'b']]);
 });

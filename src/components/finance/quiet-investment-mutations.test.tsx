@@ -8,6 +8,7 @@ import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/compon
 import { InvestmentEntries, InvestmentPortfolio, InvestmentsView } from './investments-view';
 import { InvestmentDeleteConfirmation } from './investment-delete-confirmation';
 import { InvestmentEditor } from './investment-editor';
+import { InvestmentEntryEditor } from './investment-entry-editor';
 import { InstallmentEntries, InstallmentPortfolio, InstallmentsView } from './installments-view';
 import { InstallmentPlanEditor } from './installment-plan-editor';
 import { InstallmentDeleteConfirmation } from './installment-delete-confirmation';
@@ -26,17 +27,19 @@ function find(node: ReactNode, matches: (element: Element) => boolean): Element 
     // Evaluate only the leaf components we own; do not emulate Radix portals or focus.
     const expanded = child.type === InvestmentEditor
       ? InvestmentEditor(child.props as Parameters<typeof InvestmentEditor>[0])
-      : child.type === InvestmentDeleteConfirmation
-        ? InvestmentDeleteConfirmation(child.props as Parameters<typeof InvestmentDeleteConfirmation>[0])
-        : child.type === InstallmentPlanEditor
-          ? InstallmentPlanEditor(child.props as Parameters<typeof InstallmentPlanEditor>[0])
-          : child.type === InstallmentDeleteConfirmation
-            ? InstallmentDeleteConfirmation(child.props as Parameters<typeof InstallmentDeleteConfirmation>[0])
-            : child.type === FinanceFormDialogShell
-              ? FinanceFormDialogShell(child.props as Parameters<typeof FinanceFormDialogShell>[0])
-              : child.type === FinanceConfirmationDialogShell
-                ? FinanceConfirmationDialogShell(child.props as Parameters<typeof FinanceConfirmationDialogShell>[0])
-                : child.props.children;
+      : child.type === InvestmentEntryEditor
+        ? InvestmentEntryEditor(child.props as Parameters<typeof InvestmentEntryEditor>[0])
+        : child.type === InvestmentDeleteConfirmation
+          ? InvestmentDeleteConfirmation(child.props as Parameters<typeof InvestmentDeleteConfirmation>[0])
+          : child.type === InstallmentPlanEditor
+            ? InstallmentPlanEditor(child.props as Parameters<typeof InstallmentPlanEditor>[0])
+            : child.type === InstallmentDeleteConfirmation
+              ? InstallmentDeleteConfirmation(child.props as Parameters<typeof InstallmentDeleteConfirmation>[0])
+              : child.type === FinanceFormDialogShell
+                ? FinanceFormDialogShell(child.props as Parameters<typeof FinanceFormDialogShell>[0])
+                : child.type === FinanceConfirmationDialogShell
+                  ? FinanceConfirmationDialogShell(child.props as Parameters<typeof FinanceConfirmationDialogShell>[0])
+                  : child.props.children;
     const nested = find(expanded, matches);
     if (nested) return nested;
   }
@@ -48,6 +51,7 @@ const formField = (placeholder: string) => (element: Element) => element.props.p
 const isOpen = (element: Element) => element.props.open === true && element.props.onOpenChange;
 const openDialog = (element: Element) =>
   element.type !== InvestmentEditor
+  && element.type !== InvestmentEntryEditor
   && element.type !== InvestmentDeleteConfirmation
   && element.type !== InstallmentPlanEditor
   && element.type !== InstallmentDeleteConfirmation

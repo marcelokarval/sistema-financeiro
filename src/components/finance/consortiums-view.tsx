@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -26,6 +25,10 @@ import {
 import { toast } from 'sonner';
 import { ConsortiumEditor, type ConsortiumDraft } from './consortium-editor';
 import { ConsortiumDeleteConfirmation } from './consortium-delete-confirmation';
+import {
+  ConsortiumInstallmentPayment,
+  type ConsortiumInstallmentPaymentDraft,
+} from './consortium-installment-payment';
 
 import { currencyFmt, dateFmt, pct } from '@/lib/helpers';
 import { findPayableConsortiumInstallment, isCurrentConsortiumSelection, readConsortiumInstallments,
@@ -160,7 +163,7 @@ export function ConsortiumsView() {
   });
 
   // Pay installment form
-  const [payForm, setPayForm] = useState({
+  const [payForm, setPayForm] = useState<ConsortiumInstallmentPaymentDraft>({
     paidDate: new Date().toISOString().split('T')[0],
     notes: '',
     assemblyDate: '',
@@ -494,6 +497,10 @@ export function ConsortiumsView() {
     }
   };
 
+  const changePayField = (field: keyof ConsortiumInstallmentPaymentDraft, value: string) => {
+    setPayForm((draft) => ({ ...draft, [field]: value }));
+  };
+
   const markAsPaid = async () => {
     const confirmation = payConfirmation;
     if (!confirmation || currentConfirmation.current !== confirmation) return;
@@ -604,65 +611,16 @@ export function ConsortiumsView() {
           <ConsortiumEditor origin="detail" open={!!editOpening} draft={editForm} saving={editingIds.has(editForm.id)}
             onFieldChange={changeEditField} onCancel={closeEditDialog} onSave={updateConsortium} onCloseAutoFocus={restoreDialogFocus} />
 
-          {/* Pay Installment Dialog */}
-          <Dialog open={!!payConfirmation} onOpenChange={(open) => { if (!open) closePayDialog(); }}>
-            <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Marcar Parcela como Paga</DialogTitle>
-                <DialogDescription>
-                  {payConfirmation && `Parcela ${payConfirmation.installment.number} — ${currencyFmt(payConfirmation.installment.amount)}`}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="consortium-paid-date">Data do Pagamento</Label>
-                  <Input id="consortium-paid-date"
-                    type="date"
-                    value={payForm.paidDate}
-                    onChange={(e) => setPayForm({ ...payForm, paidDate: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="consortium-payment-notes">Observações</Label>
-                  <Input id="consortium-payment-notes"
-                    value={payForm.notes}
-                    onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })}
-                    placeholder="Nota opcional..."
-                  />
-                </div>
-                <Separator />
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Informações da Assembleia (opcional)
-                </div>
-                <div>
-                  <Label htmlFor="consortium-assembly-date">Data da Assembleia</Label>
-                  <Input id="consortium-assembly-date"
-                    type="date"
-                    value={payForm.assemblyDate}
-                    onChange={(e) => setPayForm({ ...payForm, assemblyDate: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="consortium-assembly-result">Resultado da Assembleia</Label>
-                  <Input id="consortium-assembly-result"
-                    value={payForm.assemblyResult}
-                    onChange={(e) =>
-                      setPayForm({ ...payForm, assemblyResult: e.target.value })
-                    }
-                    placeholder="Ex: Contemplado na assembleia..."
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={closePayDialog}>
-                  Cancelar
-                </Button>
-                <Button onClick={markAsPaid} disabled={!payConfirmation || submitting === payConfirmation}>
-                  Confirmar Pagamento
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <ConsortiumInstallmentPayment
+            open={!!payConfirmation}
+            installment={payConfirmation?.installment ?? null}
+            form={payForm}
+            submitting={!payConfirmation || submitting === payConfirmation}
+            onFieldChange={changePayField}
+            onCancel={closePayDialog}
+            onConfirm={markAsPaid}
+            onCloseAutoFocus={restoreDialogFocus}
+          />
 
           <ConsortiumDeleteConfirmation context={{ origin: 'detail', description: c.description }} open={!!showDeleteDialog} deleting={deleting}
             onOpenChange={onDeleteDialogOpenChange} onConfirm={confirmDelete} onCloseAutoFocus={restoreDialogFocus} />

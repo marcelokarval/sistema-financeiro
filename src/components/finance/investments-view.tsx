@@ -3,7 +3,6 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
 import {
   Plus,
-  X,
   Pencil,
   Trash2,
   ArrowLeft,
@@ -22,26 +21,8 @@ import {
   CircleDollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogClose,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +44,7 @@ import { purchaseDateForInput } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
 import { InvestmentDeleteConfirmation } from './investment-delete-confirmation';
 import { InvestmentEditor, type InvestmentDraft } from './investment-editor';
+import { InvestmentEntryEditor, type InvestmentEntryDraft } from './investment-entry-editor';
 
 // ── Constants ───────────────────────────────────────────────────────
 
@@ -184,7 +166,7 @@ export function InvestmentsView() {
   });
 
   // Transaction form
-  const [txForm, setTxForm] = useState({
+  const [txForm, setTxForm] = useState<InvestmentEntryDraft>({
     type: 'APORTE',
     amount: '',
     quantity: '',
@@ -445,6 +427,10 @@ export function InvestmentsView() {
     }
   };
 
+  const changeTxField = (field: keyof InvestmentEntryDraft, value: string) => {
+    setTxForm((draft) => ({ ...draft, [field]: value }));
+  };
+
   const saveTransaction = async () => {
     if (!selectedInvestment) return;
     const parsedAmount = parseFloat(txForm.amount);
@@ -665,111 +651,22 @@ export function InvestmentsView() {
       </section>
         )}
 
-          {/* Add/Edit Transaction Dialog */}
-          <Dialog open={showTransactionDialog} onOpenChange={(open) => { if (!open) { setShowTransactionDialog(false); setEditingTransaction(null); } }}>
-            <DialogContent showCloseButton={false} onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto">
-              <DialogHeader className="relative pr-10 text-left">
-                <DialogClose asChild>
-                  <Button type="button" size="icon" variant="ghost" aria-label="Fechar formulário" className="absolute right-0 top-0">
-                    <X aria-hidden="true" />
-                  </Button>
-                </DialogClose>
-                <DialogTitle>{editingTransaction ? 'Editar Transação' : 'Nova Transação'}</DialogTitle>
-                <DialogDescription>
-                  {editingTransaction
-                    ? `Atualizar transação em ${selectedInvestment.name}`
-                    : `Registrar nova transação em ${selectedInvestment.name}`}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="investment-tx-type">Tipo</Label>
-                  <Select
-                    value={txForm.type}
-                    onValueChange={(v) => setTxForm({ ...txForm, type: v })}
-                  >
-                    <SelectTrigger id="investment-tx-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="APORTE">Aporte</SelectItem>
-                      <SelectItem value="DIVIDENDO">Dividendo</SelectItem>
-                      <SelectItem value="VENDA">Venda</SelectItem>
-                      <SelectItem value="REINVESTIMENTO">Reinvestimento</SelectItem>
-                      <SelectItem value="TAXA">Taxa</SelectItem>
-                      <SelectItem value="BONUS">Bônus</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="investment-tx-amount">Valor (R$)</Label>
-                    <Input id="investment-tx-amount"
-                      type="number"
-                      step="0.01"
-                      value={txForm.amount}
-                      onChange={(e) => setTxForm({ ...txForm, amount: e.target.value })}
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="investment-tx-date">Data</Label>
-                    <Input id="investment-tx-date"
-                      type="date"
-                      value={txForm.date}
-                      onChange={(e) => setTxForm({ ...txForm, date: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="investment-tx-quantity">Quantidade</Label>
-                    <Input id="investment-tx-quantity"
-                      type="number"
-                      step="0.01"
-                      value={txForm.quantity}
-                      onChange={(e) => setTxForm({ ...txForm, quantity: e.target.value })}
-                      placeholder="Opcional"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="investment-tx-unitPrice">Preço Unitário (R$)</Label>
-                    <Input id="investment-tx-unitPrice"
-                      type="number"
-                      step="0.01"
-                      value={txForm.unitPrice}
-                      onChange={(e) => setTxForm({ ...txForm, unitPrice: e.target.value })}
-                      placeholder="Opcional"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="investment-tx-description">Descrição</Label>
-                  <Input id="investment-tx-description"
-                    value={txForm.description}
-                    onChange={(e) => setTxForm({ ...txForm, description: e.target.value })}
-                    placeholder="Ex: Compra de cotas, Dividendo mensal..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="investment-tx-notes">Observações</Label>
-                  <Input id="investment-tx-notes"
-                    value={txForm.notes}
-                    onChange={(e) => setTxForm({ ...txForm, notes: e.target.value })}
-                    placeholder="Notas adicionais (opcional)"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => { setShowTransactionDialog(false); setEditingTransaction(null); }}>
-                  Cancelar
-                </Button>
-                <Button disabled={savingTransaction} onClick={saveTransaction}>
-                  {savingTransaction ? 'Salvando…' : editingTransaction ? 'Salvar' : 'Registrar'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <InvestmentEntryEditor
+            mode={editingTransaction ? 'edit' : 'create'}
+            open={showTransactionDialog}
+            saving={savingTransaction}
+            investmentName={selectedInvestment.name}
+            form={txForm}
+            onFieldChange={changeTxField}
+            onOpenChange={(open) => {
+              if (!open) {
+                setShowTransactionDialog(false);
+                setEditingTransaction(null);
+              }
+            }}
+            onCloseAutoFocus={restoreDialogFocus}
+            onSave={saveTransaction}
+          />
 
           <InvestmentEditor
             mode="edit-detail"

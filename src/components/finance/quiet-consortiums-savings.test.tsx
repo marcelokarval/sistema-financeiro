@@ -4,6 +4,7 @@ import { expect, test } from 'bun:test';
 import * as consortiums from './consortiums-view';
 import { ConsortiumEditor } from './consortium-editor';
 import { ConsortiumDeleteConfirmation } from './consortium-delete-confirmation';
+import { ConsortiumInstallmentPayment } from './consortium-installment-payment';
 import * as savings from './savings-view';
 import { SavingsGoalEditor } from './savings-goal-editor';
 import { SavingsContributionDialog } from './savings-contribution-dialog';
@@ -139,6 +140,8 @@ const findElement = (node: ReactNode, matches: (element: ViewElement) => boolean
       content = ConsortiumEditor((child as ReactElement<React.ComponentProps<typeof ConsortiumEditor>>).props);
     } else if (child.type === ConsortiumDeleteConfirmation) {
       content = ConsortiumDeleteConfirmation((child as ReactElement<React.ComponentProps<typeof ConsortiumDeleteConfirmation>>).props);
+    } else if (child.type === ConsortiumInstallmentPayment) {
+      content = ConsortiumInstallmentPayment((child as ReactElement<React.ComponentProps<typeof ConsortiumInstallmentPayment>>).props);
     } else if (child.type === SavingsGoalEditor) {
       content = SavingsGoalEditor((child as ReactElement<React.ComponentProps<typeof SavingsGoalEditor>>).props);
     } else if (child.type === SavingsContributionDialog) {
@@ -947,3 +950,229 @@ test('Caixinhas exclusão: AlertDialogAction mantém fechamento automático sem 
     expect(requests.slice(offset).map(([m, u]) => [m, u])).toEqual([['DELETE', '/api/savings']]);
   });
 });
+
+test('ConsortiumInstallmentPayment adota FinanceFormDialogShell com papel dialog, descrição da parcela e pendência', () => {
+  let cancelled = 0;
+  const onCloseAutoFocus = () => {};
+  const onConfirm = async () => {};
+  const element = ConsortiumInstallmentPayment({
+    open: true,
+    installment: { number: 3, amount: 125 },
+    form: {
+      paidDate: '2026-05-10',
+      notes: 'Pago via app',
+      assemblyDate: '',
+      assemblyResult: '',
+    },
+    submitting: true,
+    onFieldChange: () => {},
+    onCancel: () => { cancelled++; },
+    onConfirm,
+    onCloseAutoFocus,
+  });
+
+  expect(element.type).toBe(FinanceFormDialogShell);
+  expect(element.props.closeLabel).toBeUndefined();
+  expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  const dialog = findElement(element, (e) => e.type === Dialog);
+  expect(dialog).toBeDefined();
+  expect(findElement(element, (e) => e.type === AlertDialog)).toBeUndefined();
+  const content = findElement(element, (e) => e.type === DialogContent);
+  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.className).toContain('max-h-[85dvh]');
+  expect(renderToStaticMarkup(<>{element.props.description}</>)).toContain('Parcela 3 — R$ 125,00');
+  const confirmBtn = findElement(element, (e) => e.props.onClick === onConfirm);
+  expect(confirmBtn?.props.disabled).toBe(true);
+  dialog?.props.onOpenChange(false);
+  expect(cancelled).toBe(1);
+});
+
+test('Baixa de consórcio A/B: trocar para B ou fechar A antes de confirmar não emite POST obsoleto', async () => {
+  const instA = {
+    id: 'inst-a-1', number: 1, amount: 125, dueDate: '2026-05-01', paidDate: null,
+    status: 'PENDING', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: consortium.id,
+  };
+  const instB = {
+    id: 'inst-b-1', number: 1, amount: 250, dueDate: '2026-05-01', paidDate: null,
+    status: 'PENDING', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: otherConsortium.id,
+  };
+  const originalFetch = globalThis.fetch;
+  const dispatcher = (React as unknown as { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown } }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const { H } = dispatcher;
+  const states: unknown[] = [], refs: { current: unknown }[] = [];
+  const requests: [string, string, BodyInit | null | undefined][] = [];
+  const cleanups: (() => void)[] = [];
+  let mounted = false;
+  function render() {
+    let stateIndex = 0, refIndex = 0;
+    const effects: (() => void)[] = [];
+    dispatcher.H = {
+      useState(initial: unknown) {
+        const i = stateIndex++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
+      useCallback: (fn: unknown) => fn,
+      useMemo: (factory: () => unknown) => factory(),
+      useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
+    };
+    try {
+      const view = consortiums.ConsortiumsView();
+      mounted = true;
+      effects.forEach((effect) => {
+        const cleanup = effect();
+        if (typeof cleanup === 'function') cleanups.push(cleanup);
+      });
+      return view;
+    } finally { dispatcher.H = H; }
+  }
+  try {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      requests.push([method, url, init?.body]);
+      if (url === '/api/consortiums') return Response.json([consortium, otherConsortium]);
+      if (url === `/api/consortiums/installments?consortiumId=${consortium.id}`) return Response.json([instA]);
+      if (url === `/api/consortiums/installments?consortiumId=${otherConsortium.id}`) return Response.json([instB]);
+      if (url === '/api/categories' || url === '/api/accounts') return Response.json([]);
+      throw new Error(`Unexpected: ${method} ${url}`);
+    }) as typeof fetch;
+
+    render();
+    await settle();
+    rowById(render(), consortium.id)!.props.onOpen();
+    await settle();
+    const detailA = findElement(render(), (e) => e.type === consortiums.ConsortiumDetail)!;
+    detailA.props.onPay(detailA.props.installments[0], trigger);
+    const staleConfirm = findElement(render(), (e) => e.type === ConsortiumInstallmentPayment && e.props.open)!;
+    expect(staleConfirm.props.installment.id).toBe(instA.id);
+
+    // Troca para B antes de confirmar -> confirmação obsoleta de A fecha e onConfirm não dispara POST
+    useAppStore.getState().setSelectedConsortiumId(otherConsortium.id);
+    await settle();
+    expect(activeDetail(render())?.id).toBe(otherConsortium.id);
+    expect(findElement(render(), (e) => e.type === ConsortiumInstallmentPayment && e.props.open)).toBeUndefined();
+    const beforeStale = requests.length;
+    await staleConfirm.props.onConfirm();
+    expect(requests.slice(beforeStale)).toEqual([]);
+
+    // Abre confirmação em B, fecha B antes de confirmar -> confirmação obsoleta não dispara POST
+    const detailB = findElement(render(), (e) => e.type === consortiums.ConsortiumDetail)!;
+    detailB.props.onPay(detailB.props.installments[0], trigger);
+    const closedConfirm = findElement(render(), (e) => e.type === ConsortiumInstallmentPayment && e.props.open)!;
+    formButton(render(), 'Voltar aos consórcios').props.onClick();
+    await settle();
+    const beforeClosed = requests.length;
+    await closedConfirm.props.onConfirm();
+    expect(requests.slice(beforeClosed)).toEqual([]);
+  } finally {
+    cleanups.forEach((c) => c());
+    globalThis.fetch = originalFetch;
+    useAppStore.setState(useAppStore.getInitialState(), true);
+  }
+});
+
+for (const outcome of ['ok', 'http503'] as const) {
+  test(`Baixa de consórcio A→B durante POST (${outcome}): reconcilia finally sem repovoar B com A e trava clique repetido`, async () => {
+    const instA = {
+      id: 'inst-a-1', number: 1, amount: 125, dueDate: '2026-05-01', paidDate: null,
+      status: 'PENDING', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: consortium.id,
+    };
+    const instB = {
+      id: 'inst-b-1', number: 1, amount: 250, dueDate: '2026-05-01', paidDate: null,
+      status: 'PENDING', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: otherConsortium.id,
+    };
+    const postDeferred = Promise.withResolvers<Response>();
+    const originalFetch = globalThis.fetch;
+    const { success, error } = toast;
+    const dispatcher = (React as unknown as { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown } }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const { H } = dispatcher;
+    const states: unknown[] = [], refs: { current: unknown }[] = [];
+    const requests: [string, string, BodyInit | null | undefined][] = [];
+    const feedback: string[] = [];
+    const cleanups: (() => void)[] = [];
+    let mounted = false;
+    let updatedList = false;
+    function render() {
+      let stateIndex = 0, refIndex = 0;
+      const effects: (() => void)[] = [];
+      dispatcher.H = {
+        useState(initial: unknown) {
+          const i = stateIndex++;
+          if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+          return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+        },
+        useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
+        useCallback: (fn: unknown) => fn,
+        useMemo: (factory: () => unknown) => factory(),
+        useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
+      };
+      try {
+        const view = consortiums.ConsortiumsView();
+        mounted = true;
+        effects.forEach((effect) => {
+          const cleanup = effect();
+          if (typeof cleanup === 'function') cleanups.push(cleanup);
+        });
+        return view;
+      } finally { dispatcher.H = H; }
+    }
+    try {
+      useAppStore.setState(useAppStore.getInitialState(), true);
+      globalThis.fetch = (async (url: string, init?: RequestInit) => {
+        const method = init?.method ?? 'GET';
+        requests.push([method, url, init?.body]);
+        if (method === 'POST' && url === '/api/consortiums/installments') return postDeferred.promise;
+        if (url === '/api/consortiums') {
+          return Response.json(
+            updatedList
+              ? [{ ...consortium, paidInstallments: 3 }, { ...otherConsortium, assembliesAttended: 77 }]
+              : [consortium, otherConsortium],
+          );
+        }
+        if (url === `/api/consortiums/installments?consortiumId=${consortium.id}`) return Response.json([instA]);
+        if (url === `/api/consortiums/installments?consortiumId=${otherConsortium.id}`) return Response.json([instB]);
+        if (url === '/api/categories' || url === '/api/accounts') return Response.json([]);
+        throw new Error(`Unexpected: ${method} ${url}`);
+      }) as typeof fetch;
+      toast.success = () => { feedback.push('success'); return 'success'; };
+      toast.error = () => { feedback.push('error'); return 'error'; };
+
+      render();
+      await settle();
+      rowById(render(), consortium.id)!.props.onOpen();
+      await settle();
+      const detailA = findElement(render(), (e) => e.type === consortiums.ConsortiumDetail)!;
+      detailA.props.onPay(detailA.props.installments[0], trigger);
+      const payDialog = findElement(render(), (e) => e.type === ConsortiumInstallmentPayment && e.props.open)!;
+      const offset = requests.length;
+      const p1 = payDialog.props.onConfirm();
+      const p2 = payDialog.props.onConfirm(); // clique repetido bloqueado pela guarda
+
+      useAppStore.getState().setSelectedConsortiumId(otherConsortium.id);
+      await settle();
+      expect(activeDetail(render())?.id).toBe(otherConsortium.id);
+
+      updatedList = outcome === 'ok';
+      postDeferred.resolve(outcome === 'ok' ? Response.json({ ok: true }) : Response.json({ error: 'Falha' }, { status: 503 }));
+      await Promise.all([p1, p2]);
+      await settle();
+
+      const after = requests.slice(offset).map(([m, u]) => [m, u]);
+      expect(after.filter(([m, u]) => m === 'POST' && u === '/api/consortiums/installments')).toHaveLength(1);
+      expect(after.filter(([, u]) => u === `/api/consortiums/installments?consortiumId=${consortium.id}`)).toEqual([]);
+      expect(after.filter(([, u]) => u === '/api/consortiums')).toHaveLength(outcome === 'ok' ? 1 : 0);
+      expect(activeDetail(render())?.id).toBe(otherConsortium.id);
+      const detailB = findElement(render(), (e) => e.type === consortiums.ConsortiumDetail)!;
+      expect(detailB.props.installments).toEqual([instB]);
+      expect(feedback).toEqual([]);
+    } finally {
+      cleanups.forEach((c) => c());
+      globalThis.fetch = originalFetch;
+      toast.success = success;
+      toast.error = error;
+      useAppStore.setState(useAppStore.getInitialState(), true);
+    }
+  });
+}
