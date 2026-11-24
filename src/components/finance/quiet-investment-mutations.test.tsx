@@ -3,6 +3,8 @@ import { expect, test } from 'bun:test';
 import React, { type ReactElement, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { InvestmentEntries, InvestmentPortfolio, InvestmentsView } from './investments-view';
+import { InvestmentDeleteConfirmation } from './investment-delete-confirmation';
+import { InvestmentEditor } from './investment-editor';
 import { InstallmentEntries, InstallmentPortfolio, InstallmentsView } from './installments-view';
 
 const a = { id: 'a', name: 'Investimento A', type: 'CDB', investedAmount: 1200, currentBalance: 1350, yieldRate: 0 };
@@ -16,7 +18,12 @@ function find(node: ReactNode, matches: (element: Element) => boolean): Element 
   for (const child of React.Children.toArray(node)) {
     if (!React.isValidElement<Record<string, any>>(child)) continue;
     if (matches(child)) return child;
-    const nested = find(child.props.children, matches);
+    // Evaluate only the leaf components we own; do not emulate Radix portals or focus.
+    const nested = find(child.type === InvestmentEditor
+      ? InvestmentEditor(child.props as Parameters<typeof InvestmentEditor>[0])
+      : child.type === InvestmentDeleteConfirmation
+        ? InvestmentDeleteConfirmation(child.props as Parameters<typeof InvestmentDeleteConfirmation>[0])
+        : child.props.children, matches);
     if (nested) return nested;
   }
 }
@@ -24,7 +31,8 @@ function find(node: ReactNode, matches: (element: Element) => boolean): Element 
 const byType = (type: Element["type"]) => (element: Element) => element.type === type;
 const withText = (label: string) => (element: Element) => React.Children.toArray(element.props.children).includes(label);
 const formField = (placeholder: string) => (element: Element) => element.props.placeholder === placeholder && element.props.onChange;
-const openDialog = (element: Element) => element.props.open === true && element.props.onOpenChange;
+const isOpen = (element: Element) => element.props.open === true && element.props.onOpenChange;
+const openDialog = (element: Element) => element.type !== InvestmentEditor && element.type !== InvestmentDeleteConfirmation && isOpen(element);
 const trigger = { currentTarget: null };
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
@@ -94,6 +102,188 @@ function readFixture({ url }: Request) {
   if (url === `${transactionsUrl}?investmentId=a`) return history("Histórico A");
   return Response.json([]);
 }
+
+const field = (name: string) => (element: Element) => {
+  const id = `investment-form-${name}`;
+  return Boolean((element.props.id === id && element.props.onChange) ||
+    (element.props.onValueChange && find(element.props.children, (child) => child.props.id === id)));
+};
+const editor = (view: Element) => find(view, openDialog)!;
+const click = (node: ReactNode, label: string) => find(node, (element) => withText(label)(element) && element.props.onClick)!.props.onClick;
+const portfolio = (view: Element) => find(view, byType(InvestmentPortfolio))!;
+const edit = (view: Element, record: typeof a, detail: boolean) => detail
+  ? click(view, ' Editar investimento')(trigger)
+  : portfolio(view).props.onEdit(record, trigger);
+const confirmDelete = (view: Element, detail: boolean) => detail
+  ? click(view, ' Excluir investimento')(trigger)
+  : portfolio(view).props.onDelete(a.id, trigger);
+const controlledResponse = () => Promise.withResolvers<Response>();
+const historyUrl = (id: string) => `${transactionsUrl}?investmentId=${id}`;
+
+for (const [mode, detail, method, submit] of [
+  ['criação', false, 'POST', 'Criar'],
+  ['edição na carteira', false, 'PUT', 'Salvar'],
+  ['edição no detalhe', true, 'PUT', 'Salvar'],
+] as const) {
+  const editMode = method === 'PUT';
+  const record = {
+    ...a, yieldRate: 4.2, description: 'Descrição A', brokerage: 'Corretora A', ticker: 'QA1',
+    accountId: 'conta-a', categoryId: 'categoria-a',
+  };
+  for (const outcome of ['HTTP 503', 'fetch rejeitado', 'OK, GET 503'] as const) {
+    test(`${mode}: campos, validação e payload com ${outcome}`, async () => {
+      const reread = controlledResponse();
+      let reads = 0;
+      await exercise(InvestmentsView, (request) => {
+        if (request.method === method) {
+          if (outcome === 'fetch rejeitado') return Promise.reject(new Error('Transporte sintético'));
+          return outcome === 'HTTP 503' ? Response.json({ error: 'Indisponível' }, { status: 503 }) : Response.json({});
+        }
+        if (request.url === investmentsUrl) return ++reads === 1 ? Response.json([record, b]) : reread.promise;
+        return readFixture(request);
+      }, async (render, requests, feedback) => {
+        if (detail) { portfolio(render()).props.onOpen(record); await settle(); }
+        if (editMode) edit(render(), record, detail);
+        else portfolio(render()).props.onNew(trigger);
+        const formValues = () => Object.fromEntries([
+          'name', 'type', 'description', 'investedAmount', 'yieldRate', 'brokerage', 'ticker', 'accountId', 'categoryId',
+        ].map((name) => [name, find(editor(render()), field(name))!.props.value]));
+        expect(formValues()).toEqual(editMode ? {
+          name: 'Investimento A', type: 'CDB', description: 'Descrição A', investedAmount: '1200', yieldRate: '4.2',
+          brokerage: 'Corretora A', ticker: 'QA1', accountId: 'conta-a', categoryId: 'categoria-a',
+        } : {
+          name: '', type: 'STOCK', description: '', investedAmount: '', yieldRate: '0', brokerage: '', ticker: '',
+          accountId: '', categoryId: '',
+        });
+        const change = (name: string, value: string) => {
+          const props = find(editor(render()), field(name))!.props;
+          if (props.onValueChange) props.onValueChange(value);
+          else props.onChange({ target: { value } });
+        };
+        const before = requests.length;
+        const save = () => click(editor(render()), submit)();
+        change('name', '  ');
+        await save();
+        expect(feedback).toEqual(['error']);
+        expect(requests).toHaveLength(before);
+        expect(formValues().name).toBe('  ');
+        // Valores exatos: omissão dos opcionais vazios; texto opcional não é normalizado.
+        change('name', '  Rascunho QA  ');
+        change('type', 'ETF');
+        change('investedAmount', '12.75');
+        change('yieldRate', '');
+        change('description', '   ');
+        change('brokerage', '');
+        change('ticker', 'QA2');
+        change('accountId', 'conta-b');
+        change('categoryId', 'categoria-b');
+        const draft = formValues();
+        await save();
+        const [mutation, ...gets] = requests.slice(before);
+        expect(mutation).toMatchObject({ url: investmentsUrl, method });
+        expect(JSON.parse(mutation.body!)).toEqual({
+          ...(editMode ? { id: 'a' } : {}), name: 'Rascunho QA', type: 'ETF', description: '   ',
+          investedAmount: 12.75, yieldRate: 0, ticker: 'QA2', accountId: 'conta-b', categoryId: 'categoria-b',
+        });
+        if (outcome === 'OK, GET 503') {
+          expect(feedback).toEqual(['error', 'success']);
+          expect(find(render(), openDialog)).toBeUndefined();
+          expect(gets.map(({ method, url }) => [method, url])).toEqual([
+            ['GET', investmentsUrl], ...(detail ? [['GET', historyUrl('a')]] : []),
+          ]);
+          reread.resolve(Response.json({ error: 'Indisponível' }, { status: 503 }));
+          await settle();
+          expect(find(render(), openDialog)).toBeUndefined();
+          expect(feedback).toEqual(['error', 'success']);
+          expect(detail ? find(render(), (node) => node.type === 'h2')?.props.children : portfolio(render()).props.loadError)
+            .toBe(detail ? a.name : true);
+        } else {
+          expect(feedback).toEqual(['error', 'error']);
+          expect(gets).toEqual([]);
+          expect(formValues()).toEqual(draft);
+        }
+      });
+    });
+  }
+}
+
+for (const detail of [false, true]) {
+  for (const outcome of ['OK', 'HTTP 503', 'fetch rejeitado'] as const) {
+    test(`${detail ? 'detalhe' : 'carteira'} A→B: resposta ${outcome} de A preserva identidade e segue o fechamento do baseline`, async () => {
+      const mutation = controlledResponse();
+      const reread = controlledResponse();
+      let reads = 0;
+      await exercise(InvestmentsView, (request) => {
+        if (request.method === 'PUT') return mutation.promise;
+        if (request.url === investmentsUrl && ++reads > 1) return reread.promise;
+        if (request.url === historyUrl('b')) return history('Histórico B');
+        return readFixture(request);
+      }, async (render, requests, feedback) => {
+        if (detail) { portfolio(render()).props.onOpen(a); await settle(); }
+        edit(render(), a, detail);
+        find(editor(render()), field('name'))!.props.onChange({ target: { value: 'Rascunho A' } });
+        const save = click(editor(render()), 'Salvar');
+        const first = save();
+        const duplicate = save();
+        expect(find(editor(render()), withText('Salvando…'))?.props.disabled).toBe(true);
+        click(editor(render()), 'Cancelar')();
+        expect(find(render(), openDialog)).toBeUndefined();
+        if (detail) {
+          click(render(), ' Voltar aos investimentos')();
+          portfolio(render()).props.onOpen(b);
+          await settle();
+        }
+        edit(render(), b, detail);
+        find(editor(render()), field('name'))!.props.onChange({ target: { value: 'Rascunho B' } });
+        const beforeReply = requests.length;
+        if (outcome === 'fetch rejeitado') mutation.reject(new Error('Transporte sintético'));
+        else mutation.resolve(Response.json({}, { status: outcome === 'OK' ? 200 : 503 }));
+        await Promise.all([first, duplicate]);
+        expect(requests.filter((request) => request.method === 'PUT').map((request) => [request.url, JSON.parse(request.body!)])).toEqual([
+          [investmentsUrl, { id: 'a', name: 'Rascunho A', type: 'CDB', investedAmount: 1200, yieldRate: 0 }],
+        ]);
+        if (outcome === 'OK') {
+          expect(feedback).toEqual(['success']);
+          // A identidade da consulta é protegida, não a abertura do editor.
+          expect(find(render(), openDialog)).toBeUndefined();
+          expect(requests.slice(beforeReply).map(({ url }) => url)).toEqual([investmentsUrl]);
+          reread.resolve(Response.json([{ ...a, name: 'A confirmado' }, b]));
+          await settle();
+        } else {
+          expect(feedback).toEqual(['error']);
+          expect(find(editor(render()), field('name'))?.props.value).toBe('Rascunho B');
+          expect(requests.slice(beforeReply)).toEqual([]);
+        }
+        if (detail) {
+          expect(find(render(), (node) => node.type === 'h2')?.props.children).toBe(b.name);
+          expect(find(render(), byType(InvestmentEntries))?.props.transactions[0]?.description).toBe('Histórico B');
+        }
+      });
+    });
+  }
+}
+
+test('carteira e detalhe instanciam o mesmo editor e confirmador de domínio, não a primitiva diretamente', async () => {
+  await exercise(InvestmentsView, readFixture, async (render) => {
+    edit(render(), a, false);
+    const listEditor = find(render(), isOpen)!;
+    listEditor.props.onOpenChange(false);
+    confirmDelete(render(), false);
+    const listConfirmation = find(render(), isOpen)!;
+    listConfirmation.props.onOpenChange(false);
+    portfolio(render()).props.onOpen(a);
+    await settle();
+    edit(render(), a, true);
+    const detailEditor = find(render(), isOpen)!;
+    detailEditor.props.onOpenChange(false);
+    confirmDelete(render(), true);
+    const detailConfirmation = find(render(), isOpen)!;
+    expect(detailEditor.type).toBe(listEditor.type);
+    expect(detailConfirmation.type).toBe(listConfirmation.type);
+    expect(listEditor.type).toBe(InvestmentEditor);
+    expect(listConfirmation.type).toBe(InvestmentDeleteConfirmation);
+  });
+});
 
 for (const [kind, method, failure, url, submitLabel, placeholder, draft] of [
   ['criar investimento', 'POST', 400, investmentsUrl, 'Criar', 'Ex: PETR4, Tesouro IPCA, MXRF11...', 'Novo rascunho'],

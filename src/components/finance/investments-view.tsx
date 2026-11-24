@@ -61,6 +61,8 @@ import {
 } from '@/lib/helpers';
 import { purchaseDateForInput } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
+import { InvestmentDeleteConfirmation } from './investment-delete-confirmation';
+import { InvestmentEditor, type InvestmentDraft } from './investment-editor';
 
 // ── Constants ───────────────────────────────────────────────────────
 
@@ -169,7 +171,7 @@ export function InvestmentsView() {
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
 
   // Investment form
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<InvestmentDraft>({
     name: '',
     type: 'STOCK',
     description: '',
@@ -362,6 +364,10 @@ export function InvestmentsView() {
     setShowInvestmentDialog(true);
   };
 
+  const changeInvestmentField = (field: keyof InvestmentDraft, value: string) => {
+    setForm((draft) => ({ ...draft, [field]: value }));
+  };
+
   const saveInvestment = async () => {
     if (!form.name.trim()) {
       toast.error('Informe o nome do investimento');
@@ -408,6 +414,10 @@ export function InvestmentsView() {
       saveInvestmentInFlight.current = false;
       setSavingInvestment(false);
     }
+  };
+
+  const changeDeleteConfirmation = (open: boolean) => {
+    if (!open && !deleteInFlight.current) setShowDeleteDialog(null);
   };
 
   const deleteInvestment = async (id: string) => {
@@ -761,166 +771,27 @@ export function InvestmentsView() {
             </DialogContent>
           </Dialog>
 
-          {/* Edit Investment Dialog (detail view) */}
-          <Dialog open={showInvestmentDialog} onOpenChange={setShowInvestmentDialog}>
-            <DialogContent showCloseButton={false} onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto">
-              <DialogHeader className="relative pr-10 text-left">
-                <DialogClose asChild>
-                  <Button type="button" size="icon" variant="ghost" aria-label="Fechar formulário" className="absolute right-0 top-0">
-                    <X aria-hidden="true" />
-                  </Button>
-                </DialogClose>
-                <DialogTitle>Editar Investimento</DialogTitle>
-                <DialogDescription>Atualize os dados do investimento</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="investment-form-name">Nome</Label>
-                  <Input id="investment-form-name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Ex: PETR4, Tesouro IPCA..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="investment-form-type">Tipo</Label>
-                  <Select
-                    value={form.type}
-                    onValueChange={(v) => setForm({ ...form, type: v })}
-                  >
-                    <SelectTrigger id="investment-form-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="STOCK">Ações</SelectItem>
-                      <SelectItem value="BOND">Renda Fixa</SelectItem>
-                      <SelectItem value="FII">FIIs</SelectItem>
-                      <SelectItem value="CDB">CDB</SelectItem>
-                      <SelectItem value="LCI">LCI</SelectItem>
-                      <SelectItem value="LCA">LCA</SelectItem>
-                      <SelectItem value="TESOURO">Tesouro Direto</SelectItem>
-                      <SelectItem value="CRYPTO">Cripto</SelectItem>
-                      <SelectItem value="ETF">ETF</SelectItem>
-                      <SelectItem value="OTHER">Outro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="investment-form-description">Descrição</Label>
-                  <Input id="investment-form-description"
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="Descrição opcional"
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="investment-form-investedAmount">Valor Investido (R$)</Label>
-                    <Input id="investment-form-investedAmount"
-                      type="number"
-                      step="0.01"
-                      value={form.investedAmount}
-                      onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="investment-form-yieldRate">Rentabilidade (%)</Label>
-                    <Input id="investment-form-yieldRate"
-                      type="number"
-                      step="0.01"
-                      value={form.yieldRate}
-                      onChange={(e) => setForm({ ...form, yieldRate: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="investment-form-brokerage">Corretora</Label>
-                    <Input id="investment-form-brokerage"
-                      value={form.brokerage}
-                      onChange={(e) => setForm({ ...form, brokerage: e.target.value })}
-                      placeholder="Ex: XP, Rico..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="investment-form-ticker">Ticker</Label>
-                    <Input id="investment-form-ticker"
-                      value={form.ticker}
-                      onChange={(e) => setForm({ ...form, ticker: e.target.value })}
-                      placeholder="Ex: PETR4, MXRF11..."
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="investment-form-accountId">Conta</Label>
-                  <Select
-                    value={form.accountId}
-                    onValueChange={(v) => setForm({ ...form, accountId: v })}
-                  >
-                    <SelectTrigger id="investment-form-accountId">
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="investment-form-categoryId">Categoria</Label>
-                  <Select
-                    value={form.categoryId}
-                    onValueChange={(v) => setForm({ ...form, categoryId: v })}
-                  >
-                    <SelectTrigger id="investment-form-categoryId">
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowInvestmentDialog(false)}>
-                  Cancelar
-                </Button>
-                <Button disabled={savingInvestment} onClick={saveInvestment}>{savingInvestment ? 'Salvando…' : 'Salvar'}</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <InvestmentEditor
+            mode="edit-detail"
+            open={showInvestmentDialog}
+            saving={savingInvestment}
+            form={form}
+            accounts={accounts}
+            categories={categories}
+            onFieldChange={changeInvestmentField}
+            onOpenChange={setShowInvestmentDialog}
+            onCloseAutoFocus={restoreDialogFocus}
+            onSave={saveInvestment}
+          />
 
-          {/* Delete Confirmation */}
-          <AlertDialog open={!!showDeleteDialog} onOpenChange={(open) => { if (!open && !deleteInFlight.current) setShowDeleteDialog(null); }}>
-            <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir Investimento</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir <strong>{selectedInvestment.name}</strong>? Esta ação não pode ser desfeita e todas as transações associadas serão perdidas.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={deleting}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    return deleteInvestment(selectedInvestment.id);
-                  }}
-                  className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
-                >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <InvestmentDeleteConfirmation
+            open={!!showDeleteDialog}
+            investmentName={selectedInvestment.name}
+            deleting={deleting}
+            onOpenChange={changeDeleteConfirmation}
+            onCloseAutoFocus={restoreDialogFocus}
+            onConfirm={() => deleteInvestment(selectedInvestment.id)}
+          />
           {/* Delete Transaction Confirmation */}
           <AlertDialog open={!!deletingTransaction} onOpenChange={(open) => { if (!open && !deleteTxInFlight.current) setDeletingTransaction(null); }}>
             <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
@@ -958,176 +829,26 @@ export function InvestmentsView() {
         }} onEdit={(investment, event) => rememberDialogOrigin(event.currentTarget, () => openEditInvestment(investment))}
         onDelete={(id, event) => rememberDialogOrigin(event.currentTarget, () => setShowDeleteDialog(id))} />
 
-        {/* Create/Edit Investment Dialog */}
-        <Dialog open={showInvestmentDialog} onOpenChange={setShowInvestmentDialog}>
-          <DialogContent showCloseButton={false} onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto">
-            <DialogHeader className="relative pr-10 text-left">
-              <DialogClose asChild>
-                <Button type="button" size="icon" variant="ghost" aria-label="Fechar formulário" className="absolute right-0 top-0">
-                  <X aria-hidden="true" />
-                </Button>
-              </DialogClose>
-              <DialogTitle>
-                {editingInvestment ? 'Editar Investimento' : 'Novo Investimento'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingInvestment
-                  ? 'Atualize os dados do investimento'
-                  : 'Preencha os dados do novo investimento'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="investment-form-name">Nome</Label>
-                <Input id="investment-form-name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Ex: PETR4, Tesouro IPCA, MXRF11..."
-                />
-              </div>
-              <div>
-                <Label htmlFor="investment-form-type">Tipo</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(v) => setForm({ ...form, type: v })}
-                >
-                  <SelectTrigger id="investment-form-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="STOCK">Ações</SelectItem>
-                    <SelectItem value="BOND">Renda Fixa</SelectItem>
-                    <SelectItem value="FII">FIIs</SelectItem>
-                    <SelectItem value="CDB">CDB</SelectItem>
-                    <SelectItem value="LCI">LCI</SelectItem>
-                    <SelectItem value="LCA">LCA</SelectItem>
-                    <SelectItem value="TESOURO">Tesouro Direto</SelectItem>
-                    <SelectItem value="CRYPTO">Cripto</SelectItem>
-                    <SelectItem value="ETF">ETF</SelectItem>
-                    <SelectItem value="OTHER">Outro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="investment-form-description">Descrição</Label>
-                <Input id="investment-form-description"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Descrição opcional do investimento"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="investment-form-investedAmount">Valor Investido (R$)</Label>
-                  <Input id="investment-form-investedAmount"
-                    type="number"
-                    step="0.01"
-                    value={form.investedAmount}
-                    onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
-                    placeholder="0,00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="investment-form-yieldRate">Rentabilidade (%)</Label>
-                  <Input id="investment-form-yieldRate"
-                    type="number"
-                    step="0.01"
-                    value={form.yieldRate}
-                    onChange={(e) => setForm({ ...form, yieldRate: e.target.value })}
-                    placeholder="0,00"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="investment-form-brokerage">Corretora</Label>
-                  <Input id="investment-form-brokerage"
-                    value={form.brokerage}
-                    onChange={(e) => setForm({ ...form, brokerage: e.target.value })}
-                    placeholder="Ex: XP, Rico, Clear..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="investment-form-ticker">Ticker</Label>
-                  <Input id="investment-form-ticker"
-                    value={form.ticker}
-                    onChange={(e) => setForm({ ...form, ticker: e.target.value })}
-                    placeholder="Ex: PETR4, MXRF11..."
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="investment-form-accountId">Conta</Label>
-                <Select
-                  value={form.accountId}
-                  onValueChange={(v) => setForm({ ...form, accountId: v })}
-                >
-                  <SelectTrigger id="investment-form-accountId">
-                    <SelectValue placeholder="Selecione uma conta..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="investment-form-categoryId">Categoria</Label>
-                <Select
-                  value={form.categoryId}
-                  onValueChange={(v) => setForm({ ...form, categoryId: v })}
-                >
-                  <SelectTrigger id="investment-form-categoryId">
-                    <SelectValue placeholder="Selecione uma categoria..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowInvestmentDialog(false)}>
-                Cancelar
-              </Button>
-              <Button disabled={savingInvestment} onClick={saveInvestment}>
-                {savingInvestment ? 'Salvando…' : editingInvestment ? 'Salvar' : 'Criar'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      <InvestmentEditor
+        mode={editingInvestment ? 'edit-portfolio' : 'create'}
+        open={showInvestmentDialog}
+        saving={savingInvestment}
+        form={form}
+        accounts={accounts}
+        categories={categories}
+        onFieldChange={changeInvestmentField}
+        onOpenChange={setShowInvestmentDialog}
+        onCloseAutoFocus={restoreDialogFocus}
+        onSave={saveInvestment}
+      />
 
-        {/* Delete Confirmation */}
-        <AlertDialog open={!!showDeleteDialog} onOpenChange={(open) => { if (!open && !deleteInFlight.current) setShowDeleteDialog(null); }}>
-          <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir Investimento</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja excluir este investimento? Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={deleting}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (showDeleteDialog) return deleteInvestment(showDeleteDialog);
-                }}
-                className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
-              >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      <InvestmentDeleteConfirmation
+        open={!!showDeleteDialog}
+        deleting={deleting}
+        onOpenChange={changeDeleteConfirmation}
+        onCloseAutoFocus={restoreDialogFocus}
+        onConfirm={() => showDeleteDialog ? deleteInvestment(showDeleteDialog) : undefined}
+      />
     </>
   );
 }

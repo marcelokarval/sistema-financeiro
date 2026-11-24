@@ -85,21 +85,23 @@ test('detalhe não oferece pagamento de parcela de outro plano', () => {
   expect(html).not.toContain('aria-label="Pagar');
 });
 
-// SSR não renderiza os portais Radix nem executa foco. Estes checks cobrem
-// a ligação nas views; o foco e o fechamento efetivos ficam para o QA no DOM.
-for (const [file, total, detailTitle, rowPrefix] of [
-  ['investments-view.tsx', 3, 'investment-detail-title', 'investment-row'],
-  ['installments-view.tsx', 1, 'plan-detail-title', 'plan-row'],
+// SSR não renderiza os portais Radix. Este contrato de markup não prova foco:
+// a interação do editor/confirmador pelos dois caminhos pertence ao QA no DOM.
+for (const file of ['investment-editor.tsx', 'investments-view.tsx', 'installments-view.tsx']) {
+  test(`${file}: formulário tem saída superior nomeada`, () => {
+    const source = readFileSync(new URL(file, import.meta.url), 'utf8');
+    const headers = source.split(/<DialogHeader[^>]*>/).slice(1).map((part) => part.split('</DialogHeader>')[0]);
+    expect(headers).toHaveLength(1);
+    expect(headers[0]).toContain('<DialogClose asChild>');
+    expect(headers[0]).toContain('aria-label="Fechar formulário"');
+  });
+}
+
+for (const [file, detailTitle, rowPrefix] of [
+  ['investments-view.tsx', 'investment-detail-title', 'investment-row'],
+  ['installments-view.tsx', 'plan-detail-title', 'plan-row'],
 ] as const) {
   const source = readFileSync(new URL(file, import.meta.url), 'utf8');
-  test(`${file}: todos os formulários têm saída superior nomeada`, () => {
-    const headers = source.split(/<DialogHeader[^>]*>/).slice(1).map((part) => part.split("</DialogHeader>")[0]);
-    expect(headers).toHaveLength(total);
-    for (const header of headers) {
-      expect(header).toContain('<DialogClose asChild>');
-      expect(header).toContain('aria-label="Fechar formulário"');
-    }
-  });
   test(`${file}: detalhe e retorno têm alvos de foco`, () => {
     expect(source).toContain(`id="${detailTitle}" tabIndex={-1}`);
     expect(source).toContain(rowPrefix);
@@ -114,8 +116,8 @@ for (const [file, total, detailTitle, rowPrefix] of [
 
 }
 
-// Portais Radix não aparecem no SSR; verificar o contrato das confirmações na view.
-for (const [file, count] of [["investments-view.tsx",3],["installments-view.tsx",2]] as const) {
+// Estilos semânticos de todas as ações destrutivas, incluindo as não migradas.
+for (const [file, count] of [["investment-delete-confirmation.tsx",1],["investments-view.tsx",1],["installments-view.tsx",2]] as const) {
   test(`${file}: confirmação destrutiva usa cores semânticas e hover legível`, async () => {
     const source = await Bun.file(new URL(file, import.meta.url)).text();
     const actions = [...source.matchAll(/<AlertDialogAction\b([\s\S]*?)<\/AlertDialogAction>/g)];
