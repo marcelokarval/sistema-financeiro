@@ -1,30 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight,
-  RotateCcw,
-  CalendarClock,
-  ToggleLeft,
-  ToggleRight,
-  MoreHorizontal,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
+import { Plus, Pencil, Trash2, RotateCcw, Pause, Play, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -47,17 +31,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { currencyFmt } from '@/lib/helpers';
 
-// ── Helpers ────────────────────────────────────────────────────────
-const currencyFmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)] motion-reduce:transition-none';
 
 const dateFmt = (d: string) => {
   try {
@@ -75,31 +52,6 @@ const frequencyLabels: Record<string, string> = {
   YEARLY: 'Anual',
 };
 
-const frequencyColors: Record<string, string> = {
-  WEEKLY: 'bg-sky-500/10 text-sky-600',
-  BIWEEKLY: 'bg-cyan-500/10 text-cyan-600',
-  MONTHLY: 'bg-violet-500/10 text-violet-600',
-  QUARTERLY: 'bg-amber-500/10 text-amber-600',
-  YEARLY: 'bg-emerald-500/10 text-emerald-600',
-};
-
-// ── Animation Variants ─────────────────────────────────────────────
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-};
-
-const headerVariants = {
-  hidden: { opacity: 0, y: -10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
-
-// ── Interfaces ─────────────────────────────────────────────────────
 interface RecurringTransaction {
   id: string;
   description: string;
@@ -108,6 +60,9 @@ interface RecurringTransaction {
   frequency: string;
   nextDate: string;
   isActive: boolean;
+  categoryId?: string | null;
+  accountId?: string | null;
+  cardId?: string | null;
   category?: { id: string; name: string; color: string; icon: string } | null;
   account?: { id: string; name: string; color: string; icon: string } | null;
   card?: { id: string; name: string; color: string; lastFourDigits: string } | null;
@@ -135,14 +90,153 @@ interface CardItem {
   lastFourDigits: string;
 }
 
-// ── Component ──────────────────────────────────────────────────────
+interface RecurringPanelProps {
+  recurring: RecurringTransaction[];
+  loading: boolean;
+  error?: boolean;
+  processing: boolean;
+  activeCount: number;
+  inactiveCount: number;
+  monthlyIncome: number;
+  monthlyTotal: number;
+  openNew: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  processRecurring: () => void;
+  openEdit: (entry: RecurringTransaction, event: React.MouseEvent<HTMLButtonElement>) => void;
+  requestDelete: (id: string, event: React.MouseEvent<HTMLButtonElement>) => void;
+  toggleActive: (entry: RecurringTransaction) => void;
+  onRetry?: () => void;
+}
+
+export function RecurringPanel({
+  recurring, loading, error = false, processing, activeCount, inactiveCount, monthlyIncome, monthlyTotal,
+  openNew, processRecurring, openEdit, requestDelete, toggleActive, onRetry,
+}: RecurringPanelProps) {
+  const headingId = useId();
+  const listId = useId();
+  return (
+    <section aria-labelledby={headingId} className="min-w-0 space-y-4" data-testid="quiet-recurring">
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <h3 id={headingId} className="text-lg font-semibold tracking-tight">Transações recorrentes</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Acompanhe lançamentos programados e gerencie suas próximas datas.</p>
+        </div>
+        {!loading && (
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={openNew} className={focusClass} data-recurring-create="">
+              <Plus aria-hidden="true" /> Nova transação recorrente
+            </Button>
+            <Button variant="outline" onClick={processRecurring} disabled={processing} className={focusClass}>
+              <RotateCcw aria-hidden="true" /> {processing ? 'Processando…' : 'Processar'}
+            </Button>
+          </div>
+        )}
+      </header>
+      {loading ? (
+        <p role="status" className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          Carregando recorrências…
+        </p>
+      ) : error ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
+          <p role="alert" className="text-sm text-muted-foreground">
+            Não foi possível carregar as transações recorrentes.
+          </p>
+          <Button variant="outline" size="sm" className="min-h-9" onClick={onRetry}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : (
+        <>
+          <dl aria-label="Resumo das recorrências" className="grid grid-cols-2 gap-px rounded-xl border border-border bg-border sm:grid-cols-3">
+            <div className="min-w-0 rounded-tl-xl bg-card p-3 sm:rounded-bl-xl sm:p-4">
+              <dt className="text-xs text-muted-foreground">Receitas ativas</dt>
+              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{currencyFmt(monthlyIncome)}</dd>
+            </div>
+            <div className="min-w-0 rounded-tr-xl bg-card p-3 sm:rounded-none sm:p-4">
+              <dt className="text-xs text-muted-foreground">Despesas ativas</dt>
+              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{currencyFmt(monthlyTotal)}</dd>
+            </div>
+            <div className="col-span-2 rounded-b-xl bg-card p-3 sm:col-span-1 sm:rounded-none sm:rounded-r-xl sm:p-4">
+              <dt className="text-xs text-muted-foreground">Ativas / pausadas</dt>
+              <dd className="mt-1 font-mono text-base font-semibold tabular-nums">{activeCount} / {inactiveCount}</dd>
+            </div>
+          </dl>
+          <section aria-labelledby={listId} className="min-w-0 rounded-xl border border-border bg-card">
+            <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-4 py-3">
+              <h4 id={listId} className="text-sm font-semibold">Recorrências cadastradas</h4>
+              <p className="text-xs tabular-nums text-muted-foreground">{recurring.length} {recurring.length === 1 ? 'registro' : 'registros'}</p>
+            </header>
+            {recurring.length === 0 ? (
+              <div className="px-4 py-6">
+                <p className="text-sm font-medium">Nenhuma transação recorrente</p>
+                <p className="mt-1 text-sm text-muted-foreground">Use Nova transação recorrente para cadastrar um lançamento programado.</p>
+              </div>
+            ) : (
+              <ul role="list" className="divide-y divide-border">
+                {recurring.map((entry) => {
+                  const isIncome = entry.type === 'INCOME';
+                  const toggleLabel = entry.isActive ? 'Pausar' : 'Ativar';
+                  return (
+                    <li key={entry.id} className="grid min-w-0 grid-cols-2 items-start gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(8rem,auto)_minmax(7rem,auto)_auto] lg:items-center">
+                      <div className="col-span-2 min-w-0 lg:col-span-1">
+                        <p className="break-words text-sm font-semibold">{entry.description}</p>
+                        <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                          {[isIncome ? 'Receita' : 'Despesa', frequencyLabels[entry.frequency] || entry.frequency, entry.category?.name, entry.account?.name, entry.card && `${entry.card.name} ****${entry.card.lastFourDigits}`].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Próxima data</p>
+                        <time className="block break-words text-sm tabular-nums" dateTime={entry.nextDate}>{dateFmt(entry.nextDate)}</time>
+                      </div>
+                      <div className="min-w-0 text-right">
+                        <p className="break-words font-mono text-sm font-semibold tabular-nums">{isIncome ? '+' : '-'}{currencyFmt(entry.amount)}</p>
+                        <p className="text-xs text-muted-foreground">{entry.isActive ? 'Ativa' : 'Pausada'}</p>
+                      </div>
+                      <div className="col-span-2 flex flex-wrap items-center gap-1 lg:col-span-1 lg:justify-end">
+                        <Button variant="outline" size="sm" aria-label={`${toggleLabel} ${entry.description}`} onClick={() => toggleActive(entry)} className={focusClass}>
+                          {entry.isActive ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />} {toggleLabel}
+                        </Button>
+                        <Button variant="ghost" size="icon" aria-label={`Editar ${entry.description}`} title="Editar" onClick={(event) => openEdit(entry, event)} className={focusClass}>
+                          <Pencil aria-hidden="true" />
+                        </Button>
+                        <Button variant="ghost" size="icon" aria-label={`Excluir ${entry.description}`} title="Excluir" onClick={(event) => requestDelete(entry.id, event)} className={focusClass}>
+                          <Trash2 aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
+    </section>
+  );
+}
+
 export function RecurringTransactionsWidget() {
   const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cards, setCards] = useState<CardItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const formId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLButtonElement | null>(null);
+  const formOpening = useRef<object | null>(null);
+  const deleteOpening = useRef<object | null>(null);
+  const pendingDeletes = useRef(new Set<string>());
+  const submittingRef = useRef(false);
+  const restoreFocus = (event: Event) => {
+    event.preventDefault();
+    const target = returnFocus.current;
+    (target?.isConnected ? target : panelRef.current?.querySelector<HTMLButtonElement>('[data-recurring-create]'))?.focus();
+    returnFocus.current = null;
+  };
 
   // Dialogs
   const [showFormDialog, setShowFormDialog] = useState(false);
@@ -167,11 +261,17 @@ export function RecurringTransactionsWidget() {
 
   // ── Data fetching ────────────────────────────────────────────────
   const fetchRecurring = useCallback(async () => {
+    setLoadError(false);
     try {
       const res = await fetch('/api/recurring');
-      if (res.ok) setRecurring(await res.json());
+      if (!res.ok) {
+        setLoadError(true);
+        return;
+      }
+      setRecurring(await res.json());
     } catch (e) {
       console.error(e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -209,6 +309,7 @@ export function RecurringTransactionsWidget() {
 
   // ── Actions ──────────────────────────────────────────────────────
   const openNew = () => {
+    formOpening.current = {};
     setEditing(null);
     setForm({
       description: '',
@@ -224,6 +325,7 @@ export function RecurringTransactionsWidget() {
   };
 
   const openEdit = (r: RecurringTransaction) => {
+    formOpening.current = {};
     setEditing(r);
     setForm({
       description: r.description,
@@ -240,11 +342,12 @@ export function RecurringTransactionsWidget() {
 
   const toggleActive = async (r: RecurringTransaction) => {
     try {
-      await fetch('/api/recurring', {
+      const response = await fetch('/api/recurring', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: r.id, isActive: !r.isActive }),
       });
+      if (!response.ok) throw new Error('Falha ao alterar status');
       toast.success(r.isActive ? 'Transação pausada' : 'Transação ativada');
       fetchRecurring();
     } catch {
@@ -253,11 +356,15 @@ export function RecurringTransactionsWidget() {
   };
 
   const saveForm = async () => {
+    const opening = formOpening.current;
+    if (submittingRef.current) return;
     if (!form.description.trim() || !form.amount || parseFloat(form.amount) <= 0) {
       toast.error('Preencha descrição e valor corretamente');
       return;
     }
 
+    submittingRef.current = true;
+    setSubmitting(true);
     try {
       const body = {
         description: form.description,
@@ -271,39 +378,57 @@ export function RecurringTransactionsWidget() {
       };
 
       if (editing) {
-        await fetch('/api/recurring', {
+        const response = await fetch('/api/recurring', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: editing.id, ...body }),
         });
+        if (!response.ok) throw new Error('Falha ao atualizar recorrência');
         toast.success('Transação recorrente atualizada!');
       } else {
-        await fetch('/api/recurring', {
+        const response = await fetch('/api/recurring', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
+        if (!response.ok) throw new Error('Falha ao criar recorrência');
         toast.success('Transação recorrente criada!');
       }
-      setShowFormDialog(false);
+      if (formOpening.current === opening) {
+        formOpening.current = null;
+        setShowFormDialog(false);
+      }
       fetchRecurring();
     } catch {
       toast.error('Erro ao salvar transação recorrente');
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
   const deleteRecurring = async (id: string) => {
+    if (pendingDeletes.current.has(id)) return;
+    pendingDeletes.current.add(id);
+    const opening = deleteOpening.current;
     try {
-      await fetch('/api/recurring', {
+      const response = await fetch('/api/recurring', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
+      if (!response.ok) throw new Error('Falha ao excluir recorrência');
       toast.success('Transação recorrente excluída!');
-      setShowDeleteDialog(null);
+      if (deleteOpening.current === opening) {
+        deleteOpening.current = null;
+        returnFocus.current = null;
+        setShowDeleteDialog(null);
+      }
       fetchRecurring();
     } catch {
       toast.error('Erro ao excluir');
+    } finally {
+      pendingDeletes.current.delete(id);
     }
   };
 
@@ -325,280 +450,28 @@ export function RecurringTransactionsWidget() {
     }
   };
 
-  // ── Loading ──────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-2xl" />
-          ))}
-        </div>
-        <Skeleton className="h-60 rounded-2xl" />
-      </div>
-    );
-  }
-
-  // ── Render ───────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <motion.div variants={headerVariants} initial="hidden" animate="show">
-        <Card className="overflow-hidden border-0 shadow-md">
-          <div className="h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500" />
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-                  <CalendarClock className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold">Transações Recorrentes</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Gerencie suas transações automáticas
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={processRecurring}
-                  disabled={processing}
-                  className="gap-1.5"
-                >
-                  <RotateCcw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Processar</span>
-                </Button>
-                <Button onClick={openNew} size="sm" className="gap-1.5">
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Nova Transação Recorrente</span>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Summary Cards */}
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
-      >
-        <motion.div variants={item}>
-          <Card className="overflow-hidden border-0 shadow-sm">
-            <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                    Receitas Mensais
-                  </p>
-                  <p className="text-xl font-bold text-emerald-500 mt-1 tracking-tight">
-                    {currencyFmt(monthlyIncome)}
-                  </p>
-                </div>
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                  <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card className="overflow-hidden border-0 shadow-sm">
-            <div className="h-1 bg-gradient-to-r from-rose-500 to-pink-500" />
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                    Despesas Mensais
-                  </p>
-                  <p className="text-xl font-bold text-rose-500 mt-1 tracking-tight">
-                    {currencyFmt(monthlyTotal)}
-                  </p>
-                </div>
-                <div className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center">
-                  <ArrowDownRight className="w-4 h-4 text-rose-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card className="overflow-hidden border-0 shadow-sm">
-            <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-400" />
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                    Ativas / Inativas
-                  </p>
-                  <p className="text-xl font-bold mt-1 tracking-tight">
-                    <span className="text-violet-500">{activeCount}</span>
-                    <span className="text-muted-foreground mx-1">/</span>
-                    <span className="text-muted-foreground">{inactiveCount}</span>
-                  </p>
-                </div>
-                <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-violet-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
-
-      {/* Recurring Transactions List */}
-      <motion.div variants={container} initial="hidden" animate="show">
-        <Card className="overflow-hidden border-0 shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              Lista de Transações Recorrentes
-              <Badge variant="secondary" className="ml-1 text-[10px]">
-                {recurring.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {recurring.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-                  <Clock className="w-7 h-7" />
-                </div>
-                <p className="text-sm font-medium">Nenhuma transação recorrente</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  Clique em &quot;Nova Transação Recorrente&quot; para começar a automatizar suas finanças
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border max-h-96 overflow-y-auto">
-                {recurring.map((r) => (
-                  <motion.div
-                    key={r.id}
-                    variants={item}
-                    className={`flex items-center justify-between px-5 py-3.5 hover:bg-accent/30 transition-colors ${
-                      !r.isActive ? 'opacity-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          r.type === 'INCOME'
-                            ? 'bg-emerald-500/10'
-                            : 'bg-rose-500/10'
-                        }`}
-                      >
-                        {r.type === 'INCOME' ? (
-                          <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                        ) : (
-                          <ArrowDownRight className="w-4 h-4 text-rose-500" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {r.description}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span
-                            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              frequencyColors[r.frequency] || 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {frequencyLabels[r.frequency] || r.frequency}
-                          </span>
-                          {r.category && (
-                            <span
-                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium"
-                              style={{
-                                backgroundColor: `${r.category.color}15`,
-                                color: r.category.color,
-                              }}
-                            >
-                              {r.category.name}
-                            </span>
-                          )}
-                          {r.account && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-muted text-muted-foreground">
-                              {r.account.name}
-                            </span>
-                          )}
-                          {r.card && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-muted text-muted-foreground">
-                              {r.card.name} ****{r.card.lastFourDigits}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <div className="text-right">
-                        <span
-                          className={`text-sm font-bold ${
-                            r.type === 'INCOME'
-                              ? 'text-emerald-500'
-                              : 'text-rose-500'
-                          }`}
-                        >
-                          {r.type === 'INCOME' ? '+' : '-'}
-                          {currencyFmt(r.amount)}
-                        </span>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Próx: {dateFmt(r.nextDate)}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => toggleActive(r)}
-                        className="p-1 rounded-lg hover:bg-accent transition-colors"
-                        title={r.isActive ? 'Pausar' : 'Ativar'}
-                      >
-                        {r.isActive ? (
-                          <ToggleRight className="w-5 h-5 text-emerald-500" />
-                        ) : (
-                          <ToggleLeft className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </button>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEdit(r)}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setShowDeleteDialog(r.id)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-
+    <div ref={panelRef} className="min-w-0">
+      <RecurringPanel
+        recurring={recurring}
+        loading={loading}
+        error={loadError}
+        processing={processing}
+        activeCount={activeCount}
+        inactiveCount={inactiveCount}
+        monthlyIncome={monthlyIncome}
+        monthlyTotal={monthlyTotal}
+        processRecurring={processRecurring}
+        openNew={(event) => { returnFocus.current = event.currentTarget; openNew(); }}
+        openEdit={(entry, event) => { returnFocus.current = event.currentTarget; openEdit(entry); }}
+        requestDelete={(id, event) => { returnFocus.current = event.currentTarget; deleteOpening.current = {}; setShowDeleteDialog(id); }}
+        toggleActive={toggleActive}
+        onRetry={() => { setLoading(true); void fetchRecurring(); }}
+      />
       {/* Form Dialog */}
-      <Dialog open={showFormDialog} onOpenChange={setShowFormDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+      <Dialog open={showFormDialog} onOpenChange={(open) => { if (!open) formOpening.current = null; setShowFormDialog(open); }}>
+        <DialogContent showCloseButton={false} onCloseAutoFocus={restoreFocus} className="max-h-[90dvh] overflow-y-auto motion-reduce:animate-none">
+          <DialogHeader className="relative pe-12 text-start">
             <DialogTitle>
               {editing
                 ? 'Editar Transação Recorrente'
@@ -609,15 +482,20 @@ export function RecurringTransactionsWidget() {
                 ? 'Atualize os dados da transação recorrente'
                 : 'Configure uma nova transação que se repete automaticamente'}
             </DialogDescription>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost" size="icon" aria-label="Fechar" className={`absolute end-0 top-0 ${focusClass}`}>
+                <X aria-hidden="true" />
+              </Button>
+            </DialogClose>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
             <div>
-              <Label>Tipo</Label>
+              <Label htmlFor={`${formId}-type`}>Tipo</Label>
               <Select
                 value={form.type}
                 onValueChange={(v) => setForm({ ...form, type: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger id={`${formId}-type`} className={`w-full ${focusClass}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -627,8 +505,8 @@ export function RecurringTransactionsWidget() {
               </Select>
             </div>
             <div>
-              <Label>Descrição</Label>
-              <Input
+              <Label htmlFor={`${formId}-description`}>Descrição</Label>
+              <Input id={`${formId}-description`}
                 value={form.description}
                 onChange={(e) =>
                   setForm({ ...form, description: e.target.value })
@@ -637,8 +515,8 @@ export function RecurringTransactionsWidget() {
               />
             </div>
             <div>
-              <Label>Valor (R$)</Label>
-              <Input
+              <Label htmlFor={`${formId}-amount`}>Valor (R$)</Label>
+              <Input id={`${formId}-amount`}
                 type="number"
                 step="0.01"
                 value={form.amount}
@@ -647,12 +525,12 @@ export function RecurringTransactionsWidget() {
               />
             </div>
             <div>
-              <Label>Frequência</Label>
+              <Label htmlFor={`${formId}-frequency`}>Frequência</Label>
               <Select
                 value={form.frequency}
                 onValueChange={(v) => setForm({ ...form, frequency: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger id={`${formId}-frequency`} className={`w-full ${focusClass}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -665,20 +543,20 @@ export function RecurringTransactionsWidget() {
               </Select>
             </div>
             <div>
-              <Label>Próxima Data</Label>
-              <Input
+              <Label htmlFor={`${formId}-next-date`}>Próxima Data</Label>
+              <Input id={`${formId}-next-date`}
                 type="date"
                 value={form.nextDate}
                 onChange={(e) => setForm({ ...form, nextDate: e.target.value })}
               />
             </div>
             <div>
-              <Label>Categoria</Label>
+              <Label htmlFor={`${formId}-category`}>Categoria</Label>
               <Select
                 value={form.categoryId}
                 onValueChange={(v) => setForm({ ...form, categoryId: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger id={`${formId}-category`} className={`w-full ${focusClass}`}>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -693,12 +571,12 @@ export function RecurringTransactionsWidget() {
               </Select>
             </div>
             <div>
-              <Label>Conta</Label>
+              <Label htmlFor={`${formId}-account`}>Conta</Label>
               <Select
                 value={form.accountId}
                 onValueChange={(v) => setForm({ ...form, accountId: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger id={`${formId}-account`} className={`w-full ${focusClass}`}>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -711,12 +589,12 @@ export function RecurringTransactionsWidget() {
               </Select>
             </div>
             <div>
-              <Label>Cartão</Label>
+              <Label htmlFor={`${formId}-card`}>Cartão</Label>
               <Select
                 value={form.cardId}
                 onValueChange={(v) => setForm({ ...form, cardId: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger id={`${formId}-card`} className={`w-full ${focusClass}`}>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -730,14 +608,11 @@ export function RecurringTransactionsWidget() {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowFormDialog(false)}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={saveForm}>
-              {editing ? 'Salvar' : 'Criar'}
+            <DialogClose asChild>
+              <Button variant="outline" disabled={submitting} className={focusClass}>Cancelar</Button>
+            </DialogClose>
+            <Button onClick={saveForm} disabled={submitting} className={focusClass}>
+              {submitting ? 'Salvando…' : editing ? 'Salvar' : 'Criar'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -746,9 +621,9 @@ export function RecurringTransactionsWidget() {
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={showDeleteDialog !== null}
-        onOpenChange={() => setShowDeleteDialog(null)}
+        onOpenChange={(open) => { if (!open) { deleteOpening.current = null; setShowDeleteDialog(null); } }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent onCloseAutoFocus={restoreFocus} className="motion-reduce:animate-none">
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Transação Recorrente</AlertDialogTitle>
             <AlertDialogDescription>
@@ -757,10 +632,15 @@ export function RecurringTransactionsWidget() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className={focusClass}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => showDeleteDialog && deleteRecurring(showDeleteDialog)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                if (showDeleteDialog) {
+                  return deleteRecurring(showDeleteDialog);
+                }
+              }}
+              className={`bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline ${focusClass}`}
             >
               Excluir
             </AlertDialogAction>

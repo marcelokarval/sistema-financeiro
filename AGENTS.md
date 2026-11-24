@@ -11,7 +11,7 @@ Sistema Financeiro Pessoal — Single Page Application para gestão financeira d
 
 - **Stack:** Next.js 16 + TypeScript + Prisma (SQLite) + shadcn/ui + Tailwind CSS v4 + Zustand + Recharts + Framer Motion
 - **Runtime:** Bun (lockfile: `bun.lock`). **NÃO usar npm/yarn.**
-- **Banco:** SQLite local via Prisma (`db/custom.db`, ignorado pelo git)
+- **Banco:** SQLite via Prisma. `db/custom.db` é um caminho de desenvolvimento, não um insumo de release nem fallback de execução. Não trate regras de ignore como prova de que um arquivo sensível não é rastreado.
 - **Idioma da UI:** Português Brasileiro (pt-BR), moeda BRL
 - **Tema:** Dark/Light com design system premium (variáveis CSS `--ds-*` em `docs/reference/`)
 
@@ -110,7 +110,7 @@ import { useRealtime } from '@/hooks/use-realtime';
 
 ### Banco de dados
 - Schema: `prisma/schema.prisma`
-- Para mudanças no schema: `bun run db:push` (desenvolvimento)
+- Para mudanças no schema em desenvolvimento: `bun run db:push` como operação explícita. O launcher de release exige `DATABASE_URL` explícita para um SQLite externo já provisionado; não cria, popula nem sincroniza a base.
 - **NUNCA** commitar `db/custom.db`
 
 ---
@@ -130,10 +130,12 @@ import { useRealtime } from '@/hooks/use-realtime';
 ```bash
 bun install          # Instalar dependências
 bun run dev          # Dev server (porta 3000)
-bun run build        # Build de produção
+bun run build        # Compilar Next; não equivale a empacotar uma release
 bun run db:push      # Sync schema com banco local
 bun run db:generate  # Gerar Prisma client
 ```
+
+Para produzir e verificar o `tar.gz` de release ou iniciar o pacote, siga o [guia de operação do pacote](<docs/operacao-empacotamento.md>). Não execute o empacotador a partir de um checkout com segredos ou dados reais.
 
 ---
 

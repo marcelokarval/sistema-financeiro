@@ -49,7 +49,18 @@ export async function GET(request: Request) {
     const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
 
     // Build monthly comparison data
-    const monthlyData = [];
+    const monthlyData: {
+      month: string;
+      income: number;
+      expense: number;
+      net: number;
+      transactionCount: number;
+      purchaseCount: number;
+      avgDailySpend: number;
+      savingsRate: number;
+      daysInMonth: number;
+      daysElapsed: number;
+    }[] = [];
     for (let i = months - 1; i >= 0; i--) {
       const monthStart = new Date(currentYear, currentMonth - i, 1);
       const monthEnd = new Date(currentYear, currentMonth - i + 1, 0, 23, 59, 59, 999);

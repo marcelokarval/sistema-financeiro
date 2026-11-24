@@ -200,7 +200,11 @@ export async function GET(request: NextRequest) {
     }));
 
     // Monthly trend - iterate through each month in the date range
-    const monthlyTrend = [];
+    const monthlyTrend: {
+      month: string;
+      income: number;
+      expense: number;
+    }[] = [];
     for (let i = 0; i < trendMonths; i++) {
       const trendMonth = new Date(trendStart.getFullYear(), trendStart.getMonth() + i, 1);
       const trendMonthEnd = new Date(trendStart.getFullYear(), trendStart.getMonth() + i + 1, 0, 23, 59, 59, 999);
@@ -244,7 +248,12 @@ export async function GET(request: NextRequest) {
         ...categoryExpensePurchases.map((p) => p.categoryId!),
       ]),
     ];
-    const expenseByCategory = [];
+    const expenseByCategory: {
+      categoryId: string;
+      categoryName: string;
+      categoryColor: string;
+      total: number;
+    }[] = [];
 
     if (allCategoryIds.length > 0) {
       const categories = await db.category.findMany({

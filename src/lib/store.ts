@@ -12,8 +12,14 @@ interface AppState {
   selectedConsortiumId: string | null;
   sidebarOpen: boolean;
   aiAssistantVisible: boolean;
+  newTransactionRequested: boolean;
+  newGoalRequested: boolean;
 
   setCurrentView: (view: ViewType) => void;
+  requestNewTransaction: () => void;
+  clearNewTransactionRequest: () => void;
+  requestNewGoal: () => void;
+  clearNewGoalRequest: () => void;
   setSelectedAccountId: (id: string | null) => void;
   setSelectedCardId: (id: string | null) => void;
   setSelectedPurchaseId: (id: string | null) => void;
@@ -35,9 +41,15 @@ export const useAppStore = create<AppState>((set) => ({
   selectedInstallmentPlanId: null,
   selectedConsortiumId: null,
   sidebarOpen: false,
-  aiAssistantVisible: true,
+  aiAssistantVisible: false,
+  newTransactionRequested: false,
+  newGoalRequested: false,
 
-  setCurrentView: (view) => set({ currentView: view }),
+  setCurrentView: (view) => set({ currentView: view, newTransactionRequested: false, newGoalRequested: false }),
+  requestNewTransaction: () => set({ currentView: 'accounts', newTransactionRequested: true }),
+  clearNewTransactionRequest: () => set({ newTransactionRequested: false }),
+  requestNewGoal: () => set({ currentView: 'savings', newGoalRequested: true }),
+  clearNewGoalRequest: () => set({ newGoalRequested: false }),
   setSelectedAccountId: (id) => set({ selectedAccountId: id }),
   setSelectedCardId: (id) => set({ selectedCardId: id }),
   setSelectedPurchaseId: (id) => set({ selectedPurchaseId: id }),

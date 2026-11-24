@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "FinanceApp - Gestão Financeira Inteligente",
   description: "Sistema completo de gestão financeira com controle de contas, cartões e compras",
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
 };
 

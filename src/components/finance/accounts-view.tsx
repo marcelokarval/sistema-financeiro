@@ -1,30 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Wallet,
-  Landmark,
-  Smartphone,
-  ArrowUpRight,
-  ArrowDownRight,
-  ArrowLeft,
-  ArrowLeftRight,
-  TrendingUp,
-  TrendingDown,
-  PiggyBank,
-  LayoutGrid,
-} from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
+import { Plus, Pencil, Trash2, Wallet, Landmark, Smartphone, ArrowLeft, ArrowLeftRight, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -51,11 +32,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { currencyFmt } from '@/lib/helpers';
+import { purchaseDateForInput } from '@/lib/purchase-date';
+import { useAppStore } from '@/lib/store';
 
 // ── Helpers ────────────────────────────────────────────────────────
-const currencyFmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-
 const dateFmt = (d: string) => {
   try {
     return new Date(d).toLocaleDateString('pt-BR');
@@ -77,39 +58,22 @@ const typeLabels: Record<string, string> = {
 };
 
 const accountColors = [
-  '#22c55e', '#3b82f6', '#8b5cf6', '#06b6d4', '#f97316', '#ef4444', '#ec4899',
+  ['#22c55e', 'Verde'], ['#3b82f6', 'Azul'], ['#8b5cf6', 'Roxo'], ['#06b6d4', 'Ciano'],
+  ['#f97316', 'Laranja'], ['#ef4444', 'Vermelho'], ['#ec4899', 'Rosa'],
 ];
 
-// ── Animation Variants ─────────────────────────────────────────────
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-};
+const accountPanel = 'min-w-0 rounded-xl border border-border bg-card';
+const accountStrip = `${accountPanel} grid grid-cols-2 sm:grid-cols-4`;
+const dialogSurface = 'max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none';
 
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-};
-
-const summaryContainer = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
-};
-
-const summaryItem = {
-  hidden: { opacity: 0, y: 16, scale: 0.97 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4 } },
-};
-
-const txItem = {
-  hidden: { opacity: 0, x: -8 },
-  show: { opacity: 1, x: 0, transition: { duration: 0.25 } },
-};
-
-const detailEntry = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-};
+function AccountMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="min-w-0 border-b border-border p-3 even:border-l nth-[n+3]:border-b-0 sm:border-b-0 sm:p-4 sm:[&:not(:first-child)]:border-l">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 wrap-anywhere font-mono text-base font-semibold tabular-nums sm:text-lg">{value}</dd>
+    </div>
+  );
+}
 
 // ── Interfaces ─────────────────────────────────────────────────────
 interface Account {
@@ -129,6 +93,8 @@ interface Transaction {
   amount: number;
   description: string;
   date: string;
+  categoryId?: string | null;
+  notes?: string | null;
   category?: { id: string; name: string; color: string } | null;
 }
 
@@ -139,20 +105,109 @@ interface Category {
   color: string;
 }
 
+type AccountIdentity = { id: string };
+type BoundTransactionDraft<T> = { accountId: string; data: T };
+
+export function reconcileTransactionDraft<T>(
+  draft: BoundTransactionDraft<T> | null,
+  accounts: readonly AccountIdentity[] | null,
+  isCurrentResponse: boolean,
+): BoundTransactionDraft<T> | null {
+  if (!draft || !isCurrentResponse || !accounts) return draft;
+  return accounts.some(({ id }) => id === draft.accountId) ? draft : null;
+}
+
+export function transactionDraftForAccount<T>(
+  draft: BoundTransactionDraft<T> | null,
+  accountId: string | null,
+  accounts: readonly AccountIdentity[],
+): BoundTransactionDraft<T> | null {
+  return draft?.accountId === accountId ? reconcileTransactionDraft(draft, accounts, true) : null;
+}
+
+const emptyTransactionForm = () => ({
+  type: 'EXPENSE',
+  amount: '',
+  description: '',
+  date: new Date().toISOString().split('T')[0],
+  categoryId: '',
+  notes: '',
+});
+
+type TransactionDraft = BoundTransactionDraft<ReturnType<typeof emptyTransactionForm>> & { session: symbol };
+
 // ── Component ──────────────────────────────────────────────────────
-export function AccountsView() {
+// The ref owns the synchronous lock; state exposes it without moving keyboard focus.
+function usePendingMutations() {
+  const locks = useRef(new Set<string>());
+  const [pending, setPending] = useState<ReadonlySet<string>>(() => new Set());
+  const begin = (key: string) => {
+    if (locks.current.has(key)) return false;
+    locks.current.add(key);
+    setPending(new Set(locks.current));
+    return true;
+  };
+  const end = (key: string) => {
+    locks.current.delete(key);
+    setPending(new Set(locks.current));
+  };
+  return { pending, begin, end };
+}
+
+export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose: () => void; refreshCounter: number }) {
+  const newTransactionRequested = useAppStore((state) => state.newTransactionRequested);
+  const clearNewTransactionRequest = useAppStore((state) => state.clearNewTransactionRequest);
+  const storeSelectedAccountId = useAppStore((state) => state.selectedAccountId);
+  const setStoreSelectedAccountId = useAppStore((state) => state.setSelectedAccountId);
+  const launchDialog = useRef<'transaction' | 'account' | null>(null);
+  const transactionButton = useRef<HTMLButtonElement>(null);
+  const newAccountButton = useRef<HTMLButtonElement>(null);
+  const dialogReturn = useRef<HTMLButtonElement | null>(null);
+  const detailReturn = useRef<string | null>(null);
+  const detailBack = useRef<HTMLButtonElement>(null);
+  const accountList = useRef<HTMLUListElement>(null);
+  const latestAccountQuery = useRef(0);
+  const latestTransactionQuery = useRef(0);
+  const latestMonthlyQuery = useRef(0);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [transactionRefresh, setTransactionRefresh] = useState(0);
+  const selectedAccount = accounts.find(({ id }) => id === selectedAccountId) ?? null;
   const [loading, setLoading] = useState(true);
+  const [accountsLoadFailed, setAccountsLoadFailed] = useState(false);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txError, setTxError] = useState(false);
 
   // Dialogs
-  const [showAccountDialog, setShowAccountDialog] = useState(false);
-  const [showTransactionDialog, setShowTransactionDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
-  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const { pending, begin, end } = usePendingMutations();
+  const [showAccountDialog, setAccountDialogOpen] = useState(false);
+  const accountOpening = useRef(0);
+  const setShowAccountDialog = (open: boolean) => {
+    ++accountOpening.current;
+    setAccountDialogOpen(open);
+  };
+  const [showDeleteDialog, setDeleteTarget] = useState<string | null>(null);
+  const deleteOpening = useRef(0);
+  const setShowDeleteDialog = (id: string | null) => {
+    ++deleteOpening.current;
+    setDeleteTarget(id);
+  };
+  const [showTransferDialog, setTransferDialogOpen] = useState(false);
+  const transferOpening = useRef(0);
+  const setShowTransferDialog = (open: boolean) => {
+    // Cancel preserves the form; only a later opening owns a different draft.
+    if (open) ++transferOpening.current;
+    setTransferDialogOpen(open);
+  };
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editTxForm, setEditTxForm] = useState(emptyTransactionForm);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const editTxOpening = useRef(0);
+  const deleteTxOpening = useRef(0);
+  const txActionOrigin = useRef<HTMLButtonElement | null>(null);
 
   // Transfer form
   const [transferForm, setTransferForm] = useState({
@@ -171,33 +226,73 @@ export function AccountsView() {
     color: '#22c55e',
     icon: 'wallet',
   });
-  const [txForm, setTxForm] = useState({
-    type: 'EXPENSE',
-    amount: '',
-    description: '',
-    date: new Date().toISOString().split('T')[0],
-    categoryId: '',
-    notes: '',
-  });
+  const confirmedAccounts = useRef<readonly Account[]>([]);
+  const liveDraft = useRef<TransactionDraft | null>(null);
+  const [draft, setDraftState] = useState<TransactionDraft | null>(null);
+  const setDraft = useCallback((next: TransactionDraft | null) => {
+    liveDraft.current = next;
+    setDraftState(next);
+  }, []);
+  const activeDraft = draft?.accountId === selectedAccount?.id && selectedAccount ? draft : null;
+  const txForm = activeDraft?.data;
+  const closeTransaction = () => {
+    if (activeDraft && liveDraft.current?.session === activeDraft.session) setDraft(null);
+  };
+  const setTxForm = (data: TransactionDraft['data']) => {
+    const current = liveDraft.current;
+    if (current && current.session === activeDraft?.session) setDraft({ ...current, data });
+  };
+  const openTransaction = (accountId: string) => {
+    if (!confirmedAccounts.current.some(({ id }) => id === accountId)) return;
+    setDraft({ accountId, data: emptyTransactionForm(), session: Symbol() });
+  };
 
   // ── Data fetching ────────────────────────────────────────────────
   const fetchAccounts = useCallback(async () => {
+    const query = ++latestAccountQuery.current;
     try {
       const res = await fetch('/api/accounts');
-      if (res.ok) setAccounts(await res.json());
+      if (query !== latestAccountQuery.current) return;
+      if (!res.ok) {
+        setAccountsLoadFailed(true);
+        return;
+      }
+      const result: Account[] = await res.json();
+      if (query !== latestAccountQuery.current) return;
+      confirmedAccounts.current = result;
+      const draft = liveDraft.current;
+      if (draft && !reconcileTransactionDraft(draft, result, true)) setDraft(null);
+      setSelectedAccountId((id) => result.some((account) => account.id === id) ? id : null);
+      setAccounts(result);
+      setAccountsLoadFailed(false);
     } catch (e) {
+      if (query === latestAccountQuery.current) setAccountsLoadFailed(true);
       console.error(e);
     } finally {
-      setLoading(false);
+      if (query === latestAccountQuery.current) setLoading(false);
     }
-  }, []);
+  }, [setDraft]);
 
   const fetchTransactions = useCallback(async (accountId: string) => {
+    const query = ++latestTransactionQuery.current;
+    setTxLoading(true);
+    setTxError(false);
     try {
       const res = await fetch(`/api/transactions?accountId=${accountId}`);
-      if (res.ok) setTransactions(await res.json());
+      if (!res.ok) {
+        if (query === latestTransactionQuery.current) setTxError(true);
+        return;
+      }
+      const result = await res.json();
+      if (query === latestTransactionQuery.current) {
+        setTransactions(result);
+        setTxError(false);
+      }
     } catch (e) {
+      if (query === latestTransactionQuery.current) setTxError(true);
       console.error(e);
+    } finally {
+      if (query === latestTransactionQuery.current) setTxLoading(false);
     }
   }, []);
 
@@ -213,7 +308,22 @@ export function AccountsView() {
   useEffect(() => {
     fetchAccounts();
     fetchCategories();
-  }, [fetchAccounts, fetchCategories]);
+  }, [fetchAccounts, fetchCategories, refreshCounter]);
+
+  useEffect(() => {
+    if (selectedAccountId) void fetchTransactions(selectedAccountId);
+  }, [fetchTransactions, refreshCounter, selectedAccountId, transactionRefresh]);
+
+  useEffect(() => {
+    if (!storeSelectedAccountId || loading) return;
+    const target = accounts.find(({ id }) => id === storeSelectedAccountId);
+    if (target) {
+      ++latestTransactionQuery.current;
+      setTransactions([]);
+      setSelectedAccountId(target.id);
+    }
+    setStoreSelectedAccountId(null);
+  }, [accounts, loading, setStoreSelectedAccountId, storeSelectedAccountId]);
 
   // ── Computed summary data ────────────────────────────────────────
   const summary = useMemo(() => {
@@ -236,6 +346,7 @@ export function AccountsView() {
   const [monthExpense, setMonthExpense] = useState(0);
 
   const fetchMonthlyStats = useCallback(async () => {
+    const query = ++latestMonthlyQuery.current;
     try {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -256,8 +367,10 @@ export function AccountsView() {
           if (tx.type === 'INCOME') income += tx.amount;
           else if (tx.type === 'EXPENSE') expense += tx.amount;
         }
-        setMonthIncome(income);
-        setMonthExpense(expense);
+        if (query === latestMonthlyQuery.current) {
+          setMonthIncome(income);
+          setMonthExpense(expense);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -266,7 +379,7 @@ export function AccountsView() {
 
   useEffect(() => {
     fetchMonthlyStats();
-  }, [fetchMonthlyStats]);
+  }, [fetchMonthlyStats, refreshCounter]);
 
   // ── Account detail computed stats ────────────────────────────────
   const accountStats = useMemo(() => {
@@ -282,8 +395,11 @@ export function AccountsView() {
 
   // ── Actions ──────────────────────────────────────────────────────
   const openAccount = (acc: Account) => {
-    setSelectedAccount(acc);
-    fetchTransactions(acc.id);
+    if (selectedAccount?.id !== acc.id) {
+      ++latestTransactionQuery.current;
+      setTransactions([]);
+    }
+    setSelectedAccountId(acc.id);
   };
 
   const openNewAccount = () => {
@@ -304,11 +420,14 @@ export function AccountsView() {
     setShowAccountDialog(true);
   };
 
+  const saveKey = editingAccount ? `edit:${editingAccount.id}` : 'create';
   const saveAccount = async () => {
     if (!form.name.trim()) {
       toast.error('Nome da conta é obrigatório');
       return;
     }
+    if (!begin(saveKey)) return;
+    const opening = accountOpening.current;
     try {
       const body = { ...form, balance: parseFloat(form.balance) || 0 };
       if (editingAccount) {
@@ -328,15 +447,20 @@ export function AccountsView() {
         if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao criar conta'); return; }
         toast.success('Conta criada!');
       }
-      setShowAccountDialog(false);
+      if (accountOpening.current === opening) setShowAccountDialog(false);
       fetchAccounts();
       fetchMonthlyStats();
     } catch {
       toast.error('Erro ao salvar conta');
+    } finally {
+      end(saveKey);
     }
   };
 
   const deleteAccount = async (id: string) => {
+    const key = `delete:${id}`;
+    if (!begin(key)) return;
+    const opening = deleteOpening.current;
     try {
       const res = await fetch('/api/accounts', {
         method: 'DELETE',
@@ -345,47 +469,151 @@ export function AccountsView() {
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao excluir conta'); return; }
       toast.success('Conta excluída!');
-      setShowDeleteDialog(null);
-      if (selectedAccount?.id === id) setSelectedAccount(null);
+      if (deleteOpening.current === opening) setShowDeleteDialog(null);
+      if (liveDraft.current?.accountId === id) setDraft(null);
+      setSelectedAccountId((current) => current === id ? null : current);
       fetchAccounts();
       fetchMonthlyStats();
     } catch {
       toast.error('Erro ao excluir conta');
+    } finally {
+      end(key);
     }
   };
 
   const saveTransaction = async () => {
-    if (!selectedAccount) return;
+    const draft = liveDraft.current;
+    if (!draft || draft.session !== activeDraft?.session) return;
+    const eligible = transactionDraftForAccount(draft, selectedAccountId, confirmedAccounts.current);
+    if (!eligible) return;
+    if (!eligible.data.description.trim()) {
+      toast.error('Informe a descrição da transação');
+      return;
+    }
+    const parsedAmount = parseFloat(eligible.data.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Informe um valor maior que zero');
+      return;
+    }
+    const key = `transaction:${eligible.accountId}`;
+    if (!begin(key)) return;
     try {
       const body = {
-        ...txForm,
-        amount: parseFloat(txForm.amount),
-        accountId: selectedAccount.id,
+        ...eligible.data,
+        description: eligible.data.description.trim(),
+        amount: parsedAmount,
+        accountId: eligible.accountId,
       };
-      await fetch('/api/transactions', {
+      const res = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        toast.error('Erro ao registrar transação');
+        return;
+      }
       toast.success('Transação registrada!');
-      setShowTransactionDialog(false);
-      setTxForm({
-        type: 'EXPENSE',
-        amount: '',
-        description: '',
-        date: new Date().toISOString().split('T')[0],
-        categoryId: '',
-        notes: '',
-      });
-      fetchTransactions(selectedAccount.id);
+      if (liveDraft.current?.session === draft.session) setDraft(null);
+      setTransactionRefresh((current) => current + 1);
       fetchAccounts();
       fetchMonthlyStats();
     } catch {
       toast.error('Erro ao registrar transação');
+    } finally {
+      end(key);
+    }
+  };
+
+  const openEditTransaction = (tx: Transaction) => {
+    ++editTxOpening.current;
+    setEditingTransaction(tx);
+    setEditTxForm({
+      type: tx.type,
+      amount: String(tx.amount),
+      description: tx.description,
+      date: purchaseDateForInput(tx.date),
+      categoryId: tx.category?.id ?? tx.categoryId ?? '',
+      notes: tx.notes ?? '',
+    });
+  };
+
+  const saveEditedTransaction = async () => {
+    if (!editingTransaction || !selectedAccount) return;
+    if (!editTxForm.description.trim()) {
+      toast.error('Informe a descrição da transação');
+      return;
+    }
+    const parsedAmount = parseFloat(editTxForm.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Informe um valor maior que zero');
+      return;
+    }
+    const key = `tx-edit:${editingTransaction.id}`;
+    if (!begin(key)) return;
+    const opening = editTxOpening.current;
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingTransaction.id,
+          type: editTxForm.type,
+          amount: parsedAmount,
+          description: editTxForm.description.trim(),
+          date: editTxForm.date,
+          categoryId: editTxForm.categoryId || null,
+          notes: editTxForm.notes,
+          accountId: selectedAccount.id,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error || 'Erro ao atualizar transação');
+        return;
+      }
+      toast.success('Transação atualizada!');
+      if (editTxOpening.current === opening) setEditingTransaction(null);
+      setTransactionRefresh((current) => current + 1);
+      fetchAccounts();
+      fetchMonthlyStats();
+    } catch {
+      toast.error('Erro ao atualizar transação');
+    } finally {
+      end(key);
+    }
+  };
+
+  const deleteTransaction = async (id: string) => {
+    const key = `tx-delete:${id}`;
+    if (!begin(key)) return;
+    const opening = deleteTxOpening.current;
+    try {
+      const res = await fetch(`/api/transactions?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error || 'Erro ao excluir transação');
+        return;
+      }
+      toast.success('Transação excluída!');
+      if (deleteTxOpening.current === opening) setDeletingTransaction(null);
+      setTransactionRefresh((current) => current + 1);
+      fetchAccounts();
+      fetchMonthlyStats();
+    } catch {
+      toast.error('Erro ao excluir transação');
+    } finally {
+      end(key);
     }
   };
 
   const saveTransfer = async () => {
+    if (!begin('transfer')) return;
+    const opening = transferOpening.current;
     try {
       const body = {
         fromAccountId: transferForm.fromAccountId,
@@ -408,255 +636,213 @@ export function AccountsView() {
       }
 
       toast.success('Transferência realizada com sucesso!');
-      setShowTransferDialog(false);
-      setTransferForm({
-        fromAccountId: '',
-        toAccountId: '',
-        amount: '',
-        date: new Date().toISOString().split('T')[0],
-        description: '',
-      });
+      if (transferOpening.current === opening) {
+        setShowTransferDialog(false);
+        setTransferForm({
+          fromAccountId: '',
+          toAccountId: '',
+          amount: '',
+          date: new Date().toISOString().split('T')[0],
+          description: '',
+        });
+      }
       fetchAccounts();
       fetchMonthlyStats();
-      if (selectedAccount) {
-        fetchTransactions(selectedAccount.id);
-      }
+      setTransactionRefresh((current) => current + 1);
     } catch {
       toast.error('Erro ao realizar transferência');
+    } finally {
+      end('transfer');
     }
   };
 
-  // ── Loading ──────────────────────────────────────────────────────
+  const restoreFocusAfterLaunch = (event: Event) => {
+    event.preventDefault();
+    launchDialog.current = null;
+    onLaunchClose();
+  };
+
+  const restoreDialogFocus = (event: Event) => {
+    event.preventDefault();
+    const trigger = dialogReturn.current;
+    dialogReturn.current = null;
+    (trigger?.isConnected ? trigger : newAccountButton.current)?.focus();
+  };
+
+  useEffect(() => {
+    if (selectedAccountId) {
+      if (!launchDialog.current) detailBack.current?.focus();
+    } else if (detailReturn.current) {
+      const buttons = Array.from(accountList.current?.querySelectorAll<HTMLButtonElement>('[data-account-detail]') ?? []);
+      (buttons.find((button) => button.dataset.accountDetail === detailReturn.current) ?? newAccountButton.current)?.focus();
+      detailReturn.current = null;
+    }
+  }, [selectedAccountId]);
+
+  const chooser = (
+    <Dialog open={newTransactionRequested} onOpenChange={(open) => { if (!open) clearNewTransactionRequest(); }}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (!launchDialog.current) onLaunchClose();
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>Novo lançamento</DialogTitle>
+          <DialogDescription>Escolha a conta em que deseja registrar a transação.</DialogDescription>
+        </DialogHeader>
+        {loading ? (
+          <p role="status" className="text-sm text-muted-foreground">Carregando contas…</p>
+        ) : accountsLoadFailed ? (
+          <div className="space-y-2 text-sm">
+            <p role="alert">Não foi possível carregar as contas.</p>
+            <Button variant="outline" onClick={() => { setLoading(true); void fetchAccounts(); }}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : accounts.length === 0 ? (
+          <div className="space-y-2 text-sm">
+            <p>Cadastre uma conta antes de registrar um lançamento.</p>
+            <Button onClick={() => {
+              launchDialog.current = 'account';
+              clearNewTransactionRequest();
+              openNewAccount();
+            }}>Cadastrar conta</Button>
+          </div>
+        ) : (
+          <ul className="space-y-1" aria-label="Contas disponíveis">
+            {accounts.map((account) => (
+              <li key={account.id}>
+                <Button
+                  variant="outline"
+                  className="h-auto min-h-10 w-full justify-start whitespace-normal text-left"
+                  onClick={() => {
+                    launchDialog.current = 'transaction';
+                    clearNewTransactionRequest();
+                    openAccount(account);
+                    openTransaction(account.id);
+                  }}
+                >
+                  <span className="min-w-0 wrap-anywhere">{account.name}</span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={clearNewTransactionRequest}>Cancelar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const withChooser = (content: ReactNode) => <>{chooser}{content}</>;
+
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-36 rounded-2xl" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-44 rounded-2xl" />
-          ))}
-        </div>
+    return withChooser(
+      <div role="status" className="space-y-4">
+        <p className="text-sm text-muted-foreground">Carregando contas…</p>
+        <Skeleton aria-hidden="true" className="h-24 rounded-xl motion-reduce:animate-none" />
+        <Skeleton aria-hidden="true" className="h-40 rounded-xl motion-reduce:animate-none" />
       </div>
     );
   }
 
-  // ── Account Detail View ──────────────────────────────────────────
   if (selectedAccount) {
-    const Icon = typeIcons[selectedAccount.type] || Wallet;
-
-    return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="detail"
-          variants={detailEntry}
-          initial="hidden"
-          animate="show"
-          exit="hidden"
-          className="space-y-6"
-        >
-          {/* Back button + Header */}
-          <motion.div
-            variants={item}
-            initial="hidden"
-            animate="show"
-            className="flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedAccount(null)}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Voltar</span>
-              </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: `${selectedAccount.color}15` }}
-              >
-                <Icon className="w-5 h-5" style={{ color: selectedAccount.color }} />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold">{selectedAccount.name}</h2>
-                <Badge
-                  variant="outline"
-                  className="text-xs mt-0.5"
-                  style={{
-                    borderColor: `${selectedAccount.color}40`,
-                    color: selectedAccount.color,
-                  }}
-                >
-                  {typeLabels[selectedAccount.type]}
-                </Badge>
-              </div>
+    return withChooser(
+      <div className="min-w-0 space-y-5">
+        <header className="space-y-3">
+          <Button ref={detailBack} variant="ghost" size="sm" onClick={() => setSelectedAccountId(null)}>
+            <ArrowLeft aria-hidden="true" /> Voltar para contas
+          </Button>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground">{typeLabels[selectedAccount.type]}</p>
+              <h2 className="wrap-anywhere text-2xl font-semibold tracking-tight">{selectedAccount.name}</h2>
             </div>
-            <div className="text-right">
-              <p
-                className="text-2xl font-bold tracking-tight"
-                style={{ color: selectedAccount.color }}
-              >
-                {currencyFmt(selectedAccount.balance)}
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Account summary card */}
-          <motion.div variants={item} initial="hidden" animate="show">
-            <Card className="overflow-hidden border-0 shadow-md">
-              <div
-                className="h-1.5"
-                style={{
-                  background: `linear-gradient(90deg, ${selectedAccount.color}, ${selectedAccount.color}88)`,
-                }}
-              />
-              <CardContent className="p-5">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="w-10 h-10 mx-auto rounded-xl bg-emerald-500/10 flex items-center justify-center mb-2">
-                      <TrendingUp className="w-4 h-4 text-emerald-500" />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Receitas
-                    </p>
-                    <p className="text-sm font-bold text-emerald-500 mt-0.5">
-                      {currencyFmt(accountStats.income)}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-10 h-10 mx-auto rounded-xl bg-rose-500/10 flex items-center justify-center mb-2">
-                      <TrendingDown className="w-4 h-4 text-rose-500" />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Despesas
-                    </p>
-                    <p className="text-sm font-bold text-rose-500 mt-0.5">
-                      {currencyFmt(accountStats.expense)}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-10 h-10 mx-auto rounded-xl bg-violet-500/10 flex items-center justify-center mb-2">
-                      <ArrowLeftRight className="w-4 h-4 text-violet-500" />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Transações
-                    </p>
-                    <p className="text-sm font-bold mt-0.5">
-                      {accountStats.count}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Transaction list header */}
-          <motion.div
-            variants={item}
-            initial="hidden"
-            animate="show"
-            className="flex items-center justify-between"
-          >
-            <h3 className="text-base font-semibold">Transações</h3>
-            <Button
-              onClick={() => setShowTransactionDialog(true)}
-              size="sm"
-              className="gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Transação
+            <Button ref={transactionButton} onClick={() => openTransaction(selectedAccount.id)} aria-label="Nova transação">
+              <Plus aria-hidden="true" /> Nova transação
             </Button>
-          </motion.div>
+          </div>
+        </header>
+        <dl aria-label="Posição da conta" className={accountStrip}>
+          <AccountMetric label="Saldo atual" value={currencyFmt(selectedAccount.balance)} />
+          <AccountMetric label="Receitas na lista" value={currencyFmt(accountStats.income)} />
+          <AccountMetric label="Despesas na lista" value={currencyFmt(accountStats.expense)} />
+          <AccountMetric label="Transações na lista" value={accountStats.count} />
+        </dl>
 
-          {/* Transaction list */}
-          <motion.div variants={item} initial="hidden" animate="show">
-            <Card className="border-0 shadow-md">
-              <CardContent className="p-0">
-                {transactions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-                      <ArrowUpRight className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm font-medium">Nenhuma transação registrada</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
-                      Adicione a primeira transação nesta conta
+        <section aria-labelledby="account-transactions" className={accountPanel}>
+          <h3 id="account-transactions" className="border-b border-border px-4 py-3 font-semibold">Transações</h3>
+          {txLoading ? (
+            <p role="status" className="px-4 py-6 text-sm text-muted-foreground">Carregando transações…</p>
+          ) : txError ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm">
+              <p className="text-destructive">Não foi possível carregar as transações.</p>
+              <Button variant="outline" size="sm" onClick={() => void fetchTransactions(selectedAccount.id)}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : transactions.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-muted-foreground">Nenhuma transação registrada.</p>
+          ) : (
+            <ul aria-labelledby="account-transactions" className="divide-y divide-border">
+              {transactions.map((tx) => (
+                <li key={tx.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3">
+                  <div className="min-w-0 flex-1 basis-32">
+                    <p className="wrap-anywhere text-sm font-medium">{tx.description}</p>
+                    <p className="wrap-anywhere text-xs text-muted-foreground">
+                      {tx.type === 'INCOME' ? 'Receita' : 'Despesa'} · {dateFmt(tx.date)}{tx.category && ` · ${tx.category.name}`}
                     </p>
                   </div>
-                ) : (
-                  <motion.div
-                    variants={container}
-                    initial="hidden"
-                    animate="show"
-                    className="divide-y divide-border"
-                  >
-                    {transactions.map((tx) => (
-                      <motion.div
-                        key={tx.id}
-                        variants={txItem}
-                        className="flex items-center justify-between px-5 py-3.5 hover:bg-accent/30 transition-colors cursor-default"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform hover:scale-110 ${
-                              tx.type === 'INCOME'
-                                ? 'bg-emerald-500/10'
-                                : 'bg-rose-500/10'
-                            }`}
-                          >
-                            {tx.type === 'INCOME' ? (
-                              <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                            ) : (
-                              <ArrowDownRight className="w-4 h-4 text-rose-500" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {tx.description}
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <p className="text-[11px] text-muted-foreground">
-                                {dateFmt(tx.date)}
-                              </p>
-                              {tx.category && (
-                                <span
-                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium"
-                                  style={{
-                                    backgroundColor: `${tx.category.color}15`,
-                                    color: tx.category.color,
-                                  }}
-                                >
-                                  {tx.category.name}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <span
-                          className={`text-sm font-bold whitespace-nowrap ml-2 ${
-                            tx.type === 'INCOME'
-                              ? 'text-emerald-500'
-                              : 'text-rose-500'
-                          }`}
-                        >
-                          {tx.type === 'INCOME' ? '+' : '-'}
-                          {currencyFmt(tx.amount)}
-                        </span>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                  <div className="flex items-center gap-1">
+                    <span className={`mr-1 wrap-anywhere font-mono text-sm font-medium tabular-nums ${tx.type === 'INCOME' ? 'text-[var(--ds-accent-positive)]' : 'text-[var(--destructive)]'}`}>
+                      {tx.type === 'INCOME' ? '+' : '-'}{currencyFmt(tx.amount)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Editar transação ${tx.description}`}
+                      onClick={(event) => { txActionOrigin.current = event.currentTarget; openEditTransaction(tx); }}
+                    >
+                      <Pencil aria-hidden="true" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Excluir transação ${tx.description}`}
+                      className="text-destructive hover:text-destructive"
+                      onClick={(event) => {
+                        txActionOrigin.current = event.currentTarget;
+                        ++deleteTxOpening.current;
+                        setDeletingTransaction(tx);
+                      }}
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-          {/* New Transaction Dialog */}
-          <Dialog open={showTransactionDialog} onOpenChange={setShowTransactionDialog}>
-            <DialogContent>
+        {/* New Transaction Dialog */}
+        <Dialog open={!!activeDraft && !newTransactionRequested} onOpenChange={(open) => { if (!open) closeTransaction(); }}>
+          {txForm && (
+            <DialogContent
+              className="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
+              onCloseAutoFocus={(event) => {
+                if (launchDialog.current === 'transaction') {
+                  restoreFocusAfterLaunch(event);
+                } else if (transactionButton.current) {
+                  event.preventDefault();
+                  transactionButton.current.focus();
+                }
+              }}
+            >
               <DialogHeader>
                 <DialogTitle>Nova Transação</DialogTitle>
                 <DialogDescription>
@@ -665,12 +851,12 @@ export function AccountsView() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Tipo</Label>
+                  <Label htmlFor="tx-type">Tipo</Label>
                   <Select
                     value={txForm.type}
                     onValueChange={(v) => setTxForm({ ...txForm, type: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="tx-type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -680,8 +866,8 @@ export function AccountsView() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Descrição</Label>
-                  <Input
+                  <Label htmlFor="tx-description">Descrição</Label>
+                  <Input id="tx-description"
                     value={txForm.description}
                     onChange={(e) =>
                       setTxForm({ ...txForm, description: e.target.value })
@@ -690,8 +876,8 @@ export function AccountsView() {
                   />
                 </div>
                 <div>
-                  <Label>Valor (R$)</Label>
-                  <Input
+                  <Label htmlFor="tx-amount">Valor (R$)</Label>
+                  <Input id="tx-amount"
                     type="number"
                     step="0.01"
                     value={txForm.amount}
@@ -702,8 +888,8 @@ export function AccountsView() {
                   />
                 </div>
                 <div>
-                  <Label>Data</Label>
-                  <Input
+                  <Label htmlFor="tx-date">Data</Label>
+                  <Input id="tx-date"
                     type="date"
                     value={txForm.date}
                     onChange={(e) =>
@@ -712,14 +898,14 @@ export function AccountsView() {
                   />
                 </div>
                 <div>
-                  <Label>Categoria</Label>
+                  <Label htmlFor="tx-category">Categoria</Label>
                   <Select
                     value={txForm.categoryId}
                     onValueChange={(v) =>
                       setTxForm({ ...txForm, categoryId: v })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="tx-category">
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -737,523 +923,440 @@ export function AccountsView() {
               <DialogFooter>
                 <Button
                   variant="outline"
-                  onClick={() => setShowTransactionDialog(false)}
+                  onClick={closeTransaction}
                 >
                   Cancelar
                 </Button>
-                <Button onClick={saveTransaction}>Registrar</Button>
+                <Button aria-disabled={pending.has(`transaction:${selectedAccount.id}`)} onClick={saveTransaction}>Registrar</Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
-        </motion.div>
-      </AnimatePresence>
-    );
-  }
+          )}
+        </Dialog>
 
-  // ── Accounts List View ───────────────────────────────────────────
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="list"
-        variants={container}
-        initial="hidden"
-        animate="show"
-        exit="hidden"
-        className="space-y-6"
-      >
-        {/* Header */}
-        <motion.div variants={item} className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold">Contas</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Gerencie suas contas e saldo
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTransferDialog(true)}
-              className="gap-1.5"
+        {/* Edit Transaction Dialog */}
+        <Dialog open={!!editingTransaction} onOpenChange={(open) => { if (!open) { ++editTxOpening.current; setEditingTransaction(null); } }}>
+          {editingTransaction && (
+            <DialogContent
+              className="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                const origin = txActionOrigin.current;
+                txActionOrigin.current = null;
+                (origin?.isConnected ? origin : transactionButton.current)?.focus();
+              }}
             >
-              <ArrowLeftRight className="w-4 h-4" />
-              <span className="hidden sm:inline">Transferir</span>
-            </Button>
-            <Button onClick={openNewAccount} size="sm" className="gap-1.5">
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Nova Conta</span>
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Summary Cards */}
-        <motion.div
-          variants={summaryContainer}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
-        >
-          <motion.div variants={summaryItem}>
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
-              <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                      Patrimônio Total
-                    </p>
-                    <p className="text-2xl font-bold mt-2 tracking-tight">
-                      {currencyFmt(summary.totalPatrimonio)}
-                    </p>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <PiggyBank className="w-5 h-5 text-white" />
-                  </div>
+              <DialogHeader>
+                <DialogTitle>Editar Transação</DialogTitle>
+                <DialogDescription>Atualize os dados da transação em {selectedAccount.name}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-tx-type">Tipo</Label>
+                  <Select value={editTxForm.type} onValueChange={(v) => setEditTxForm({ ...editTxForm, type: v })}>
+                    <SelectTrigger id="edit-tx-type"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EXPENSE">Despesa</SelectItem>
+                      <SelectItem value="INCOME">Receita</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex items-center gap-1 mt-3">
-                  <LayoutGrid className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    {summary.accountCount} conta{summary.accountCount !== 1 ? 's' : ''}
-                  </span>
+                <div>
+                  <Label htmlFor="edit-tx-description">Descrição</Label>
+                  <Input
+                    id="edit-tx-description"
+                    value={editTxForm.description}
+                    onChange={(e) => setEditTxForm({ ...editTxForm, description: e.target.value })}
+                    placeholder="Ex: Salário, Almoço..."
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div variants={summaryItem}>
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
-              <div className="h-1 bg-gradient-to-r from-cyan-500 to-cyan-400" />
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                      Receitas do Mês
-                    </p>
-                    <p className="text-2xl font-bold mt-2 tracking-tight text-emerald-500">
-                      {currencyFmt(monthIncome)}
-                    </p>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                    <TrendingUp className="w-5 h-5 text-white" />
-                  </div>
+                <div>
+                  <Label htmlFor="edit-tx-amount">Valor (R$)</Label>
+                  <Input
+                    id="edit-tx-amount"
+                    type="number"
+                    step="0.01"
+                    value={editTxForm.amount}
+                    onChange={(e) => setEditTxForm({ ...editTxForm, amount: e.target.value })}
+                    placeholder="0,00"
+                  />
                 </div>
-                <div className="flex items-center gap-1 mt-3">
-                  <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-xs text-muted-foreground">
-                    Entradas este mês
-                  </span>
+                <div>
+                  <Label htmlFor="edit-tx-date">Data</Label>
+                  <Input
+                    id="edit-tx-date"
+                    type="date"
+                    value={editTxForm.date}
+                    onChange={(e) => setEditTxForm({ ...editTxForm, date: e.target.value })}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div variants={summaryItem}>
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
-              <div className="h-1 bg-gradient-to-r from-rose-500 to-pink-500" />
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                      Despesas do Mês
-                    </p>
-                    <p className="text-2xl font-bold mt-2 tracking-tight text-rose-500">
-                      {currencyFmt(monthExpense)}
-                    </p>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-lg shadow-rose-500/20">
-                    <TrendingDown className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 mt-3">
-                  <ArrowDownRight className="w-3.5 h-3.5 text-rose-500" />
-                  <span className="text-xs text-muted-foreground">
-                    Saídas este mês
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div variants={summaryItem}>
-            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow">
-              <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-400" />
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                      Total de Contas
-                    </p>
-                    <p className="text-2xl font-bold mt-2 tracking-tight">
-                      {summary.accountCount}
-                    </p>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-                    <Wallet className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 mt-3">
-                  <LayoutGrid className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    Contas ativas
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Account Cards Grid */}
-        {accounts.length === 0 ? (
-          <motion.div
-            variants={item}
-            className="flex flex-col items-center justify-center py-20 text-muted-foreground"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-              <Wallet className="w-7 h-7" />
-            </div>
-            <p className="text-sm font-medium">Nenhuma conta cadastrada</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              Clique em &quot;Nova Conta&quot; para começar
-            </p>
-          </motion.div>
-        ) : (
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            {accounts.map((acc) => {
-              const Icon = typeIcons[acc.type] || Wallet;
-              const txCount = acc._count?.transactions || 0;
-              return (
-                <motion.div
-                  key={acc.id}
-                  variants={item}
-                  whileHover={{ y: -2 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                >
-                  <Card
-                    className="cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow group relative overflow-hidden border-0"
-                    onClick={() => openAccount(acc)}
-                  >
-                    <div
-                      className="h-1.5"
-                      style={{
-                        background: `linear-gradient(90deg, ${acc.color}, ${acc.color}66)`,
-                      }}
-                    />
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: `${acc.color}15` }}
-                          >
-                            <Icon
-                              className="w-5 h-5"
-                              style={{ color: acc.color }}
-                            />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">{acc.name}</p>
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] mt-1"
-                              style={{
-                                borderColor: `${acc.color}30`,
-                                color: acc.color,
-                              }}
-                            >
-                              {typeLabels[acc.type]}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          {txCount > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] font-medium"
-                            >
-                              {txCount} transação{txCount !== 1 ? 'ões' : ''}
-                            </Badge>
-                          )}
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditAccount(acc);
-                              }}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowDeleteDialog(acc.id);
-                              }}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-2xl font-bold mt-4 tracking-tight">
-                        {currencyFmt(acc.balance)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
-
-        {/* Account Form Dialog */}
-        <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingAccount ? 'Editar Conta' : 'Nova Conta'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingAccount
-                  ? 'Atualize os dados da conta'
-                  : 'Preencha os dados da nova conta'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Nome</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Ex: Nubank, Carteira..."
-                />
-              </div>
-              <div>
-                <Label>Tipo</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(v) => setForm({ ...form, type: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CASH">Dinheiro</SelectItem>
-                    <SelectItem value="BANK">Banco</SelectItem>
-                    <SelectItem value="DIGITAL_WALLET">Carteira Digital</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Saldo Inicial (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={form.balance}
-                  onChange={(e) => setForm({ ...form, balance: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Cor</Label>
-                <div className="flex gap-2 mt-1">
-                  {accountColors.map((c) => (
-                    <button
-                      key={c}
-                      className={`w-8 h-8 rounded-full border-2 transition-transform ${
-                        form.color === c
-                          ? 'border-foreground scale-110'
-                          : 'border-transparent hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: c }}
-                      onClick={() => setForm({ ...form, color: c })}
-                    />
-                  ))}
+                <div>
+                  <Label htmlFor="edit-tx-category">Categoria</Label>
+                  <Select value={editTxForm.categoryId || '__none__'} onValueChange={(v) => setEditTxForm({ ...editTxForm, categoryId: v === '__none__' ? '' : v })}>
+                    <SelectTrigger id="edit-tx-category"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nenhuma</SelectItem>
+                      {categories.filter((c) => c.type === editTxForm.type).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowAccountDialog(false)}
-              >
-                Cancelar
-              </Button>
-              <Button onClick={saveAccount}>
-                {editingAccount ? 'Atualizar' : 'Criar'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { ++editTxOpening.current; setEditingTransaction(null); }}>Cancelar</Button>
+                <Button aria-disabled={pending.has(`tx-edit:${editingTransaction.id}`)} onClick={() => void saveEditedTransaction()}>Salvar</Button>
+              </DialogFooter>
+            </DialogContent>
+          )}
         </Dialog>
 
-        {/* Transfer Dialog */}
-        <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <ArrowLeftRight className="w-5 h-5" />
-                Transferir entre Contas
-              </DialogTitle>
-              <DialogDescription>
-                Mova dinheiro de uma conta para outra
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>De (Origem)</Label>
-                <Select
-                  value={transferForm.fromAccountId}
-                  onValueChange={(v) =>
-                    setTransferForm({ ...transferForm, fromAccountId: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a conta..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts
-                      .filter((a) => a.id !== transferForm.toAccountId)
-                      .map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: acc.color }}
-                            />
-                            <span>{acc.name}</span>
-                            <span className="text-muted-foreground text-xs ml-1">
-                              {currencyFmt(acc.balance)}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Para (Destino)</Label>
-                <Select
-                  value={transferForm.toAccountId}
-                  onValueChange={(v) =>
-                    setTransferForm({ ...transferForm, toAccountId: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a conta..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts
-                      .filter((a) => a.id !== transferForm.fromAccountId)
-                      .map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: acc.color }}
-                            />
-                            <span>{acc.name}</span>
-                            <span className="text-muted-foreground text-xs ml-1">
-                              {currencyFmt(acc.balance)}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Valor (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={transferForm.amount}
-                  onChange={(e) =>
-                    setTransferForm({ ...transferForm, amount: e.target.value })
-                  }
-                  placeholder="0,00"
-                />
-              </div>
-              <div>
-                <Label>Data</Label>
-                <Input
-                  type="date"
-                  value={transferForm.date}
-                  onChange={(e) =>
-                    setTransferForm({ ...transferForm, date: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label>Descrição (opcional)</Label>
-                <Input
-                  value={transferForm.description}
-                  onChange={(e) =>
-                    setTransferForm({
-                      ...transferForm,
-                      description: e.target.value,
-                    })
-                  }
-                  placeholder="Ex: Transferência para investimento"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowTransferDialog(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={saveTransfer}
-                disabled={
-                  !transferForm.fromAccountId ||
-                  !transferForm.toAccountId ||
-                  !transferForm.amount ||
-                  parseFloat(transferForm.amount) <= 0
-                }
-              >
-                Transferir
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Dialog */}
-        <AlertDialog
-          open={!!showDeleteDialog}
-          onOpenChange={() => setShowDeleteDialog(null)}
-        >
-          <AlertDialogContent>
+        {/* Delete Transaction Dialog */}
+        <AlertDialog open={!!deletingTransaction} onOpenChange={(open) => { if (!open) { ++deleteTxOpening.current; setDeletingTransaction(null); } }}>
+          <AlertDialogContent
+            className={dialogSurface}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              const origin = txActionOrigin.current;
+              txActionOrigin.current = null;
+              (origin?.isConnected ? origin : transactionButton.current)?.focus();
+            }}
+          >
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir conta?</AlertDialogTitle>
+              <AlertDialogTitle>Excluir transação?</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta ação não pode ser desfeita. Todas as transações
-                vinculadas também serão removidas.
+                Esta ação não pode ser desfeita e atualizará o saldo da conta {selectedAccount.name}.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() =>
-                  showDeleteDialog && deleteAccount(showDeleteDialog)
-                }
-                className="bg-destructive text-white hover:bg-destructive/90"
+                aria-disabled={deletingTransaction ? pending.has(`tx-delete:${deletingTransaction.id}`) : false}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (deletingTransaction) void deleteTransaction(deletingTransaction.id);
+                }}
+                className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
               >
                 Excluir
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </motion.div>
-    </AnimatePresence>
+      </div>
+    );
+  }
+
+  return withChooser(
+    <div className="min-w-0 space-y-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Contas</h2>
+          <p className="text-sm text-muted-foreground">Acompanhe seus saldos e movimentações.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" aria-label="Transferir" onClick={(event) => { dialogReturn.current = event.currentTarget; setShowTransferDialog(true); }}>
+            <ArrowLeftRight aria-hidden="true" /> Transferir
+          </Button>
+          <Button ref={newAccountButton} onClick={(event) => { dialogReturn.current = event.currentTarget; openNewAccount(); }}>
+            <Plus aria-hidden="true" /> Nova conta
+          </Button>
+        </div>
+      </header>
+
+      {accountsLoadFailed && (
+        <div className={`${accountPanel} flex flex-wrap items-center justify-between gap-2 p-4 text-sm`}>
+          <p role="alert">Não foi possível atualizar as contas.</p>
+          <Button variant="outline" size="sm" onClick={() => void fetchAccounts()}>Tentar novamente</Button>
+        </div>
+      )}
+      {(!accountsLoadFailed || accounts.length > 0) && (
+        <>
+          <dl aria-label="Posição das contas" className={accountStrip}>
+            <AccountMetric label="Saldo em contas" value={currencyFmt(summary.totalPatrimonio)} />
+            <AccountMetric label="Receitas do mês" value={currencyFmt(monthIncome)} />
+            <AccountMetric label="Despesas do mês" value={currencyFmt(monthExpense)} />
+            <AccountMetric label="Total de contas" value={summary.accountCount} />
+          </dl>
+          <section aria-labelledby="account-list" className={accountPanel}>
+            <h3 id="account-list" className="border-b border-border px-4 py-3 font-semibold">Contas cadastradas</h3>
+            {accounts.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-muted-foreground">Nenhuma conta cadastrada. Use “Nova conta” para começar.</p>
+            ) : (
+              <ul ref={accountList} aria-label="Contas cadastradas" className="divide-y divide-border">
+                {accounts.map((acc) => {
+                  const Icon = typeIcons[acc.type] || Wallet;
+                  const txCount = acc._count?.transactions || 0;
+                  return (
+                    <li key={acc.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 px-4 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto] sm:gap-x-4">
+                      <Button type="button" variant="ghost" aria-label={`Abrir conta ${acc.name}`} onClick={() => { detailReturn.current = acc.id; openAccount(acc); }} data-account-detail={acc.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left sm:col-span-1">
+                        <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
+                        <span className="min-w-0 wrap-anywhere">
+                          <span className="block font-semibold">{acc.name}</span>
+                          <span className="block text-xs text-muted-foreground">{typeLabels[acc.type]}{txCount > 0 && ` · ${txCount} ${txCount === 1 ? 'transação' : 'transações'}`}</span>
+                        </span>
+                        <ChevronRight aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
+                      </Button>
+                      <p className="wrap-anywhere font-mono text-sm font-semibold tabular-nums sm:text-right">{currencyFmt(acc.balance)}</p>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" aria-label={`Editar conta ${acc.name}`} onClick={(event) => { dialogReturn.current = event.currentTarget; openEditAccount(acc); }}>
+                          <Pencil aria-hidden="true" />
+                        </Button>
+                        <Button variant="ghost" size="icon" aria-label={`Excluir conta ${acc.name}`} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowDeleteDialog(acc.id); }} className="text-destructive hover:text-destructive">
+                          <Trash2 aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
+
+      {/* Account Form Dialog */}
+      <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
+        <DialogContent className={dialogSurface} onCloseAutoFocus={(event) => {
+          if (launchDialog.current === 'account') restoreFocusAfterLaunch(event);
+          else restoreDialogFocus(event);
+        }}>
+          <DialogHeader>
+            <DialogTitle>
+              {editingAccount ? 'Editar Conta' : 'Nova Conta'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingAccount
+                ? 'Atualize os dados da conta'
+                : 'Preencha os dados da nova conta'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="account-name">Nome</Label>
+              <Input id="account-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Ex: Nubank, Carteira..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="account-type">Tipo</Label>
+              <Select
+                value={form.type}
+                onValueChange={(v) => setForm({ ...form, type: v })}
+              >
+                <SelectTrigger id="account-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CASH">Dinheiro</SelectItem>
+                  <SelectItem value="BANK">Banco</SelectItem>
+                  <SelectItem value="DIGITAL_WALLET">Carteira Digital</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="account-balance">Saldo Inicial (R$)</Label>
+              <Input id="account-balance"
+                type="number"
+                step="0.01"
+                value={form.balance}
+                onChange={(e) => setForm({ ...form, balance: e.target.value })}
+              />
+            </div>
+            <div>
+              <p id="account-color" className="text-sm font-medium">Cor</p>
+              <div role="group" aria-labelledby="account-color" className="mt-2 flex flex-wrap gap-2">
+                {accountColors.map(([c, name]) => (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-label={name}
+                    aria-pressed={form.color === c}
+                    className="size-8 rounded-full border border-border aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-foreground focus-visible:outline-ring"
+                    style={{ backgroundColor: c }}
+                    onClick={() => setForm({ ...form, color: c })}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAccountDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button aria-disabled={pending.has(saveKey)} onClick={saveAccount}>
+              {editingAccount ? 'Atualizar' : 'Criar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Dialog */}
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent className={dialogSurface} onCloseAutoFocus={restoreDialogFocus}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5" />
+              Transferir entre Contas
+            </DialogTitle>
+            <DialogDescription>
+              Mova dinheiro de uma conta para outra
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="transfer-from">De (Origem)</Label>
+              <Select
+                value={transferForm.fromAccountId}
+                onValueChange={(v) =>
+                  setTransferForm({ ...transferForm, fromAccountId: v })
+                }
+              >
+                <SelectTrigger id="transfer-from">
+                  <SelectValue placeholder="Selecione a conta..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts
+                    .filter((a) => a.id !== transferForm.toAccountId)
+                    .map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: acc.color }}
+                          />
+                          <span>{acc.name}</span>
+                          <span className="text-muted-foreground text-xs ml-1">
+                            {currencyFmt(acc.balance)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="transfer-to">Para (Destino)</Label>
+              <Select
+                value={transferForm.toAccountId}
+                onValueChange={(v) =>
+                  setTransferForm({ ...transferForm, toAccountId: v })
+                }
+              >
+                <SelectTrigger id="transfer-to">
+                  <SelectValue placeholder="Selecione a conta..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts
+                    .filter((a) => a.id !== transferForm.fromAccountId)
+                    .map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: acc.color }}
+                          />
+                          <span>{acc.name}</span>
+                          <span className="text-muted-foreground text-xs ml-1">
+                            {currencyFmt(acc.balance)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="transfer-amount">Valor (R$)</Label>
+              <Input id="transfer-amount"
+                type="number"
+                step="0.01"
+                value={transferForm.amount}
+                onChange={(e) =>
+                  setTransferForm({ ...transferForm, amount: e.target.value })
+                }
+                placeholder="0,00"
+              />
+            </div>
+            <div>
+              <Label htmlFor="transfer-date">Data</Label>
+              <Input id="transfer-date"
+                type="date"
+                value={transferForm.date}
+                onChange={(e) =>
+                  setTransferForm({ ...transferForm, date: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="transfer-description">Descrição (opcional)</Label>
+              <Input id="transfer-description"
+                value={transferForm.description}
+                onChange={(e) =>
+                  setTransferForm({
+                    ...transferForm,
+                    description: e.target.value,
+                  })
+                }
+                placeholder="Ex: Transferência para investimento"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowTransferDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              aria-disabled={pending.has('transfer')}
+              onClick={saveTransfer}
+              disabled={
+                !transferForm.fromAccountId ||
+                !transferForm.toAccountId ||
+                !transferForm.amount ||
+                parseFloat(transferForm.amount) <= 0
+              }
+            >
+              Transferir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog
+        open={!!showDeleteDialog}
+        onOpenChange={() => setShowDeleteDialog(null)}
+      >
+        <AlertDialogContent className={dialogSurface} onCloseAutoFocus={restoreDialogFocus}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Todas as transações
+              vinculadas também serão removidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              aria-disabled={pending.has(`delete:${showDeleteDialog}`)}
+              onClick={(event) => {
+                event.preventDefault();
+                if (showDeleteDialog) void deleteAccount(showDeleteDialog);
+              }}
+              className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

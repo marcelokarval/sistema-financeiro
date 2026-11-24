@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { civilPurchaseDate } from "@/lib/purchase-date";
 import {
   addDays,
   addWeeks,
@@ -165,7 +166,8 @@ export async function GET(request: NextRequest) {
 
     // Add purchases (always expense)
     for (const purchase of purchases) {
-      const key = format(new Date(purchase.date), "yyyy-MM-dd");
+      const civil = civilPurchaseDate(purchase.date);
+      const key = civil ?? format(purchase.date, "yyyy-MM-dd");
       if (!dayMap.has(key)) continue;
 
       dayMap.get(key)!.push({
@@ -173,7 +175,7 @@ export async function GET(request: NextRequest) {
         type: "purchase",
         description: purchase.merchant,
         amount: -purchase.totalAmount,
-        time: format(new Date(purchase.date), "HH:mm"),
+        ...(civil === undefined && { time: format(purchase.date, "HH:mm") }),
         category: purchase.category?.name,
         account: purchase.card?.name,
         isRecurring: false,

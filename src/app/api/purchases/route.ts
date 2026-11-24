@@ -13,12 +13,7 @@ export async function GET(request: NextRequest) {
     const where: Prisma.PurchaseWhereInput = {};
 
     if (cardId) where.cardId = cardId;
-    if (merchant) {
-      where.merchant = {
-        contains: merchant,
-        mode: "insensitive",
-      };
-    }
+    const merchantFilter = merchant?.trim().toLocaleLowerCase("pt-BR");
 
     const purchases = await db.purchase.findMany({
       where,
@@ -32,7 +27,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(purchases);
+    // SQLite StringFilter does not support `mode: "insensitive"`, and SQLite LIKE
+    // is ASCII-only; filter in JS for consistent pt-BR case-insensitive matching.
+    const filteredPurchases = merchantFilter
+      ? purchases.filter((p) =>
+          p.merchant.toLocaleLowerCase("pt-BR").includes(merchantFilter)
+        )
+      : purchases;
+
+    return NextResponse.json(filteredPurchases);
   } catch (error) {
     console.error("Error fetching purchases:", error);
     return NextResponse.json(
@@ -153,14 +156,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // If items are provided, replace all existing items
-    if (items && Array.isArray(items)) {
-      // Delete existing items
-      await db.purchaseItem.deleteMany({
-        where: { purchaseId: id },
-      });
-    }
-
     const purchase = await db.purchase.update({
       where: { id },
       data: {
@@ -175,6 +170,7 @@ export async function PUT(request: NextRequest) {
         ...(categoryId !== undefined && { categoryId: categoryId || null }),
         ...(items && Array.isArray(items) && {
           items: {
+            deleteMany: {},
             create: items.map((item: { name: string; quantity?: number; unitPrice?: number; totalPrice?: number }) => ({
               name: item.name,
               quantity: item.quantity ?? 1,
@@ -222,11 +218,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete purchase items first (cascade should handle this, but explicit is safer)
-    await db.purchaseItem.deleteMany({
-      where: { purchaseId: id },
-    });
-
+    // PurchaseItem.purchase uses ON DELETE CASCADE in the database.
     await db.purchase.delete({ where: { id } });
 
     return NextResponse.json({ success: true, message: "Purchase deleted" });

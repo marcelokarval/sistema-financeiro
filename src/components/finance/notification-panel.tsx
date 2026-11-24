@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -12,15 +11,11 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { currencyFmt } from '@/lib/helpers';
 
 // ── Helpers ────────────────────────────────────────────────────────────
-
-const currencyFmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 const relativeTime = (d: string) => {
   try {
@@ -42,61 +37,54 @@ interface NotificationItem {
   date: string;
 }
 
-// ── Animation variants ─────────────────────────────────────────────────
-
-const panelVariants = {
-  hidden: { opacity: 0, y: -8, scale: 0.97 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1] },
-  },
-  exit: {
-    opacity: 0,
-    y: -8,
-    scale: 0.97,
-    transition: { duration: 0.15, ease: 'easeIn' },
-  },
-};
-
-const listContainer = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.1 } },
-};
-
-const listItem = {
-  hidden: { opacity: 0, x: -10 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.25 } },
-};
-
 // ── Icon / color maps ─────────────────────────────────────────────────
 
-const kindConfig: Record<NotificationKind, { icon: typeof ArrowUpRight; label: string; bgClass: string; textClass: string; amountPrefix: string }> = {
+const kindConfig: Record<NotificationKind, { icon: typeof ArrowUpRight; label: string; textClass: string }> = {
   income: {
     icon: ArrowUpRight,
     label: 'Receita',
-    bgClass: 'bg-emerald-500/10',
-    textClass: 'text-emerald-500',
-    amountPrefix: '+',
+    textClass: 'text-(--ds-accent-positive)',
   },
   expense: {
     icon: ArrowDownRight,
     label: 'Despesa',
-    bgClass: 'bg-rose-500/10',
-    textClass: 'text-rose-500',
-    amountPrefix: '-',
+    textClass: 'text-(--ds-accent-danger)',
   },
   purchase: {
     icon: ShoppingBag,
     label: 'Compra',
-    bgClass: 'bg-violet-500/10',
-    textClass: 'text-violet-500',
-    amountPrefix: '-',
+    textClass: 'text-muted-foreground',
   },
 };
 
+export function NotificationList({ notifications }: { notifications: NotificationItem[] }) {
+  return (
+    <ul aria-label="Atividade recente" className="divide-y divide-border px-4">
+      {notifications.map((notif) => {
+        const config = kindConfig[notif.kind];
+        const Icon = config.icon;
+        return (
+          <li key={notif.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2.5 py-2.5">
+            <Icon aria-hidden="true" className={`mt-0.5 size-4 ${config.textClass}`} />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{notif.description}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {config.label} · <time dateTime={notif.date}>{relativeTime(notif.date)}</time>
+              </p>
+            </div>
+            <span className="whitespace-nowrap font-mono text-xs font-medium tabular-nums sm:text-sm">
+              {currencyFmt(notif.amount)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────
+
+const READ_AT_STORAGE_KEY = 'finance-notifications-read-at';
 
 interface NotificationPanelProps {
   isOpen: boolean;
@@ -106,17 +94,34 @@ interface NotificationPanelProps {
 export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [readAt, setReadAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(READ_AT_STORAGE_KEY);
+      if (saved) setReadAt(saved);
+    } catch {
+      // Ignore storage access failures in restricted contexts.
+    }
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const [txRes, purchaseRes] = await Promise.all([
         fetch('/api/transactions'),
         fetch('/api/purchases'),
       ]);
 
-      const transactions: any[] = txRes.ok ? await txRes.json() : [];
-      const purchases: any[] = purchaseRes.ok ? await purchaseRes.json() : [];
+      if (!txRes.ok || !purchaseRes.ok) {
+        setError(true);
+        return;
+      }
+
+      const transactions: any[] = await txRes.json();
+      const purchases: any[] = await purchaseRes.json();
 
       // Map transactions to notification items (only INCOME and EXPENSE)
       const txItems: NotificationItem[] = transactions
@@ -145,6 +150,7 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
 
       setNotifications(combined);
     } catch (e) {
+      setError(true);
       console.error('Erro ao buscar notificações', e);
     } finally {
       setLoading(false);
@@ -158,128 +164,84 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
     }
   }, [isOpen, fetchNotifications]);
 
+  const unreadCount = readAt
+    ? notifications.filter((item) => new Date(item.date).getTime() > new Date(readAt).getTime()).length
+    : notifications.length;
+
+  const markAllRead = () => {
+    const now = new Date().toISOString();
+    setReadAt(now);
+    try {
+      window.localStorage.setItem(READ_AT_STORAGE_KEY, now);
+    } catch {
+      // Ignore storage access failures.
+    }
+    onClose();
+  };
+
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
-        <motion.div
-          variants={panelVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          className="absolute right-0 top-full mt-2 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border/60 bg-background shadow-xl shadow-black/10 overflow-hidden"
+        <div
+          data-quiet-notifications
+          className="absolute right-0 top-full z-50 mt-2 w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg transition-opacity duration-150 motion-reduce:transition-none"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Bell className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="text-sm font-semibold">Notificações</h3>
-              {!loading && notifications.length > 0 && (
-                <Badge variant="secondary" className="text-[10px] h-5 min-w-5 px-1.5">
-                  {notifications.length}
-                </Badge>
-              )}
+          <header className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+            <div className="min-w-0">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <Bell aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                Notificações
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Atividade recente
+                {!loading && !error && notifications.length > 0 && (
+                  <span className="font-mono tabular-nums">
+                    {unreadCount > 0 ? ` · ${unreadCount} nova${unreadCount !== 1 ? 's' : ''}` : ' · Todas lidas'}
+                  </span>
+                )}
+              </p>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={onClose}>
-              Fechar
-            </Button>
-          </div>
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={onClose}>Fechar</Button>
+          </header>
 
-          <Separator />
-
-          {/* Content */}
           {loading ? (
-            <div className="p-4 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
-                  <div className="flex-1 space-y-1.5">
-                    <Skeleton className="h-3.5 w-3/4 rounded" />
-                    <Skeleton className="h-3 w-1/2 rounded" />
-                  </div>
-                  <Skeleton className="h-4 w-16 rounded" />
+            <div role="status" className="space-y-3 px-4 py-3">
+              <p className="text-xs text-muted-foreground">Carregando atividades…</p>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} aria-hidden="true" className="flex items-center justify-between gap-3">
+                  <Skeleton className="h-3 w-1/2 motion-reduce:animate-none" />
+                  <Skeleton className="h-3 w-16 motion-reduce:animate-none" />
                 </div>
               ))}
             </div>
+          ) : error ? (
+            <div role="alert" className="space-y-2 px-4 py-6">
+              <p className="text-sm font-medium text-destructive">Não foi possível carregar as notificações.</p>
+              <Button variant="outline" size="sm" onClick={() => void fetchNotifications()}>
+                Tentar novamente
+              </Button>
+            </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                <Bell className="w-7 h-7 text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">Nenhuma notificação</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">
-                Suas atividades financeiras aparecerão aqui
-              </p>
+            <div role="status" className="px-4 py-6">
+              <p className="text-sm font-medium">Nenhuma notificação</p>
+              <p className="mt-1 text-xs text-muted-foreground">Suas atividades financeiras aparecerão aqui.</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[340px]">
-              <motion.div
-                variants={listContainer}
-                initial="hidden"
-                animate="visible"
-                className="px-2 py-2"
-              >
-                {notifications.map((notif) => {
-                  const config = kindConfig[notif.kind];
-                  const Icon = config.icon;
-
-                  return (
-                    <motion.div
-                      key={notif.id}
-                      variants={listItem}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-accent/50 transition-colors group"
-                    >
-                      {/* Icon */}
-                      <div className={`w-9 h-9 rounded-xl ${config.bgClass} flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
-                        <Icon className={`w-4 h-4 ${config.textClass}`} />
-                      </div>
-
-                      {/* Description + time */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate leading-tight">
-                          {notif.description}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[11px] text-muted-foreground">
-                            {relativeTime(notif.date)}
-                          </span>
-                          <span className="text-[9px] font-medium text-muted-foreground/50 uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted/60">
-                            {config.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Amount */}
-                      <span className={`text-sm font-bold whitespace-nowrap ml-1 ${config.textClass}`}>
-                        {config.prefix}{currencyFmt(notif.amount)}
-                      </span>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
+            <ScrollArea className="[&_[data-slot=scroll-area-viewport]]:max-h-[min(340px,50dvh)]">
+              <NotificationList notifications={notifications} />
             </ScrollArea>
           )}
 
-          {/* Footer */}
-          {!loading && notifications.length > 0 && (
-            <>
-              <Separator />
-              <div className="px-3 py-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={onClose}
-                >
-                  <BookOpen className="w-3.5 h-3.5 mr-1.5" />
-                  Ler tudo
-                </Button>
-              </div>
-            </>
+          {!loading && !error && notifications.length > 0 && (
+            <footer className="border-t border-border bg-muted/40 px-3 py-2">
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={markAllRead}>
+                <BookOpen aria-hidden="true" className="size-3.5" />
+                Ler tudo
+              </Button>
+            </footer>
           )}
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

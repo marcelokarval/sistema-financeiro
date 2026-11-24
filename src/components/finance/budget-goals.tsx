@@ -1,26 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Target,
-  Plus,
-  Pencil,
-  Trash2,
-  CheckCircle2,
-  Circle,
-  MoreHorizontal,
-  X,
-} from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react';
+import { MoreHorizontal, Pencil, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -45,10 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
-
-const currencyFmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+import { currencyFmt } from '@/lib/helpers';
 
 interface BudgetGoal {
   id: string;
@@ -69,70 +49,6 @@ interface Category {
   color: string;
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 16, scale: 0.97 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: 'easeOut' } },
-};
-
-function getProgressColor(percent: number): string {
-  if (percent >= 70) return '#22c55e';
-  if (percent >= 30) return '#f59e0b';
-  return '#ef4444';
-}
-
-function getProgressColorClass(percent: number): string {
-  if (percent >= 70) return 'text-emerald-500';
-  if (percent >= 30) return 'text-amber-500';
-  return 'text-rose-500';
-}
-
-function CircularProgress({
-  percent,
-  size = 72,
-  strokeWidth = 6,
-}: {
-  percent: number;
-  size?: number;
-  strokeWidth?: number;
-}) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (Math.min(percent, 100) / 100) * circumference;
-  const color = getProgressColor(percent);
-
-  return (
-    <svg width={size} height={size} className="transform -rotate-90">
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="var(--muted)"
-        strokeWidth={strokeWidth}
-        opacity={0.3}
-      />
-      <motion.circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        initial={{ strokeDashoffset: circumference }}
-        animate={{ strokeDashoffset: offset }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-      />
-    </svg>
-  );
-}
-
 interface GoalFormData {
   name: string;
   description: string;
@@ -151,25 +67,122 @@ const emptyForm: GoalFormData = {
   endDate: '',
 };
 
+const panel = 'min-w-0 space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5';
+
+type FocusTarget = Pick<HTMLElement, 'isConnected' | 'focus'>;
+
+export function restoreBudgetGoalFocus(origin: FocusTarget | null, fallback: FocusTarget | null) {
+  const target = origin?.isConnected ? origin : fallback;
+  if (target?.isConnected) target.focus();
+}
+
+export function restoreBudgetGoalFocusAfterDeletion(
+  deletedId: string,
+  goals: readonly Pick<BudgetGoal, 'id'>[],
+  activeElement: object | null,
+  body: object,
+  fallback: FocusTarget | null,
+) {
+  if (activeElement === body && !goals.some((goal) => goal.id === deletedId)) {
+    restoreBudgetGoalFocus(null, fallback);
+  }
+}
+
+export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
+  goal: BudgetGoal;
+  onEdit: (goal: BudgetGoal, trigger: HTMLButtonElement | null) => void;
+  onDelete: (goal: BudgetGoal) => void;
+  onToggle: (goal: BudgetGoal) => void;
+}) {
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const openingEditor = useRef(false);
+  const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
+  const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
+  const width = Math.max(0, percent);
+  return (
+    <li className="grid min-w-0 gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-x-5">
+      <div className="min-w-0">
+        <h3 className="break-words text-sm font-semibold">{goal.name}</h3>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-xs text-muted-foreground">
+          <span>{goal.isCompleted ? 'Concluída' : 'Ativa'}</span>
+          {goal.category && (
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full border border-border" style={{ backgroundColor: goal.category.color }} />
+              <span className="min-w-0 break-words">{goal.category.name}</span>
+            </span>
+          )}
+        </p>
+        {goal.description && <p className="mt-1 break-words text-sm text-muted-foreground">{goal.description}</p>}
+      </div>
+      <div className="min-w-0 space-y-1.5 text-xs">
+        <p className="flex flex-wrap justify-between gap-x-2"><span>Progresso</span><span className="font-mono tabular-nums">{Math.round(percent)}%</span></p>
+        <div role="progressbar" aria-label={`Progresso da meta ${goal.name}`} aria-valuenow={width} aria-valuetext={`${Math.round(percent)}%`} className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-full bg-primary" style={{ width: `${width}%` }} />
+        </div>
+        <dl className="flex flex-wrap gap-x-4 gap-y-1">
+          {([['Atual', goal.currentAmount], ['Alvo', goal.targetAmount], ...(!goal.isCompleted && remaining > 0 ? [['Restante', remaining] as const] : [])] as const).map(([label, value]) => (
+            <div key={label} className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(value)}</dd></div>
+          ))}
+        </dl>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+        {!goal.isCompleted && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button ref={menuTrigger} type="button" variant="outline" size="icon" aria-label={`Mais ações de ${goal.name}`}><MoreHorizontal aria-hidden="true" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" onCloseAutoFocus={(event) => {
+              // Do not pull focus back out of the editor or off a new target.
+              if (openingEditor.current || document.activeElement !== document.body) event.preventDefault();
+              openingEditor.current = false;
+            }}>
+              <DropdownMenuItem onSelect={() => {
+                openingEditor.current = true;
+                onEdit(goal, menuTrigger.current);
+              }}><Pencil aria-hidden="true" /> Editar</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onToggle(goal)}><CheckCircle2 aria-hidden="true" /> Marcar como concluída</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(goal)}><Trash2 aria-hidden="true" /> Excluir</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={() => onToggle(goal)}>
+          {goal.isCompleted ? 'Reabrir meta' : 'Marcar como concluída'}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
 export function BudgetGoalsWidget() {
   const [goals, setGoals] = useState<BudgetGoal[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<BudgetGoal | null>(null);
   const [form, setForm] = useState<GoalFormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const createButton = useRef<HTMLButtonElement>(null);
+  const dialogOrigin = useRef<HTMLButtonElement | null>(null);
+  const pendingDeletionFocus = useRef(new Set<string>());
 
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(false);
       const [goalsRes, catsRes] = await Promise.all([
         fetch('/api/budgets'),
         fetch('/api/categories'),
       ]);
-      if (goalsRes.ok) setGoals(await goalsRes.json());
+      if (!goalsRes.ok) {
+        setError(true);
+        return;
+      }
+      setGoals(await goalsRes.json());
       if (catsRes.ok) setCategories(await catsRes.json());
     } catch (e) {
       console.error('Erro ao carregar metas', e);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -179,13 +192,28 @@ export function BudgetGoalsWidget() {
     fetchData();
   }, [fetchData]);
 
-  const openCreate = () => {
+  useEffect(() => {
+    if (pendingDeletionFocus.current.size === 0) return;
+    // Wait for the refreshed list to commit and the menu's focus scope to close.
+    const frame = requestAnimationFrame(() => {
+      for (const id of pendingDeletionFocus.current) {
+        if (goals.some((goal) => goal.id === id)) continue;
+        pendingDeletionFocus.current.delete(id);
+        restoreBudgetGoalFocusAfterDeletion(id, goals, document.activeElement, document.body, createButton.current);
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [goals]);
+
+  const openCreate = (event: MouseEvent<HTMLButtonElement>) => {
+    dialogOrigin.current = event.currentTarget;
     setEditingGoal(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
-  const openEdit = (goal: BudgetGoal) => {
+  const openEdit = (goal: BudgetGoal, trigger: HTMLButtonElement | null) => {
+    dialogOrigin.current = trigger;
     setEditingGoal(goal);
     setForm({
       name: goal.name,
@@ -253,6 +281,7 @@ export function BudgetGoalsWidget() {
       });
       if (res.ok) {
         toast.success('Meta excluída');
+        pendingDeletionFocus.current.add(goal.id);
         fetchData();
       } else {
         toast.error('Erro ao excluir meta');
@@ -273,7 +302,7 @@ export function BudgetGoalsWidget() {
         }),
       });
       if (res.ok) {
-        toast.success(goal.isCompleted ? 'Meta reaberta' : 'Meta concluída! 🎉');
+        toast.success(goal.isCompleted ? 'Meta reaberta' : 'Meta concluída!');
         fetchData();
       }
     } catch {
@@ -281,237 +310,25 @@ export function BudgetGoalsWidget() {
     }
   };
 
-  if (loading) {
-    return (
-      <Card className="border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-64 mt-1" />
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-44 rounded-xl" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const activeCount = goals.filter((g) => !g.isCompleted).length;
-  const completedCount = goals.filter((g) => g.isCompleted).length;
-
   return (
-    <Card className="border-0 shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-              <Target className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-base font-semibold">Metas de Orçamento</CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {activeCount} ativa{activeCount !== 1 ? 's' : ''} · {completedCount} concluída{completedCount !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
-          <Button onClick={openCreate} size="sm" className="gap-1.5">
-            <Plus className="w-4 h-4" />
-            Nova Meta
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {goals.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-10"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
-              <Target className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">Nenhuma meta criada</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              Crie sua primeira meta de orçamento para acompanhar seus objetivos
-            </p>
-            <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={openCreate}>
-              <Plus className="w-3.5 h-3.5" />
-              Criar Meta
-            </Button>
-          </motion.div>
-        ) : (
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            <AnimatePresence>
-              {goals.map((goal) => {
-                const percent = goal.targetAmount > 0
-                  ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)
-                  : 0;
-                const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
-
-                return (
-                  <motion.div
-                    key={goal.id}
-                    variants={item}
-                    layout
-                    whileHover={{ y: -2, transition: { duration: 0.2 } }}
-                    className="relative"
-                  >
-                    <div
-                      className={`relative rounded-xl border p-4 transition-all ${
-                        goal.isCompleted
-                          ? 'bg-emerald-500/5 border-emerald-500/20'
-                          : 'bg-card hover:shadow-md border-border'
-                      }`}
-                    >
-                      {/* Completed overlay badge */}
-                      {goal.isCompleted && (
-                        <div className="absolute top-3 right-3">
-                          <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/20 text-[10px] gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Concluída
-                          </Badge>
-                        </div>
-                      )}
-
-                      {/* Dropdown menu */}
-                      <div className="absolute top-3 right-3">
-                        {!goal.isCompleted && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEdit(goal)}>
-                                <Pencil className="w-4 h-4 mr-2" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleComplete(goal)}>
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                                Marcar como concluída
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(goal)}
-                                className="text-rose-500 focus:text-rose-500"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                        {!goal.isCompleted && (
-                          <></>
-                        )}
-                      </div>
-
-                      <div className="flex items-start gap-4">
-                        {/* Progress Circle */}
-                        <div className="relative shrink-0">
-                          <CircularProgress percent={percent} size={68} strokeWidth={6} />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className={`text-sm font-bold ${getProgressColorClass(percent)}`}>
-                              {Math.round(percent)}%
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Goal Info */}
-                        <div className="flex-1 min-w-0 pr-6">
-                          <h3 className="text-sm font-semibold truncate">{goal.name}</h3>
-                          {goal.description && (
-                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
-                              {goal.description}
-                            </p>
-                          )}
-                          <div className="mt-2 space-y-1">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Atual</span>
-                              <span className="font-medium">{currencyFmt(goal.currentAmount)}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Meta</span>
-                              <span className="font-semibold">{currencyFmt(goal.targetAmount)}</span>
-                            </div>
-                            {!goal.isCompleted && remaining > 0 && (
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Faltam</span>
-                                <span className="font-medium text-rose-500">
-                                  {currencyFmt(remaining)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Category Badge */}
-                      {goal.category && (
-                        <div className="mt-3">
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] gap-1"
-                            style={{
-                              backgroundColor: `${goal.category.color}15`,
-                              color: goal.category.color,
-                              borderColor: `${goal.category.color}30`,
-                            }}
-                          >
-                            {goal.category.name}
-                          </Badge>
-                        </div>
-                      )}
-
-                      {/* Complete toggle button */}
-                      {!goal.isCompleted && (
-                        <div className="mt-3 pt-3 border-t border-border/50">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full h-8 text-xs gap-1.5 text-muted-foreground hover:text-emerald-600"
-                            onClick={() => handleToggleComplete(goal)}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Marcar como concluída
-                          </Button>
-                        </div>
-                      )}
-
-                      {/* Reopen button */}
-                      {goal.isCompleted && (
-                        <div className="mt-3 pt-3 border-t border-emerald-500/20">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full h-8 text-xs gap-1.5 text-emerald-600"
-                            onClick={() => handleToggleComplete(goal)}
-                          >
-                            <Circle className="w-3.5 h-3.5" />
-                            Reabrir meta
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </CardContent>
-
-      {/* Create / Edit Dialog */}
+    <>
+      <BudgetGoalsContent
+        goals={goals}
+        loading={loading}
+        error={error}
+        createButtonRef={createButton}
+        onCreate={openCreate}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+        onToggle={handleToggleComplete}
+        onRetry={fetchData}
+      />
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md" onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          restoreBudgetGoalFocus(dialogOrigin.current, createButton.current);
+          dialogOrigin.current = null;
+        }}>
           <DialogHeader>
             <DialogTitle>
               {editingGoal ? 'Editar Meta' : 'Nova Meta de Orçamento'}
@@ -545,7 +362,7 @@ export function BudgetGoalsWidget() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 min-[400px]:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="goal-target">Valor alvo (R$) *</Label>
                 <Input
@@ -572,14 +389,14 @@ export function BudgetGoalsWidget() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <Label htmlFor="goal-category">Categoria</Label>
                 <Select
                   value={form.categoryId}
                   onValueChange={(val) => setForm({ ...form, categoryId: val })}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="goal-category" className="w-full min-w-0">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -611,12 +428,6 @@ export function BudgetGoalsWidget() {
             <Button onClick={handleSubmit} disabled={submitting} className="gap-1.5">
               {submitting ? (
                 <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <X className="w-4 h-4" />
-                  </motion.div>
                   Salvando...
                 </>
               ) : editingGoal ? (
@@ -631,6 +442,72 @@ export function BudgetGoalsWidget() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </>
+  );
+}
+
+export function BudgetGoalsContent({
+  goals,
+  loading,
+  error,
+  createButtonRef,
+  onCreate,
+  onEdit,
+  onDelete,
+  onToggle,
+  onRetry,
+}: {
+  goals: BudgetGoal[];
+  loading: boolean;
+  error: boolean;
+  createButtonRef?: React.Ref<HTMLButtonElement>;
+  onCreate: (event: MouseEvent<HTMLButtonElement>) => void;
+  onEdit: (goal: BudgetGoal, trigger: HTMLButtonElement | null) => void;
+  onDelete: (goal: BudgetGoal) => void;
+  onToggle: (goal: BudgetGoal) => void;
+  onRetry: () => void;
+}) {
+  if (loading) {
+    return (
+      <section data-qa="quiet-budget-goals" aria-label="Metas de orçamento" aria-busy="true" className={panel}>
+        <h2 className="font-semibold">Metas de orçamento</h2>
+        <p role="status" className="text-sm text-muted-foreground">Carregando metas…</p>
+      </section>
+    );
+  }
+  if (error) {
+    return (
+      <section data-qa="quiet-budget-goals" aria-label="Metas de orçamento" className={panel}>
+        <h2 className="font-semibold">Metas de orçamento</h2>
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+          <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar as metas de orçamento.</p>
+          <Button variant="outline" size="sm" className="min-h-9" onClick={onRetry}>Tentar novamente</Button>
+        </div>
+      </section>
+    );
+  }
+  const activeCount = goals.filter((g) => !g.isCompleted).length;
+  const completedCount = goals.filter((g) => g.isCompleted).length;
+  return (
+    <section data-qa="quiet-budget-goals" aria-label="Metas de orçamento" className={panel}>
+      <header className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="font-semibold">Metas de orçamento</h2>
+          <p className="text-xs text-muted-foreground">{activeCount} ativa{activeCount !== 1 ? 's' : ''} · {completedCount} concluída{completedCount !== 1 ? 's' : ''}</p>
+        </div>
+        <Button ref={createButtonRef} variant="default" size="sm" className="min-h-9" onClick={onCreate}><Plus aria-hidden="true" /> Nova Meta</Button>
+      </header>
+      {goals.length === 0 ? (
+        <div className="space-y-2 border-t border-border pt-3">
+          <h3 className="text-sm font-medium">Nenhuma meta cadastrada</h3>
+          <p className="text-sm text-muted-foreground">Crie sua primeira meta de orçamento para acompanhar seus objetivos.</p>
+          <Button variant="outline" size="sm" onClick={onCreate}>Criar Meta</Button>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border border-y border-border">
+          {goals.map((goal) => <BudgetGoalRow key={goal.id} goal={goal} onEdit={onEdit} onDelete={onDelete} onToggle={onToggle} />)}
+        </ul>
+      )}
+    </section>
   );
 }

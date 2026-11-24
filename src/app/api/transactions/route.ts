@@ -136,6 +136,34 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    if (type !== undefined && !["INCOME", "EXPENSE", "TRANSFER"].includes(type)) {
+      return NextResponse.json(
+        { error: "Transaction type is required (INCOME, EXPENSE, TRANSFER)" },
+        { status: 400 }
+      );
+    }
+
+    if (amount !== undefined && (!Number.isFinite(Number(amount)) || Number(amount) <= 0)) {
+      return NextResponse.json(
+        { error: "Valid amount is required" },
+        { status: 400 }
+      );
+    }
+
+    if (description !== undefined && (typeof description !== "string" || description.trim() === "")) {
+      return NextResponse.json(
+        { error: "Description is required" },
+        { status: 400 }
+      );
+    }
+
+    if (date !== undefined && date !== null && isNaN(new Date(date).getTime())) {
+      return NextResponse.json(
+        { error: "Invalid transaction date" },
+        { status: 400 }
+      );
+    }
+
     const existing = await db.transaction.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json(
@@ -144,58 +172,62 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Revert the old balance change if account is involved
-    if (existing.accountId && existing.amount) {
-      if (existing.type === "INCOME") {
-        await db.account.update({
-          where: { id: existing.accountId },
-          data: { balance: { decrement: existing.amount } },
-        });
-      } else if (existing.type === "EXPENSE") {
-        await db.account.update({
-          where: { id: existing.accountId },
-          data: { balance: { increment: existing.amount } },
-        });
-      }
-    }
-
     const newAmount = amount !== undefined ? Number(amount) : existing.amount;
     const newType = type || existing.type;
-    const newAccountId = accountId !== undefined ? accountId : existing.accountId;
+    const newAccountId = accountId !== undefined ? accountId || null : existing.accountId;
 
-    const transaction = await db.transaction.update({
-      where: { id },
-      data: {
-        ...(type !== undefined && { type }),
-        ...(amount !== undefined && { amount: newAmount }),
-        ...(description !== undefined && { description: description.trim() }),
-        ...(date !== undefined && { date: date ? new Date(date) : new Date() }),
-        ...(notes !== undefined && { notes }),
-        ...(categoryId !== undefined && { categoryId: categoryId || null }),
-        ...(accountId !== undefined && { accountId: accountId || null }),
-        ...(cardId !== undefined && { cardId: cardId || null }),
-      },
-      include: {
-        category: true,
-        account: true,
-        card: true,
-      },
-    });
-
-    // Apply the new balance change if account is involved
-    if (newAccountId) {
-      if (newType === "INCOME") {
-        await db.account.update({
-          where: { id: newAccountId },
-          data: { balance: { increment: newAmount } },
-        });
-      } else if (newType === "EXPENSE") {
-        await db.account.update({
-          where: { id: newAccountId },
-          data: { balance: { decrement: newAmount } },
-        });
+    const transaction = await db.$transaction(async (tx) => {
+      // Revert the old balance change if account is involved
+      if (existing.accountId && existing.amount) {
+        if (existing.type === "INCOME") {
+          await tx.account.update({
+            where: { id: existing.accountId },
+            data: { balance: { decrement: existing.amount } },
+          });
+        } else if (existing.type === "EXPENSE") {
+          await tx.account.update({
+            where: { id: existing.accountId },
+            data: { balance: { increment: existing.amount } },
+          });
+        }
       }
-    }
+
+      const updated = await tx.transaction.update({
+        where: { id },
+        data: {
+          ...(type !== undefined && { type }),
+          ...(amount !== undefined && { amount: newAmount }),
+          ...(description !== undefined && { description: description.trim() }),
+          ...(date !== undefined && { date: date ? new Date(date) : new Date() }),
+          ...(notes !== undefined && { notes }),
+          ...(categoryId !== undefined && { categoryId: categoryId || null }),
+          ...(accountId !== undefined && { accountId: accountId || null }),
+          ...(cardId !== undefined && { cardId: cardId || null }),
+        },
+        include: {
+          category: true,
+          account: true,
+          card: true,
+        },
+      });
+
+      // Apply the new balance change if account is involved
+      if (newAccountId) {
+        if (newType === "INCOME") {
+          await tx.account.update({
+            where: { id: newAccountId },
+            data: { balance: { increment: newAmount } },
+          });
+        } else if (newType === "EXPENSE") {
+          await tx.account.update({
+            where: { id: newAccountId },
+            data: { balance: { decrement: newAmount } },
+          });
+        }
+      }
+
+      return updated;
+    });
 
     return NextResponse.json(transaction);
   } catch (error) {
@@ -210,8 +242,21 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/transactions - Delete transaction
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id } = body;
+    let id = new URL(request.url).searchParams.get("id");
+    if (!id) {
+      const rawBody = await request.text();
+      if (rawBody.trim()) {
+        try {
+          const parsed = JSON.parse(rawBody) as { id?: string };
+          id = parsed.id ?? null;
+        } catch {
+          return NextResponse.json(
+            { error: "Invalid JSON body" },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     if (!id) {
       return NextResponse.json(
@@ -228,22 +273,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Revert the balance change if account is involved
-    if (existing.accountId && existing.amount) {
-      if (existing.type === "INCOME") {
-        await db.account.update({
-          where: { id: existing.accountId },
-          data: { balance: { decrement: existing.amount } },
-        });
-      } else if (existing.type === "EXPENSE") {
-        await db.account.update({
-          where: { id: existing.accountId },
-          data: { balance: { increment: existing.amount } },
-        });
+    await db.$transaction(async (tx) => {
+      // Revert the balance change if account is involved
+      if (existing.accountId && existing.amount) {
+        if (existing.type === "INCOME") {
+          await tx.account.update({
+            where: { id: existing.accountId },
+            data: { balance: { decrement: existing.amount } },
+          });
+        } else if (existing.type === "EXPENSE") {
+          await tx.account.update({
+            where: { id: existing.accountId },
+            data: { balance: { increment: existing.amount } },
+          });
+        }
       }
-    }
 
-    await db.transaction.delete({ where: { id } });
+      await tx.transaction.delete({ where: { id } });
+    });
 
     return NextResponse.json({ success: true, message: "Transaction deleted" });
   } catch (error) {

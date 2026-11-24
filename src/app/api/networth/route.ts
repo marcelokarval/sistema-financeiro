@@ -118,7 +118,14 @@ export async function GET(request: Request) {
     // ─── Build monthly data ─────────────────────────────────────────
     // Current month = current net worth
     // Past months = current net worth - cumulative future flows
-    const monthlyData = [];
+    const monthlyData: {
+      month: string;
+      netWorth: number;
+      assets: number;
+      liabilities: number;
+      changePercent: number;
+      changeAmount: number;
+    }[] = [];
     for (let i = 0; i < months; i++) {
       const monthDate = new Date(currentYear, currentMonth - (months - 1) + i, 1);
       const label = monthDate.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });

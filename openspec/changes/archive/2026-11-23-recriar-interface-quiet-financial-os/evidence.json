@@ -1,0 +1,127 @@
+{
+  "candidate": "96de0e44e4d43e574f1b920d7047d95b37261ae5 (head; digest historico pre-residuais: 8ddab4179976132beacefb303a348e7763146f92e4862d87f2752f74dbdf78b4)",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun test src/app/quiet-tokens.test.ts",
+        "outcome": "expected_failure",
+        "details": "Dois testes iniciais falharam contra a paleta anterior; reaceite de contraste A014 exigiu nova prova de bordas e foco; Wave 1 removeu classes slop remanescentes de globals.css e ui-helpers.tsx."
+      },
+      "green": {
+        "command": "env -i HOME=\"$HOME\" PATH=/usr/bin:/bin TZ=UTC \"$HOME/.bun/bin/bun\" --no-env-file --no-install test src/app/quiet-tokens.test.ts src/components/shared/ui-helpers.test.tsx",
+        "outcome": "passed",
+        "details": "Tokens --ds-*, bordas, foco opaco, tema claro/escuro e ausência de framer-motion/slop validados; 0 usos de framer-motion em produção."
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "Playwright: matriz do shell e lançamento + TDD quiet-navigation.test.tsx / store.test.ts",
+        "outcome": "expected_failure",
+        "details": "A ação flutuante sobrepunha a navegação; revisão encontrou falha de retenção, vínculo de lançamento e Nova Meta / busca global desconectados."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test src/lib/store.test.ts src/components/finance/quiet-navigation.test.tsx",
+        "outcome": "passed",
+        "details": "Nove destinos, seleção explícita de conta, cancelamento sem POST, QuickActions->Nova Meta, GlobalSearch->selected*Id e 0 erros no shell."
+      }
+    },
+    {
+      "id": "1.3",
+      "plan": "1.3",
+      "red": {
+        "command": "Playwright e revisão da primeira fatia + TDD quick-stats/dashboard",
+        "outcome": "expected_failure",
+        "details": "Perda de grupos/totais, acesso a novo limite após erro, representação ambígua de campos zerados e séries históricas ausentes em quick-stats."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test src/components/finance/dashboard-query.test.ts src/components/finance/dashboard-view.test.tsx src/app/api/quick-stats/route.test.ts",
+        "outcome": "passed",
+        "details": "Erros/retry, recorte, privacidade, séries reais de 6 meses em /api/quick-stats e criação/edição/exclusão de limite com AlertDialog."
+      }
+    },
+    {
+      "id": "1.4",
+      "plan": "1.4",
+      "red": {
+        "command": "Matriz inicial da primeira fatia e revisão de estados",
+        "outcome": "expected_failure",
+        "details": "A matriz inicial apresentava sobreposição e discrepâncias de foco/estado antes das correções."
+      },
+      "green": {
+        "command": "playwright-cli -s=quiet-qa-final em standalone 127.0.0.1:3099 (resumo 1440×900, 390×844, 360×800 claro/escuro)",
+        "outcome": "passed",
+        "details": "Contrato visual e download/README.md reconciliados; 0 overflow, 0 erros de console e troca de tema verificados em browser real."
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "TDD RED->GREEN em Contas/Cartões, Compras/Categorias e Recorrências/Recibos (quiet-accounts-cards, quiet-purchases-categories, quiet-recurring-receipts, quiet-core-residuals)",
+        "outcome": "expected_failure",
+        "details": "Duplo POST, falso sucesso 503, ausência de Editar/Excluir inline em transações de conta e ausência de seletor de registro recente em recibos."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx src/components/finance/quiet-purchases-categories.test.tsx src/components/finance/quiet-recurring-receipts.test.tsx src/components/finance/quiet-core-residuals.test.tsx src/app/api/transactions/route.test.ts src/app/api/purchases/route.test.ts",
+        "outcome": "passed",
+        "details": "CRUD inline de transações na conta, locks, AlertDialog, case-insensitive em SQLite em Compras e Chrome QA em todos os destinos de movimentação."
+      }
+    },
+    {
+      "id": "2.2",
+      "plan": "2.2",
+      "red": {
+        "command": "TDD RED->GREEN em Investimentos/Parcelas/Consórcios/Caixinhas + provas SQLite isoladas",
+        "outcome": "expected_failure",
+        "details": "Detalhe de investimento obsoleto, perda de foco em Parcelas, ausência de Editar/Excluir inline em transações de investimento, dividendsReceived fixo em 0 e filtro OVERDUE/assembleia."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test src/components/finance/quiet-investments-installments.test.tsx src/components/finance/quiet-investment-mutations.test.tsx src/components/finance/quiet-consortiums-savings.test.tsx src/app/api/investments/transactions/route.test.ts + opt-ins SQLite em bwrap",
+        "outcome": "passed",
+        "details": "CRUD inline de transações em Investimentos, dividendsReceived real, Select de conta em Consórcios, opt-ins SQLite (Caixinhas 10/10, Assembleias 12/12, Parcelas 4/4) e QA visual aprovados."
+      }
+    },
+    {
+      "id": "2.3",
+      "plan": "2.3",
+      "red": {
+        "command": "TDD RED->GREEN em widgets analíticos, acompanhamento e transversais + remoção de framer-motion/emojis/slop",
+        "outcome": "expected_failure",
+        "details": "Botão recortado a 360 px, Tabs dentro de CardHeader em Relatórios, ações de Insights desconectadas, emojis no Advisor/BudgetGoals e uso residual de framer-motion."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test src/components/finance/quiet-analysis-calendar.test.tsx src/components/finance/quiet-insights-flow.test.tsx src/components/finance/quiet-goals-health.test.tsx src/components/finance/quiet-transversal.test.tsx src/app/api/advisor/route.test.ts src/app/api/insights/route.test.ts src/app/api/monthly-budgets/route.test.ts",
+        "outcome": "passed",
+        "details": "101 testes nas suítes secundárias + 0 usos de framer-motion em produção + painel Mais detalhes financeiros sem overflow em 1440×900 e 360×800."
+      }
+    },
+    {
+      "id": "2.4",
+      "plan": "2.4",
+      "red": {
+        "command": "Verificação pré-Wave 1/2 (22 erros TS em APIs, classes slop, regressão posicional em cards-view.tsx)",
+        "outcome": "expected_failure",
+        "details": "22 diagnósticos TS preexistentes, regressão transitória de hooks em cards-view.tsx detectada e corrigida pelo QA."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test && ~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts && ~/.bun/bin/bunx tsc --noEmit && ~/.bun/bin/bun run lint && ~/.bun/bin/bun run build + playwright-cli -s=quiet-qa-final",
+        "outcome": "passed",
+        "details": "277 pass / 41 skip (opt-ins rodados com 0 skips em bwrap) / 0 fail; 44/44 packaging; 0 erros TS; 0 erros lint; build Next 16.1.3 OK; 54/54 matriz Chrome em 1440×900, 390×844 e 360×800 claro/escuro sem overflow/erros."
+      }
+    }
+  ],
+  "structural": {
+    "command": "openspec validate --all --strict --no-interactive; git diff --check; git status -s -uall -- src/components/ui/ prisma/schema.prisma",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "qa-verifier + qa-visual (rodada final pós-Waves 1-2)",
+    "status": "pass",
+    "candidate": "96de0e44e4d43e574f1b920d7047d95b37261ae5"
+  },
+  "unresolved": []
+}

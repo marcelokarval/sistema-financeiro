@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
 import {
   Plus,
+  X,
   Pencil,
   Trash2,
   ArrowLeft,
-  ArrowUpRight,
   ArrowDownRight,
   TrendingUp,
-  TrendingDown,
   Wallet,
   DollarSign,
   BarChart3,
@@ -19,26 +17,19 @@ import {
   Bitcoin,
   Landmark,
   BadgeDollarSign,
-  PiggyBank,
   Receipt,
   RefreshCw,
   CircleDollarSign,
-  Percent,
-  Filter,
-  Info,
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -67,50 +58,32 @@ import {
   currencyFmt,
   percentFmt,
   dateFmt,
-  containerVariants,
-  itemVariants,
-  summaryContainerVariants,
-  summaryItemVariants,
-  listItemVariants,
-  detailEntryVariants,
 } from '@/lib/helpers';
-import { StatCard, StatCardSkeleton, EmptyState, ProgressBar } from '@/components/shared/ui-helpers';
+import { purchaseDateForInput } from '@/lib/purchase-date';
+import { useAppStore } from '@/lib/store';
 
 // ── Constants ───────────────────────────────────────────────────────
 
-const investmentTypes: Record<string, { label: string; color: string; icon: React.ElementType; gradient: string }> = {
-  STOCK:    { label: 'Ações',          color: 'text-emerald-500',  icon: TrendingUp,       gradient: 'from-emerald-500 to-emerald-400' },
-  BOND:     { label: 'Renda Fixa',     color: 'text-sky-500',      icon: Landmark,         gradient: 'from-sky-500 to-sky-400' },
-  FII:      { label: 'FIIs',           color: 'text-violet-500',   icon: Building2,        gradient: 'from-violet-500 to-violet-400' },
-  CDB:      { label: 'CDB',            color: 'text-amber-500',    icon: BadgeDollarSign,  gradient: 'from-amber-500 to-amber-400' },
-  LCI:      { label: 'LCI',            color: 'text-teal-500',     icon: CircleDollarSign, gradient: 'from-teal-500 to-teal-400' },
-  LCA:      { label: 'LCA',            color: 'text-teal-500',     icon: CircleDollarSign, gradient: 'from-teal-500 to-teal-400' },
-  TESOURO:  { label: 'Tesouro Direto', color: 'text-rose-500',     icon: BarChart3,        gradient: 'from-rose-500 to-rose-400' },
-  CRYPTO:   { label: 'Cripto',         color: 'text-orange-500',   icon: Bitcoin,          gradient: 'from-orange-500 to-orange-400' },
-  ETF:      { label: 'ETF',            color: 'text-cyan-500',     icon: RefreshCw,        gradient: 'from-cyan-500 to-cyan-400' },
-  OTHER:    { label: 'Outro',          color: 'text-slate-500',    icon: Wallet,           gradient: 'from-slate-500 to-slate-400' },
+const investmentTypes: Record<string, { label: string; icon: React.ElementType }> = {
+  STOCK:    { label: 'Ações',          icon: TrendingUp },
+  BOND:     { label: 'Renda Fixa',     icon: Landmark },
+  FII:      { label: 'FIIs',           icon: Building2 },
+  CDB:      { label: 'CDB',            icon: BadgeDollarSign },
+  LCI:      { label: 'LCI',            icon: CircleDollarSign },
+  LCA:      { label: 'LCA',            icon: CircleDollarSign },
+  TESOURO:  { label: 'Tesouro Direto', icon: BarChart3 },
+  CRYPTO:   { label: 'Cripto',         icon: Bitcoin },
+  ETF:      { label: 'ETF',            icon: RefreshCw },
+  OTHER:    { label: 'Outro',          icon: Wallet },
 };
 
-const typeColorMap: Record<string, string> = {
-  STOCK: '#10b981',
-  BOND: '#0ea5e9',
-  FII: '#8b5cf6',
-  CDB: '#f59e0b',
-  LCI: '#14b8a6',
-  LCA: '#14b8a6',
-  TESOURO: '#f43f5e',
-  CRYPTO: '#f97316',
-  ETF: '#06b6d4',
-  OTHER: '#64748b',
-};
-
-const transactionTypes: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  APORTE:         { label: 'Aporte',         color: 'text-emerald-500', icon: Plus },
-  DIVIDENDO:      { label: 'Dividendo',      color: 'text-amber-500',   icon: Gift },
-  VENDA:          { label: 'Venda',          color: 'text-rose-500',    icon: ArrowDownRight },
-  REINVESTIMENTO: { label: 'Reinvestimento',  color: 'text-cyan-500',    icon: RefreshCw },
-  TAXA:           { label: 'Taxa',           color: 'text-slate-500',   icon: Receipt },
-  BONUS:          { label: 'Bônus',          color: 'text-violet-500',  icon: DollarSign },
+const transactionTypes: Record<string, { label: string; icon: React.ElementType }> = {
+  APORTE:         { label: 'Aporte',         icon: Plus },
+  DIVIDENDO:      { label: 'Dividendo',      icon: Gift },
+  VENDA:          { label: 'Venda',          icon: ArrowDownRight },
+  REINVESTIMENTO: { label: 'Reinvestimento',  icon: RefreshCw },
+  TAXA:           { label: 'Taxa',           icon: Receipt },
+  BONUS:          { label: 'Bônus',          icon: DollarSign },
 };
 
 const filterTabs = [
@@ -165,17 +138,34 @@ interface Category {
 
 export function InvestmentsView() {
   const [investments, setInvestments] = useState<Investment[]>([]);
-  const [transactions, setTransactions] = useState<InvestmentTransaction[]>([]);
+  const [history, setHistory] = useState<
+    { phase: 'loading' | 'error' } | { phase: 'ready'; transactions: InvestmentTransaction[] }
+  >({ phase: 'loading' });
+  const historyRequest = useRef(0);
+  const activeInvestmentId = useRef<string | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [selectedInvestmentId, setSelectedInvestmentId] = useState<string | null>(null);
+  const selectedInvestment = investments.find((investment) => investment.id === selectedInvestmentId);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [dividendEntries, setDividendEntries] = useState<{ investmentId?: string; type: string; amount: number }[]>([]);
   const [activeFilter, setActiveFilter] = useState('all');
 
   // Dialogs
   const [showInvestmentDialog, setShowInvestmentDialog] = useState(false);
   const [showTransactionDialog, setShowTransactionDialog] = useState(false);
+  const [savingInvestment, setSavingInvestment] = useState(false);
+  const saveInvestmentInFlight = useRef(false);
+  const [savingTransaction, setSavingTransaction] = useState(false);
+  const saveTransactionInFlight = useRef(false);
+  const [editingTransaction, setEditingTransaction] = useState<InvestmentTransaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<InvestmentTransaction | null>(null);
+  const [deletingTx, setDeletingTx] = useState(false);
+  const deleteTxInFlight = useRef(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const deleteInFlight = useRef(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
 
   // Investment form
@@ -205,22 +195,44 @@ export function InvestmentsView() {
   // ── Data fetching ────────────────────────────────────────────────
 
   const fetchInvestments = useCallback(async () => {
+    setLoadError(false);
     try {
       const res = await fetch('/api/investments');
-      if (res.ok) setInvestments(await res.json());
+      if (!res.ok) {
+        setLoadError(true);
+        return;
+      }
+      setInvestments(await res.json());
     } catch (e) {
+      setLoadError(true);
       console.error(e);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const fetchTransactions = useCallback(async (investmentId: string) => {
+  const fetchDividends = useCallback(async () => {
     try {
-      const res = await fetch(`/api/investments/transactions?investmentId=${investmentId}`);
-      if (res.ok) setTransactions(await res.json());
+      const res = await fetch('/api/investments/transactions');
+      if (!res.ok) return;
+      const allTxs: { investmentId?: string; type: string; amount: number }[] = await res.json();
+      setDividendEntries(allTxs.filter((tx) => tx.type === 'DIVIDENDO'));
     } catch (e) {
       console.error(e);
+    }
+  }, []);
+
+  const fetchTransactions = useCallback(async (investmentId: string) => {
+    if (activeInvestmentId.current !== investmentId) return;
+    const requestId = ++historyRequest.current;
+    setHistory({ phase: 'loading' });
+    try {
+      const res = await fetch(`/api/investments/transactions?investmentId=${investmentId}`);
+      if (!res.ok) throw new Error('Falha ao consultar transações');
+      const transactions: InvestmentTransaction[] = await res.json();
+      if (requestId === historyRequest.current) setHistory({ phase: 'ready', transactions });
+    } catch {
+      if (requestId === historyRequest.current) setHistory({ phase: 'error' });
     }
   }, []);
 
@@ -244,9 +256,26 @@ export function InvestmentsView() {
 
   useEffect(() => {
     fetchInvestments();
+    fetchDividends();
     fetchAccounts();
     fetchCategories();
-  }, [fetchInvestments, fetchAccounts, fetchCategories]);
+  }, [fetchInvestments, fetchDividends, fetchAccounts, fetchCategories]);
+
+  useEffect(() => {
+    const syncSelection = () => {
+      const targetId = useAppStore.getState().selectedInvestmentId;
+      if (!targetId || loading) return;
+      const target = investments.find((inv) => inv.id === targetId);
+      if (target) {
+        activeInvestmentId.current = target.id;
+        setSelectedInvestmentId(target.id);
+        void fetchTransactions(target.id);
+      }
+      useAppStore.getState().setSelectedInvestmentId(null);
+    };
+    syncSelection();
+    return useAppStore.subscribe(syncSelection);
+  }, [fetchTransactions, investments, loading]);
 
   // ── Computed data ────────────────────────────────────────────────
 
@@ -263,12 +292,13 @@ export function InvestmentsView() {
     const totalInvested = investments.reduce((sum, inv) => sum + (inv.investedAmount || 0), 0);
     const currentTotal = investments.reduce((sum, inv) => sum + (inv.currentBalance || 0), 0);
     const rentabilidade = totalInvested > 0 ? ((currentTotal - totalInvested) / totalInvested) * 100 : 0;
-    // Dividends from all transactions loaded so far (if any)
-    return { totalInvested, currentTotal, rentabilidade, dividendsReceived: 0 };
-  }, [investments]);
+    const dividendsReceived = dividendEntries.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+    return { totalInvested, currentTotal, rentabilidade, dividendsReceived };
+  }, [investments, dividendEntries]);
 
   const investmentStats = useMemo(() => {
-    if (!selectedInvestment) return { totalAportes: 0, totalDividendos: 0, totalVendas: 0, txCount: transactions.length };
+    if (history.phase !== 'ready') return null;
+    const { transactions } = history;
     let totalAportes = 0;
     let totalDividendos = 0;
     let totalVendas = 0;
@@ -284,13 +314,20 @@ export function InvestmentsView() {
       }
     }
     return { totalAportes, totalDividendos, totalVendas, txCount: transactions.length };
-  }, [selectedInvestment, transactions]);
+  }, [history]);
 
   // ── Actions ──────────────────────────────────────────────────────
 
   const openInvestmentDetail = (inv: Investment) => {
-    setSelectedInvestment(inv);
-    fetchTransactions(inv.id);
+    activeInvestmentId.current = inv.id;
+    setSelectedInvestmentId(inv.id);
+    void fetchTransactions(inv.id);
+  };
+
+  const closeInvestmentDetail = () => {
+    activeInvestmentId.current = null;
+    historyRequest.current++;
+    setSelectedInvestmentId(null);
   };
 
   const openNewInvestment = () => {
@@ -326,9 +363,17 @@ export function InvestmentsView() {
   };
 
   const saveInvestment = async () => {
+    if (!form.name.trim()) {
+      toast.error('Informe o nome do investimento');
+      return;
+    }
+    if (saveInvestmentInFlight.current) return;
+    saveInvestmentInFlight.current = true;
+    setSavingInvestment(true);
     try {
       const body = {
         ...form,
+        name: form.name.trim(),
         investedAmount: parseFloat(form.investedAmount) || 0,
         yieldRate: parseFloat(form.yieldRate) || 0,
         accountId: form.accountId || undefined,
@@ -338,64 +383,102 @@ export function InvestmentsView() {
         ticker: form.ticker || undefined,
       };
       if (editingInvestment) {
-        await fetch('/api/investments', {
+        const res = await fetch('/api/investments', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: editingInvestment.id, ...body }),
         });
+        if (!res.ok) throw new Error('Falha ao atualizar investimento');
         toast.success('Investimento atualizado!');
       } else {
-        await fetch('/api/investments', {
+        const res = await fetch('/api/investments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
+        if (!res.ok) throw new Error('Falha ao criar investimento');
         toast.success('Investimento criado!');
       }
       setShowInvestmentDialog(false);
       fetchInvestments();
-      if (selectedInvestment?.id === editingInvestment?.id) {
-        fetchTransactions(selectedInvestment.id);
-      }
+      if (editingInvestment) void fetchTransactions(editingInvestment.id);
     } catch {
       toast.error('Erro ao salvar investimento');
+    } finally {
+      saveInvestmentInFlight.current = false;
+      setSavingInvestment(false);
     }
   };
 
   const deleteInvestment = async (id: string) => {
+    if (deleteInFlight.current) return;
+    deleteInFlight.current = true;
+    setDeleting(true);
     try {
-      await fetch('/api/investments', {
+      const res = await fetch('/api/investments', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
+      if (!res.ok) throw new Error('Falha ao excluir investimento');
       toast.success('Investimento excluído!');
+      prepareDeleteFocus();
       setShowDeleteDialog(null);
-      if (selectedInvestment?.id === id) setSelectedInvestment(null);
+      setDividendEntries((entries) => entries.filter((entry) => entry.investmentId !== id));
+      if (activeInvestmentId.current === id) closeInvestmentDetail();
       fetchInvestments();
     } catch {
       toast.error('Erro ao excluir investimento');
+    } finally {
+      deleteInFlight.current = false;
+      setDeleting(false);
     }
   };
 
   const saveTransaction = async () => {
     if (!selectedInvestment) return;
+    const parsedAmount = parseFloat(txForm.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Informe um valor maior que zero');
+      return;
+    }
+    if (saveTransactionInFlight.current) return;
+    saveTransactionInFlight.current = true;
+    setSavingTransaction(true);
     try {
       const body = {
         ...txForm,
-        amount: parseFloat(txForm.amount),
+        amount: parsedAmount,
         quantity: txForm.quantity ? parseFloat(txForm.quantity) : null,
         unitPrice: txForm.unitPrice ? parseFloat(txForm.unitPrice) : null,
         investmentId: selectedInvestment.id,
         description: txForm.description || undefined,
         notes: txForm.notes || undefined,
       };
-      await fetch('/api/investments/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      toast.success('Transação registrada!');
+      if (editingTransaction) {
+        const res = await fetch('/api/investments/transactions', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingTransaction.id, ...body }),
+        });
+        if (!res.ok) throw new Error('Falha ao atualizar transação');
+        toast.success('Transação atualizada!');
+        if (editingTransaction.type === 'DIVIDENDO' || txForm.type === 'DIVIDENDO') {
+          void fetchDividends();
+        }
+      } else {
+        const res = await fetch('/api/investments/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error('Falha ao registrar transação');
+        toast.success('Transação registrada!');
+        if (txForm.type === 'DIVIDENDO') {
+          setDividendEntries((entries) => [...entries, { investmentId: selectedInvestment.id, type: 'DIVIDENDO', amount: parsedAmount }]);
+        }
+      }
+      setEditingTransaction(null);
       setShowTransactionDialog(false);
       setTxForm({
         type: 'APORTE',
@@ -409,357 +492,193 @@ export function InvestmentsView() {
       fetchTransactions(selectedInvestment.id);
       fetchInvestments();
     } catch {
-      toast.error('Erro ao registrar transação');
+      toast.error(editingTransaction ? 'Erro ao atualizar transação' : 'Erro ao registrar transação');
+    } finally {
+      saveTransactionInFlight.current = false;
+      setSavingTransaction(false);
     }
   };
 
-  const getYieldColor = (rate: number) => (rate >= 0 ? 'text-emerald-500' : 'text-rose-500');
+  const deleteTransaction = async (tx: InvestmentTransaction) => {
+    if (!selectedInvestment || deleteTxInFlight.current) return;
+    deleteTxInFlight.current = true;
+    setDeletingTx(true);
+    try {
+      const res = await fetch(`/api/investments/transactions?id=${encodeURIComponent(tx.id)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tx.id }),
+      });
+      if (!res.ok) throw new Error('Falha ao excluir transação');
+      toast.success('Transação excluída!');
+      setDeletingTransaction(null);
+      if (tx.type === 'DIVIDENDO') {
+        void fetchDividends();
+      }
+      fetchTransactions(selectedInvestment.id);
+      fetchInvestments();
+    } catch {
+      toast.error('Erro ao excluir transação');
+    } finally {
+      deleteTxInFlight.current = false;
+      setDeletingTx(false);
+    }
+  };
 
-  // ── Loading ──────────────────────────────────────────────────────
+  const focusListAfterDelete = useRef(false);
+  const detailOrigin = useRef<string | null>(null);
+  const isShowingDetail = selectedInvestment !== undefined;
+  useLayoutEffect(() => {
+    if (isShowingDetail) {
+      document.getElementById('investment-detail-title')?.focus();
+      return;
+    }
+    if (focusListAfterDelete.current) {
+      focusListAfterDelete.current = false;
+      detailOrigin.current = null;
+      document.getElementById('investments-title')?.focus();
+      return;
+    }
+    const origin = detailOrigin.current;
+    if (origin) {
+      detailOrigin.current = null;
+      const row = document.getElementById(origin);
+      if (row) row.focus();
+      else document.getElementById('investments-title')?.focus();
+    }
+  }, [isShowingDetail]);
+
+  const dialogOrigin = useRef<HTMLElement | null>(null);
+  const rememberDialogOrigin = (trigger: HTMLButtonElement, open: () => void) => {
+    dialogOrigin.current = trigger;
+    open();
+  };
+  const openTransactionDialog = (event: MouseEvent<HTMLButtonElement>) => {
+    setEditingTransaction(null);
+    setTxForm({
+      type: 'APORTE',
+      amount: '',
+      quantity: '',
+      unitPrice: '',
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      notes: '',
+    });
+    rememberDialogOrigin(event.currentTarget, () => setShowTransactionDialog(true));
+  };
+  const openEditTransaction = (tx: InvestmentTransaction, event: MouseEvent<HTMLButtonElement>) => {
+    setEditingTransaction(tx);
+    setTxForm({
+      type: tx.type,
+      amount: String(tx.amount),
+      quantity: tx.quantity != null ? String(tx.quantity) : '',
+      unitPrice: tx.unitPrice != null ? String(tx.unitPrice) : '',
+      date: purchaseDateForInput(tx.date),
+      description: tx.description || '',
+      notes: tx.notes || '',
+    });
+    rememberDialogOrigin(event.currentTarget, () => setShowTransactionDialog(true));
+  };
+  const prepareDeleteFocus = () => {
+    dialogOrigin.current = null;
+    focusListAfterDelete.current = isShowingDetail;
+  };
+  const restoreDialogFocus = (event: Event) => {
+    event.preventDefault();
+    const origin = dialogOrigin.current;
+    if (origin?.isConnected) origin.focus();
+    else (document.getElementById('investments-title') ?? document.getElementById('investment-detail-title'))?.focus();
+  };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <StatCardSkeleton key={i} />
-          ))}
+      <section className="space-y-4" aria-labelledby="investments-title">
+        <h2 id="investments-title" tabIndex={-1} className="text-xl font-semibold tracking-tight">Investimentos</h2>
+        <div role="status" className="space-y-3 rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+          <p>Carregando investimentos…</p>
+          <Skeleton aria-hidden="true" className="h-20 rounded-lg motion-reduce:animate-none" />
+          <Skeleton aria-hidden="true" className="h-32 rounded-lg motion-reduce:animate-none" />
         </div>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-9 w-20 rounded-lg" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-52 rounded-2xl" />
-          ))}
-        </div>
-      </div>
+      </section>
     );
   }
 
-  // ── Investment Detail View ───────────────────────────────────────
-
   if (selectedInvestment) {
     const invType = investmentTypes[selectedInvestment.type] || investmentTypes.OTHER;
-    const InvIcon = invType.icon;
-    const invColor = typeColorMap[selectedInvestment.type] || '#64748b';
     const yieldPct = selectedInvestment.investedAmount > 0
       ? ((selectedInvestment.currentBalance - selectedInvestment.investedAmount) / selectedInvestment.investedAmount) * 100
       : 0;
     const isPositive = yieldPct >= 0;
 
     return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="detail"
-          variants={detailEntryVariants}
-          initial="hidden"
-          animate="show"
-          exit="hidden"
-          className="space-y-6"
-        >
-          {/* Back button + Header */}
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="show"
-            className="flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedInvestment(null)}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Voltar</span>
-              </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: `${invColor}15` }}
-              >
-                <InvIcon className="w-5 h-5" style={{ color: invColor }} />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold">{selectedInvestment.name}</h2>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Badge
-                    variant="outline"
-                    className="text-xs"
-                    style={{ borderColor: `${invColor}40`, color: invColor }}
-                  >
-                    {invType.label}
-                  </Badge>
-                  {selectedInvestment.ticker && (
-                    <Badge variant="secondary" className="text-xs font-mono">
-                      {selectedInvestment.ticker}
-                    </Badge>
-                  )}
-                  {selectedInvestment.brokerage && (
-                    <span className="text-[11px] text-muted-foreground">
-                      {selectedInvestment.brokerage}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => openEditInvestment(selectedInvestment)}
-              >
-                <Pencil className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={() => setShowDeleteDialog(selectedInvestment.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </motion.div>
+      <section className="min-w-0 space-y-5" aria-labelledby="investment-detail-title">
+        <Button variant="ghost" size="sm" onClick={closeInvestmentDetail}><ArrowLeft aria-hidden="true" /> Voltar aos investimentos</Button>
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="investment-detail-title" tabIndex={-1} className="break-words text-xl font-semibold tracking-tight">{selectedInvestment.name}</h2>
+            <p className="mt-1 break-words text-sm text-muted-foreground">
+              {invType.label}{selectedInvestment.ticker && ` · ${selectedInvestment.ticker}`}{selectedInvestment.brokerage && ` · ${selectedInvestment.brokerage}`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => openEditInvestment(selectedInvestment))}><Pencil aria-hidden="true" /> Editar investimento</Button>
+            <Button variant="outline" size="sm" className="text-destructive" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => setShowDeleteDialog(selectedInvestment.id))}><Trash2 aria-hidden="true" /> Excluir investimento</Button>
+          </div>
+        </header>
+        <InvestmentMetrics label="Posição do investimento" metrics={[
+          { label: 'Valor atual', value: currencyFmt(selectedInvestment.currentBalance), note: `${isPositive ? 'Rentabilidade' : 'Queda'} de ${percentFmt(yieldPct)} sobre o valor investido` },
+          { label: 'Valor investido', value: currencyFmt(selectedInvestment.investedAmount) },
+          { label: 'Lucro ou prejuízo', value: `${isPositive ? '+' : ''}${currencyFmt(selectedInvestment.currentBalance - selectedInvestment.investedAmount)}` },
+        ]} />
+        {history.phase === 'ready' && investmentStats ? (
+          <>
+            <InvestmentMetrics label="Resumo das transações" metrics={[
+              { label: 'Total de aportes', value: currencyFmt(investmentStats.totalAportes) },
+              { label: 'Dividendos', value: currencyFmt(investmentStats.totalDividendos) },
+              { label: 'Transações', value: String(investmentStats.txCount) },
+            ]} />
+            <InvestmentEntries
+              transactions={history.transactions}
+              onNew={openTransactionDialog}
+              onEdit={openEditTransaction}
+              onDelete={(tx, event) => rememberDialogOrigin(event.currentTarget, () => setDeletingTransaction(tx))}
+            />
+          </>
+        ) : (
+          <section aria-labelledby="investment-history-title" className="space-y-3">
+            <InvestmentHistoryHeader onNew={openTransactionDialog} />
+            {history.phase === 'error' ? (
+              <p role="alert" className="rounded-lg border bg-card p-4 text-sm text-destructive">Não foi possível carregar o histórico de transações.</p>
+            ) : (
+              <p role="status" className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">Carregando histórico de transações…</p>
+            )}
+      </section>
+        )}
 
-          {/* Balance overview card */}
-          <motion.div variants={itemVariants} initial="hidden" animate="show">
-            <Card className="overflow-hidden border-0 shadow-md">
-              <div
-                className="h-1.5"
-                style={{ background: `linear-gradient(90deg, ${invColor}, ${invColor}88)` }}
-              />
-              <CardContent className="p-5">
-                <div className="flex items-end justify-between mb-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                      Valor Atual
-                    </p>
-                    <p className="text-3xl font-bold mt-1 tracking-tight">
-                      {currencyFmt(selectedInvestment.currentBalance)}
-                    </p>
-                  </div>
-                  <div
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-bold ${isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}
-                  >
-                    {isPositive ? (
-                      <TrendingUp className="w-4 h-4" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4" />
-                    )}
-                    {percentFmt(yieldPct)}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-muted/50 rounded-xl p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Investido
-                    </p>
-                    <p className="text-base font-bold mt-0.5">
-                      {currencyFmt(selectedInvestment.investedAmount)}
-                    </p>
-                  </div>
-                  <div className="bg-muted/50 rounded-xl p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Lucro / Prejuízo
-                    </p>
-                    <p className={`text-base font-bold mt-0.5 ${getYieldColor(yieldPct)}`}>
-                      {isPositive ? '+' : ''}{currencyFmt(selectedInvestment.currentBalance - selectedInvestment.investedAmount)}
-                    </p>
-                  </div>
-                </div>
-                <ProgressBar
-                  value={Math.max(0, selectedInvestment.currentBalance)}
-                  max={selectedInvestment.investedAmount || 1}
-                  className="mt-2"
-                  color={isPositive ? 'bg-emerald-500' : 'bg-rose-500'}
-                  showLabel
-                />
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  {isPositive
-                    ? `Rentabilidade de ${percentFmt(yieldPct)} sobre o valor investido`
-                    : `Queda de ${percentFmt(yieldPct)} sobre o valor investido`}
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Stats row */}
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-3 gap-4"
-          >
-            <motion.div variants={itemVariants}>
-              <Card className="border-0 shadow-md">
-                <CardContent className="p-4 text-center">
-                  <div className="w-10 h-10 mx-auto rounded-xl bg-emerald-500/10 flex items-center justify-center mb-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-500" />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                    Total Aportes
-                  </p>
-                  <p className="text-sm font-bold text-emerald-500 mt-0.5">
-                    {currencyFmt(investmentStats.totalAportes)}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div variants={itemVariants}>
-              <Card className="border-0 shadow-md">
-                <CardContent className="p-4 text-center">
-                  <div className="w-10 h-10 mx-auto rounded-xl bg-amber-500/10 flex items-center justify-center mb-2">
-                    <Gift className="w-4 h-4 text-amber-500" />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                    Dividendos
-                  </p>
-                  <p className="text-sm font-bold text-amber-500 mt-0.5">
-                    {currencyFmt(investmentStats.totalDividendos)}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div variants={itemVariants}>
-              <Card className="border-0 shadow-md">
-                <CardContent className="p-4 text-center">
-                  <div className="w-10 h-10 mx-auto rounded-xl bg-violet-500/10 flex items-center justify-center mb-2">
-                    <BarChart3 className="w-4 h-4 text-violet-500" />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                    Transações
-                  </p>
-                  <p className="text-sm font-bold mt-0.5">
-                    {investmentStats.txCount}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </motion.div>
-
-          {/* Transaction list header */}
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="show"
-            className="flex items-center justify-between"
-          >
-            <h3 className="text-base font-semibold">Histórico de Transações</h3>
-            <Button
-              onClick={() => setShowTransactionDialog(true)}
-              size="sm"
-              className="gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Transação
-            </Button>
-          </motion.div>
-
-          {/* Transaction list */}
-          <motion.div variants={itemVariants} initial="hidden" animate="show">
-            <Card className="border-0 shadow-md">
-              <CardContent className="p-0">
-                {transactions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-                      <BarChart3 className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm font-medium">Nenhuma transação registrada</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
-                      Adicione a primeira transação neste investimento
-                    </p>
-                  </div>
-                ) : (
-                  <ScrollArea className="max-h-96">
-                    <motion.div
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate="show"
-                      className="divide-y divide-border"
-                    >
-                      {transactions.map((tx) => {
-                        const txType = transactionTypes[tx.type] || transactionTypes.APORTE;
-                        const TxIcon = txType.icon;
-                        const isCredit = ['APORTE', 'DIVIDENDO', 'REINVESTIMENTO', 'BONUS'].includes(tx.type);
-                        return (
-                          <motion.div
-                            key={tx.id}
-                            variants={listItemVariants}
-                            className="flex items-center justify-between px-5 py-3.5 hover:bg-accent/30 transition-colors cursor-default"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div
-                                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform hover:scale-110"
-                                style={{ backgroundColor: `${invColor}15` }}
-                              >
-                                <TxIcon className={`w-4 h-4 ${txType.color}`} />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                  {tx.description || txType.label}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {dateFmt(tx.date)}
-                                  </p>
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] font-medium px-1.5 py-0"
-                                    style={{ borderColor: `${invColor}30`, color: invColor }}
-                                  >
-                                    {txType.label}
-                                  </Badge>
-                                  {tx.quantity && tx.unitPrice && (
-                                    <span className="text-[10px] text-muted-foreground">
-                                      {tx.quantity} x {currencyFmt(tx.unitPrice)}
-                                    </span>
-                                  )}
-                                </div>
-                                {tx.notes && (
-                                  <p className="text-[11px] text-muted-foreground/60 mt-0.5 truncate">
-                                    {tx.notes}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <span
-                              className={`text-sm font-bold whitespace-nowrap ml-2 ${isCredit ? 'text-emerald-500' : 'text-rose-500'}`}
-                            >
-                              {isCredit ? '+' : '-'}{currencyFmt(tx.amount)}
-                            </span>
-                          </motion.div>
-                        );
-                      })}
-                    </motion.div>
-                  </ScrollArea>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Add Transaction Dialog */}
-          <Dialog open={showTransactionDialog} onOpenChange={setShowTransactionDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nova Transação</DialogTitle>
+          {/* Add/Edit Transaction Dialog */}
+          <Dialog open={showTransactionDialog} onOpenChange={(open) => { if (!open) { setShowTransactionDialog(false); setEditingTransaction(null); } }}>
+            <DialogContent showCloseButton={false} onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto">
+              <DialogHeader className="relative pr-10 text-left">
+                <DialogClose asChild>
+                  <Button type="button" size="icon" variant="ghost" aria-label="Fechar formulário" className="absolute right-0 top-0">
+                    <X aria-hidden="true" />
+                  </Button>
+                </DialogClose>
+                <DialogTitle>{editingTransaction ? 'Editar Transação' : 'Nova Transação'}</DialogTitle>
                 <DialogDescription>
-                  Registrar nova transação em {selectedInvestment.name}
+                  {editingTransaction
+                    ? `Atualizar transação em ${selectedInvestment.name}`
+                    : `Registrar nova transação em ${selectedInvestment.name}`}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Tipo</Label>
+                  <Label htmlFor="investment-tx-type">Tipo</Label>
                   <Select
                     value={txForm.type}
                     onValueChange={(v) => setTxForm({ ...txForm, type: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="investment-tx-type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -772,10 +691,10 @@ export function InvestmentsView() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label>Valor (R$)</Label>
-                    <Input
+                    <Label htmlFor="investment-tx-amount">Valor (R$)</Label>
+                    <Input id="investment-tx-amount"
                       type="number"
                       step="0.01"
                       value={txForm.amount}
@@ -784,18 +703,18 @@ export function InvestmentsView() {
                     />
                   </div>
                   <div>
-                    <Label>Data</Label>
-                    <Input
+                    <Label htmlFor="investment-tx-date">Data</Label>
+                    <Input id="investment-tx-date"
                       type="date"
                       value={txForm.date}
                       onChange={(e) => setTxForm({ ...txForm, date: e.target.value })}
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label>Quantidade</Label>
-                    <Input
+                    <Label htmlFor="investment-tx-quantity">Quantidade</Label>
+                    <Input id="investment-tx-quantity"
                       type="number"
                       step="0.01"
                       value={txForm.quantity}
@@ -804,8 +723,8 @@ export function InvestmentsView() {
                     />
                   </div>
                   <div>
-                    <Label>Preço Unitário (R$)</Label>
-                    <Input
+                    <Label htmlFor="investment-tx-unitPrice">Preço Unitário (R$)</Label>
+                    <Input id="investment-tx-unitPrice"
                       type="number"
                       step="0.01"
                       value={txForm.unitPrice}
@@ -815,16 +734,16 @@ export function InvestmentsView() {
                   </div>
                 </div>
                 <div>
-                  <Label>Descrição</Label>
-                  <Input
+                  <Label htmlFor="investment-tx-description">Descrição</Label>
+                  <Input id="investment-tx-description"
                     value={txForm.description}
                     onChange={(e) => setTxForm({ ...txForm, description: e.target.value })}
                     placeholder="Ex: Compra de cotas, Dividendo mensal..."
                   />
                 </div>
                 <div>
-                  <Label>Observações</Label>
-                  <Input
+                  <Label htmlFor="investment-tx-notes">Observações</Label>
+                  <Input id="investment-tx-notes"
                     value={txForm.notes}
                     onChange={(e) => setTxForm({ ...txForm, notes: e.target.value })}
                     placeholder="Notas adicionais (opcional)"
@@ -832,37 +751,44 @@ export function InvestmentsView() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowTransactionDialog(false)}>
+                <Button variant="outline" onClick={() => { setShowTransactionDialog(false); setEditingTransaction(null); }}>
                   Cancelar
                 </Button>
-                <Button onClick={saveTransaction}>Registrar</Button>
+                <Button disabled={savingTransaction} onClick={saveTransaction}>
+                  {savingTransaction ? 'Salvando…' : editingTransaction ? 'Salvar' : 'Registrar'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
           {/* Edit Investment Dialog (detail view) */}
           <Dialog open={showInvestmentDialog} onOpenChange={setShowInvestmentDialog}>
-            <DialogContent>
-              <DialogHeader>
+            <DialogContent showCloseButton={false} onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto">
+              <DialogHeader className="relative pr-10 text-left">
+                <DialogClose asChild>
+                  <Button type="button" size="icon" variant="ghost" aria-label="Fechar formulário" className="absolute right-0 top-0">
+                    <X aria-hidden="true" />
+                  </Button>
+                </DialogClose>
                 <DialogTitle>Editar Investimento</DialogTitle>
                 <DialogDescription>Atualize os dados do investimento</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Nome</Label>
-                  <Input
+                  <Label htmlFor="investment-form-name">Nome</Label>
+                  <Input id="investment-form-name"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Ex: PETR4, Tesouro IPCA..."
                   />
                 </div>
                 <div>
-                  <Label>Tipo</Label>
+                  <Label htmlFor="investment-form-type">Tipo</Label>
                   <Select
                     value={form.type}
                     onValueChange={(v) => setForm({ ...form, type: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="investment-form-type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -880,17 +806,17 @@ export function InvestmentsView() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Descrição</Label>
-                  <Input
+                  <Label htmlFor="investment-form-description">Descrição</Label>
+                  <Input id="investment-form-description"
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="Descrição opcional"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label>Valor Investido (R$)</Label>
-                    <Input
+                    <Label htmlFor="investment-form-investedAmount">Valor Investido (R$)</Label>
+                    <Input id="investment-form-investedAmount"
                       type="number"
                       step="0.01"
                       value={form.investedAmount}
@@ -898,8 +824,8 @@ export function InvestmentsView() {
                     />
                   </div>
                   <div>
-                    <Label>Rentabilidade (%)</Label>
-                    <Input
+                    <Label htmlFor="investment-form-yieldRate">Rentabilidade (%)</Label>
+                    <Input id="investment-form-yieldRate"
                       type="number"
                       step="0.01"
                       value={form.yieldRate}
@@ -907,18 +833,18 @@ export function InvestmentsView() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label>Corretora</Label>
-                    <Input
+                    <Label htmlFor="investment-form-brokerage">Corretora</Label>
+                    <Input id="investment-form-brokerage"
                       value={form.brokerage}
                       onChange={(e) => setForm({ ...form, brokerage: e.target.value })}
                       placeholder="Ex: XP, Rico..."
                     />
                   </div>
                   <div>
-                    <Label>Ticker</Label>
-                    <Input
+                    <Label htmlFor="investment-form-ticker">Ticker</Label>
+                    <Input id="investment-form-ticker"
                       value={form.ticker}
                       onChange={(e) => setForm({ ...form, ticker: e.target.value })}
                       placeholder="Ex: PETR4, MXRF11..."
@@ -926,12 +852,12 @@ export function InvestmentsView() {
                   </div>
                 </div>
                 <div>
-                  <Label>Conta</Label>
+                  <Label htmlFor="investment-form-accountId">Conta</Label>
                   <Select
                     value={form.accountId}
                     onValueChange={(v) => setForm({ ...form, accountId: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="investment-form-accountId">
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -944,12 +870,12 @@ export function InvestmentsView() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Categoria</Label>
+                  <Label htmlFor="investment-form-categoryId">Categoria</Label>
                   <Select
                     value={form.categoryId}
                     onValueChange={(v) => setForm({ ...form, categoryId: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="investment-form-categoryId">
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -966,14 +892,14 @@ export function InvestmentsView() {
                 <Button variant="outline" onClick={() => setShowInvestmentDialog(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={saveInvestment}>Salvar</Button>
+                <Button disabled={savingInvestment} onClick={saveInvestment}>{savingInvestment ? 'Salvando…' : 'Salvar'}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
           {/* Delete Confirmation */}
-          <AlertDialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
-            <AlertDialogContent>
+          <AlertDialog open={!!showDeleteDialog} onOpenChange={(open) => { if (!open && !deleteInFlight.current) setShowDeleteDialog(null); }}>
+            <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir Investimento</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -981,259 +907,66 @@ export function InvestmentsView() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => deleteInvestment(selectedInvestment.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={deleting}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    return deleteInvestment(selectedInvestment.id);
+                  }}
+                  className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
                 >
                   Excluir
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </motion.div>
-      </AnimatePresence>
+          {/* Delete Transaction Confirmation */}
+          <AlertDialog open={!!deletingTransaction} onOpenChange={(open) => { if (!open && !deleteTxInFlight.current) setDeletingTransaction(null); }}>
+            <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir Transação</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir esta transação de <strong>{selectedInvestment.name}</strong>? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deletingTx}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={deletingTx}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (deletingTransaction) return deleteTransaction(deletingTransaction);
+                  }}
+                  className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+      </section>
     );
   }
 
-  // ── Investments List View ────────────────────────────────────────
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="list"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        exit="hidden"
-        className="space-y-6"
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold">Investimentos</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Gerencie sua carteira de investimentos
-            </p>
-          </div>
-          <Button onClick={openNewInvestment} size="sm" className="gap-1.5">
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Novo Investimento</span>
-          </Button>
-        </motion.div>
-
-        {/* Summary Cards */}
-        <motion.div
-          variants={summaryContainerVariants}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
-        >
-          <StatCard
-            label="Total Investido"
-            value={currencyFmt(summary.totalInvested)}
-            icon={PiggyBank}
-            gradient="from-emerald-500 to-emerald-400"
-            subtitle={`${investments.length} investimento${investments.length !== 1 ? 's' : ''}`}
-          />
-          <StatCard
-            label="Valor Atual"
-            value={currencyFmt(summary.currentTotal)}
-            icon={BarChart3}
-            gradient="from-cyan-500 to-cyan-400"
-            subtitle="Soma dos saldos atuais"
-          />
-          <StatCard
-            label="Rentabilidade Total"
-            value={percentFmt(summary.rentabilidade)}
-            icon={Percent}
-            gradient={summary.rentabilidade >= 0 ? 'from-emerald-500 to-teal-400' : 'from-rose-500 to-pink-400'}
-            subtitle={summary.rentabilidade >= 0 ? 'Lucro acumulado' : 'Prejuízo acumulado'}
-          />
-          <StatCard
-            label="Dividendos Recebidos"
-            value={currencyFmt(summary.dividendsReceived)}
-            icon={Gift}
-            gradient="from-amber-500 to-amber-400"
-            subtitle="Rendimentos recebidos"
-          />
-        </motion.div>
-
-        {/* Filter Tabs */}
-        <motion.div variants={itemVariants}>
-          <Tabs value={activeFilter} onValueChange={setActiveFilter}>
-            <TabsList className="flex-wrap gap-1 h-auto bg-transparent p-0">
-              {filterTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="rounded-lg px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground text-sm font-medium transition-colors"
-                >
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </motion.div>
-
-        {/* Investment Cards Grid */}
-        {filteredInvestments.length === 0 ? (
-          <motion.div variants={itemVariants}>
-            <EmptyState
-              icon={activeFilter === 'all' ? BarChart3 : Filter}
-              title={
-                activeFilter === 'all'
-                  ? 'Nenhum investimento cadastrado'
-                  : `Nenhum investimento do tipo "${filterTabs.find((t) => t.value === activeFilter)?.label}"`
-              }
-              subtitle={
-                activeFilter === 'all'
-                  ? 'Clique em "Novo Investimento" para começar'
-                  : 'Tente selecionar outro filtro'
-              }
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            {filteredInvestments.map((inv) => {
-              const invType = investmentTypes[inv.type] || investmentTypes.OTHER;
-              const InvIcon = invType.icon;
-              const invColor = typeColorMap[inv.type] || '#64748b';
-              const yieldPct = inv.investedAmount > 0
-                ? ((inv.currentBalance - inv.investedAmount) / inv.investedAmount) * 100
-                : 0;
-              const isPositive = yieldPct >= 0;
-
-              return (
-                <motion.div
-                  key={inv.id}
-                  variants={itemVariants}
-                  whileHover={{ y: -2 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                >
-                  <Card
-                    className="cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow group relative overflow-hidden border-0"
-                    onClick={() => openInvestmentDetail(inv)}
-                  >
-                    <div
-                      className="h-1.5"
-                      style={{ background: `linear-gradient(90deg, ${invColor}, ${invColor}66)` }}
-                    />
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: `${invColor}15` }}
-                          >
-                            <InvIcon className="w-5 h-5" style={{ color: invColor }} />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">{inv.name}</p>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <Badge
-                                variant="outline"
-                                className="text-[10px]"
-                                style={{ borderColor: `${invColor}30`, color: invColor }}
-                              >
-                                {invType.label}
-                              </Badge>
-                              {inv.ticker && (
-                                <Badge variant="secondary" className="text-[10px] font-mono">
-                                  {inv.ticker}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <div
-                            className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-bold ${isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}
-                          >
-                            {isPositive ? (
-                              <TrendingUp className="w-3 h-3" />
-                            ) : (
-                              <TrendingDown className="w-3 h-3" />
-                            )}
-                            {percentFmt(yieldPct)}
-                          </div>
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditInvestment(inv);
-                              }}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowDeleteDialog(inv.id);
-                              }}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Brokerage */}
-                      {inv.brokerage && (
-                        <p className="text-[11px] text-muted-foreground mt-2">
-                          {inv.brokerage}
-                        </p>
-                      )}
-
-                      {/* Amounts */}
-                      <div className="flex items-end justify-between mt-3">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            Investido
-                          </p>
-                          <p className="text-sm font-medium mt-0.5">
-                            {currencyFmt(inv.investedAmount)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            Atual
-                          </p>
-                          <p className={`text-lg font-bold mt-0.5 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {currencyFmt(inv.currentBalance)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Progress bar */}
-                      <ProgressBar
-                        value={Math.max(0, inv.currentBalance)}
-                        max={inv.investedAmount || 1}
-                        className="mt-3"
-                        color={isPositive ? 'bg-emerald-500' : 'bg-rose-500'}
-                      />
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
+    <>
+      <InvestmentPortfolio summary={summary} count={investments.length} records={filteredInvestments} filter={activeFilter} loadError={loadError} onRetry={() => { setLoading(true); void fetchInvestments(); void fetchDividends(); }}
+        onFilter={setActiveFilter} onNew={(event) => rememberDialogOrigin(event.currentTarget, openNewInvestment)} onOpen={(investment) => {
+          detailOrigin.current = `investment-row-${investment.id}`;
+          openInvestmentDetail(investment);
+        }} onEdit={(investment, event) => rememberDialogOrigin(event.currentTarget, () => openEditInvestment(investment))}
+        onDelete={(id, event) => rememberDialogOrigin(event.currentTarget, () => setShowDeleteDialog(id))} />
 
         {/* Create/Edit Investment Dialog */}
         <Dialog open={showInvestmentDialog} onOpenChange={setShowInvestmentDialog}>
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent showCloseButton={false} onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto">
+            <DialogHeader className="relative pr-10 text-left">
+              <DialogClose asChild>
+                <Button type="button" size="icon" variant="ghost" aria-label="Fechar formulário" className="absolute right-0 top-0">
+                  <X aria-hidden="true" />
+                </Button>
+              </DialogClose>
               <DialogTitle>
                 {editingInvestment ? 'Editar Investimento' : 'Novo Investimento'}
               </DialogTitle>
@@ -1245,20 +978,20 @@ export function InvestmentsView() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Nome</Label>
-                <Input
+                <Label htmlFor="investment-form-name">Nome</Label>
+                <Input id="investment-form-name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Ex: PETR4, Tesouro IPCA, MXRF11..."
                 />
               </div>
               <div>
-                <Label>Tipo</Label>
+                <Label htmlFor="investment-form-type">Tipo</Label>
                 <Select
                   value={form.type}
                   onValueChange={(v) => setForm({ ...form, type: v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="investment-form-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1276,17 +1009,17 @@ export function InvestmentsView() {
                 </Select>
               </div>
               <div>
-                <Label>Descrição</Label>
-                <Input
+                <Label htmlFor="investment-form-description">Descrição</Label>
+                <Input id="investment-form-description"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="Descrição opcional do investimento"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <Label>Valor Investido (R$)</Label>
-                  <Input
+                  <Label htmlFor="investment-form-investedAmount">Valor Investido (R$)</Label>
+                  <Input id="investment-form-investedAmount"
                     type="number"
                     step="0.01"
                     value={form.investedAmount}
@@ -1295,8 +1028,8 @@ export function InvestmentsView() {
                   />
                 </div>
                 <div>
-                  <Label>Rentabilidade (%)</Label>
-                  <Input
+                  <Label htmlFor="investment-form-yieldRate">Rentabilidade (%)</Label>
+                  <Input id="investment-form-yieldRate"
                     type="number"
                     step="0.01"
                     value={form.yieldRate}
@@ -1305,18 +1038,18 @@ export function InvestmentsView() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <Label>Corretora</Label>
-                  <Input
+                  <Label htmlFor="investment-form-brokerage">Corretora</Label>
+                  <Input id="investment-form-brokerage"
                     value={form.brokerage}
                     onChange={(e) => setForm({ ...form, brokerage: e.target.value })}
                     placeholder="Ex: XP, Rico, Clear..."
                   />
                 </div>
                 <div>
-                  <Label>Ticker</Label>
-                  <Input
+                  <Label htmlFor="investment-form-ticker">Ticker</Label>
+                  <Input id="investment-form-ticker"
                     value={form.ticker}
                     onChange={(e) => setForm({ ...form, ticker: e.target.value })}
                     placeholder="Ex: PETR4, MXRF11..."
@@ -1324,12 +1057,12 @@ export function InvestmentsView() {
                 </div>
               </div>
               <div>
-                <Label>Conta</Label>
+                <Label htmlFor="investment-form-accountId">Conta</Label>
                 <Select
                   value={form.accountId}
                   onValueChange={(v) => setForm({ ...form, accountId: v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="investment-form-accountId">
                     <SelectValue placeholder="Selecione uma conta..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1342,12 +1075,12 @@ export function InvestmentsView() {
                 </Select>
               </div>
               <div>
-                <Label>Categoria</Label>
+                <Label htmlFor="investment-form-categoryId">Categoria</Label>
                 <Select
                   value={form.categoryId}
                   onValueChange={(v) => setForm({ ...form, categoryId: v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="investment-form-categoryId">
                     <SelectValue placeholder="Selecione uma categoria..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1364,16 +1097,16 @@ export function InvestmentsView() {
               <Button variant="outline" onClick={() => setShowInvestmentDialog(false)}>
                 Cancelar
               </Button>
-              <Button onClick={saveInvestment}>
-                {editingInvestment ? 'Salvar' : 'Criar'}
+              <Button disabled={savingInvestment} onClick={saveInvestment}>
+                {savingInvestment ? 'Salvando…' : editingInvestment ? 'Salvar' : 'Criar'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Delete Confirmation */}
-        <AlertDialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
-          <AlertDialogContent>
+        <AlertDialog open={!!showDeleteDialog} onOpenChange={(open) => { if (!open && !deleteInFlight.current) setShowDeleteDialog(null); }}>
+          <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
             <AlertDialogHeader>
               <AlertDialogTitle>Excluir Investimento</AlertDialogTitle>
               <AlertDialogDescription>
@@ -1381,19 +1114,162 @@ export function InvestmentsView() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => {
-                  if (showDeleteDialog) deleteInvestment(showDeleteDialog);
+                disabled={deleting}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (showDeleteDialog) return deleteInvestment(showDeleteDialog);
                 }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
               >
                 Excluir
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </motion.div>
-    </AnimatePresence>
+    </>
+  );
+}
+
+function InvestmentMetrics({ label, metrics }: { label: string; metrics: { label: string; value: string; note?: string }[] }) {
+  return (
+    <dl aria-label={label} className="grid grid-cols-2 gap-x-4 gap-y-5 rounded-lg border bg-card p-4 md:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">
+      {metrics.map((metric, index) => (
+        <div key={metric.label} className="min-w-0">
+          <dt className="text-xs text-muted-foreground">{metric.label}</dt>
+          <dd className={`mt-1 break-words font-mono font-semibold tabular-nums ${index === 0 ? 'text-xl' : 'text-base'}`}>{metric.value}</dd>
+          {metric.note && <dd className="mt-1 text-xs text-muted-foreground">{metric.note}</dd>}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+export function InvestmentPortfolio({ summary, count, records, filter, loadError, onRetry, onFilter, onNew, onOpen, onEdit, onDelete }: {
+  summary: { totalInvested: number; currentTotal: number; rentabilidade: number; dividendsReceived: number };
+  count: number; records: Investment[]; filter: string; loadError?: boolean; onRetry?: () => void; onFilter: (value: string) => void; onNew: (event: MouseEvent<HTMLButtonElement>) => void;
+  onOpen: (investment: Investment) => void; onEdit: (investment: Investment, event: MouseEvent<HTMLButtonElement>) => void;
+  onDelete: (id: string, event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <section className="min-w-0 space-y-5" aria-labelledby="investments-title">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="investments-title" tabIndex={-1} className="text-xl font-semibold tracking-tight">Investimentos</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Posição e movimentações da carteira</p>
+        </div>
+        <Button onClick={onNew} size="sm"><Plus aria-hidden="true" /> Novo investimento</Button>
+      </header>
+      {loadError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-4 text-sm">
+          <p className="text-destructive">Não foi possível carregar os investimentos.</p>
+          {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>Tentar novamente</Button>}
+        </div>
+      )}
+      <InvestmentMetrics label="Resumo da carteira" metrics={[
+        { label: 'Valor atual', value: currencyFmt(summary.currentTotal), note: 'Soma dos saldos atuais' },
+        { label: 'Total investido', value: currencyFmt(summary.totalInvested), note: `${count} investimento${count !== 1 ? 's' : ''}` },
+        { label: 'Rentabilidade total', value: percentFmt(summary.rentabilidade), note: summary.rentabilidade >= 0 ? 'Lucro acumulado' : 'Prejuízo acumulado' },
+        { label: 'Dividendos recebidos', value: currencyFmt(summary.dividendsReceived), note: 'Consulte o histórico de cada investimento' },
+      ]} />
+      <section aria-labelledby="investment-records-title" className="space-y-3">
+        <h3 id="investment-records-title" className="font-semibold">Carteira</h3>
+        <Tabs value={filter} onValueChange={onFilter}>
+          <TabsList aria-label="Filtrar investimentos por tipo" className="h-auto max-w-full flex-wrap justify-start gap-1 border bg-card">
+            {filterTabs.map((tab) => <TabsTrigger key={tab.value} value={tab.value} className="flex-none px-3 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">{tab.label}</TabsTrigger>)}
+          </TabsList>
+        </Tabs>
+        {records.length === 0 ? (
+          <p className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">{filter === 'all' ? 'Nenhum investimento cadastrado. Use “Novo investimento” para começar.' : 'Nenhum investimento neste filtro. Escolha outro tipo.'}</p>
+        ) : (
+          <ul className="divide-y rounded-lg border bg-card">
+            {records.map((inv) => {
+              const type = investmentTypes[inv.type] || investmentTypes.OTHER;
+              const yieldPct = inv.investedAmount > 0 ? ((inv.currentBalance - inv.investedAmount) / inv.investedAmount) * 100 : 0;
+              return (
+                <li key={inv.id} className="grid min-w-0 gap-2 px-3 py-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                  <button type="button" id={`investment-row-${inv.id}`} onClick={() => onOpen(inv)} aria-label={`Abrir investimento: ${inv.name}`} className="grid min-w-0 gap-2 rounded-md p-2 text-left hover:bg-accent md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center">
+                    <span className="flex min-w-0 items-start gap-2">
+                      <type.icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0">
+                        <span className="block break-words text-sm font-semibold">{inv.name}</span>
+                        <span className="block break-words text-xs text-muted-foreground">{type.label}{inv.ticker && ` · ${inv.ticker}`}{inv.brokerage && ` · ${inv.brokerage}`}</span>
+                      </span>
+                    </span>
+                    <span className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                      <span className="min-w-0">Investido<span className="block break-words font-mono tabular-nums text-foreground">{currencyFmt(inv.investedAmount)}</span></span>
+                      <span className="min-w-0">Atual<span className="block break-words font-mono font-semibold tabular-nums text-foreground">{currencyFmt(inv.currentBalance)}</span><span className="block">{percentFmt(yieldPct)}</span></span>
+                    </span>
+                  </button>
+                  <div className="flex flex-wrap gap-1 px-2 md:px-0">
+                    <Button size="icon" variant="ghost" aria-label={`Editar investimento: ${inv.name}`} onClick={(event) => onEdit(inv, event)}><Pencil aria-hidden="true" /></Button>
+                    <Button size="icon" variant="ghost" aria-label={`Excluir investimento: ${inv.name}`} className="text-destructive" onClick={(event) => onDelete(inv.id, event)}><Trash2 aria-hidden="true" /></Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+    </section>
+  );
+}
+
+function InvestmentHistoryHeader({ onNew }: { onNew: (event: MouseEvent<HTMLButtonElement>) => void }) {
+  return (
+    <header className="flex flex-wrap items-center justify-between gap-2">
+      <h3 id="investment-history-title" className="font-semibold">Histórico de transações</h3>
+      <Button size="sm" onClick={onNew}><Plus aria-hidden="true" /> Nova transação</Button>
+    </header>
+  );
+}
+
+export function InvestmentEntries({ transactions, onNew, onEdit, onDelete }: {
+  transactions: InvestmentTransaction[];
+  onNew: (event: MouseEvent<HTMLButtonElement>) => void;
+  onEdit?: (tx: InvestmentTransaction, event: MouseEvent<HTMLButtonElement>) => void;
+  onDelete?: (tx: InvestmentTransaction, event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <section aria-labelledby="investment-history-title" className="space-y-3">
+      <InvestmentHistoryHeader onNew={onNew} />
+      {transactions.length === 0 ? (
+        <p className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">Nenhuma transação registrada neste investimento.</p>
+      ) : (
+        <ul className="divide-y rounded-lg border bg-card">
+          {transactions.map((tx) => {
+            const type = transactionTypes[tx.type] || transactionTypes.APORTE;
+            const isCredit = ['APORTE', 'DIVIDENDO', 'REINVESTIMENTO', 'BONUS'].includes(tx.type);
+            const txTitle = tx.description || type.label;
+            return (
+              <li key={tx.id} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <div className="flex min-w-0 items-start gap-2">
+                  <type.icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-sm font-medium">{txTitle}</p>
+                    <p className="break-words text-xs text-muted-foreground">{dateFmt(tx.date)} · {type.label}{tx.quantity && tx.unitPrice ? ` · ${tx.quantity} × ${currencyFmt(tx.unitPrice)}` : null}</p>
+                    {tx.notes && <p className="break-words text-xs text-muted-foreground">{tx.notes}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="mr-1 break-words font-mono text-sm font-semibold tabular-nums">{isCredit ? '+' : '-'}{currencyFmt(tx.amount)}</span>
+                  {onEdit && (
+                    <Button size="icon" variant="ghost" aria-label={`Editar transação: ${txTitle}`} onClick={(event) => onEdit(tx, event)}>
+                      <Pencil aria-hidden="true" />
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button size="icon" variant="ghost" aria-label={`Excluir transação: ${txTitle}`} className="text-destructive hover:text-destructive" onClick={(event) => onDelete(tx, event)}>
+                      <Trash2 aria-hidden="true" />
+                    </Button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }

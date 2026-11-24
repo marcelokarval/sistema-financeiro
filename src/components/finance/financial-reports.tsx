@@ -1,19 +1,12 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import {
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Receipt,
   ArrowUpRight,
   ArrowDownRight,
   BarChart3,
   PiggyBank,
-  CreditCard,
   ShoppingCart,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Card,
@@ -25,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import {
   BarChart,
   Bar,
@@ -34,20 +26,14 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  Cell,
 } from 'recharts';
-
+import { currencyFmt } from '@/lib/helpers';
 // ─── Helpers ───────────────────────────────────────────────────────
-const currencyFmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-
 const shortCurrency = (v: number) => {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
   return v.toFixed(0);
 };
-
 const pctFmt = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
-
 // ─── Types ─────────────────────────────────────────────────────────
 interface MonthlyItem {
   month: string;
@@ -59,21 +45,18 @@ interface MonthlyItem {
   avgDailySpend: number;
   savingsRate: number;
 }
-
 interface CategoryInfo {
   name: string;
   color: string;
   total: number;
   count: number;
 }
-
 interface ExpenseItem {
   id: string;
   description: string;
   amount: number;
   date: string;
 }
-
 interface ReportsData {
   monthlyData: MonthlyItem[];
   topExpenseCategory: CategoryInfo | null;
@@ -84,31 +67,14 @@ interface ReportsData {
   savingsRateTrend: { month: string; rate: number }[];
   ticketMedio: number;
 }
-
-// ─── Animation Variants ────────────────────────────────────────────
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.07 } },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
-};
-
-const cardHover = {
-  scale: 1.01,
-  transition: { type: 'spring', stiffness: 300, damping: 20 },
-};
-
 // ─── Component ─────────────────────────────────────────────────────
 export function FinancialReportsWidget() {
   const [data, setData] = useState<ReportsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('monthly');
-
   const fetchReports = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await fetch('/api/reports?months=6');
       if (res.ok) setData(await res.json());
     } catch (e) {
@@ -117,87 +83,116 @@ export function FinancialReportsWidget() {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
+  return (
+    <FinancialReportsContent
+      data={data}
+      loading={loading}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      fetchReports={fetchReports}
+      onRetry={fetchReports}
+    />
+  );
+}
 
+export function FinancialReportsContent({
+  data,
+  loading,
+  activeTab,
+  onTabChange,
+  fetchReports,
+  onRetry,
+}: {
+  data: ReportsData | null;
+  loading: boolean;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  fetchReports?: () => void;
+  onRetry?: () => void;
+}) {
+  const handleRetry = onRetry ?? fetchReports;
   // ─── Loading skeleton ────────────────────────────────────────────
   if (loading) {
     return (
-      <Card className="border-0 shadow-md">
-        <CardHeader className="pb-3">
+      <Card role="status" aria-label="Carregando relatórios financeiros" className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
+        <CardHeader className="px-4 sm:px-5">
           <div className="flex items-center gap-3">
-            <Skeleton className="w-9 h-9 rounded-lg" />
+            <Skeleton className="max-w-full motion-reduce:animate-none w-9 h-9 rounded-lg" />
             <div className="space-y-1.5">
-              <Skeleton className="h-5 w-44" />
-              <Skeleton className="h-3 w-32" />
+              <Skeleton className="max-w-full motion-reduce:animate-none h-5 w-44" />
+              <Skeleton className="max-w-full motion-reduce:animate-none h-3 w-32" />
             </div>
           </div>
-          <Skeleton className="h-9 w-64 mt-2" />
+          <Skeleton className="max-w-full motion-reduce:animate-none h-9 w-64 mt-2" />
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-64 w-full rounded-xl" />
+        <CardContent className="min-w-0 space-y-4 px-4 sm:px-5">
+          <Skeleton className="max-w-full motion-reduce:animate-none h-64 w-full rounded-lg" />
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              <Skeleton key={i} className="motion-reduce:animate-none h-12 w-full rounded-lg" />
             ))}
           </div>
         </CardContent>
       </Card>
     );
   }
-
-  if (!data) return <p className="text-sm text-muted-foreground">Erro ao carregar relatórios.</p>;
-
+  if (!data) {
+    return (
+      <section aria-labelledby="financial-reports-heading" className="min-w-0">
+        <Card className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
+          <CardHeader className="px-4 sm:px-5">
+            <h3 id="financial-reports-heading" className="text-base font-semibold">Relatórios Financeiros</h3>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-3 px-4 sm:px-5">
+            <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar os relatórios financeiros.</p>
+            <Button variant="outline" size="sm" className="min-h-9" onClick={handleRetry}>
+              <RefreshCw aria-hidden="true" className="size-3.5" />
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
   // ─── Derived values ──────────────────────────────────────────────
   const chartData = data.monthlyData.map((m) => ({
     month: m.month,
     Receitas: m.income,
     Despesas: m.expense,
   }));
-
   const totalExpenseAcrossPeriod = data.topCategories.reduce((s, c) => s + c.total, 0);
-
   // ─── Render ──────────────────────────────────────────────────────
   return (
-    <motion.div variants={container} initial="hidden" animate="show">
-      <Card className="border-0 shadow-md overflow-hidden">
-        {/* Gradient top border */}
-        <div className="h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
-
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-semibold">Relatórios Financeiros</CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Análise comparativa dos últimos {data.monthlyData.length} meses
-                </p>
-              </div>
+    <section aria-labelledby="financial-reports-heading" className="min-w-0">
+      <Card className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
+        <CardHeader className="px-4 sm:px-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 id="financial-reports-heading" className="text-base font-semibold">Relatórios Financeiros</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Análise comparativa dos últimos {data.monthlyData.length} meses
+              </p>
             </div>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={fetchReports}>
+            <Button variant="outline" size="icon" className="size-9" aria-label="Atualizar relatórios" onClick={fetchReports}>
               <BarChart3 className="w-4 h-4" />
             </Button>
           </div>
-
+        </CardHeader>
+        <CardContent className="min-w-0 px-4 sm:px-5">
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-3">
+          <Tabs value={activeTab} onValueChange={onTabChange}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="monthly" className="text-xs">Visão Mensal</TabsTrigger>
-              <TabsTrigger value="analysis" className="text-xs">Análise</TabsTrigger>
+              <TabsTrigger value="monthly" className="min-h-9 text-xs">Visão Mensal</TabsTrigger>
+              <TabsTrigger value="analysis" className="min-h-9 text-xs">Análise</TabsTrigger>
             </TabsList>
-
-            {/* ═══════════════════════════════════════════════════════════
-                TAB 1 — VISÃO MENSAL
-            ═══════════════════════════════════════════════════════════ */}
             <TabsContent value="monthly" className="mt-4 space-y-4">
+              {data.monthlyData.length === 0 && <p className="text-sm text-muted-foreground">Nenhum mês disponível no relatório.</p>}
               {/* Bar Chart */}
-              <motion.div variants={item} initial="hidden" animate="show">
-                <div className="h-64">
+              <div>
+                <div className="h-56 min-w-0 sm:h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} barGap={2} barCategoryGap="20%">
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -211,211 +206,140 @@ export function FinancialReportsWidget() {
                           borderRadius: '12px',
                           fontSize: '12px',
                           color: 'var(--card-foreground)',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        }}
+                          }}
                       />
-                      <Bar dataKey="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Despesas" fill="#f97316" radius={[4, 4, 0, 0]} />
+                      <Bar isAnimationActive={false} dataKey="Receitas" fill="var(--ds-chart-1)" radius={[4, 4, 0, 0]} />
+                      <Bar isAnimationActive={false} dataKey="Despesas" fill="var(--ds-chart-3)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </motion.div>
-
+              </div>
               {/* Monthly detail list */}
-              <motion.div variants={container} initial="hidden" animate="show" className="space-y-2">
+              <div className="divide-y divide-border border-y border-border" role="list" aria-label="Detalhamento mensal">
                 {data.monthlyData.map((m, idx) => {
                   const prev = idx > 0 ? data.monthlyData[idx - 1] : null;
                   const incomeChange = prev && prev.income > 0 ? ((m.income - prev.income) / prev.income) * 100 : null;
                   const expenseChange = prev && prev.expense > 0 ? ((m.expense - prev.expense) / prev.expense) * 100 : null;
-
                   return (
-                    <motion.div
+                    <div
                       key={m.month}
-                      variants={item}
-                      whileHover={cardHover}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-accent/30 hover:bg-accent/50 transition-colors"
+                      role="listitem"
+                      className="grid min-w-0 grid-cols-2 items-start gap-2 py-2.5 sm:grid-cols-[minmax(4rem,1fr)_repeat(3,minmax(0,1fr))]"
                     >
                       {/* Month label */}
                       <div className="w-16 shrink-0">
                         <p className="text-sm font-semibold">{m.month}</p>
-                        <p className="text-[10px] text-muted-foreground">{m.transactionCount + m.purchaseCount} mov.</p>
+                        <p className="text-xs text-muted-foreground">{m.transactionCount + m.purchaseCount} mov.</p>
                       </div>
-
                       {/* Income */}
                       <div className="flex-1 min-w-0 text-right">
                         <p className="text-xs text-muted-foreground">Receitas</p>
-                        <div className="flex items-center justify-end gap-1">
-                          <span className="text-sm font-semibold text-emerald-500">
+                        <div className="flex flex-wrap items-center justify-end gap-x-1">
+                          <span className="break-words font-mono text-sm font-semibold tabular-nums text-[var(--money)]">
                             {currencyFmt(m.income)}
                           </span>
                           {incomeChange !== null && (
-                            <span className={`text-[10px] font-medium flex items-center gap-0.5 ${incomeChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            <span className={`text-xs font-medium flex items-center gap-0.5 ${incomeChange >= 0 ? 'text-[var(--money)]' : 'text-[var(--debt)]'}`}>
                               {incomeChange >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
                               {pctFmt(incomeChange)}
                             </span>
                           )}
                         </div>
                       </div>
-
-                      {/* Separator */}
-                      <div className="w-px h-8 bg-border shrink-0" />
-
                       {/* Expense */}
                       <div className="flex-1 min-w-0 text-right">
                         <p className="text-xs text-muted-foreground">Despesas</p>
-                        <div className="flex items-center justify-end gap-1">
-                          <span className="text-sm font-semibold text-rose-500">
+                        <div className="flex flex-wrap items-center justify-end gap-x-1">
+                          <span className="break-words font-mono text-sm font-semibold tabular-nums text-[var(--debt)]">
                             {currencyFmt(m.expense)}
                           </span>
                           {expenseChange !== null && (
-                            <span className={`text-[10px] font-medium flex items-center gap-0.5 ${expenseChange <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            <span className={`text-xs font-medium flex items-center gap-0.5 ${expenseChange <= 0 ? 'text-[var(--money)]' : 'text-[var(--debt)]'}`}>
                               {expenseChange <= 0 ? <ArrowDownRight className="w-2.5 h-2.5" /> : <ArrowUpRight className="w-2.5 h-2.5" />}
                               {pctFmt(expenseChange)}
                             </span>
                           )}
                         </div>
                       </div>
-
-                      {/* Separator */}
-                      <div className="w-px h-8 bg-border shrink-0" />
-
                       {/* Net */}
-                      <div className="w-24 shrink-0 text-right">
+                      <div className="min-w-0 text-right">
                         <p className="text-xs text-muted-foreground">Líquido</p>
-                        <span className={`text-sm font-bold ${m.net >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        <span className={`break-words font-mono text-sm font-semibold tabular-nums ${m.net >= 0 ? 'text-[var(--money)]' : 'text-[var(--debt)]'}`}>
                           {m.net >= 0 ? '+' : ''}{currencyFmt(m.net)}
                         </span>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
-              </motion.div>
+              </div>
             </TabsContent>
-
-            {/* ═══════════════════════════════════════════════════════════
-                TAB 2 — ANÁLISE
-            ═══════════════════════════════════════════════════════════ */}
             <TabsContent value="analysis" className="mt-4 space-y-4">
               {/* Key Metrics Cards */}
-              <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Ticket Médio */}
-                <motion.div variants={item} whileHover={cardHover}>
-                  <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-500/20">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                          <Receipt className="w-4 h-4 text-violet-500" />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Ticket Médio</p>
-                      </div>
-                      <p className="text-lg font-bold">{currencyFmt(data.ticketMedio)}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Gasto Médio/Dia */}
-                <motion.div variants={item} whileHover={cardHover}>
-                  <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                          <DollarSign className="w-4 h-4 text-amber-500" />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Gasto Médio/dia</p>
-                      </div>
-                      <p className="text-lg font-bold text-rose-500">{currencyFmt(data.avgDailySpend)}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Maior Despesa */}
-                <motion.div variants={item} whileHover={cardHover}>
-                  <Card className="bg-gradient-to-br from-rose-500/10 to-rose-500/5 border-rose-500/20">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center">
-                          <CreditCard className="w-4 h-4 text-rose-500" />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Maior Despesa</p>
-                      </div>
-                      {data.highestExpense ? (
-                        <>
-                          <p className="text-lg font-bold text-rose-500">{currencyFmt(data.highestExpense.amount)}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{data.highestExpense.description}</p>
-                        </>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Sem dados</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Menor Receita */}
-                <motion.div variants={item} whileHover={cardHover}>
-                  <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                          <PiggyBank className="w-4 h-4 text-emerald-500" />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Menor Receita</p>
-                      </div>
-                      {data.lowestIncome ? (
-                        <>
-                          <p className="text-lg font-bold text-emerald-500">{currencyFmt(data.lowestIncome.amount)}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{data.lowestIncome.description}</p>
-                        </>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Sem dados</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </motion.div>
-
+              <dl aria-label="Indicadores do relatório" className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border py-3 lg:grid-cols-4">
+                <div className="min-w-0">
+                  <dt className="text-xs text-muted-foreground">Ticket médio</dt>
+                  <dd className="mt-0.5 break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(data.ticketMedio)}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs text-muted-foreground">Gasto médio por dia</dt>
+                  <dd className="mt-0.5 break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(data.avgDailySpend)}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs text-muted-foreground">Maior despesa</dt>
+                  <dd className="mt-0.5 break-words font-mono text-sm font-semibold tabular-nums">{data.highestExpense ? (
+                    <>
+                      {currencyFmt(data.highestExpense.amount)}
+                      <span className="block break-words font-sans text-xs font-normal text-muted-foreground">{data.highestExpense.description}</span>
+                    </>
+                  ) : <span className="font-sans font-normal text-muted-foreground">Sem dados</span>}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs text-muted-foreground">Menor receita</dt>
+                  <dd className="mt-0.5 break-words font-mono text-sm font-semibold tabular-nums">{data.lowestIncome ? (
+                    <>
+                      {currencyFmt(data.lowestIncome.amount)}
+                      <span className="block break-words font-sans text-xs font-normal text-muted-foreground">{data.lowestIncome.description}</span>
+                    </>
+                  ) : <span className="font-sans font-normal text-muted-foreground">Sem dados</span>}</dd>
+                </div>
+              </dl>
               {/* Top 3 Expense Categories */}
-              <motion.div variants={item} initial="hidden" animate="show">
-                <Card className="border-0 shadow-sm">
-                  <CardHeader className="pb-3">
+              <div>
+                <Card className="min-w-0 gap-2 rounded-lg py-3 shadow-none">
+                  <CardHeader className="px-4 sm:px-5">
                     <div className="flex items-center gap-2">
                       <ShoppingCart className="w-4 h-4 text-muted-foreground" />
                       <CardTitle className="text-sm font-semibold">Top Categorias de Despesa</CardTitle>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="min-w-0 space-y-4 px-4 sm:px-5">
                     {data.topCategories.length > 0 ? (
-                      data.topCategories.map((cat, idx) => {
+                      data.topCategories.map((cat) => {
                         const percent = totalExpenseAcrossPeriod > 0 ? (cat.total / totalExpenseAcrossPeriod) * 100 : 0;
                         return (
-                          <motion.div
+                          <div
                             key={cat.name}
-                            initial={{ opacity: 0, x: -12 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.4, delay: 0.1 + idx * 0.1 }}
                           >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2">
+                            <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cat.color }} />
                                 <span className="text-sm font-medium">{cat.name}</span>
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                <Badge variant="secondary" className="font-mono text-xs tabular-nums px-1.5 py-0">
                                   {cat.count}x
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold">{currencyFmt(cat.total)}</span>
-                                <span className="text-[10px] text-muted-foreground">{percent.toFixed(0)}%</span>
+                                <span className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(cat.total)}</span>
+                                <span className="font-mono text-xs tabular-nums text-muted-foreground">{percent.toFixed(0)}%</span>
                               </div>
                             </div>
                             <div className="h-2 rounded-full bg-muted overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${percent}%` }}
-                                transition={{ duration: 0.8, delay: 0.2 + idx * 0.1, ease: 'easeOut' }}
+                              <div
                                 className="h-full rounded-full"
-                                style={{ backgroundColor: cat.color }}
+                                style={{ width: `${percent}%`, backgroundColor: cat.color }}
                               />
                             </div>
-                          </motion.div>
+                          </div>
                         );
                       })
                     ) : (
@@ -423,60 +347,53 @@ export function FinancialReportsWidget() {
                     )}
                   </CardContent>
                 </Card>
-              </motion.div>
-
+              </div>
               {/* Savings Rate Trend */}
-              <motion.div variants={item} initial="hidden" animate="show">
-                <Card className="border-0 shadow-sm">
-                  <CardHeader className="pb-3">
+              <div>
+                <Card className="min-w-0 gap-2 rounded-lg py-3 shadow-none">
+                  <CardHeader className="px-4 sm:px-5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <PiggyBank className="w-4 h-4 text-muted-foreground" />
                         <CardTitle className="text-sm font-semibold">Taxa de Poupança</CardTitle>
                       </div>
-                      <Badge variant="secondary" className="text-[10px]">
+                      <Badge variant="secondary" className="text-xs">
                         {data.savingsRateTrend.length} meses
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-4 sm:px-5">
                     <div className="space-y-3">
-                      {data.savingsRateTrend.map((s, idx) => {
+                      {data.savingsRateTrend.map((s) => {
                         const clampedRate = Math.min(Math.max(s.rate, -100), 100);
-                        const color = clampedRate >= 30 ? 'bg-emerald-500' : clampedRate >= 0 ? 'bg-amber-500' : 'bg-rose-500';
-                        const textColor = clampedRate >= 30 ? 'text-emerald-500' : clampedRate >= 0 ? 'text-amber-500' : 'text-rose-500';
-
+                        const color = clampedRate >= 30 ? 'bg-[var(--money)]' : clampedRate >= 0 ? 'bg-[var(--obligation)]' : 'bg-[var(--debt)]';
+                        const textColor = clampedRate >= 30 ? 'text-[var(--money)]' : clampedRate >= 0 ? 'text-[var(--obligation)]' : 'text-[var(--debt)]';
                         return (
-                          <motion.div
+                          <div
                             key={s.month}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: 0.15 + idx * 0.06 }}
                             className="flex items-center gap-3"
                           >
                             <span className="text-xs text-muted-foreground w-16 shrink-0">{s.month}</span>
                             <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${Math.max(Math.abs(clampedRate), 2)}%` }}
-                                transition={{ duration: 0.7, delay: 0.25 + idx * 0.06, ease: 'easeOut' }}
+                              <div
                                 className={`h-full rounded-full ${color}`}
+                                style={{ width: `${Math.max(Math.abs(clampedRate), 2)}%` }}
                               />
                             </div>
-                            <span className={`text-xs font-semibold w-14 text-right ${textColor}`}>
+                            <span className={`font-mono text-xs font-semibold tabular-nums w-14 text-right ${textColor}`}>
                               {s.rate.toFixed(1)}%
                             </span>
-                          </motion.div>
+                          </div>
                         );
                       })}
                     </div>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             </TabsContent>
           </Tabs>
-        </CardHeader>
+        </CardContent>
       </Card>
-    </motion.div>
+    </section>
   );
 }

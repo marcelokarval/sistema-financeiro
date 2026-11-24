@@ -1,5 +1,7 @@
 # FinanceApp Premium Direction v2
 
+> **Referência histórica — substituída para novos trabalhos pelo [contrato Quiet Financial OS](<design-system.contract.md>).** As regras de cor e composição abaixo registram a direção anterior, não o comportamento vigente nem a aprovação do redesign. A [vitrine histórica](<design-system.premium-direction.html>) não é uma captura da aplicação atual e pode consumir tokens compartilhados.
+
 This is the corrected premium direction after re-running the FinanceApp design-system test with the new Accelerate rule for dual-theme and broad component coverage.
 
 It does not replace source truth:

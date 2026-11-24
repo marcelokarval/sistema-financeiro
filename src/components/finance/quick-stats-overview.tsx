@@ -1,31 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import {
-  Activity,
-  Wallet,
-  TrendingUp,
-  TrendingDown,
-  PiggyBank,
-  BarChart3,
-  CreditCard,
-  ArrowUpRight,
-  ArrowDownRight,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from 'recharts';
+import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
+import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { currencyFmt } from '@/lib/helpers';
 
 // --- Types ---
@@ -46,6 +23,9 @@ interface QuickStatsData {
     income: number[];
     expense: number[];
   };
+  monthlySavingsHistory?: number[];
+  investmentsHistory?: number[];
+  cardDebtHistory?: number[];
   changes: {
     incomeVsLastMonth: number;
     expenseVsLastMonth: number;
@@ -53,166 +33,45 @@ interface QuickStatsData {
   };
 }
 
-// --- Animation variants ---
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
-};
-
-const slideIn = {
-  hidden: { opacity: 0, x: -12 },
-  show: { opacity: 1, x: 0, transition: { duration: 0.3, ease: 'easeOut' } },
-};
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.97 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] } },
-};
-
-const headerVariants = {
-  hidden: { opacity: 0, y: -10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] } },
-};
-
-// --- Mini Sparkline ---
-function MiniSparkline({
-  data,
-  strokeColor,
-  fillColor,
-}: {
-  data: number[];
-  strokeColor: string;
-  fillColor: string;
-}) {
+function MiniSparkline({ data, strokeColor, label }: { data: number[]; strokeColor: string; label: string }) {
   if (!data.length) return null;
-
   const chartData = data.map((v, i) => ({ v, i }));
-
   return (
-    <ResponsiveContainer width="100%" height={32}>
-      <AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id={`grad-${strokeColor}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={fillColor} stopOpacity={0.35} />
-            <stop offset="100%" stopColor={fillColor} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Area
-          type="monotone"
-          dataKey="v"
-          stroke={strokeColor}
-          strokeWidth={1.5}
-          fill={`url(#grad-${strokeColor})`}
-          dot={false}
-          isAnimationActive={true}
-          animationDuration={800}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <figure className="min-w-0 space-y-1">
+      <figcaption className="text-xs text-muted-foreground">{label}</figcaption>
+      <div aria-hidden="true">
+        <ResponsiveContainer width="100%" height={24}>
+          <AreaChart data={chartData} accessibilityLayer={false} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+            <Area type="monotone" dataKey="v" stroke={strokeColor} strokeWidth={1.5} fill="none" dot={false} isAnimationActive={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </figure>
   );
 }
 
-// --- Change Indicator ---
 function ChangeIndicator({ change }: { change: number }) {
   if (change === 0) return null;
-  const isPositive = change > 0;
   return (
-    <span
-      className={`inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums ${
-        isPositive ? 'text-emerald-500' : 'text-rose-500'
-      }`}
-    >
-      {isPositive ? (
-        <ArrowUpRight className="w-3 h-3" />
-      ) : (
-        <ArrowDownRight className="w-3 h-3" />
-      )}
-      {Math.abs(change).toFixed(1)}%
+    <span className="text-xs text-muted-foreground">
+      <span className="font-mono tabular-nums">{change > 0 ? '+' : '−'}{Math.abs(change).toFixed(1)}%</span> em relação ao mês anterior
     </span>
   );
 }
 
-// --- Stat Card ---
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accentBg,
-  accentText,
-  badge,
-  badgeVariant,
-  sparklineData,
-  sparklineStroke,
-  sparklineFill,
-  change,
-}: {
-  label: string;
-  value: string;
-  icon: React.ElementType;
-  accentBg: string;
-  accentText: string;
-  badge?: string;
-  badgeVariant?: string;
-  sparklineData: number[];
-  sparklineStroke: string;
-  sparklineFill: string;
-  change?: number;
+function StatCard({ label, value, badge, sparklineData, sparklineStroke, sparklineLabel, change }: {
+  label: string; value: string; badge?: string; sparklineData: number[]; sparklineStroke: string; sparklineLabel: string; change?: number;
 }) {
   return (
-    <motion.div
-      variants={itemVariants}
-      whileHover={{
-        y: -3,
-        transition: { type: 'spring', stiffness: 400, damping: 25 },
-      }}
-      className={`hover-scale-sm`}
-    >
-      <Card className="border-0 shadow-sm hover:shadow-md transition-shadow h-full">
-        <CardContent className="p-4">
-          {/* Header row */}
-          <div className="flex items-center justify-between mb-2.5">
-            <div
-              className={`w-9 h-9 rounded-xl ${accentBg} flex items-center justify-center`}
-            >
-              <Icon className={`w-4 h-4 ${accentText}`} />
-            </div>
-            <div className="flex items-center gap-1.5">
-              {badge && (
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] font-semibold border px-1.5 py-0 h-5 ${badgeVariant}`}
-                >
-                  {badge}
-                </Badge>
-              )}
-              {change !== undefined && <ChangeIndicator change={change} />}
-            </div>
-          </div>
-
-          {/* Value */}
-          <p className="number-ticker text-lg font-bold leading-tight tracking-tight mb-0.5">
-            {value}
-          </p>
-
-          {/* Label */}
-          <p className="text-[11px] text-muted-foreground font-medium mb-2">
-            {label}
-          </p>
-
-          {/* Sparkline */}
-          <MiniSparkline
-            data={sparklineData}
-            strokeColor={sparklineStroke}
-            fillColor={sparklineFill}
-          />
-        </CardContent>
-      </Card>
-    </motion.div>
+    <div className="min-w-0 space-y-2 border-t border-border px-3 py-3 sm:px-4">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="space-y-2">
+        <p className="break-words font-mono text-base font-semibold tabular-nums">{value}</p>
+        {badge && <p className="text-xs text-muted-foreground">{badge}</p>}
+        {change !== undefined && <ChangeIndicator change={change} />}
+        <MiniSparkline data={sparklineData} strokeColor={sparklineStroke} label={sparklineLabel} />
+      </dd>
+    </div>
   );
 }
 
@@ -221,12 +80,12 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
   // Color logic: <0% red, 0-15% amber, 15-30% cyan, >30% emerald
   const barColor =
     savingsRate < 0
-      ? 'bg-rose-500'
+      ? 'bg-[var(--ds-accent-danger)]'
       : savingsRate < 15
-        ? 'bg-amber-500'
+        ? 'bg-[var(--ds-accent-warning)]'
         : savingsRate < 30
-          ? 'bg-cyan-500'
-          : 'bg-emerald-500';
+          ? 'bg-[var(--ds-accent-info)]'
+          : 'bg-[var(--ds-accent-positive)]';
 
   const clampedRate = Math.max(-100, Math.min(100, savingsRate));
   // Map to 0-100 for bar width (0% → 50%, 30% → 80%, 50%+ → 100%, -30% → 20%)
@@ -248,14 +107,14 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
 
   const trendColor =
     balanceTrend === 'up'
-      ? 'text-emerald-500'
+      ? 'text-[var(--ds-accent-positive)]'
       : balanceTrend === 'down'
-        ? 'text-rose-500'
+        ? 'text-destructive'
         : 'text-muted-foreground';
 
   return (
-    <motion.div variants={fadeUp} initial="hidden" animate="show" className="mt-4 pt-4 border-t border-border/40">
-      <div className="flex items-center justify-between mb-2">
+    <div className="border-t border-border px-3 py-3 sm:px-4">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
           Saúde Financeira
         </span>
@@ -265,77 +124,37 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-          <motion.div
-            className={`h-full rounded-full ${barColor}`}
-            initial={{ width: 0 }}
-            animate={{ width: `${barWidth}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
-          />
+        <div aria-hidden="true" className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${barWidth}%` }} />
         </div>
         <span className="text-[11px] font-bold tabular-nums text-muted-foreground min-w-[40px] text-right">
           {savingsRate.toFixed(1)}%
         </span>
       </div>
-      <p className="text-[10px] text-muted-foreground/60 mt-1.5">
+      <p className="text-[10px] text-muted-foreground mt-1.5">
         Taxa de economia mensal — meta recomendada: 20%+
       </p>
-    </motion.div>
-  );
-}
-
-// --- Loading Skeleton ---
-function LoadingSkeleton() {
-  return (
-    <Card className="border-0 shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-10 h-10 rounded-xl" />
-          <div className="space-y-1.5">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-3 w-56" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border/50 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <Skeleton className="w-9 h-9 rounded-xl" />
-                <Skeleton className="w-12 h-5 rounded-full" />
-              </div>
-              <Skeleton className="h-6 w-28 mb-1" />
-              <Skeleton className="h-3 w-20 mb-3" />
-              <Skeleton className="h-8 w-full rounded" />
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 pt-4 border-t border-border/40">
-          <div className="flex items-center justify-between mb-2">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-3 w-28" />
-          </div>
-          <Skeleton className="h-2 w-full rounded-full" />
-        </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
 // --- Main Component ---
-export function QuickStatsOverview() {
+export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: number }) {
   const [data, setData] = useState<QuickStatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch('/api/quick-stats');
       if (res.ok) {
         const json = await res.json();
         setData(json);
+      } else {
+        setData(null);
       }
     } catch (e) {
+      setData(null);
       console.error('Erro ao carregar resumo rápido:', e);
     } finally {
       setLoading(false);
@@ -344,13 +163,38 @@ export function QuickStatsOverview() {
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+  }, [fetchStats, refreshCounter]);
 
   if (loading || !data) {
-    return <LoadingSkeleton />;
+    return (
+      <section aria-labelledby="quiet-quick-stats" className="min-w-0 rounded-lg border border-border bg-card text-card-foreground">
+        <header className="px-3 py-3 sm:px-4">
+          <h3 id="quiet-quick-stats" className="text-sm font-semibold">Resumo rápido</h3>
+        </header>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-3 text-sm text-muted-foreground sm:px-4">
+          <p role={loading ? 'status' : 'alert'}>{loading ? 'Carregando indicadores…' : 'Não foi possível carregar os indicadores.'}</p>
+          {!loading && (
+            <button
+              type="button"
+              onClick={() => void fetchStats()}
+              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-(--ds-focus)"
+            >
+              Tentar novamente
+            </button>
+          )}
+        </div>
+      </section>
+    );
   }
 
+  return <QuickStatsPanel data={data} />;
+}
+
+export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
   const { current, sparklines, changes } = data;
+  const hasSavingsHistory = Array.isArray(data.monthlySavingsHistory) && data.monthlySavingsHistory.length > 0;
+  const hasInvestmentsHistory = Array.isArray(data.investmentsHistory) && data.investmentsHistory.length > 0;
+  const hasCardDebtHistory = Array.isArray(data.cardDebtHistory) && data.cardDebtHistory.length > 0;
 
   // Determine balance trend from last 2 sparkline points
   const bal = sparklines.balance;
@@ -372,139 +216,75 @@ export function QuickStatsOverview() {
     {
       label: 'Patrimônio Líquido',
       value: currencyFmt(current.netWorth),
-      icon: Wallet,
-      accentBg: 'bg-emerald-500/10',
-      accentText: 'text-emerald-600 dark:text-emerald-400',
-      badge: 'Total',
-      badgeVariant:
-        'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+      badge: 'Posição atual',
       sparklineData: sparklines.balance,
-      sparklineStroke: '#10b981',
-      sparklineFill: '#10b981',
+      sparklineStroke: 'var(--primary)',
+      sparklineLabel: 'Histórico do saldo',
       change: undefined,
     },
     {
       label: 'Receita Mensal',
       value: currencyFmt(current.monthlyIncome),
-      icon: TrendingUp,
-      accentBg: 'bg-emerald-500/10',
-      accentText: 'text-emerald-600 dark:text-emerald-400',
       sparklineData: sparklines.income,
-      sparklineStroke: '#10b981',
-      sparklineFill: '#10b981',
+      sparklineStroke: 'var(--ds-accent-positive)',
+      sparklineLabel: 'Histórico de receitas',
       change: changes.incomeVsLastMonth,
     },
     {
       label: 'Despesa Mensal',
       value: currencyFmt(current.monthlyExpense),
-      icon: TrendingDown,
-      accentBg: 'bg-rose-500/10',
-      accentText: 'text-rose-600 dark:text-rose-400',
       sparklineData: sparklines.expense,
-      sparklineStroke: '#f43f5e',
-      sparklineFill: '#f43f5e',
+      sparklineStroke: 'var(--ds-accent-danger)',
+      sparklineLabel: 'Histórico de despesas',
       change: changes.expenseVsLastMonth,
     },
     {
       label: 'Economia Mensal',
       value: currencyFmt(current.monthlySavings),
-      icon: PiggyBank,
-      accentBg: 'bg-cyan-500/10',
-      accentText: 'text-cyan-600 dark:text-cyan-400',
-      badge: `${current.savingsRate.toFixed(1)}%`,
-      badgeVariant:
-        current.savingsRate >= 0
-          ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30'
-          : 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
-      sparklineData: sparklines.balance.map((_, i, arr) => {
-        // approximate savings per month
-        if (i === 0) return 0;
-        return arr[i] - arr[i - 1];
-      }),
-      sparklineStroke: '#06b6d4',
-      sparklineFill: '#06b6d4',
+      badge: `Taxa de economia: ${current.savingsRate.toFixed(1)}%`,
+      sparklineData: hasSavingsHistory
+        ? data.monthlySavingsHistory!
+        : sparklines.balance.map((_, i, arr) => {
+            if (i === 0) return 0;
+            return arr[i] - arr[i - 1];
+          }),
+      sparklineStroke: 'var(--primary)',
+      sparklineLabel: hasSavingsHistory ? 'Histórico de economia mensal' : 'Variação do saldo (estimativa)',
       change: changes.savingsVsLastMonth,
     },
     {
       label: 'Investimentos',
       value: currencyFmt(current.investments),
-      icon: BarChart3,
-      accentBg: 'bg-violet-500/10',
-      accentText: 'text-violet-600 dark:text-violet-400',
-      badge: current.netWorth !== 0 ? `${investmentPct}%` : undefined,
-      badgeVariant:
-        'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30',
-      sparklineData: sparklines.balance.map((_, i) => {
-        // Approximate: use a fraction of balance as investment proxy if we don't have historical data
-        return Math.round((current.investments / 6) * (i + 1));
-      }),
-      sparklineStroke: '#8b5cf6',
-      sparklineFill: '#8b5cf6',
+      badge: current.netWorth !== 0 ? `${investmentPct}% do patrimônio (valor absoluto)` : undefined,
+      sparklineData: hasInvestmentsHistory
+        ? data.investmentsHistory!
+        : sparklines.balance.map((_, i) => Math.round((current.investments / 6) * (i + 1))),
+      sparklineStroke: 'var(--primary)',
+      sparklineLabel: hasInvestmentsHistory ? 'Histórico de investimentos' : 'Estimativa sem histórico de investimentos',
       change: undefined,
     },
     {
       label: 'Dívida em Cartões',
       value: currencyFmt(current.cardDebt),
-      icon: CreditCard,
-      accentBg: 'bg-orange-500/10',
-      accentText: 'text-orange-600 dark:text-orange-400',
-      sparklineData: sparklines.expense.map((v) =>
-        // Approximate debt as fraction of expense
-        Math.round(v * 0.6 * 100) / 100
-      ),
-      sparklineStroke: '#f97316',
-      sparklineFill: '#f97316',
+      sparklineData: hasCardDebtHistory
+        ? data.cardDebtHistory!
+        : sparklines.expense.map((v) => Math.round(v * 0.6 * 100) / 100),
+      sparklineStroke: 'var(--ds-accent-warning)',
+      sparklineLabel: hasCardDebtHistory ? 'Histórico da dívida em cartões' : 'Proporção das despesas (estimativa da dívida)',
       change: undefined,
     },
   ];
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-    >
-      <Card className="border-0 shadow-md card-glow relative overflow-hidden">
-        {/* Gradient top border */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-500 to-cyan-500" />
-
-        {/* Header */}
-        <CardHeader className="pb-3">
-          <motion.div variants={headerVariants} className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <CardTitle className="text-base font-semibold">
-                Resumo Rápido
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Métricas atualizadas em tempo real
-              </p>
-            </div>
-          </motion.div>
-        </CardHeader>
-
-        <CardContent className="pt-0">
-          {/* Stats grid */}
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
-          >
-            {statsConfig.map((stat, i) => (
-              <StatCard key={stat.label} {...stat} />
-            ))}
-          </motion.div>
-
-          {/* Health bar */}
-          <HealthBar
-            savingsRate={current.savingsRate}
-            balanceTrend={balanceTrend}
-          />
-        </CardContent>
-      </Card>
-    </motion.div>
+    <section aria-labelledby="quiet-quick-stats" className="min-w-0 rounded-lg border border-border bg-card text-card-foreground">
+      <header className="px-3 py-3 sm:px-4">
+        <h3 id="quiet-quick-stats" className="text-sm font-semibold">Resumo rápido</h3>
+        <p className="text-xs text-muted-foreground">Posição atual e indicadores do mês · variações ante o mês anterior</p>
+      </header>
+      <dl className="grid grid-cols-2 sm:grid-cols-3 sm:[&>div:not(:nth-child(3n+1))]:border-l max-sm:[&>div:nth-child(even)]:border-l">
+        {statsConfig.map((stat) => <StatCard key={stat.label} {...stat} />)}
+      </dl>
+      <HealthBar savingsRate={current.savingsRate} balanceTrend={balanceTrend} />
+    </section>
   );
 }

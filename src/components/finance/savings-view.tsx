@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
 import {
   PiggyBank,
   Gift,
@@ -11,16 +10,12 @@ import {
   Plus,
   Pencil,
   Trash2,
-  CircleDollarSign,
-  Target,
-  CalendarClock,
   CheckCircle2,
   MoreHorizontal,
-  Wallet,
   ArrowDownToLine,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -59,30 +54,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  StatCard,
-  StatCardSkeleton,
-  EmptyState,
-  ProgressBar,
-} from '@/components/shared/ui-helpers';
-import {
-  currencyFmt,
-  dateFmt,
-  pct,
-  containerVariants,
-  itemVariants,
-  summaryContainerVariants,
-  summaryItemVariants,
-} from '@/lib/helpers';
-
-// ── Constants ──────────────────────────────────────────────────────
+import { EmptyState } from '@/components/shared/ui-helpers';
+import { currencyFmt, dateFmt, pct } from '@/lib/helpers';
+import { useAppStore } from '@/lib/store';
 
 const SAVINGS_TYPES = [
-  { value: 'SAVINGS', label: 'Poupança', icon: PiggyBank, color: '#10b981' },
-  { value: 'PIGGY_BANK', label: 'Porquinho', icon: Gift, color: '#f59e0b' },
-  { value: 'CDI', label: 'Conta CDI', icon: Landmark, color: '#0ea5e9' },
-  { value: 'INVESTMENT', label: 'Investimento', icon: TrendingUp, color: '#8b5cf6' },
-  { value: 'EMERGENCY_FUND', label: 'Reserva', icon: ShieldCheck, color: '#f43f5e' },
+  { value: 'SAVINGS', label: 'Poupança', icon: PiggyBank },
+  { value: 'PIGGY_BANK', label: 'Porquinho', icon: Gift },
+  { value: 'CDI', label: 'Conta CDI', icon: Landmark },
+  { value: 'INVESTMENT', label: 'Investimento', icon: TrendingUp },
+  { value: 'EMERGENCY_FUND', label: 'Reserva', icon: ShieldCheck },
 ] as const;
 
 const TYPE_FILTER_TABS = [
@@ -94,13 +75,6 @@ const TYPE_FILTER_TABS = [
   { value: 'INVESTMENT', label: 'Investimento' },
 ] as const;
 
-const TYPE_ICONS: Record<string, React.ElementType> = {
-  SAVINGS: PiggyBank,
-  PIGGY_BANK: Gift,
-  CDI: Landmark,
-  INVESTMENT: TrendingUp,
-  EMERGENCY_FUND: ShieldCheck,
-};
 
 const TYPE_LABELS: Record<string, string> = {
   SAVINGS: 'Poupança',
@@ -110,17 +84,12 @@ const TYPE_LABELS: Record<string, string> = {
   EMERGENCY_FUND: 'Reserva de Emergência',
 };
 
-const TYPE_BADGE_COLORS: Record<string, string> = {
-  SAVINGS: '#10b981',
-  PIGGY_BANK: '#f59e0b',
-  CDI: '#0ea5e9',
-  INVESTMENT: '#8b5cf6',
-  EMERGENCY_FUND: '#f43f5e',
-};
-
 const GOAL_COLORS = [
-  '#10b981', '#0ea5e9', '#8b5cf6', '#f59e0b', '#f43f5e',
-  '#06b6d4', '#6366f1', '#ec4899', '#14b8a6', '#84cc16',
+  { value: '#10b981', label: 'Verde' }, { value: '#0ea5e9', label: 'Azul' },
+  { value: '#8b5cf6', label: 'Violeta' }, { value: '#f59e0b', label: 'Âmbar' },
+  { value: '#f43f5e', label: 'Rosa coral' }, { value: '#06b6d4', label: 'Ciano' },
+  { value: '#6366f1', label: 'Índigo' }, { value: '#ec4899', label: 'Rosa' },
+  { value: '#14b8a6', label: 'Verde-azulado' }, { value: '#84cc16', label: 'Verde-lima' },
 ];
 
 // ── Interfaces ─────────────────────────────────────────────────────
@@ -147,88 +116,6 @@ interface Account {
   name: string;
 }
 
-// ── Animation Variants ─────────────────────────────────────────────
-
-const cardHover = {
-  hover: { y: -3, transition: { type: 'spring', stiffness: 300, damping: 20 } },
-};
-
-// ── Helpers ────────────────────────────────────────────────────────
-
-function getProgressColor(percent: number): string {
-  if (percent >= 70) return '#22c55e';
-  if (percent >= 30) return '#f59e0b';
-  return '#ef4444';
-}
-
-function getProgressColorClass(percent: number): string {
-  if (percent >= 70) return 'text-emerald-500';
-  if (percent >= 30) return 'text-amber-500';
-  return 'text-rose-500';
-}
-
-function getColorProgressColor(goalColor: string, percent: number): string {
-  return goalColor || getProgressColor(percent);
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-// ── Circular Progress ─────────────────────────────────────────────
-
-function SavingsCircularProgress({
-  percent,
-  size = 80,
-  strokeWidth = 6,
-  color,
-}: {
-  percent: number;
-  size?: number;
-  strokeWidth?: number;
-  color: string;
-}) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (Math.min(percent, 100) / 100) * circumference;
-  const progressColor = color || getProgressColor(percent);
-
-  return (
-    <svg width={size} height={size} className="transform -rotate-90">
-      <defs>
-        <linearGradient id={`grad-${progressColor.replace('#', '')}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor={progressColor} />
-          <stop offset="100%" stopColor={hexToRgba(progressColor, 0.6)} />
-        </linearGradient>
-      </defs>
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="var(--muted)"
-        strokeWidth={strokeWidth}
-        opacity={0.3}
-      />
-      <motion.circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke={`url(#grad-${progressColor.replace('#', '')})`}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        initial={{ strokeDashoffset: circumference }}
-        animate={{ strokeDashoffset: offset }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-      />
-    </svg>
-  );
-}
 
 // ── Form Types ─────────────────────────────────────────────────────
 
@@ -274,6 +161,7 @@ export function SavingsView() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [typeFilter, setTypeFilter] = useState('ALL');
 
   // Dialogs
@@ -291,11 +179,17 @@ export function SavingsView() {
   // ── Data Fetching ────────────────────────────────────────────────
 
   const fetchGoals = useCallback(async () => {
+    setLoadError(false);
     try {
       const res = await fetch('/api/savings');
-      if (res.ok) setGoals(await res.json());
+      if (!res.ok) {
+        setLoadError(true);
+        return;
+      }
+      setGoals(await res.json());
     } catch (e) {
       console.error('Erro ao carregar metas de poupança', e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -313,6 +207,21 @@ export function SavingsView() {
   useEffect(() => {
     fetchGoals();
     fetchAccounts();
+    if (useAppStore.getState().newGoalRequested) {
+      useAppStore.getState().clearNewGoalRequest();
+      setEditingGoal(null);
+      setGoalForm(emptyGoalForm);
+      setShowGoalDialog(true);
+    }
+    const unsubscribe = useAppStore.subscribe((state) => {
+      if (state.newGoalRequested) {
+        useAppStore.getState().clearNewGoalRequest();
+        setEditingGoal(null);
+        setGoalForm(emptyGoalForm);
+        setShowGoalDialog(true);
+      }
+    });
+    return unsubscribe;
   }, [fetchGoals, fetchAccounts]);
 
   // ── Computed Data ────────────────────────────────────────────────
@@ -476,368 +385,84 @@ export function SavingsView() {
     }
   };
 
-  // ── Loading State ────────────────────────────────────────────────
+  const dialogOrigin = useRef<HTMLButtonElement | null>(null);
+  const captureDialogFocus = (event: MouseEvent<HTMLButtonElement>) => {
+    dialogOrigin.current = event.currentTarget;
+  };
+  const restoreDialogFocus = (event: Event) => {
+    const target = dialogOrigin.current?.isConnected ? dialogOrigin.current : document.getElementById("savings-create");
+    if (target) {
+      event.preventDefault();
+      target.focus();
+    }
+  };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <StatCardSkeleton key={i} />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-56 rounded-2xl" />
-          ))}
-        </div>
-      </div>
+      <section className="space-y-4" aria-busy="true">
+        <p role="status" className="text-sm text-muted-foreground">Carregando caixinhas…</p>
+        <Skeleton className="motion-reduce:animate-none h-24 rounded-xl" />
+        <Skeleton className="motion-reduce:animate-none h-36 rounded-xl" />
+      </section>
     );
   }
 
-  // ── Render ───────────────────────────────────────────────────────
-
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="savings-view"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        exit="hidden"
-        className="space-y-6"
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold">Caixinhas</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Acompanhe suas metas de poupança e investimentos
-            </p>
+    <section aria-labelledby="savings-title" className="min-w-0 space-y-6">
+      <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <h2 id="savings-title" className="text-2xl font-semibold tracking-tight">Caixinhas</h2>
+          <p className="text-sm text-muted-foreground">Acompanhe suas metas de poupança e investimentos.</p>
+        </div>
+        <Button id="savings-create" className="min-h-11 self-start sm:self-auto" onClick={(event) => { captureDialogFocus(event); openCreateGoal(); }}>
+          <Plus aria-hidden="true" /> Nova meta
+        </Button>
+      </header>
+      <dl aria-label="Resumo das caixinhas" className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border px-2 py-4 sm:grid-cols-4">
+        <SavingsDatum label="Total acumulado" value={currencyFmt(summary.totalAccumulated)} note={`${pct(summary.totalAccumulated, summary.totalTargets)}% do total das metas`} />
+        <SavingsDatum label="Total de metas" value={String(goals.length)} note={`${goals.length - summary.completedCount} em andamento`} />
+        <SavingsDatum label="Metas concluídas" value={String(summary.completedCount)} note={goals.length > 0 ? `${pct(summary.completedCount, goals.length)}% alcançadas` : undefined} />
+        <SavingsDatum label="Contribuição mensal" value={currencyFmt(summary.monthlyTotal)} note="Total mensal planejado" />
+      </dl>
+      <section aria-labelledby="savings-records-title" className="space-y-3">
+        <h3 id="savings-records-title" className="text-base font-semibold">Metas cadastradas</h3>
+        <Tabs value={typeFilter} onValueChange={setTypeFilter}>
+          <TabsList aria-label="Filtrar metas por tipo" className="h-auto max-w-full flex-wrap justify-start gap-1 p-1">
+            {TYPE_FILTER_TABS.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value} className="min-h-10">{tab.label}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <p role="status" className="text-xs text-muted-foreground">{filteredGoals.length} de {goals.length} metas</p>
+        {loadError && goals.length === 0 ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
+            <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar as caixinhas.</p>
+            <Button variant="outline" size="sm" className="min-h-9" onClick={() => { setLoading(true); void fetchGoals(); }}>
+              <RefreshCw aria-hidden="true" className="size-3.5" />
+              Tentar novamente
+            </Button>
           </div>
-          <Button onClick={openCreateGoal} size="sm" className="gap-1.5">
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Nova Meta</span>
-          </Button>
-        </motion.div>
-
-        {/* Summary Cards */}
-        <motion.div
-          variants={summaryContainerVariants}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
-        >
-          <StatCard
-            label="Total Acumulado"
-            value={currencyFmt(summary.totalAccumulated)}
-            icon={CircleDollarSign}
-            gradient="from-emerald-500 to-emerald-600"
-            subtitle={`${pct(summary.totalAccumulated, summary.totalTargets)}% do total`}
+        ) : filteredGoals.length === 0 ? (
+          <EmptyState icon={PiggyBank}
+            title={typeFilter !== "ALL" ? `Nenhuma meta do tipo ${TYPE_LABELS[typeFilter] || typeFilter}` : "Nenhuma meta de poupança cadastrada"}
+            subtitle={typeFilter !== "ALL" ? "Altere o filtro ou crie uma meta deste tipo." : "Use Nova meta para começar a poupar."}
           />
-          <StatCard
-            label="Total de Metas"
-            value={String(goals.length)}
-            icon={Target}
-            gradient="from-violet-500 to-purple-600"
-            subtitle={`${goals.length - summary.completedCount} em andamento`}
-          />
-          <StatCard
-            label="Metas Concluídas"
-            value={String(summary.completedCount)}
-            icon={CheckCircle2}
-            gradient="from-cyan-500 to-sky-600"
-            subtitle={
-              goals.length > 0
-                ? `${pct(summary.completedCount, goals.length)}% alcançadas`
-                : 'Crie sua primeira meta'
-            }
-          />
-          <StatCard
-            label="Contribuição Mensal"
-            value={currencyFmt(summary.monthlyTotal)}
-            icon={Wallet}
-            gradient="from-amber-500 to-orange-600"
-            subtitle="Total mensal planejado"
-          />
-        </motion.div>
-
-        {/* Type Filter Tabs */}
-        <motion.div variants={itemVariants}>
-          <Tabs value={typeFilter} onValueChange={setTypeFilter}>
-            <TabsList className="flex-wrap h-auto gap-1 bg-muted/50 p-1">
-              {TYPE_FILTER_TABS.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="text-xs px-3 py-1.5 data-[state=active]:shadow-sm"
-                >
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </motion.div>
-
-        {/* Savings Goal Cards */}
-        {filteredGoals.length === 0 ? (
-          <motion.div variants={itemVariants}>
-            <EmptyState
-              icon={PiggyBank}
-              title={
-                typeFilter !== 'ALL'
-                  ? `Nenhuma meta do tipo ${TYPE_LABELS[typeFilter] || typeFilter}`
-                  : 'Nenhuma meta de poupança cadastrada'
-              }
-              subtitle={
-                typeFilter !== 'ALL'
-                  ? 'Crie uma meta deste tipo ou altere o filtro'
-                  : 'Clique em "Nova Meta" para começar a poupar'
-              }
-            />
-          </motion.div>
         ) : (
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            <AnimatePresence>
-              {filteredGoals.map((goal) => {
-                const percent =
-                  goal.targetAmount > 0
-                    ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)
-                    : 0;
-                const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
-                const isComplete = goal.isCompleted || goal.currentAmount >= goal.targetAmount;
-                const TypeIcon = TYPE_ICONS[goal.type] || PiggyBank;
-                const badgeColor = TYPE_BADGE_COLORS[goal.type] || goal.color;
-                const progressColor = getColorProgressColor(goal.color, percent);
-
-                return (
-                  <motion.div
-                    key={goal.id}
-                    variants={itemVariants}
-                    layout
-                    whileHover={cardHover.hover}
-                    className="relative"
-                  >
-                    <Card
-                      className={`overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 group ${
-                        isComplete ? 'ring-1 ring-emerald-500/20' : ''
-                      }`}
-                    >
-                      {/* Top gradient bar */}
-                      <div
-                        className="h-1.5"
-                        style={{
-                          background: `linear-gradient(90deg, ${goal.color}, ${hexToRgba(goal.color, 0.4)})`,
-                        }}
-                      />
-
-                      <CardContent className="p-5">
-                        {/* Header row: icon + name + badge + actions */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                              style={{ backgroundColor: `${goal.color}15` }}
-                            >
-                              <TypeIcon className="w-5 h-5" style={{ color: goal.color }} />
-                            </div>
-                            <div className="min-w-0">
-                              <h3 className="text-sm font-semibold truncate">{goal.name}</h3>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] mt-1"
-                                style={{
-                                  borderColor: `${badgeColor}30`,
-                                  color: badgeColor,
-                                }}
-                              >
-                                {TYPE_LABELS[goal.type] || goal.type}
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            {isComplete && (
-                              <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/20 text-[10px] gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                Concluída
-                              </Badge>
-                            )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openEditGoal(goal)}>
-                                  <Pencil className="w-4 h-4 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openDepositDialog(goal)}>
-                                  <ArrowDownToLine className="w-4 h-4 mr-2" />
-                                  Depositar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => setShowDeleteDialog(goal.id)}
-                                  className="text-rose-500 focus:text-rose-500"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-
-                        {/* Description */}
-                        {goal.description && (
-                          <p className="text-[11px] text-muted-foreground mt-2 line-clamp-1">
-                            {goal.description}
-                          </p>
-                        )}
-
-                        {/* Progress Circle + Amounts */}
-                        <div className="flex items-start gap-4 mt-4">
-                          <div className="relative shrink-0">
-                            <SavingsCircularProgress
-                              percent={percent}
-                              size={76}
-                              strokeWidth={6}
-                              color={goal.color}
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span
-                                className={`text-sm font-bold ${getProgressColorClass(percent)}`}
-                              >
-                                {Math.round(percent)}%
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex-1 min-w-0 space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Atual</span>
-                              <span className="font-medium" style={{ color: goal.color }}>
-                                {currencyFmt(goal.currentAmount)}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Meta</span>
-                              <span className="font-semibold">{currencyFmt(goal.targetAmount)}</span>
-                            </div>
-                            {!isComplete && remaining > 0 && (
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Faltam</span>
-                                <span className="font-medium text-rose-500">
-                                  {currencyFmt(remaining)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Linear progress bar */}
-                        <div className="mt-4">
-                          <ProgressBar
-                            value={goal.currentAmount}
-                            max={goal.targetAmount}
-                            className="w-full"
-                            color={
-                              percent >= 70
-                                ? 'bg-emerald-500'
-                                : percent >= 30
-                                  ? 'bg-amber-500'
-                                  : 'bg-rose-500'
-                            }
-                          />
-                        </div>
-
-                        {/* Info Row: monthly contribution + target date */}
-                        <div className="flex items-center justify-between mt-3 text-[11px] text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Wallet className="w-3 h-3" />
-                            <span>
-                              {goal.monthlyContribution
-                                ? `${currencyFmt(goal.monthlyContribution)}/mês`
-                                : 'Sem contribuição mensal'}
-                            </span>
-                          </div>
-                          {goal.targetDate && (
-                            <div className="flex items-center gap-1">
-                              <CalendarClock className="w-3 h-3" />
-                              <span>{dateFmt(goal.targetDate)}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Yield rate badge */}
-                        {goal.yieldRate && goal.yieldRate > 0 && (
-                          <div className="mt-2">
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] bg-emerald-500/10 text-emerald-600"
-                            >
-                              {goal.yieldRate}% a.a.
-                            </Badge>
-                          </div>
-                        )}
-
-                        {/* Linked account badge */}
-                        {goal.account && (
-                          <div className="mt-2">
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px]"
-                              style={{
-                                backgroundColor: `${goal.color}10`,
-                                color: goal.color,
-                              }}
-                            >
-                              <Landmark className="w-3 h-3 mr-1" />
-                              {goal.account.name}
-                            </Badge>
-                          </div>
-                        )}
-
-                        {/* Deposit Button */}
-                        {!isComplete && (
-                          <div className="mt-4 pt-3 border-t border-border/50">
-                            <Button
-                              size="sm"
-                              className="w-full h-8 text-xs gap-1.5"
-                              style={{
-                                backgroundColor: goal.color,
-                                color: '#fff',
-                              }}
-                              onClick={() => openDepositDialog(goal)}
-                            >
-                              <ArrowDownToLine className="w-3.5 h-3.5" />
-                              Depositar
-                            </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </motion.div>
+          <ul aria-label="Metas cadastradas" className="divide-y divide-border rounded-xl border border-border bg-card">
+            {filteredGoals.map((goal) => (
+              <SavingsGoalRow key={goal.id} goal={goal}
+                onDeposit={(origin) => { dialogOrigin.current = origin; openDepositDialog(goal); }}
+                onEdit={(origin) => { dialogOrigin.current = origin; openEditGoal(goal); }}
+                onDelete={(origin) => { dialogOrigin.current = origin; setShowDeleteDialog(goal.id); }}
+              />
+            ))}
+          </ul>
         )}
+      </section>
 
         {/* ── Create / Edit Goal Dialog ─────────────────────────────── */}
         <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent onCloseAutoFocus={restoreDialogFocus} className="sm:max-w-lg max-h-[85dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingGoal ? 'Editar Meta' : 'Nova Meta de Poupança'}
@@ -862,21 +487,21 @@ export function SavingsView() {
               </div>
 
               {/* Type + Color row */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Tipo *</Label>
+                  <Label htmlFor="goal-type">Tipo *</Label>
                   <Select
                     value={goalForm.type}
                     onValueChange={(v) => setGoalForm({ ...goalForm, type: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="goal-type" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {SAVINGS_TYPES.map((t) => (
                         <SelectItem key={t.value} value={t.value}>
                           <span className="flex items-center gap-2">
-                            <t.icon className="w-3.5 h-3.5" style={{ color: t.color }} />
+                            <t.icon className="w-3.5 h-3.5" aria-hidden="true" />
                             {t.label}
                           </span>
                         </SelectItem>
@@ -885,16 +510,18 @@ export function SavingsView() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Cor</Label>
-                  <div className="flex gap-1.5 mt-1 flex-wrap">
-                    {GOAL_COLORS.map((c) => (
+                  <p id="goal-color-label" className="text-sm font-medium">Cor</p>
+                  <div role="group" aria-labelledby="goal-color-label" className="mt-1 flex flex-wrap gap-2">
+                    {GOAL_COLORS.map(({ value: c, label }) => (
                       <button
                         key={c}
                         type="button"
-                        className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                        aria-label={label}
+                        aria-pressed={goalForm.color === c}
+                        className={`size-8 rounded-full border-2 ${
                           goalForm.color === c
-                            ? 'border-foreground scale-110'
-                            : 'border-transparent hover:scale-105'
+                            ? 'border-foreground'
+                            : 'border-transparent'
                         }`}
                         style={{ backgroundColor: c }}
                         onClick={() => setGoalForm({ ...goalForm, color: c })}
@@ -917,7 +544,7 @@ export function SavingsView() {
               </div>
 
               {/* Target + Current amounts */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="goal-target">Valor alvo (R$) *</Label>
                   <Input
@@ -949,7 +576,7 @@ export function SavingsView() {
               </div>
 
               {/* Monthly Contribution + Yield Rate */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="goal-monthly">Contribuição mensal (R$)</Label>
                   <Input
@@ -981,7 +608,7 @@ export function SavingsView() {
               </div>
 
               {/* Target Date + Account */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="goal-date">Data alvo</Label>
                   <Input
@@ -994,12 +621,12 @@ export function SavingsView() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Conta vinculada</Label>
+                  <Label htmlFor="goal-account">Conta vinculada</Label>
                   <Select
                     value={goalForm.accountId}
                     onValueChange={(v) => setGoalForm({ ...goalForm, accountId: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="goal-account" className="w-full">
                       <SelectValue placeholder="Nenhuma" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1026,12 +653,6 @@ export function SavingsView() {
               <Button onClick={handleSaveGoal} disabled={submitting} className="gap-1.5">
                 {submitting ? (
                   <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    >
-                      <PiggyBank className="w-4 h-4" />
-                    </motion.div>
                     Salvando...
                   </>
                 ) : editingGoal ? (
@@ -1049,7 +670,7 @@ export function SavingsView() {
 
         {/* ── Deposit Dialog ────────────────────────────────────────── */}
         <Dialog open={showDepositDialog} onOpenChange={setShowDepositDialog}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent onCloseAutoFocus={restoreDialogFocus} className="sm:max-w-md max-h-[85dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Depositar</DialogTitle>
               <DialogDescription>
@@ -1060,6 +681,11 @@ export function SavingsView() {
             </DialogHeader>
 
             <div className="space-y-4 py-2">
+              {depositingGoal && (
+                <p className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
+                  Conta vinculada: {depositingGoal.account?.name ?? (depositingGoal.accountId ? "Conta vinculada à meta" : "Nenhuma")}
+                </p>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="deposit-amount">Valor do depósito (R$) *</Label>
                 <Input
@@ -1099,12 +725,6 @@ export function SavingsView() {
               <Button onClick={handleDeposit} disabled={submitting} className="gap-1.5">
                 {submitting ? (
                   <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    >
-                      <ArrowDownToLine className="w-4 h-4" />
-                    </motion.div>
                     Depositando...
                   </>
                 ) : (
@@ -1120,7 +740,7 @@ export function SavingsView() {
 
         {/* ── Delete Confirmation Dialog ────────────────────────────── */}
         <AlertDialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
-          <AlertDialogContent>
+          <AlertDialogContent onCloseAutoFocus={restoreDialogFocus}>
             <AlertDialogHeader>
               <AlertDialogTitle>Excluir meta de poupança?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -1130,7 +750,7 @@ export function SavingsView() {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction
-                className="bg-rose-500 hover:bg-rose-600"
+                className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
                 onClick={() => showDeleteDialog && handleDeleteGoal(showDeleteDialog)}
               >
                 Excluir
@@ -1138,7 +758,88 @@ export function SavingsView() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </motion.div>
-    </AnimatePresence>
+    </section>
+  );
+}
+function SavingsDatum({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words font-mono text-sm font-semibold tabular-nums">{value}</dd>
+      {note && <dd className="text-xs text-muted-foreground">{note}</dd>}
+    </div>
+  );
+}
+
+export function SavingsGoalRow({ goal, onDeposit, onEdit, onDelete }: {
+  goal: SavingsGoal;
+  onDeposit: (origin: HTMLButtonElement | null) => void;
+  onEdit: (origin: HTMLButtonElement | null) => void;
+  onDelete: (origin: HTMLButtonElement | null) => void;
+}) {
+  const menuTrigger = useRef<HTMLButtonElement | null>(null);
+  const openingDialog = useRef(false);
+  const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
+  const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
+  const isComplete = goal.isCompleted || goal.currentAmount >= goal.targetAmount;
+  const barValue = Math.max(0, Math.round(percent));
+  const openFromMenu = (action: (origin: HTMLButtonElement | null) => void) => {
+    openingDialog.current = true;
+    action(menuTrigger.current);
+  };
+
+  return (
+    <li className="grid min-w-0 gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
+      <div className="min-w-0 space-y-1.5 break-words">
+        <h4 className="text-sm font-semibold">{goal.name}</h4>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">{TYPE_LABELS[goal.type] || goal.type}</Badge>
+          {isComplete && <Badge variant="secondary" className="text-[var(--ds-accent-positive)]"><CheckCircle2 aria-hidden="true" /> Concluída</Badge>}
+        </div>
+        {goal.description && <p className="text-xs text-muted-foreground">{goal.description}</p>}
+        {goal.account && <p className="text-xs text-muted-foreground">Conta vinculada: {goal.account.name}</p>}
+        <p className="text-xs text-muted-foreground">
+          {goal.monthlyContribution ? `${currencyFmt(goal.monthlyContribution)}/mês` : "Sem contribuição mensal"}
+          {goal.targetDate && ` · Prazo: ${dateFmt(goal.targetDate)}`}
+          {goal.yieldRate != null && goal.yieldRate > 0 && ` · ${goal.yieldRate}% a.a.`}
+        </p>
+      </div>
+      <div className="min-w-0 space-y-2">
+        <dl className="grid grid-cols-2 gap-3">
+          <SavingsDatum label="Acumulado" value={currencyFmt(goal.currentAmount)} />
+          <SavingsDatum label="Meta" value={currencyFmt(goal.targetAmount)} />
+        </dl>
+        <div className="flex flex-wrap justify-between gap-x-3 text-xs text-muted-foreground">
+          <span>Progresso da meta</span>
+          <span className="font-mono tabular-nums text-foreground">{Math.round(percent)}%</span>
+        </div>
+        <div role="progressbar" aria-label={`Progresso da meta ${goal.name}`} aria-valuenow={barValue}
+          aria-valuetext={`${Math.round(percent)}% · ${currencyFmt(goal.currentAmount)} de ${currencyFmt(goal.targetAmount)}`} className="h-1.5 rounded-full bg-muted">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${barValue}%` }} />
+        </div>
+        {!isComplete && remaining > 0 && <p className="text-xs text-muted-foreground">Faltam {currencyFmt(remaining)}</p>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {!isComplete && (
+          <Button variant="outline" className="min-h-11" aria-label={`Depositar em ${goal.name}`} onClick={(event) => onDeposit(event.currentTarget)}>
+            <ArrowDownToLine aria-hidden="true" /> Depositar
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button ref={menuTrigger} variant="outline" size="icon" className="size-11" aria-label={`Mais ações de ${goal.name}`}>
+              <MoreHorizontal aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onCloseAutoFocus={(event) => {
+            if (openingDialog.current) { event.preventDefault(); openingDialog.current = false; }
+          }}>
+            <DropdownMenuItem onSelect={() => openFromMenu(onEdit)}><Pencil aria-hidden="true" /> Editar</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => openFromMenu(onDeposit)}><ArrowDownToLine aria-hidden="true" /> Depositar</DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onSelect={() => openFromMenu(onDelete)}><Trash2 aria-hidden="true" /> Excluir</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </li>
   );
 }

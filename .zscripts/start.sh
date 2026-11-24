@@ -1,10 +1,45 @@
 #!/bin/sh
 
+set +x
 set -e
 
-# 获取脚本所在目录
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BUILD_DIR="$SCRIPT_DIR"
+# Preserva o caminho canônico inteiro antes de recusar caracteres de controle.
+canonical_path() {
+    newline='
+'
+    resolved=$(realpath -e -- "$1" 2>/dev/null && printf .) || return 1
+    resolved=${resolved%"$newline."}
+}
+
+canonical_path "$0" || { echo "Erro: launcher não encontrado." >&2; exit 1; }
+BUILD_DIR=${resolved%/*}
+
+database_error() {
+    echo "Erro: DATABASE_URL deve apontar para um SQLite externo preexistente e acessível (file:/caminho/absoluto)." >&2
+    exit 1
+}
+
+plain_absolute_path() {
+    case "$1" in
+        //*|*[[:cntrl:]]*|*'?'*|*'#'*|*'%'*|*'\'*) return 1 ;;
+        /*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+case ${DATABASE_URL-} in
+    file:/*) db_path=${DATABASE_URL#file:} ;;
+    *) database_error ;;
+esac
+plain_absolute_path "$db_path" || database_error
+canonical_path "$db_path" || database_error
+plain_absolute_path "$resolved" || database_error
+case "$resolved" in
+    "$BUILD_DIR"|"$BUILD_DIR"/*) database_error ;;
+esac
+[ -f "$resolved" ] && [ -s "$resolved" ] && [ -r "$resolved" ] || database_error
+export DATABASE_URL="file:$resolved"
+unset db_path resolved
 
 # 存储所有子进程的 PID
 pids=""
@@ -51,11 +86,6 @@ echo ""
 # 切换到构建目录
 cd "$BUILD_DIR" || exit 1
 
-ls -lah
-
-DEFAULT_PACKAGED_DB_PATH="/app/db/custom.db"
-DEFAULT_PACKAGED_DATABASE_URL="file:$DEFAULT_PACKAGED_DB_PATH"
-
 # 启动 Next.js 服务器
 if [ -f "./next-service-dist/server.js" ]; then
     echo "🚀 启动 Next.js 服务器..."
@@ -65,20 +95,6 @@ if [ -f "./next-service-dist/server.js" ]; then
     export NODE_ENV=production
     export PORT="${PORT:-3000}"
     export HOSTNAME="${HOSTNAME:-0.0.0.0}"
-    export DATABASE_URL="${DATABASE_URL:-$DEFAULT_PACKAGED_DATABASE_URL}"
-
-    if [ "$DATABASE_URL" = "$DEFAULT_PACKAGED_DATABASE_URL" ]; then
-        if [ ! -f "$DEFAULT_PACKAGED_DB_PATH" ]; then
-            echo "❌ 未找到打包后的数据库文件 $DEFAULT_PACKAGED_DB_PATH"
-            echo "   为避免生产环境启动到空数据库，启动已终止"
-            exit 1
-        fi
-
-        echo "🗄️  当前使用打包数据库: $DEFAULT_PACKAGED_DB_PATH"
-    else
-        echo "🗄️  当前使用外部指定数据库: $DATABASE_URL"
-    fi
-    
     # 后台启动 Next.js
     bun server.js &
     NEXT_PID=$!

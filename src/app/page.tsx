@@ -1,12 +1,10 @@
 'use client';
 
-import { useState, useSyncExternalStore, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
+import { Bell, Brain, Moon, Plus, Search, Sun, WifiOff, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAppStore, type ViewType } from '@/lib/store';
-import { cn } from '@/lib/utils';
-import { useRealtime } from '@/hooks/use-realtime';
-import { Sidebar } from '@/components/finance/sidebar';
+import { Sidebar, navigationItems } from '@/components/finance/sidebar';
 import { DashboardView } from '@/components/finance/dashboard-view';
 import { AccountsView } from '@/components/finance/accounts-view';
 import { CardsView } from '@/components/finance/cards-view';
@@ -17,7 +15,7 @@ import { InstallmentsView } from '@/components/finance/installments-view';
 import { ConsortiumsView } from '@/components/finance/consortiums-view';
 import { SavingsView } from '@/components/finance/savings-view';
 import { NotificationPanel } from '@/components/finance/notification-panel';
-import { GlobalSearch } from '@/components/finance/global-search';
+import { GlobalSearch, searchDestination } from '@/components/finance/global-search';
 import { QuickActions } from '@/components/finance/quick-actions';
 import { MobileNav } from '@/components/finance/mobile-nav';
 import { CashFlowForecast } from '@/components/finance/cash-flow-forecast';
@@ -31,53 +29,15 @@ import { BalanceProjection } from '@/components/finance/balance-projection';
 import { NetworthEvolution } from '@/components/finance/networth-evolution';
 import { DebtOverview } from '@/components/finance/debt-overview';
 import { TransactionAnalytics } from '@/components/finance/transaction-analytics';
-import { UpcomingBills } from '@/components/finance/upcoming-bills';
 import { ReceiptGenerator } from '@/components/finance/receipt-generator';
 import { AchievementBadges } from '@/components/finance/achievement-badges';
-import { MonthlyBudgetTracker } from '@/components/finance/monthly-budget-tracker';
 import { GoalsDashboard } from '@/components/finance/goals-dashboard';
 import { QuickStatsOverview } from '@/components/finance/quick-stats-overview';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
-import {
-  Menu,
-  Moon,
-  Sun,
-  Bell,
-  Sparkles,
-  Wallet,
-  CreditCard,
-  ShoppingCart,
-  Tag,
-  LayoutDashboard,
-  Search,
-  Heart,
-  Zap,
-  Shield,
-  Wifi,
-  WifiOff,
-  TrendingUp,
-  CalendarClock,
-  Building2,
-  PiggyBank,
-  Brain,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useAppStore, type ViewType } from '@/lib/store';
+import { useRealtime } from '@/hooks/use-realtime';
 
-const viewLabels: Record<ViewType, string> = {
-  dashboard: 'Dashboard',
-  accounts: 'Contas',
-  cards: 'Cartões',
-  purchases: 'Compras',
-  categories: 'Categorias',
-  investments: 'Investimentos',
-  installments: 'Parcelas',
-  consortiums: 'Consórcios',
-  savings: 'Caixinhas',
-};
-
-const viewSubtitles: Record<ViewType, string> = {
+const viewContext: Record<ViewType, string> = {
   dashboard: 'Visão geral das suas finanças',
   accounts: 'Gerencie suas contas e saldos',
   cards: 'Acompanhe cartões e faturas',
@@ -89,194 +49,137 @@ const viewSubtitles: Record<ViewType, string> = {
   savings: 'Metas e caixinhas de poupança',
 };
 
-const viewIcons: Record<ViewType, React.ElementType> = {
-  dashboard: LayoutDashboard,
-  accounts: Wallet,
-  cards: CreditCard,
-  purchases: ShoppingCart,
-  categories: Tag,
-  investments: TrendingUp,
-  installments: CalendarClock,
-  consortiums: Building2,
-  savings: PiggyBank,
-};
-
-const viewColors: Record<ViewType, string> = {
-  dashboard: 'from-emerald-500 to-cyan-500',
-  accounts: 'from-violet-500 to-purple-500',
-  cards: 'from-orange-500 to-rose-500',
-  purchases: 'from-sky-500 to-cyan-500',
-  categories: 'from-amber-500 to-orange-500',
-  investments: 'from-emerald-500 to-cyan-500',
-  installments: 'from-violet-500 to-fuchsia-500',
-  consortiums: 'from-teal-500 to-emerald-500',
-  savings: 'from-rose-500 to-pink-500',
-};
-
-function MobileSidebarContent({ onNavigate, onClose }: { onNavigate: (v: ViewType) => void; onClose: () => void }) {
-  const { currentView } = useAppStore();
-  const allViews: ViewType[] = ['dashboard', 'accounts', 'cards', 'purchases', 'categories', 'investments', 'installments', 'consortiums', 'savings'];
-
+function DashboardWithWidgets({ refreshCounter }: { refreshCounter: number }) {
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 h-[68px] border-b border-border/60">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
-          <Sparkles className="w-5 h-5 text-primary-foreground" />
-        </div>
-        <div>
-          <span className="font-bold text-[17px] tracking-tight leading-tight">FinanceApp</span>
-          <p className="text-[10px] text-muted-foreground/80 leading-tight">Gestão Inteligente</p>
-        </div>
+    <DashboardView refreshCounter={refreshCounter}>
+      <div key={refreshCounter} className="space-y-4">
+        <QuickStatsOverview refreshCounter={refreshCounter} />
+        <SmartInsights />
+        <CashFlowForecast />
+        <SpendingTimeline />
+        <SavingsChallenge />
+        <ExpenseBreakdown />
+        <BalanceProjection />
+        <FinancialCalendar />
+        <NetworthEvolution />
+        <DebtOverview />
+        <TransactionAnalytics />
+        <GoalsDashboard />
+        <ReceiptGenerator />
+        <AchievementBadges />
       </div>
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 mb-2">Principal</p>
-        {allViews.slice(0, 5).map((view, i) => {
-          const isActive = currentView === view;
-          const Icon = viewIcons[view];
-          return (
-            <motion.button
-              key={view}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.04, duration: 0.25 }}
-              onClick={() => { onNavigate(view); onClose(); }}
-              className={`flex items-center w-full gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                isActive
-                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span>{viewLabels[view]}</span>
-            </motion.button>
-          );
-        })}
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 mt-4 mb-2">Financeiro</p>
-        {allViews.slice(5).map((view, i) => {
-          const isActive = currentView === view;
-          const Icon = viewIcons[view];
-          return (
-            <motion.button
-              key={view}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: (i + 5) * 0.04, duration: 0.25 }}
-              onClick={() => { onNavigate(view); onClose(); }}
-              className={`flex items-center w-full gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                isActive
-                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span>{viewLabels[view]}</span>
-            </motion.button>
-          );
-        })}
-      </nav>
-      <div className="px-4 pb-4 border-t border-border pt-3 space-y-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Shield className="w-3.5 h-3.5" />
-          <span>Dados seguros localmente</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Zap className="w-3.5 h-3.5" />
-          <span>v3.0.0</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DashboardWithWidgets() {
-  return (
-    <div className="space-y-6">
-      <QuickStatsOverview />
-      <DashboardView />
-      <SmartInsights />
-      <CashFlowForecast />
-      <SpendingTimeline />
-      <SavingsChallenge />
-      <ExpenseBreakdown />
-      <BalanceProjection />
-      <FinancialCalendar />
-      <NetworthEvolution />
-      <DebtOverview />
-      <TransactionAnalytics />
-      <MonthlyBudgetTracker />
-      <GoalsDashboard />
-      <UpcomingBills />
-      <ReceiptGenerator />
-      <AchievementBadges />
-    </div>
+    </DashboardView>
   );
 }
 
 export default function Page() {
-  const { currentView, setCurrentView, aiAssistantVisible, toggleAiAssistant } = useAppStore();
-  const { theme, setTheme } = useTheme();
-  const [sidebarCollapsedState, setSidebarCollapsed] = useState(false);
+  const currentView = useAppStore((state) => state.currentView);
+  const setCurrentView = useAppStore((state) => state.setCurrentView);
+  const requestNewTransaction = useAppStore((state) => state.requestNewTransaction);
+  const requestNewGoal = useAppStore((state) => state.requestNewGoal);
+  const setSelectedAccountId = useAppStore((state) => state.setSelectedAccountId);
+  const setSelectedCardId = useAppStore((state) => state.setSelectedCardId);
+  const setSelectedPurchaseId = useAppStore((state) => state.setSelectedPurchaseId);
+  const setSelectedInvestmentId = useAppStore((state) => state.setSelectedInvestmentId);
+  const setSelectedInstallmentPlanId = useAppStore((state) => state.setSelectedInstallmentPlanId);
+  const setSelectedConsortiumId = useAppStore((state) => state.setSelectedConsortiumId);
+  const aiAssistantVisible = useAppStore((state) => state.aiAssistantVisible);
+  const setAiAssistantVisible = useAppStore((state) => state.setAiAssistantVisible);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [footerData, setFooterData] = useState<{ netWorth: number; savingsRate: number } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const advisorDialog = useRef<HTMLDialogElement>(null);
+  const advisorButton = useRef<HTMLButtonElement>(null);
+  const [advisorOpened, setAdvisorOpened] = useState(false);
+  const notificationButton = useRef<HTMLButtonElement>(null);
+  const searchButton = useRef<HTMLButtonElement>(null);
+  const newEntryButton = useRef<HTMLButtonElement>(null);
+  const launchOrigin = useRef<HTMLElement | null>(null);
+  const searchOrigin = useRef<HTMLElement | null>(null);
   const toastShownRef = useRef<string | null>(null);
+
   const { isConnected, refreshCounter } = useRealtime({
     onEvent: (event) => {
       if (toastShownRef.current !== event.timestamp) {
         toastShownRef.current = event.timestamp;
-        const isDashboardEvent = event.type === 'dashboard:updated' || event.type === 'dashboard:refresh';
-        if (isDashboardEvent) {
+        if (event.type === 'dashboard:updated' || event.type === 'dashboard:refresh') {
           toast.success('Dados atualizados');
         }
       }
     },
   });
 
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setShowSearch(true);
-      }
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
+      event.preventDefault();
+      if (document.querySelector('dialog[open], [data-state="open"][data-slot="dialog-content"], [data-state="open"][data-slot="sheet-content"], [data-state="open"][data-slot="dropdown-menu-content"]')) return;
+      searchOrigin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setShowNotifications(false);
+      setShowSearch(true);
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
   }, []);
 
-  // Fetch footer quick stats
   useEffect(() => {
-    async function fetchFooterData() {
-      try {
-        const res = await fetch('/api/dashboard');
-        if (res.ok) {
-          const d = await res.json();
-          const net = d.totalBalance - d.totalCardBalance;
-          const rate = d.monthIncome > 0 ? ((d.monthIncome - d.monthExpense) / d.monthIncome) * 100 : 0;
-          setFooterData({ netWorth: net, savingsRate: rate });
-        }
-      } catch {
-        // silently ignore
-      }
+    const dialog = advisorDialog.current;
+    if (!dialog) return;
+    if (aiAssistantVisible && !dialog.open) dialog.showModal();
+    if (!aiAssistantVisible && dialog.open) dialog.close();
+  }, [aiAssistantVisible, mounted]);
+
+  if (!mounted) {
+    return (
+      <div role="status" className="flex h-dvh min-w-0 items-center justify-center bg-background text-sm text-muted-foreground">
+        <span>Carregando FinanceApp…</span>
+      </div>
+    );
+  }
+
+  const startLaunch = (origin: HTMLElement | null) => {
+    launchOrigin.current = origin;
+    setShowNotifications(false);
+    requestNewTransaction();
+  };
+
+  const restoreLaunchFocus = () => {
+    (launchOrigin.current?.isConnected ? launchOrigin.current : newEntryButton.current)?.focus();
+    launchOrigin.current = null;
+  };
+
+  const closeNotifications = () => {
+    setShowNotifications(false);
+    notificationButton.current?.focus();
+  };
+
+  const closeSearch = () => {
+    setShowSearch(false);
+    const origin = searchOrigin.current;
+    searchOrigin.current = null;
+    // Radix restores focus after its close animation; wait until the portal unmounts.
+    const dialog = document.querySelector('[data-slot="dialog-content"][data-state="open"]');
+    const restoreFocus = () => (origin?.isConnected && origin !== document.body ? origin : searchButton.current)?.focus();
+    if (!dialog) {
+      restoreFocus();
+      return;
     }
-    fetchFooterData();
-  }, []);
-
-  if (!mounted) return null;
-
-  const handleNavigate = (view: ViewType) => setCurrentView(view);
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+    const observer = new MutationObserver(() => {
+      if (!dialog.isConnected) {
+        observer.disconnect();
+        requestAnimationFrame(restoreFocus);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  };
 
   const renderView = () => {
     switch (currentView) {
-      case 'dashboard': return <DashboardWithWidgets />;
-      case 'accounts': return <AccountsView />;
+      case 'dashboard': return <DashboardWithWidgets refreshCounter={refreshCounter} />;
+      case 'accounts': return <AccountsView refreshCounter={refreshCounter} onLaunchClose={restoreLaunchFocus} />;
       case 'cards': return <CardsView />;
       case 'purchases': return <PurchasesView />;
       case 'categories': return <CategoriesView />;
@@ -284,241 +187,168 @@ export default function Page() {
       case 'installments': return <InstallmentsView />;
       case 'consortiums': return <ConsortiumsView />;
       case 'savings': return <SavingsView />;
-      default: return <DashboardWithWidgets />;
     }
   };
 
-  const CurrentIcon = viewIcons[currentView];
-  const currentLabel = viewLabels[currentView];
-  const currentSubtitle = viewSubtitles[currentView];
-  const currentGradient = viewColors[currentView];
+  const currentLabel = currentView === 'dashboard' ? 'Resumo financeiro' : navigationItems.find(({ view }) => view === currentView)?.label;
+  const darkTheme = resolvedTheme === 'dark';
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop Sidebar */}
-      <Sidebar
-        collapsed={sidebarCollapsedState}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsedState)}
-        onNavigate={handleNavigate}
-      />
+      <div className="flex h-dvh min-w-0 overflow-hidden bg-background">
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          isConnected={isConnected}
+          onToggle={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          onNavigate={setCurrentView}
+        />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className="h-16 border-b border-border/40 bg-card/50 backdrop-blur-2xl flex items-center justify-between px-4 lg:px-6 shrink-0 z-30 glass-card">
-          <div className="flex items-center gap-3">
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden hover:bg-accent/50">
-                  <Menu className="w-5 h-5" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="relative z-30 flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-border bg-card px-3 py-1.5 sm:min-h-16 sm:flex-nowrap sm:px-5 lg:px-6">
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold leading-tight tracking-tight sm:text-base">{currentLabel}</h1>
+              <p className="hidden text-xs text-muted-foreground sm:block">{viewContext[currentView]}</p>
+            </div>
+            <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-0.5 sm:flex-nowrap sm:gap-1">
+              {!isConnected && (
+                <span className="mr-1 hidden text-muted-foreground sm:max-md:inline-flex" title="Tempo real indisponível">
+                  <WifiOff aria-hidden="true" className="size-4" />
+                  <span className="sr-only">Tempo real indisponível</span>
+                </span>
+              )}
+              <Button
+                ref={searchButton}
+                variant="ghost"
+                className="size-9 px-0 text-muted-foreground lg:w-auto lg:gap-2 lg:border lg:border-border lg:px-3"
+                aria-label="Abrir busca global"
+                aria-keyshortcuts="Control+K Meta+K"
+                aria-haspopup="dialog"
+                onClick={(event) => {
+                  searchOrigin.current = event.currentTarget;
+                  setShowNotifications(false);
+                  setShowSearch(true);
+                }}
+              >
+                <Search aria-hidden="true" />
+                <span className="hidden lg:inline">Buscar em tudo</span>
+                <kbd aria-hidden="true" className="hidden rounded border border-border px-1 font-mono text-[10px] lg:inline">Ctrl/⌘ K</kbd>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={darkTheme ? "Usar tema claro" : "Usar tema escuro"}
+                onClick={() => setTheme(darkTheme ? "light" : "dark")}
+              >
+                {darkTheme ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+              </Button>
+
+              <Button
+                ref={advisorButton}
+                variant="ghost"
+                size="icon"
+                aria-label="Abrir assistente financeiro IA"
+                aria-haspopup="dialog"
+                aria-expanded={aiAssistantVisible}
+                onClick={() => {
+                  setShowNotifications(false);
+                  setAdvisorOpened(true);
+                  setAiAssistantVisible(true);
+                }}
+              >
+                <Brain aria-hidden="true" />
+              </Button>
+
+              <div
+                onKeyDown={(event) => { if (event.key === "Escape" && showNotifications) closeNotifications(); }}
+                className="[&>div]:!right-3 md:[&>div]:!right-6"
+              >
+                <Button
+                  ref={notificationButton}
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Notificações"
+                  aria-expanded={showNotifications}
+                  onClick={() => setShowNotifications((open) => !open)}
+                >
+                  <Bell aria-hidden="true" />
                 </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] p-0">
-                <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
-                <MobileSidebarContent
-                  onNavigate={(v) => { handleNavigate(v); setMobileMenuOpen(false); }}
-                  onClose={() => setMobileMenuOpen(false)}
-                />
-              </SheetContent>
-            </Sheet>
+                <NotificationPanel isOpen={showNotifications} onClose={closeNotifications} />
+              </div>
 
-            <div className="flex items-center gap-3">
-              <motion.div
-                key={currentView}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                className={`hidden sm:flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br ${currentGradient} shadow-lg`}
+              <QuickActions
+                onOpenChange={(open) => { if (open) setShowNotifications(false); }}
+                onNavigate={(view, origin) => {
+                  if (view === "accounts") {
+                    startLaunch(origin);
+                  } else {
+                    setCurrentView(view);
+                  }
+                }}
+                onNewGoal={() => {
+                  setShowNotifications(false);
+                  requestNewGoal();
+                }}
+                onExport={() => { window.open("/api/export?type=transactions&format=csv", "_blank"); }}
+              />
+
+              <Button
+                ref={newEntryButton}
+                size="sm"
+                className="ml-1 h-9 px-2.5"
+                aria-label="Novo lançamento"
+                aria-haspopup="dialog"
+                onClick={(event) => startLaunch(event.currentTarget)}
               >
-                <CurrentIcon className="w-4.5 h-4.5 text-white" />
-              </motion.div>
-              <div>
-                <h1 className="text-base font-semibold leading-tight text-foreground">{currentLabel}</h1>
-                <p className="text-[11px] text-muted-foreground leading-tight hidden sm:block">{currentSubtitle}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {/* Connection status */}
-            <div className="flex items-center justify-center w-7 h-7 rounded-full">
-              <div className="relative flex items-center justify-center">
-                {isConnected ? (
-                  <Wifi className="w-4 h-4 text-emerald-500" />
-                ) : (
-                  <WifiOff className="w-4 h-4 text-rose-400" />
-                )}
-                <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-background ${isConnected ? 'bg-emerald-500' : 'bg-rose-400'}`} />
-              </div>
-            </div>
-
-            {/* Search */}
-            <motion.div whileTap={{ scale: 0.95 }} className="hidden sm:block">
-              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 px-3 bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/50" onClick={() => setShowSearch(true)}>
-                <Search className="w-3.5 h-3.5" />
-                <span className="text-xs">Buscar...</span>
-                <kbd className="pointer-events-none ml-1 inline-flex h-5 items-center gap-0.5 rounded border border-border/50 bg-muted/50 px-1.5 font-mono text-[10px] font-medium text-muted-foreground">⌘K</kbd>
+                <Plus aria-hidden="true" />
+                <span>Novo lançamento</span>
               </Button>
-            </motion.div>
-            <Button variant="ghost" size="icon" className="sm:hidden" onClick={() => setShowSearch(true)}>
-              <Search className="w-5 h-5" />
+            </div>
+          </header>
+
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+            <div key={currentView === "dashboard" || currentView === "accounts" ? currentView : `${currentView}-${refreshCounter}`} className="mx-auto min-w-0 max-w-[1440px] px-3 py-4 sm:px-5 lg:px-6">
+              {renderView()}
+            </div>
+          </main>
+          <MobileNav />
+        </div>
+
+        <dialog
+          ref={advisorDialog}
+          inert={!aiAssistantVisible}
+          aria-labelledby="advisor-title"
+          className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-4 text-card-foreground shadow-lg backdrop:bg-black/50"
+          onCancel={(event) => {
+            event.preventDefault();
+            setAiAssistantVisible(false);
+          }}
+          onClose={() => advisorButton.current?.focus()}
+        >
+          <h2 id="advisor-title" className="sr-only">Assistente financeiro IA</h2>
+          <div className="mb-2 flex justify-end">
+            <Button variant="ghost" size="icon" aria-label="Fechar assistente financeiro" onClick={() => setAiAssistantVisible(false)}>
+              <X aria-hidden="true" />
             </Button>
-
-            {/* Notifications */}
-            <div className="relative">
-              <Button variant="ghost" size="icon" className="relative hover:bg-accent/50 hover-scale-sm" onClick={() => setShowNotifications(!showNotifications)}>
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-background" />
-              </Button>
-              <NotificationPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
-            </div>
-
-            {/* Theme toggle */}
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="hover:bg-accent/50">
-              <AnimatePresence mode="wait">
-                {theme === 'dark' ? (
-                  <motion.div key="sun" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
-                    <Sun className="w-5 h-5" />
-                  </motion.div>
-                ) : (
-                  <motion.div key="moon" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}>
-                    <Moon className="w-5 h-5" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </Button>
-
-            {/* User avatar */}
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ml-0.5 shadow-lg shadow-violet-500/20">
-              <span className="text-[11px] font-bold text-white">FA</span>
-            </div>
           </div>
-        </header>
+          {(advisorOpened || aiAssistantVisible) && <AIAdvisor />}
+        </dialog>
 
-        {/* AI Assistant Bar - Persistent across all views */}
-        <AnimatePresence>
-          {aiAssistantVisible && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="overflow-hidden border-b border-border/30 shrink-0"
-            >
-              <AIAdvisor />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* AI Advisor Toggle (visible when hidden) */}
-        {!aiAssistantVisible && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between px-4 lg:px-6 py-1.5 bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-b border-border/20 shrink-0"
-          >
-            <button
-              onClick={toggleAiAssistant}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Brain className="w-3.5 h-3.5 text-violet-500" />
-              <span>Assistente IA</span>
-              <span className="text-[10px] bg-violet-500/10 text-violet-500 px-1.5 py-0.5 rounded-full">Clique para abrir</span>
-            </button>
-          </motion.div>
-        )}
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto main-gradient">
-          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`${currentView}-${refreshCounter}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
-              >
-                {renderView()}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </main>
-
-        {/* Footer */}
-        <footer className="relative border-t border-border/40 glass-enhanced px-4 lg:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20 md:pb-3 pb-20">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                <Sparkles className="w-2.5 h-2.5 text-primary-foreground" />
-              </div>
-              <span className="font-medium text-foreground">FinanceApp</span>
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">v3.0</Badge>
-            </div>
-            <span className="hidden sm:block text-muted-foreground/60">·</span>
-            <span className="hidden sm:flex items-center gap-1">
-              Feito com <Heart className="w-3 h-3 text-rose-400 fill-rose-400" /> no Brasil
-            </span>
-          </div>
-          {/* Desktop-only quick stats */}
-          <div className="hidden md:flex items-center gap-4">
-            {footerData && (
-              <>
-                <div className="flex items-center gap-1.5 text-muted-foreground/70">
-                  <TrendingUp className="w-3 h-3 text-emerald-500" />
-                  <span>Patrimônio Líquido:</span>
-                  <span className="font-semibold text-foreground tabular-nums number-ticker">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(footerData.netWorth)}
-                  </span>
-                </div>
-                <span className="text-muted-foreground/40">·</span>
-                <div className="flex items-center gap-1.5 text-muted-foreground/70">
-                  <PiggyBank className="w-3 h-3 text-amber-500" />
-                  <span>Taxa de Poupança:</span>
-                  <span className={cn(
-                    'font-semibold tabular-nums number-ticker',
-                    footerData.savingsRate >= 0 ? 'text-emerald-500' : 'text-rose-500'
-                  )}>
-                    {footerData.savingsRate.toFixed(1)}%
-                  </span>
-                </div>
-                <span className="text-muted-foreground/40">·</span>
-              </>
-            )}
-            <span className="flex items-center gap-1.5 text-muted-foreground/70">
-              <Shield className="w-3 h-3" />
-              Dados seguros
-            </span>
-            <span className="text-muted-foreground/60">·</span>
-            <span>© {new Date().getFullYear()}</span>
-          </div>
-        </footer>
+        <GlobalSearch
+          isOpen={showSearch}
+          onClose={closeSearch}
+          onSelect={(type, id, meta) => {
+            const destination = searchDestination(type);
+            if (!destination) return;
+            if (type === 'accounts') setSelectedAccountId(id);
+            else if (type === 'transactions' && meta?.accountId) setSelectedAccountId(meta.accountId);
+            else if (type === 'cards') setSelectedCardId(id);
+            else if (type === 'purchases') setSelectedPurchaseId(id);
+            else if (destination === 'investments') setSelectedInvestmentId(id);
+            else if (destination === 'installments') setSelectedInstallmentPlanId(id);
+            else if (destination === 'consortiums') setSelectedConsortiumId(id);
+            setCurrentView(destination);
+          }}
+        />
       </div>
-
-      {/* Quick Actions FAB */}
-      <QuickActions
-        onNavigate={(view) => setCurrentView(view as ViewType)}
-        onExport={() => { window.open('/api/export?type=transactions&format=csv', '_blank'); }}
-      />
-
-      {/* Global Search Overlay */}
-      <GlobalSearch
-        isOpen={showSearch}
-        onClose={() => setShowSearch(false)}
-        onSelect={(type, id) => {
-          setShowSearch(false);
-          if (type === 'account') setCurrentView('accounts');
-          else if (type === 'card') setCurrentView('cards');
-          else if (type === 'purchase') setCurrentView('purchases');
-          else if (type === 'transaction') setCurrentView('accounts');
-          else if (type === 'category') setCurrentView('categories');
-          else if (type === 'investment') setCurrentView('investments');
-        }}
-      />
-
-      {/* Mobile Bottom Navigation */}
-      <MobileNav />
-    </div>
   );
 }

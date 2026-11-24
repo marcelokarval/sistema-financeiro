@@ -1,0 +1,308 @@
+{
+  "paths": [
+    {
+      "path": "docs/reference/design-system.premium-theme.css",
+      "state": "present"
+    },
+    {
+      "path": "src/app/globals.css",
+      "state": "present"
+    },
+    {
+      "path": "src/app/quiet-tokens.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/page.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/store.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/store.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quick-actions.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/sidebar.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/mobile-nav.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/accounts-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/dashboard-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/dashboard-view.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/dashboard-query.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/dashboard-query.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/upcoming-bills.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/monthly-budget-tracker.tsx",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/design-system.contract.md",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/design-system.premium-direction.md",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/design-system.premium-direction.html",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-accounts-cards.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/cards-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-purchases-categories.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/purchases-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/categories-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-recurring-receipts.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/recurring-transactions.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/receipt-generator.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-investments-installments.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/investments-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/installments-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-consortiums-savings.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/consortiums-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/savings-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quick-stats-overview.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/smart-insights.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/cash-flow-forecast.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/spending-timeline.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/expense-breakdown.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/balance-projection.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-insights-flow.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/financial-calendar.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/networth-evolution.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/debt-overview.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/transaction-analytics.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/financial-reports.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-analysis-calendar.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/savings-challenge.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/goals-dashboard.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/budget-goals.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/achievement-badges.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/financial-health-score.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-goals-health.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/global-search.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/notification-panel.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/ai-advisor.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-transversal.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/consortiums/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/consortiums/assembly.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/savings/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/savings/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-investment-mutations.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-accounts-cards.qa.mjs",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/purchase-date.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "download/README.md",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/consortium-selection.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/consortium-selection.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/installments/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/installments/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/installment-selection.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/installment-selection.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/purchases/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/purchases/route-integrity.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/receipt/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/export/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/purchase-date.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/financial-calendar/route.ts",
+      "state": "present"
+    }
+  ]
+}

@@ -1,35 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  ArrowLeft,
-  CheckCircle2,
-  Building2,
-  CalendarDays,
-  CreditCard,
-  Users,
-  TrendingUp,
-  HandCoins,
-  PieChart,
-  Clock,
-  CircleDollarSign,
-  FileCheck,
-  ChevronRight,
-  AlertTriangle,
-} from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
+import { Plus, Pencil, Trash2, ArrowLeft, CheckCircle2, Building2, ChevronRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -57,26 +35,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
-import {
-  currencyFmt,
-  dateFmt,
-  pct,
-  containerVariants,
-  itemVariants,
-  summaryContainerVariants,
-  summaryItemVariants,
-  listContainerVariants,
-  listItemVariants,
-  detailEntryVariants,
-} from '@/lib/helpers';
-import {
-  StatCard,
-  StatCardSkeleton,
-  EmptyState,
-  SectionHeader,
-  ProgressBar,
-  StatusBadge,
-} from '@/components/shared/ui-helpers';
+import { currencyFmt, dateFmt, pct } from '@/lib/helpers';
+import { findPayableConsortiumInstallment, isCurrentConsortiumSelection, readConsortiumInstallments,
+  resolveConsortiumPaymentRefresh,
+  type ConsortiumInstallment, type ConsortiumSelection } from '@/lib/consortium-selection';
+import { EmptyState, StatusBadge } from '@/components/shared/ui-helpers';
+import { useAppStore } from '@/lib/store';
 
 // ── Types ─────────────────────────────────────────────────────────
 interface Consortium {
@@ -103,18 +67,12 @@ interface Consortium {
   updatedAt: string;
 }
 
-interface ConsortiumInstallment {
-  id: string;
-  number: number;
-  amount: number;
-  dueDate: string;
-  paidDate: string | null;
-  status: string;
-  notes: string;
-  assemblyDate: string | null;
-  assemblyResult: string;
-  consortiumId: string;
+interface PayConfirmation {
+  opening: ConsortiumSelection;
+  installment: ConsortiumInstallment;
 }
+
+type InstallmentLoad = 'loading' | 'ready' | 'error';
 
 interface Category {
   id: string;
@@ -123,36 +81,69 @@ interface Category {
   color: string;
 }
 
+interface Account {
+  id: string;
+  name: string;
+}
+
 // ── Status Configs ────────────────────────────────────────────────
 const consortiumStatusLabels: Record<string, { text: string; className: string }> = {
-  ACTIVE: { text: 'Ativo', className: 'bg-emerald-500/15 text-emerald-600' },
-  COMPLETED: { text: 'Concluído', className: 'bg-green-500/15 text-green-600' },
-  CANCELLED: { text: 'Cancelado', className: 'bg-slate-500/15 text-slate-500' },
-  CONTEMPLATED: { text: 'Contemplado', className: 'bg-amber-500/15 text-amber-600' },
+  ACTIVE: { text: 'Ativo', className: 'bg-muted text-[var(--ds-accent-positive)]' },
+  COMPLETED: { text: 'Concluído', className: 'bg-muted text-[var(--ds-accent-positive)]' },
+  CANCELLED: { text: 'Cancelado', className: 'bg-muted text-muted-foreground' },
+  CONTEMPLATED: { text: 'Contemplado', className: 'bg-muted text-[var(--ds-accent-warning)]' },
 };
 
 const installmentStatusLabels: Record<string, { text: string; className: string }> = {
-  PAID: { text: 'Paga', className: 'bg-emerald-500/15 text-emerald-600' },
-  PENDING: { text: 'Pendente', className: 'bg-amber-500/15 text-amber-600' },
-  OVERDUE: { text: 'Vencida', className: 'bg-rose-500/15 text-rose-600' },
+  PAID: { text: 'Paga', className: 'bg-muted text-[var(--ds-accent-positive)]' },
+  PENDING: { text: 'Pendente', className: 'bg-muted text-[var(--ds-accent-warning)]' },
+  OVERDUE: { text: 'Vencida', className: 'bg-muted text-destructive' },
 };
 
 type FilterStatus = 'ALL' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'CONTEMPLATED';
+
+const assemblyDateForInput = (value: string | null) => value?.slice(0, 10) ?? '';
+
+function formatAssemblyDate(value: string) {
+  // A API serializa o dia escolhido no input como ISO em UTC.
+  const [year, month, day] = assemblyDateForInput(value).split('-');
+  return `${day}/${month}/${year}`;
+}
 
 // ── Component ─────────────────────────────────────────────────────
 export function ConsortiumsView() {
   const [consortiums, setConsortiums] = useState<Consortium[]>([]);
   const [installments, setInstallments] = useState<ConsortiumInstallment[]>([]);
+  const [installmentLoad, setInstallmentLoad] = useState<InstallmentLoad>('loading');
+  const currentOpening = useRef<ConsortiumSelection | null>(null);
+  const currentRows = useRef<ConsortiumInstallment[] | null>(null);
+  const installmentRequest = useRef<AbortController | null>(null);
+  const listRequest = useRef(0);
+  const detailSummaryRequest = useRef(0);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedConsortium, setSelectedConsortium] = useState<Consortium | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selection, setSelection] = useState<{ opening: ConsortiumSelection; consortium: Consortium } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState<FilterStatus>('ALL');
 
   // Dialog states
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [createOpening, setCreateOpening] = useState<symbol | null>(null);
+  const [editOpening, setEditOpening] = useState<symbol | null>(null);
+  const currentCreateOpening = useRef<symbol | null>(null);
+  const currentEditOpening = useRef<symbol | null>(null);
+  const pendingCreates = useRef(new Set<symbol>());
+  const pendingEdits = useRef(new Set<string>());
+  const [creating, setCreating] = useState<symbol | null>(null);
+  const [editingIds, setEditingIds] = useState(new Set<string>());
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
-  const [showPayDialog, setShowPayDialog] = useState<ConsortiumInstallment | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const deleteInFlight = useRef(false);
+  const [payConfirmation, setPayConfirmation] = useState<PayConfirmation | null>(null);
+  const currentConfirmation = useRef<PayConfirmation | null>(null);
+  const [submitting, setSubmitting] = useState<PayConfirmation | null>(null);
+  const pendingConsortiumPayments = useRef(new Set<string>());
+  const paidInSession = useRef(new Set<string>());
 
   // Create form
   const [createForm, setCreateForm] = useState({
@@ -178,7 +169,6 @@ export function ConsortiumsView() {
 
   // Pay installment form
   const [payForm, setPayForm] = useState({
-    installmentId: '',
     paidDate: new Date().toISOString().split('T')[0],
     notes: '',
     assemblyDate: '',
@@ -186,25 +176,75 @@ export function ConsortiumsView() {
   });
 
   // ── Data Fetching ───────────────────────────────────────────────
-  const fetchConsortiums = useCallback(async () => {
+  const fetchInstallmentsRef = useRef<(opening: ConsortiumSelection) => Promise<void>>(async () => {});
+
+  const fetchConsortiums = useCallback(async (opening?: ConsortiumSelection) => {
+    const request = ++listRequest.current;
+    if (opening) detailSummaryRequest.current = request;
+    if (!opening) setLoadError(false);
     try {
       const res = await fetch('/api/consortiums');
-      if (res.ok) setConsortiums(await res.json());
+      if (!res.ok) {
+        if (!opening && request === listRequest.current) setLoadError(true);
+        return;
+      }
+      const rows: Consortium[] = await res.json();
+      if (request === listRequest.current) setConsortiums(rows);
+      if (request === listRequest.current) setLoadError(false);
+      if (opening && request === detailSummaryRequest.current
+        && isCurrentConsortiumSelection(currentOpening.current, opening)) {
+        const updated = rows.find((row) => row.id === opening.consortiumId);
+        if (updated) setSelection({ opening, consortium: updated });
+      } else if (!opening && request === listRequest.current) {
+        const selectedId = useAppStore.getState().selectedConsortiumId;
+        if (selectedId) {
+          const target = rows.find((row) => row.id === selectedId);
+          useAppStore.getState().setSelectedConsortiumId(null);
+          if (target) {
+            const nextOpening = { consortiumId: target.id };
+            currentOpening.current = nextOpening;
+            setSelection({ opening: nextOpening, consortium: target });
+            void fetchInstallmentsRef.current(nextOpening);
+          }
+        }
+      }
     } catch (e) {
       console.error(e);
+      if (!opening && request === listRequest.current) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (request === listRequest.current) setLoading(false);
     }
   }, []);
 
-  const fetchInstallments = useCallback(async (consortiumId: string) => {
-    try {
-      const res = await fetch(`/api/consortiums/installments?consortiumId=${consortiumId}`);
-      if (res.ok) setInstallments(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
+  const closePayDialog = useCallback(() => {
+    currentConfirmation.current = null;
+    setPayConfirmation(null);
   }, []);
+
+  const fetchInstallments = useCallback(async (opening: ConsortiumSelection) => {
+    if (!isCurrentConsortiumSelection(currentOpening.current, opening)) return;
+    installmentRequest.current?.abort();
+    const request = new AbortController();
+    installmentRequest.current = request;
+    currentRows.current = null;
+    closePayDialog();
+    setInstallments([]);
+    setInstallmentLoad('loading');
+
+    let rows: ConsortiumInstallment[] | null = null;
+    try {
+      const res = await fetch(`/api/consortiums/installments?consortiumId=${encodeURIComponent(opening.consortiumId)}`,
+        { signal: request.signal });
+      if (res.ok) rows = readConsortiumInstallments(opening, await res.json());
+    } catch {
+      // Falha de rede ou JSON inválido: nenhuma parcela fica disponível.
+    }
+    if (request.signal.aborted || !isCurrentConsortiumSelection(currentOpening.current, opening)) return;
+    currentRows.current = rows;
+    setInstallments(rows ?? []);
+    setInstallmentLoad(rows ? 'ready' : 'error');
+  }, [closePayDialog]);
+  fetchInstallmentsRef.current = fetchInstallments;
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -215,10 +255,45 @@ export function ConsortiumsView() {
     }
   }, []);
 
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/accounts');
+      if (res.ok) setAccounts(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchConsortiums();
     fetchCategories();
-  }, [fetchConsortiums, fetchCategories]);
+    fetchAccounts();
+    const unsubscribe = useAppStore.subscribe((state) => {
+      if (!state.selectedConsortiumId) return;
+      const targetId = state.selectedConsortiumId;
+      useAppStore.getState().setSelectedConsortiumId(null);
+      setConsortiums((current) => {
+        const match = current.find((c) => c.id === targetId);
+        if (match) {
+          const nextOpening = { consortiumId: match.id };
+          currentOpening.current = nextOpening;
+          setSelection({ opening: nextOpening, consortium: match });
+          void fetchInstallments(nextOpening);
+        }
+        return current;
+      });
+    });
+    return () => {
+      unsubscribe();
+      currentCreateOpening.current = null;
+      currentEditOpening.current = null;
+      currentOpening.current = null;
+      currentConfirmation.current = null;
+      currentRows.current = null;
+      installmentRequest.current?.abort();
+      listRequest.current++;
+    };
+  }, [fetchConsortiums, fetchCategories, fetchAccounts, fetchInstallments]);
 
   // ── Computed Summary ────────────────────────────────────────────
   const summary = useMemo(() => {
@@ -237,11 +312,38 @@ export function ConsortiumsView() {
 
   // ── Actions ─────────────────────────────────────────────────────
   const openConsortium = (c: Consortium) => {
-    setSelectedConsortium(c);
-    fetchInstallments(c.id);
+    closeCreateDialog();
+    closeEditDialog();
+    const opening = { consortiumId: c.id };
+    currentOpening.current = opening;
+    setSelection({ opening, consortium: c });
+    void fetchInstallments(opening);
+  };
+
+  const closeConsortium = () => {
+    closeEditDialog();
+    currentOpening.current = null;
+    currentRows.current = null;
+    installmentRequest.current?.abort();
+    closePayDialog();
+    setSelection(null);
+    setInstallments([]);
+    setInstallmentLoad('loading');
+  };
+
+  const closeCreateDialog = () => {
+    currentCreateOpening.current = null;
+    setCreateOpening(null);
+  };
+
+  const closeEditDialog = () => {
+    currentEditOpening.current = null;
+    setEditOpening(null);
   };
 
   const openCreateDialog = () => {
+    const opening = Symbol();
+    currentCreateOpening.current = opening;
     setCreateForm({
       description: '',
       group: '',
@@ -255,32 +357,41 @@ export function ConsortiumsView() {
       categoryId: '',
       accountId: '',
     });
-    setShowCreateDialog(true);
+    setCreateOpening(opening);
   };
 
   const openEditDialog = (c: Consortium) => {
+    const opening = Symbol();
+    currentEditOpening.current = opening;
     setEditForm({
       id: c.id,
-      nextAssemblyDate: c.nextAssemblyDate
-        ? new Date(c.nextAssemblyDate).toISOString().split('T')[0]
-        : '',
+      nextAssemblyDate: assemblyDateForInput(c.nextAssemblyDate),
       assembliesAttended: String(c.assembliesAttended),
     });
-    setShowEditDialog(true);
+    setEditOpening(opening);
   };
 
-  const openPayDialog = (inst: ConsortiumInstallment) => {
+  const openPayDialog = (opening: ConsortiumSelection, inst: ConsortiumInstallment, event: MouseEvent<HTMLButtonElement>) => {
+    const installment = findPayableConsortiumInstallment(currentOpening.current, opening, currentRows.current, inst.id);
+    if (!installment) return;
+    if (installment !== inst || pendingConsortiumPayments.current.has(opening.consortiumId) || paidInSession.current.has(installment.id)) return;
+    captureDialogFocus(event);
     setPayForm({
-      installmentId: inst.id,
       paidDate: new Date().toISOString().split('T')[0],
       notes: '',
       assemblyDate: '',
       assemblyResult: '',
     });
-    setShowPayDialog(inst);
+    const confirmation = { opening, installment };
+    currentConfirmation.current = confirmation;
+    setPayConfirmation(confirmation);
   };
 
   const createConsortium = async () => {
+    const opening = createOpening;
+    if (!opening || currentCreateOpening.current !== opening || pendingCreates.current.has(opening)) return;
+    pendingCreates.current.add(opening);
+    setCreating(opening);
     try {
       const body = {
         description: createForm.description,
@@ -293,7 +404,7 @@ export function ConsortiumsView() {
         startDate: createForm.startDate || new Date().toISOString(),
         nextAssemblyDate: createForm.nextAssemblyDate || null,
         categoryId: createForm.categoryId || null,
-        accountId: createForm.accountId || null,
+        accountId: createForm.accountId && createForm.accountId !== 'none' ? createForm.accountId : null,
       };
       const res = await fetch('/api/consortiums', {
         method: 'POST',
@@ -302,21 +413,31 @@ export function ConsortiumsView() {
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error || 'Erro ao criar consórcio');
+        if (currentCreateOpening.current === opening) toast.error(data.error || 'Erro ao criar consórcio');
         return;
       }
-      toast.success('Consórcio criado com sucesso!');
-      setShowCreateDialog(false);
-      fetchConsortiums();
+      if (currentCreateOpening.current === opening) {
+        toast.success('Consórcio criado com sucesso!');
+        closeCreateDialog();
+      }
+      void fetchConsortiums();
     } catch {
-      toast.error('Erro ao criar consórcio');
+      if (currentCreateOpening.current === opening) toast.error('Erro ao criar consórcio');
+    } finally {
+      pendingCreates.current.delete(opening);
+      setCreating((current) => current === opening ? null : current);
     }
   };
 
   const updateConsortium = async () => {
+    const opening = editOpening;
+    const id = editForm.id;
+    if (!opening || currentEditOpening.current !== opening || pendingEdits.current.has(id)) return;
+    pendingEdits.current.add(id);
+    setEditingIds(new Set(pendingEdits.current));
     try {
       const body = {
-        id: editForm.id,
+        id,
         nextAssemblyDate: editForm.nextAssemblyDate || null,
         assembliesAttended: parseInt(editForm.assembliesAttended) || 0,
       };
@@ -327,43 +448,70 @@ export function ConsortiumsView() {
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error || 'Erro ao atualizar consórcio');
+        if (currentEditOpening.current === opening) toast.error(data.error || 'Erro ao atualizar consórcio');
         return;
       }
-      toast.success('Consórcio atualizado!');
-      setShowEditDialog(false);
-      fetchConsortiums();
-      if (selectedConsortium?.id === editForm.id) {
-        fetchConsortiums().then(() => {
-          const updated = consortiums.find((c) => c.id === editForm.id);
-          if (updated) setSelectedConsortium(updated);
-        });
+      if (currentEditOpening.current === opening) {
+        toast.success('Consórcio atualizado!');
+        closeEditDialog();
       }
+      const detailOpening = currentOpening.current;
+      void fetchConsortiums(detailOpening?.consortiumId === id ? detailOpening : undefined);
     } catch {
-      toast.error('Erro ao atualizar consórcio');
+      if (currentEditOpening.current === opening) toast.error('Erro ao atualizar consórcio');
+    } finally {
+      pendingEdits.current.delete(id);
+      setEditingIds(new Set(pendingEdits.current));
     }
   };
 
-  const deleteConsortium = async (id: string) => {
+  const onDeleteDialogOpenChange = (open: boolean) => {
+    if (!open && !deleteInFlight.current) setShowDeleteDialog(null);
+  };
+
+  const confirmDelete = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    const id = showDeleteDialog;
+    if (!id || deleteInFlight.current) return;
+    deleteInFlight.current = true;
+    setDeleting(true);
+    const opening = selection?.opening;
     try {
-      await fetch('/api/consortiums', {
+      const res = await fetch('/api/consortiums', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
+      if (!res.ok) {
+        toast.error('Erro ao excluir consórcio');
+        return;
+      }
       toast.success('Consórcio excluído!');
-      setShowDeleteDialog(null);
-      if (selectedConsortium?.id === id) setSelectedConsortium(null);
-      fetchConsortiums();
+      setShowDeleteDialog((current) => current === id ? null : current);
+      if (opening?.consortiumId === id && isCurrentConsortiumSelection(currentOpening.current, opening)) closeConsortium();
+      void fetchConsortiums();
     } catch {
       toast.error('Erro ao excluir consórcio');
+    } finally {
+      deleteInFlight.current = false;
+      setDeleting(false);
     }
   };
 
   const markAsPaid = async () => {
+    const confirmation = payConfirmation;
+    if (!confirmation || currentConfirmation.current !== confirmation) return;
+    const { opening, installment: confirmed } = confirmation;
+    const installment = findPayableConsortiumInstallment(currentOpening.current, opening, currentRows.current, confirmed.id);
+    if (!installment) return;
+    if (installment !== confirmed || pendingConsortiumPayments.current.has(opening.consortiumId) || paidInSession.current.has(installment.id)) return;
+    pendingConsortiumPayments.current.add(opening.consortiumId);
+    setSubmitting(confirmation);
+
+    let succeeded = false;
     try {
       const body: Record<string, unknown> = {
-        installmentId: payForm.installmentId,
+        installmentId: installment.id,
         paidDate: payForm.paidDate || new Date().toISOString(),
       };
       if (payForm.notes) body.notes = payForm.notes;
@@ -377,338 +525,89 @@ export function ConsortiumsView() {
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error || 'Erro ao marcar parcela');
+        if (currentConfirmation.current === confirmation) toast.error(data.error || 'Erro ao marcar parcela');
         return;
       }
-      toast.success('Parcela marcada como paga!');
-      setShowPayDialog(null);
-      if (selectedConsortium) {
-        fetchInstallments(selectedConsortium.id);
-      }
-      fetchConsortiums();
+      succeeded = true;
+      paidInSession.current.add(installment.id);
+      if (currentConfirmation.current === confirmation) toast.success('Parcela marcada como paga!');
     } catch {
-      toast.error('Erro ao marcar parcela como paga');
+      if (currentConfirmation.current === confirmation) toast.error('Erro ao marcar parcela como paga');
+    } finally {
+      // Releia sem reaproveitar a confirmação, inclusive após erro de resultado incerto.
+      const refresh = resolveConsortiumPaymentRefresh(currentOpening.current, opening, succeeded);
+      if (refresh.detail) void fetchInstallments(refresh.detail);
+      if (refresh.list) void fetchConsortiums(refresh.detail);
+      pendingConsortiumPayments.current.delete(opening.consortiumId);
+      setSubmitting((current) => current === confirmation ? null : current);
     }
   };
 
-  // ── Loading State ───────────────────────────────────────────────
+  const dialogOrigin = useRef<HTMLButtonElement | null>(null);
+  const detailOrigin = useRef<string | null>(null);
+  const captureDialogFocus = (event: MouseEvent<HTMLButtonElement>) => {
+    dialogOrigin.current = event.currentTarget;
+  };
+  const restoreDialogFocus = (event: Event) => {
+    const target = dialogOrigin.current?.isConnected
+      ? dialogOrigin.current
+      : document.getElementById("consortium-detail-title") ?? document.getElementById("consortium-create");
+    if (target) {
+      event.preventDefault();
+      target.focus();
+    }
+  };
+  const detailHeading = useCallback((node: HTMLHeadingElement | null) => {
+    if (node) node.focus();
+  }, []);
+  const listHeading = useCallback((node: HTMLHeadingElement | null) => {
+    if (node && detailOrigin.current) {
+      (document.getElementById(`consortium-open-${detailOrigin.current}`) || node).focus();
+      detailOrigin.current = null;
+    }
+  }, []);
+
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <StatCardSkeleton key={i} />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-52 rounded-2xl" />
-          ))}
-        </div>
-      </div>
+      <section className="space-y-4" aria-busy="true">
+        <p role="status" className="text-sm text-muted-foreground">Carregando consórcios…</p>
+        <Skeleton className="motion-reduce:animate-none h-24 rounded-xl" />
+        <Skeleton className="motion-reduce:animate-none h-36 rounded-xl" />
+      </section>
     );
   }
 
-  // ── Detail View ─────────────────────────────────────────────────
-  if (selectedConsortium) {
-    const c = selectedConsortium;
-    const progress = pct(c.fundedAmount, c.totalAmount);
-
+  if (selection) {
+    const { consortium: c, opening } = selection;
     return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="consortium-detail"
-          variants={detailEntryVariants}
-          initial="hidden"
-          animate="show"
-          exit="hidden"
-          className="space-y-6"
-        >
-          {/* Back button + Header */}
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="show"
-            className="flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedConsortium(null);
-                  setInstallments([]);
-                }}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Voltar</span>
-              </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold">{c.description}</h2>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <StatusBadge status={c.status} labels={consortiumStatusLabels} />
-                  {c.group && (
-                    <Badge variant="outline" className="text-[10px]">
-                      Grupo {c.group}
-                    </Badge>
-                  )}
-                  {c.quota && (
-                    <Badge variant="outline" className="text-[10px]">
-                      Cota {c.quota}
-                    </Badge>
-                  )}
-                </div>
-              </div>
+      <section className="min-w-0 space-y-6" aria-labelledby="consortium-detail-title">
+        <header className="space-y-3">
+          <Button variant="ghost" className="min-h-11 text-muted-foreground" onClick={closeConsortium}>
+            <ArrowLeft aria-hidden="true" /> Voltar aos consórcios
+          </Button>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 space-y-2">
+              <h2 ref={detailHeading} tabIndex={-1} id="consortium-detail-title" className="break-words text-2xl font-semibold tracking-tight">{c.description}</h2>
+              <ConsortiumIdentity consortium={c} />
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => openEditDialog(c)}
-              >
-                <Pencil className="w-4 h-4" />
-                <span className="hidden sm:inline">Editar</span>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="min-h-11" onClick={(event) => { captureDialogFocus(event); openEditDialog(c); }}>
+                <Pencil aria-hidden="true" /> Editar
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-destructive hover:text-destructive"
-                onClick={() => setShowDeleteDialog(c.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Excluir</span>
+              <Button variant="outline" className="min-h-11 text-destructive hover:text-destructive" onClick={(event) => { captureDialogFocus(event); setShowDeleteDialog(c.id); }}>
+                <Trash2 aria-hidden="true" /> Excluir
               </Button>
             </div>
-          </motion.div>
+          </div>
+        </header>
 
-          {/* Info Card */}
-          <motion.div variants={itemVariants} initial="hidden" animate="show">
-            <Card className="overflow-hidden border-0 shadow-md">
-              <div className="h-1.5 bg-gradient-to-r from-teal-500 to-emerald-500" />
-              <CardContent className="p-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  <InfoItem
-                    label="Valor Total"
-                    value={currencyFmt(c.totalAmount)}
-                    icon={CircleDollarSign}
-                    colorClass="text-teal-600"
-                    bgClass="bg-teal-500/10"
-                  />
-                  <InfoItem
-                    label="Valor Financiado"
-                    value={currencyFmt(c.fundedAmount)}
-                    icon={HandCoins}
-                    colorClass="text-emerald-600"
-                    bgClass="bg-emerald-500/10"
-                  />
-                  <InfoItem
-                    label="Parcela Mensal"
-                    value={currencyFmt(c.monthlyPayment)}
-                    icon={CreditCard}
-                    colorClass="text-amber-600"
-                    bgClass="bg-amber-500/10"
-                  />
-                  <InfoItem
-                    label="Parcelas"
-                    value={`${c.paidInstallments}/${c.installmentCount}`}
-                    icon={FileCheck}
-                    colorClass="text-violet-600"
-                    bgClass="bg-violet-500/10"
-                  />
-                  <InfoItem
-                    label="Administradora"
-                    value={c.administrator || '—'}
-                    icon={Building2}
-                    colorClass="text-slate-600"
-                    bgClass="bg-slate-500/10"
-                  />
-                  <InfoItem
-                    label="Assembleias"
-                    value={`${c.assembliesAttended} assistidas`}
-                    icon={Users}
-                    colorClass="text-cyan-600"
-                    bgClass="bg-cyan-500/10"
-                  />
-                  <InfoItem
-                    label="Próxima Assembleia"
-                    value={c.nextAssemblyDate ? dateFmt(c.nextAssemblyDate) : '—'}
-                    icon={CalendarDays}
-                    colorClass="text-indigo-600"
-                    bgClass="bg-indigo-500/10"
-                  />
-                  <InfoItem
-                    label="Data Início"
-                    value={dateFmt(c.startDate)}
-                    icon={CalendarDays}
-                    colorClass="text-pink-600"
-                    bgClass="bg-pink-500/10"
-                  />
-                </div>
-
-                {/* Progress bar */}
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Progresso do Financiamento
-                    </span>
-                    <span className="text-sm font-bold text-teal-600">{progress}%</span>
-                  </div>
-                  <ProgressBar
-                    value={c.fundedAmount}
-                    max={c.totalAmount}
-                    color="bg-gradient-to-r from-teal-500 to-emerald-500"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Assembly History */}
-          {c.assembliesAttended > 0 && (
-            <motion.div variants={itemVariants} initial="hidden" animate="show">
-              <Card className="overflow-hidden border-0 shadow-md">
-                <div className="h-1 bg-gradient-to-r from-cyan-500 to-teal-400" />
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Users className="w-4 h-4 text-teal-600" />
-                    <h3 className="text-sm font-semibold">Histórico de Assembleias</h3>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-teal-500/5">
-                    <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center">
-                      <CalendarDays className="w-4 h-4 text-teal-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {c.assembliesAttended} assembleia{c.assembliesAttended !== 1 ? 's' : ''} assistida{c.assembliesAttended !== 1 ? 's' : ''}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {c.nextAssemblyDate
-                          ? `Próxima: ${dateFmt(c.nextAssemblyDate)}`
-                          : 'Nenhuma assembleia agendada'}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Installments Section */}
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="show"
-            className="flex items-center justify-between"
-          >
-            <div>
-              <h3 className="text-base font-semibold">Parcelas</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {installments.filter((i) => i.status === 'PAID').length} de{' '}
-                {c.installmentCount} pagas
-              </p>
-            </div>
-          </motion.div>
-
-          <motion.div variants={itemVariants} initial="hidden" animate="show">
-            <Card className="overflow-hidden border-0 shadow-md">
-              <CardContent className="p-0">
-                {installments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-                      <CreditCard className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm font-medium">Nenhuma parcela encontrada</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
-                      As parcelas serão geradas ao criar o consórcio
-                    </p>
-                  </div>
-                ) : (
-                  <ScrollArea className="max-h-[480px]">
-                    <motion.div
-                      variants={listContainerVariants}
-                      initial="hidden"
-                      animate="show"
-                      className="divide-y divide-border"
-                    >
-                      {installments.map((inst) => (
-                        <motion.div
-                          key={inst.id}
-                          variants={listItemVariants}
-                          className="flex items-center justify-between px-5 py-3.5 hover:bg-accent/30 transition-colors"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                                inst.status === 'PAID'
-                                  ? 'bg-emerald-500/10'
-                                  : inst.status === 'OVERDUE'
-                                    ? 'bg-rose-500/10'
-                                    : 'bg-amber-500/10'
-                              }`}
-                            >
-                              {inst.status === 'PAID' ? (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                              ) : inst.status === 'OVERDUE' ? (
-                                <AlertTriangle className="w-4 h-4 text-rose-500" />
-                              ) : (
-                                <Clock className="w-4 h-4 text-amber-500" />
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                Parcela {inst.number}
-                              </p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-[11px] text-muted-foreground">
-                                  Venc: {dateFmt(inst.dueDate)}
-                                </p>
-                                {inst.paidDate && (
-                                  <span className="text-[10px] text-emerald-500">
-                                    Paga em {dateFmt(inst.paidDate)}
-                                  </span>
-                                )}
-                                {inst.notes && (
-                                  <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-                                    • {inst.notes}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 ml-2">
-                            <StatusBadge status={inst.status} labels={installmentStatusLabels} />
-                            <span className="text-sm font-bold whitespace-nowrap">
-                              {currencyFmt(inst.amount)}
-                            </span>
-                            {inst.status !== 'PAID' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-                                onClick={() => openPayDialog(inst)}
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  </ScrollArea>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+        <ConsortiumDetail consortium={c} installments={installments} installmentLoad={installmentLoad}
+          onPay={(inst, event) => openPayDialog(opening, inst, event)}
+        />
 
           {/* Edit Dialog */}
-          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent>
+          <Dialog open={!!editOpening} onOpenChange={(open) => { if (!open) closeEditDialog(); }}>
+            <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Editar Consórcio</DialogTitle>
                 <DialogDescription>
@@ -717,8 +616,8 @@ export function ConsortiumsView() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Próxima Data de Assembleia</Label>
-                  <Input
+                  <Label htmlFor="consortium-detail-next-assembly">Próxima Data de Assembleia</Label>
+                  <Input id="consortium-detail-next-assembly"
                     type="date"
                     value={editForm.nextAssemblyDate}
                     onChange={(e) =>
@@ -727,8 +626,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Assembleias Assistidas</Label>
-                  <Input
+                  <Label htmlFor="consortium-detail-assemblies-attended">Assembleias Assistidas</Label>
+                  <Input id="consortium-detail-assemblies-attended"
                     type="number"
                     value={editForm.assembliesAttended}
                     onChange={(e) =>
@@ -738,35 +637,35 @@ export function ConsortiumsView() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                <Button variant="outline" onClick={closeEditDialog}>
                   Cancelar
                 </Button>
-                <Button onClick={updateConsortium}>Salvar</Button>
+                <Button onClick={updateConsortium} disabled={editingIds.has(editForm.id)}>Salvar</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
           {/* Pay Installment Dialog */}
-          <Dialog open={!!showPayDialog} onOpenChange={() => setShowPayDialog(null)}>
-            <DialogContent>
+          <Dialog open={!!payConfirmation} onOpenChange={(open) => { if (!open) closePayDialog(); }}>
+            <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Marcar Parcela como Paga</DialogTitle>
                 <DialogDescription>
-                  {showPayDialog && `Parcela ${showPayDialog.number} — ${currencyFmt(showPayDialog.amount)}`}
+                  {payConfirmation && `Parcela ${payConfirmation.installment.number} — ${currencyFmt(payConfirmation.installment.amount)}`}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Data do Pagamento</Label>
-                  <Input
+                  <Label htmlFor="consortium-paid-date">Data do Pagamento</Label>
+                  <Input id="consortium-paid-date"
                     type="date"
                     value={payForm.paidDate}
                     onChange={(e) => setPayForm({ ...payForm, paidDate: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label>Observações</Label>
-                  <Input
+                  <Label htmlFor="consortium-payment-notes">Observações</Label>
+                  <Input id="consortium-payment-notes"
                     value={payForm.notes}
                     onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })}
                     placeholder="Nota opcional..."
@@ -777,16 +676,16 @@ export function ConsortiumsView() {
                   Informações da Assembleia (opcional)
                 </div>
                 <div>
-                  <Label>Data da Assembleia</Label>
-                  <Input
+                  <Label htmlFor="consortium-assembly-date">Data da Assembleia</Label>
+                  <Input id="consortium-assembly-date"
                     type="date"
                     value={payForm.assemblyDate}
                     onChange={(e) => setPayForm({ ...payForm, assemblyDate: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label>Resultado da Assembleia</Label>
-                  <Input
+                  <Label htmlFor="consortium-assembly-result">Resultado da Assembleia</Label>
+                  <Input id="consortium-assembly-result"
                     value={payForm.assemblyResult}
                     onChange={(e) =>
                       setPayForm({ ...payForm, assemblyResult: e.target.value })
@@ -796,10 +695,10 @@ export function ConsortiumsView() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowPayDialog(null)}>
+                <Button variant="outline" onClick={closePayDialog}>
                   Cancelar
                 </Button>
-                <Button className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600" onClick={markAsPaid}>
+                <Button onClick={markAsPaid} disabled={!payConfirmation || submitting === payConfirmation}>
                   Confirmar Pagamento
                 </Button>
               </DialogFooter>
@@ -807,252 +706,89 @@ export function ConsortiumsView() {
           </Dialog>
 
           {/* Delete Dialog */}
-          <AlertDialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
-            <AlertDialogContent>
+          <AlertDialog open={!!showDeleteDialog} onOpenChange={onDeleteDialogOpenChange}>
+            <AlertDialogContent onCloseAutoFocus={restoreDialogFocus}>
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir Consórcio</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza que deseja excluir o consórcio &quot;{selectedConsortium.description}&quot;?
+                  Tem certeza que deseja excluir o consórcio &quot;{c.description}&quot;?
                   Esta ação não pode ser desfeita.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => showDeleteDialog && deleteConsortium(showDeleteDialog)}
+                  className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
+                  disabled={deleting} onClick={confirmDelete}
                 >
                   Excluir
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </motion.div>
-      </AnimatePresence>
+      </section>
     );
   }
 
   // ── List View ───────────────────────────────────────────────────
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="consortium-list"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        exit="hidden"
-        className="space-y-6"
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex items-center justify-between">
-          <SectionHeader
-            title="Consórcios"
-            subtitle="Gerencie seus consórcios e parcelas"
+    <section className="min-w-0 space-y-6" aria-labelledby="consortium-list-title">
+      <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <h2 id="consortium-list-title" ref={listHeading} tabIndex={-1} className="text-2xl font-semibold tracking-tight">Consórcios</h2>
+          <p className="text-sm text-muted-foreground">Acompanhe parcelas, pagamentos e assembleias.</p>
+        </div>
+        <Button id="consortium-create" className="min-h-11 self-start sm:self-auto" onClick={(event) => { captureDialogFocus(event); openCreateDialog(); }}>
+          <Plus aria-hidden="true" /> Novo consórcio
+        </Button>
+      </header>
+      <dl aria-label="Resumo de consórcios" className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border px-2 py-4 sm:grid-cols-4">
+        <ConsortiumDatum label="Total em consórcios" value={currencyFmt(summary.totalEmConsortios)} />
+        <ConsortiumDatum label="Total pago" value={currencyFmt(summary.totalPago)} />
+        <ConsortiumDatum label="Valor restante" value={currencyFmt(summary.valorRestante)} />
+        <ConsortiumDatum label="Progresso geral" value={`${summary.taxaProgresso}%`} />
+      </dl>
+      <section aria-labelledby="consortium-records-title" className="space-y-3">
+        <h3 id="consortium-records-title" className="text-base font-semibold">Consórcios cadastrados</h3>
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterStatus)}>
+          <TabsList aria-label="Filtrar consórcios por situação" className="h-auto max-w-full flex-wrap justify-start gap-1 p-1">
+            <TabsTrigger className="min-h-10" value="ALL">Todos</TabsTrigger>
+            <TabsTrigger className="min-h-10" value="ACTIVE">Ativos</TabsTrigger>
+            <TabsTrigger className="min-h-10" value="COMPLETED">Concluídos</TabsTrigger>
+            <TabsTrigger className="min-h-10" value="CANCELLED">Cancelados</TabsTrigger>
+            <TabsTrigger className="min-h-10" value="CONTEMPLATED">Contemplados</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <p role="status" className="text-xs text-muted-foreground">{filteredConsortiums.length} de {consortiums.length} consórcios</p>
+        {loadError && consortiums.length === 0 ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
+            <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar os consórcios.</p>
+            <Button variant="outline" size="sm" className="min-h-9" onClick={() => { setLoading(true); void fetchConsortiums(); }}>
+              <RefreshCw aria-hidden="true" className="size-3.5" />
+              Tentar novamente
+            </Button>
+          </div>
+        ) : filteredConsortiums.length === 0 ? (
+          <EmptyState icon={Building2}
+            title={filter === "ALL" ? "Nenhum consórcio cadastrado" : "Nenhum consórcio encontrado"}
+            subtitle={filter === "ALL" ? "Use Novo consórcio para começar." : "Altere o filtro para ver mais resultados."}
           />
-          <Button
-            onClick={openCreateDialog}
-            size="sm"
-            className="gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Novo Consórcio</span>
-          </Button>
-        </motion.div>
-
-        {/* Summary Cards */}
-        <motion.div
-          variants={summaryContainerVariants}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
-        >
-          <StatCard
-            label="Total em Consórcios"
-            value={currencyFmt(summary.totalEmConsortios)}
-            icon={HandCoins}
-            gradient="from-teal-500 to-emerald-500"
-            subtitle={`${consortiums.length} consórcio${consortiums.length !== 1 ? 's' : ''}`}
-          />
-          <StatCard
-            label="Total Pago"
-            value={currencyFmt(summary.totalPago)}
-            icon={TrendingUp}
-            gradient="from-emerald-500 to-green-500"
-            subtitle="Valor já financiado"
-          />
-          <StatCard
-            label="Valor Restante"
-            value={currencyFmt(summary.valorRestante)}
-            icon={CreditCard}
-            gradient="from-amber-500 to-orange-500"
-            subtitle="Saldo remanescente"
-          />
-          <StatCard
-            label="Taxa de Progresso"
-            value={`${summary.taxaProgresso}%`}
-            icon={PieChart}
-            gradient="from-cyan-500 to-teal-500"
-            subtitle="Média geral dos consórcios"
-          />
-        </motion.div>
-
-        {/* Filter Tabs */}
-        <motion.div variants={itemVariants} initial="hidden" animate="show">
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterStatus)}>
-            <TabsList className="bg-muted/50">
-              <TabsTrigger value="ALL">Todos</TabsTrigger>
-              <TabsTrigger value="ACTIVE">Ativos</TabsTrigger>
-              <TabsTrigger value="COMPLETED">Concluídos</TabsTrigger>
-              <TabsTrigger value="CANCELLED">Cancelados</TabsTrigger>
-              <TabsTrigger value="CONTEMPLATED">Contemplados</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </motion.div>
-
-        {/* Consortium Cards Grid */}
-        {filteredConsortiums.length === 0 ? (
-          <motion.div variants={itemVariants}>
-            <EmptyState
-              icon={Building2}
-              title={
-                filter === 'ALL'
-                  ? 'Nenhum consórcio cadastrado'
-                  : 'Nenhum consórcio encontrado'
-              }
-              subtitle={
-                filter === 'ALL'
-                  ? 'Clique em "Novo Consórcio" para começar'
-                  : 'Tente mudar o filtro para ver mais resultados'
-              }
-            />
-          </motion.div>
         ) : (
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            {filteredConsortiums.map((c) => {
-              const progress = pct(c.fundedAmount, c.totalAmount);
-              return (
-                <motion.div
-                  key={c.id}
-                  variants={itemVariants}
-                  whileHover={{ y: -2 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                >
-                  <Card
-                    className="cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow group relative overflow-hidden border-0"
-                    onClick={() => openConsortium(c)}
-                  >
-                    <div className="h-1.5 bg-gradient-to-r from-teal-500 to-emerald-500" />
-                    <CardContent className="p-5">
-                      {/* Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/20 shrink-0">
-                            <Building2 className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate">
-                              {c.description}
-                            </p>
-                            <div className="flex items-center gap-1 mt-1 flex-wrap">
-                              {c.group && (
-                                <Badge variant="outline" className="text-[10px] border-teal-500/30 text-teal-600">
-                                  Grupo {c.group}
-                                </Badge>
-                              )}
-                              {c.quota && (
-                                <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
-                                  Cota {c.quota}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5 shrink-0 ml-2">
-                          <StatusBadge status={c.status} labels={consortiumStatusLabels} />
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditDialog(c);
-                              }}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowDeleteDialog(c.id);
-                              }}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Details */}
-                      {c.administrator && (
-                        <p className="text-[11px] text-muted-foreground mt-3 truncate">
-                          <Building2 className="w-3 h-3 inline mr-1" />
-                          {c.administrator}
-                        </p>
-                      )}
-
-                      {/* Progress bar */}
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-muted-foreground">
-                            {c.paidInstallments}/{c.installmentCount} parcelas
-                          </span>
-                          <span className="text-[10px] font-semibold text-teal-600">
-                            {progress}%
-                          </span>
-                        </div>
-                        <ProgressBar
-                          value={c.fundedAmount}
-                          max={c.totalAmount}
-                          color="bg-gradient-to-r from-teal-500 to-emerald-500"
-                        />
-                      </div>
-
-                      {/* Bottom info row */}
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
-                        <div className="flex items-center gap-3">
-                          <div className="text-xs text-muted-foreground">
-                            <CreditCard className="w-3 h-3 inline mr-1" />
-                            {currencyFmt(c.monthlyPayment)}/mês
-                          </div>
-                        </div>
-                        {c.nextAssemblyDate && (
-                          <div className="text-[11px] text-muted-foreground">
-                            <CalendarDays className="w-3 h-3 inline mr-1" />
-                            {dateFmt(c.nextAssemblyDate)}
-                          </div>
-                        )}
-                        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+          <ul aria-label="Consórcios cadastrados" className="divide-y divide-border rounded-xl border border-border bg-card">
+            {filteredConsortiums.map((c) => (
+              <ConsortiumRow key={c.id} consortium={c}
+                onOpen={() => { detailOrigin.current = c.id; openConsortium(c); }}
+                onEdit={(event) => { captureDialogFocus(event); openEditDialog(c); }}
+                onDelete={(event) => { captureDialogFocus(event); setShowDeleteDialog(c.id); }}
+              />
+            ))}
+          </ul>
         )}
+      </section>
 
         {/* Create Consortium Dialog */}
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <Dialog open={!!createOpening} onOpenChange={(open) => { if (!open) closeCreateDialog(); }}>
+          <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Novo Consórcio</DialogTitle>
               <DialogDescription>
@@ -1062,8 +798,8 @@ export function ConsortiumsView() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <Label>Descrição do Bem</Label>
-                  <Input
+                  <Label htmlFor="consortium-description">Descrição do Bem</Label>
+                  <Input id="consortium-description"
                     value={createForm.description}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, description: e.target.value })
@@ -1072,8 +808,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Grupo</Label>
-                  <Input
+                  <Label htmlFor="consortium-group">Grupo</Label>
+                  <Input id="consortium-group"
                     value={createForm.group}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, group: e.target.value })
@@ -1082,8 +818,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Cota</Label>
-                  <Input
+                  <Label htmlFor="consortium-quota">Cota</Label>
+                  <Input id="consortium-quota"
                     value={createForm.quota}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, quota: e.target.value })
@@ -1092,8 +828,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label>Administradora</Label>
-                  <Input
+                  <Label htmlFor="consortium-administrator">Administradora</Label>
+                  <Input id="consortium-administrator"
                     value={createForm.administrator}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, administrator: e.target.value })
@@ -1102,8 +838,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Valor Total (R$)</Label>
-                  <Input
+                  <Label htmlFor="consortium-total-amount">Valor Total (R$)</Label>
+                  <Input id="consortium-total-amount"
                     type="number"
                     step="0.01"
                     value={createForm.totalAmount}
@@ -1114,8 +850,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Parcela Mensal (R$)</Label>
-                  <Input
+                  <Label htmlFor="consortium-monthly-payment">Parcela Mensal (R$)</Label>
+                  <Input id="consortium-monthly-payment"
                     type="number"
                     step="0.01"
                     value={createForm.monthlyPayment}
@@ -1126,8 +862,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Total de Parcelas</Label>
-                  <Input
+                  <Label htmlFor="consortium-installment-count">Total de Parcelas</Label>
+                  <Input id="consortium-installment-count"
                     type="number"
                     value={createForm.installmentCount}
                     onChange={(e) =>
@@ -1137,8 +873,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Data de Início</Label>
-                  <Input
+                  <Label htmlFor="consortium-start-date">Data de Início</Label>
+                  <Input id="consortium-start-date"
                     type="date"
                     value={createForm.startDate}
                     onChange={(e) =>
@@ -1147,8 +883,8 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Próxima Assembleia</Label>
-                  <Input
+                  <Label htmlFor="consortium-next-assembly">Próxima Assembleia</Label>
+                  <Input id="consortium-next-assembly"
                     type="date"
                     value={createForm.nextAssemblyDate}
                     onChange={(e) =>
@@ -1157,14 +893,14 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label>Categoria</Label>
+                  <Label htmlFor="consortium-category">Categoria</Label>
                   <Select
                     value={createForm.categoryId}
                     onValueChange={(v) =>
                       setCreateForm({ ...createForm, categoryId: v })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="consortium-category" className="w-full">
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -1177,24 +913,34 @@ export function ConsortiumsView() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Conta Vinculada</Label>
-                  <Input
-                    value={createForm.accountId}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, accountId: e.target.value })
+                  <Label htmlFor="consortium-account">Conta Vinculada</Label>
+                  <Select
+                    value={createForm.accountId || 'none'}
+                    onValueChange={(v) =>
+                      setCreateForm({ ...createForm, accountId: v === 'none' ? '' : v })
                     }
-                    placeholder="ID da conta (opcional)"
-                  />
+                  >
+                    <SelectTrigger id="consortium-account" className="w-full">
+                      <SelectValue placeholder="Nenhuma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhuma</SelectItem>
+                      {accounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              <Button variant="outline" onClick={closeCreateDialog}>
                 Cancelar
               </Button>
               <Button
-                className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
-                onClick={createConsortium}
+                onClick={createConsortium} disabled={createOpening !== null && creating === createOpening}
               >
                 Criar Consórcio
               </Button>
@@ -1203,8 +949,8 @@ export function ConsortiumsView() {
         </Dialog>
 
         {/* Edit Dialog (list view) */}
-        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent>
+        <Dialog open={!!editOpening} onOpenChange={(open) => { if (!open) closeEditDialog(); }}>
+          <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Editar Consórcio</DialogTitle>
               <DialogDescription>
@@ -1213,8 +959,8 @@ export function ConsortiumsView() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Próxima Data de Assembleia</Label>
-                <Input
+                <Label htmlFor="consortium-list-next-assembly">Próxima Data de Assembleia</Label>
+                <Input id="consortium-list-next-assembly"
                   type="date"
                   value={editForm.nextAssemblyDate}
                   onChange={(e) =>
@@ -1223,8 +969,8 @@ export function ConsortiumsView() {
                 />
               </div>
               <div>
-                <Label>Assembleias Assistidas</Label>
-                <Input
+                <Label htmlFor="consortium-list-assemblies-attended">Assembleias Assistidas</Label>
+                <Input id="consortium-list-assemblies-attended"
                   type="number"
                   value={editForm.assembliesAttended}
                   onChange={(e) =>
@@ -1234,17 +980,17 @@ export function ConsortiumsView() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              <Button variant="outline" onClick={closeEditDialog}>
                 Cancelar
               </Button>
-              <Button onClick={updateConsortium}>Salvar</Button>
+              <Button onClick={updateConsortium} disabled={editingIds.has(editForm.id)}>Salvar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Delete Dialog */}
-        <AlertDialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
-          <AlertDialogContent>
+        <AlertDialog open={!!showDeleteDialog} onOpenChange={onDeleteDialogOpenChange}>
+          <AlertDialogContent onCloseAutoFocus={restoreDialogFocus}>
             <AlertDialogHeader>
               <AlertDialogTitle>Excluir Consórcio</AlertDialogTitle>
               <AlertDialogDescription>
@@ -1253,46 +999,153 @@ export function ConsortiumsView() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
               <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => showDeleteDialog && deleteConsortium(showDeleteDialog)}
+                className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
+                disabled={deleting} onClick={confirmDelete}
               >
                 Excluir
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </motion.div>
-    </AnimatePresence>
+    </section>
   );
 }
 
-// ── Info Item Sub-Component ───────────────────────────────────────
-function InfoItem({
-  label,
-  value,
-  icon: Icon,
-  colorClass,
-  bgClass,
-}: {
-  label: string;
-  value: string;
-  icon: React.ElementType;
-  colorClass: string;
-  bgClass: string;
-}) {
+function ConsortiumDatum({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/30">
-      <div className={`w-10 h-10 rounded-xl ${bgClass} flex items-center justify-center shrink-0`}>
-        <Icon className={`w-4 h-4 ${colorClass}`} />
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words font-mono text-sm font-semibold tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+function ConsortiumIdentity({ consortium: c }: { consortium: Consortium }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <StatusBadge status={c.status} labels={consortiumStatusLabels} />
+      {c.group && <span className="break-words">Grupo {c.group}</span>}
+      {c.quota && <span className="break-words">Cota {c.quota}</span>}
+    </div>
+  );
+}
+
+function ConsortiumProgress({ consortium: c }: { consortium: Consortium }) {
+  const progress = pct(c.fundedAmount, c.totalAmount);
+  const barValue = Math.min(100, Math.max(0, progress));
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <div className="flex flex-wrap justify-between gap-x-3 text-xs text-muted-foreground">
+        <span>Progresso do financiamento</span>
+        <span className="font-mono text-foreground tabular-nums">{progress}%</span>
       </div>
-      <div className="min-w-0">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-          {label}
-        </p>
-        <p className="text-sm font-bold truncate mt-0.5">{value}</p>
+      <div role="progressbar" aria-label={`Progresso do financiamento de ${c.description}`} aria-valuenow={barValue}
+        aria-valuetext={`${progress}% · ${currencyFmt(c.fundedAmount)} de ${currencyFmt(c.totalAmount)}`} className="h-1.5 rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${barValue}%` }} />
       </div>
     </div>
+  );
+}
+
+export function ConsortiumRow({ consortium: c, onOpen, onEdit, onDelete }: {
+  consortium: Consortium;
+  onOpen: () => void;
+  onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
+  onDelete: (event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <li className="grid min-w-0 gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)_auto] lg:items-center">
+      <div className="min-w-0 space-y-1.5">
+        <Button id={`consortium-open-${c.id}`} variant="ghost" className="h-auto min-h-11 max-w-full justify-start whitespace-normal px-2 text-left"
+          aria-label={`Abrir consórcio ${c.description}`} onClick={onOpen}>
+          <span className="min-w-0 break-words font-semibold">{c.description}</span><ChevronRight aria-hidden="true" />
+        </Button>
+        <ConsortiumIdentity consortium={c} />
+        {c.administrator && <p className="break-words text-xs text-muted-foreground">{c.administrator}</p>}
+      </div>
+      <div className="min-w-0 space-y-2">
+        <ConsortiumProgress consortium={c} />
+        <p className="break-words text-xs text-muted-foreground">
+          {c.paidInstallments}/{c.installmentCount} parcelas pagas · <span className="font-mono tabular-nums">{currencyFmt(c.monthlyPayment)}</span>/mês
+        </p>
+        {c.nextAssemblyDate && <p className="text-xs text-muted-foreground">Próxima assembleia: {formatAssemblyDate(c.nextAssemblyDate)}</p>}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" className="min-h-11" aria-label={`Editar consórcio ${c.description}`} onClick={onEdit}><Pencil aria-hidden="true" /> Editar</Button>
+        <Button variant="outline" className="min-h-11 text-destructive hover:text-destructive" aria-label={`Excluir consórcio ${c.description}`} onClick={onDelete}><Trash2 aria-hidden="true" /> Excluir</Button>
+      </div>
+    </li>
+  );
+}
+export function ConsortiumDetail({ consortium: c, installments, installmentLoad = 'ready', onPay }: {
+  consortium: Consortium;
+  installments: ConsortiumInstallment[];
+  installmentLoad?: InstallmentLoad;
+  onPay: (installment: ConsortiumInstallment, event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const rows = installmentLoad === 'ready' && installments.every((row) => row.consortiumId === c.id) ? installments : [];
+  return (
+    <>
+      <div className="space-y-3">
+        <dl aria-label="Resumo do consórcio" className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border px-2 py-4 sm:grid-cols-4">
+          <ConsortiumDatum label="Valor total" value={currencyFmt(c.totalAmount)} />
+          <ConsortiumDatum label="Valor financiado" value={currencyFmt(c.fundedAmount)} />
+          <ConsortiumDatum label="Parcela mensal" value={currencyFmt(c.monthlyPayment)} />
+          <ConsortiumDatum label="Parcelas pagas" value={`${c.paidInstallments}/${c.installmentCount}`} />
+        </dl>
+        <ConsortiumProgress consortium={c} />
+      </div>
+
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,0.45fr)]">
+        <section aria-labelledby="consortium-installments" className="min-w-0 rounded-xl border border-border bg-card">
+          <header className="px-4 py-3">
+            <h3 id="consortium-installments" className="text-base font-semibold">Parcelas</h3>
+            <p className="text-sm text-muted-foreground">
+              {rows.filter((i) => i.status === 'PAID').length} de {c.installmentCount} pagas
+            </p>
+          </header>
+          {installmentLoad === 'loading' ? (
+            <p role="status" className="border-t border-border px-4 py-6 text-sm text-muted-foreground">Carregando parcelas…</p>
+          ) : installmentLoad === 'error' ? (
+            <p role="status" className="border-t border-border px-4 py-6 text-sm text-muted-foreground">Não foi possível carregar as parcelas. Volte e abra o consórcio novamente.</p>
+          ) : rows.length === 0 ? (
+            <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground">Nenhuma parcela encontrada</p>
+          ) : (
+            <ul aria-label="Parcelas do consórcio" className="divide-y divide-border border-t border-border">
+              {rows.map((inst) => (
+                <li key={inst.id} className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                  <div className="min-w-0 space-y-1 break-words">
+                    <p className="text-sm font-semibold">Parcela {inst.number}</p>
+                    <p className="text-xs text-muted-foreground">Vencimento: {dateFmt(inst.dueDate)}</p>
+                    {inst.paidDate && <p className="text-xs text-muted-foreground">Paga em {dateFmt(inst.paidDate)}</p>}
+                    {inst.notes && <p className="text-xs text-muted-foreground">{inst.notes}</p>}
+                  </div>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+                    <StatusBadge status={inst.status} labels={installmentStatusLabels} />
+                    <span className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(inst.amount)}</span>
+                    {(inst.status === 'PENDING' || inst.status === 'OVERDUE') && (
+                      <Button variant="outline" className="min-h-11" aria-label={`Marcar parcela ${inst.number} como paga`} onClick={(event) => onPay(inst, event)}>
+                        <CheckCircle2 aria-hidden="true" /> Marcar como paga
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section aria-labelledby="consortium-assemblies" className="min-w-0 rounded-xl border border-border bg-card p-4">
+          <h3 id="consortium-assemblies" className="text-base font-semibold">Assembleias e cadastro</h3>
+          <dl className="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-1">
+            <ConsortiumDatum label="Assembleias assistidas" value={String(c.assembliesAttended)} />
+            <ConsortiumDatum label="Próxima assembleia" value={c.nextAssemblyDate ? formatAssemblyDate(c.nextAssemblyDate) : "Não agendada"} />
+            <ConsortiumDatum label="Administradora" value={c.administrator || "—"} />
+            <ConsortiumDatum label="Data de início" value={dateFmt(c.startDate)} />
+          </dl>
+        </section>
+      </div>
+    </>
   );
 }

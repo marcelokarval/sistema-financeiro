@@ -1,303 +1,38 @@
-# FinanceApp Design System Contract
+# Contrato visual — Quiet Financial OS
 
-Generated from source and historical QA screenshots in:
+A linguagem Quiet Financial OS foi escolhida para o FinanceApp. O [desenho aceito](<../../openspec/changes/recriar-interface-quiet-financial-os/design.md>) define a migração; os fluxos e métricas são os do produto atual, não os do protótipo. A [direção Premium v2](<design-system.premium-direction.md>) e suas vitrines são referências históricas, não fontes normativas para novas telas.
 
-- `src/app/page.tsx`
-- `src/app/globals.css`
-- `src/components/finance/*`
-- `src/components/ui/*`
-- `download/qa-final-dashboard.png`
-- `download/qa-dashboard-dark.png`
-- `download/qa-final-search.png`
-- `download/qa-final-notifications.png`
+## Fundamentos
 
-Runtime note: `localhost:3000` was occupied by another app and this project had
-no `node_modules`; no live browser runtime was started. Evidence comes from
-source code plus existing QA screenshots. Those screenshots are historical
-auxiliary evidence, not proof that the current runtime still matches them.
+- A folha [design-system.premium-theme.css](<design-system.premium-theme.css>) é a fonte dos tokens `--ds-*`, consumidos por [globals.css](<../../src/app/globals.css>). Preservar o import e os aliases usados pelos componentes. [design-system.theme.css](<design-system.theme.css>) é a base da [vitrine original](<design-system.html>), não a autoridade do tema da aplicação.
+- Escuro com grafite neutro, superfícies discretas e ciano para ação; claro com superfícies neutras e a mesma hierarquia. Reservar cores semânticas para significados financeiros e usar texto ou ícone em conjunto. Não usar gradientes por destino, brilho ou cartões ornamentais como identidade.
+- Geist para leitura, Geist Mono e números tabulares para montantes. Formatar moeda em pt-BR/BRL com `currencyFmt()`. Usar tokens — não repetir cores em cada componente.
+- Colocar contornos e elevação onde tiverem função. Preferir listas/tabelas para registros, faixas para indicadores e painéis para decisões. Foco visível, rótulos acessíveis, contraste e respeito a movimento reduzido.
 
-## Immutable Design Laws
+## Navegação e resumo
 
-1. FinanceApp is an app-shell financial dashboard, not a marketing page.
-2. Preserve persistent sidebar, top header, scrollable main area, footer status
-   and mobile bottom navigation/sheet model.
-3. Financial numbers are first-class. Use tabular/mono treatment where values,
-   dates, counters, IDs or shortcuts are shown.
-4. The baseline identity uses semantic gradients by domain:
-   dashboard/investments emerald-cyan, accounts violet-purple, cards
-   orange-rose, purchases sky-cyan, categories amber-orange, savings rose-pink.
-5. Both light and dark themes are source truth.
-6. Glass, card glow, gradient border and shimmer exist, but must be tied to app
-   surfaces or loading states.
-7. Search and AI assistant are product primitives, not decorative widgets.
-8. When premium direction is used, dark mode must be a token-derived sibling of
-   light mode, not a visually unrelated black/neon dashboard.
-9. The component catalog is broad enough that future theme work must prove
-   recomposition across forms, overlays, feedback, navigation, data surfaces,
-   loading and empty states, not only dashboard cards.
+- Manter os nove destinos, busca `Ctrl/⌘ K`, notificações, tema e ações efetivas. A navegação móvel prioriza destinos frequentes e oferece `Mais` para os restantes. O assistente permanece acessível sob demanda e não domina a primeira tela.
+- Compor o resumo na ordem: cabeçalho e período, posição financeira, fluxo e vencimentos, atividade e orçamento, recursos secundários. Em telas estreitas, priorizar vencimentos antes da análise detalhada e evitar rolagem horizontal da página.
+- Manter as métricas atuais com seu significado: saldo em contas é posição atual; totais e atividade podem seguir o período selecionado; a série é mensal; orçamento e vencimentos têm seus próprios recortes. Não rotular a série como realizado × plano, nem saldo como patrimônio líquido ou caixa projetado.
+- Distinguir carregamento, vazio, erro recuperável e valor zero. Nunca exibir valores fictícios como fallback ou associar uma resposta anterior ao período novo.
+- `Novo lançamento` inicia escolha explícita da conta e reaproveita o formulário de transação. Sem conta, orientar o cadastro. Abrir ou cancelar não grava. Preservar os controles atuais de privacidade e as ações dos widgets, mesmo quando realocados.
 
-## Token Contract
+## Telas de negócio e widgets
 
-| Token | Evidence | Rule |
-| --- | --- | --- |
-| `--background`, `--foreground` | `src/app/globals.css` | Base theme authority |
-| `--card`, `--border`, `--muted` | `src/app/globals.css` | Panel/card vocabulary |
-| `--primary` | `src/app/globals.css` | Active state and brand accent |
-| `emerald/cyan` | `viewColors.dashboard`, charts | Healthy finance and dashboard |
-| `violet/purple/fuchsia` | accounts/installments/AI | Existing AI/account accent, not universal default |
-| `orange/rose/amber` | cards/categories/savings | Spend, card, budget and savings lanes |
+- Telas de movimentação e patrimônio seguem a mesma sequência: título e ação principal, indicadores já existentes, filtros, registros e detalhe. Em largura estreita, a informação da linha quebra em blocos sem empurrar ações para fora da tela. Ações de edição, exclusão e expansão não devem depender de hover.
+- Nomes acessíveis identificam a ação e o registro. Valores e metadados continuam disponíveis a leitores de tela. Ao cancelar um diálogo, o foco volta ao controle de origem; após excluir, deve ir a um controle que permanece na tela.
+- Em Compras e Categorias, informar sucesso somente após resposta bem-sucedida da mutação. Se ela falhar, preservar os dados digitados; se a gravação der certo mas a lista não atualizar, avisar e oferecer nova leitura sem repetir a gravação. Uma resposta tardia não deve fechar um diálogo aberto depois. Em Recibos, a cópia e o TXT usam o total da prévia para o tipo selecionado. Na busca global, ativar um resultado encaminha ao destino correspondente, sem abrir automaticamente o registro; Escape devolve o foco ao controle de origem quando ele permanece disponível.
+- Em Contas e Cartões, erro da API mantém rascunho ou confirmação e não é sucesso; bloquear repetição enquanto o mesmo envio está em andamento, sem fechar uma abertura posterior. O detalhe de Cartão não mostra compras de outra abertura.
+- Em Recorrências, anunciar sucesso apenas quando a ação for confirmada pela API. Erro preserva o rascunho ou a confirmação; resposta tardia não encerra outra abertura, e uma exclusão em andamento não deve ser reenviada para o mesmo ID nesta tela. Em Caixinhas, limpar os campos opcionais na edição usa os mesmos padrões do cadastro (descrição vazia, contribuição e rendimento zero), sem ajustar o saldo acumulado; omissão no PUT mantém o valor gravado.
+- Em Consórcios, a lista de parcelas e a confirmação pertencem à abertura atual. A troca de consórcio invalida consultas e confirmações anteriores; confirmar revalida o vínculo. Após a baixa, atualizar a lista e reler o detalhe somente se o mesmo consórcio estiver aberto. Cadastro grava a próxima assembleia como dia civil; edição grava contagem explícita inteira não negativa e preserva omissão. A proteção de envio e de abertura é da interface, não idempotência do servidor.
+- Em Investimentos, nome e posição do detalhe acompanham a releitura do mesmo investimento. Em Parcelas, a releitura do plano mantém o controle Excluir focável, mas impede a exclusão até confirmar dados válidos; valores/parcelas anteriores ficam ocultos durante carga ou erro.
+- O detalhe de Parcelas deve retornar o plano solicitado (`GET /api/installments?id=...`), com parcelas em ordem numérica, ou `404` quando não existir. A lista sem `id` e seu filtro continuam com o contrato anterior. Somente a parcela que pertence ao plano exibido pode ser enviada; ao confirmar a baixa, reconsultar o mesmo plano se ele ainda estiver aberto.
+- A edição de uma compra e a substituição de seus itens são indivisíveis; excluir a compra remove seus itens na mesma operação. Omitir `items` em uma edição preserva os itens; enviar `items: []` remove todos os itens sem excluir a compra.
+- A data civil de Compra conserva o dia informado no formulário, nas listas, em Cartões, no resumo, no Calendário, na Busca, nos Recibos e no CSV, sem inventar horário. Registros com hora preservam o instante ao editar outros campos. A janela de consulta do Calendário não mudou; na borda do período, a inclusão ainda depende do fuso local.
+- Em widgets, separar indicador, lista e ação sem ornamentação que concorra com dados. Progresso e estado têm descrição textual. Não mudar recortes, consultas, fórmulas ou formatos de exportação por causa da nova apresentação. Confirmações de exclusão usam `--ds-destructive-fg` sobre `bg-destructive`. Em Notificações, o tipo tem rótulo próprio e o valor usa `currencyFmt` sobre o valor recebido, sem retirar nem inferir sinal.
 
-Observed helpers:
+## Estado da migração
 
-- `.glass`
-- `.glass-card`
-- `.glass-enhanced`
-- `.main-gradient`
-- `.card-glow`
-- `.card-premium`
-- `.card-elevated`
-- `.skeleton-shimmer`
-- `.card-shimmer`
-- `.hover-lift`
-- `.focus-gradient`
-- `.text-gradient-*`
-- `.divider-gradient`
-- `.status-glow-success`
+Adoção e verificação são registradas por fatia nas [tarefas do OpenSpec](<../../openspec/changes/recriar-interface-quiet-financial-os/tasks.md>). Tokens compartilhados não equivalem a uma tela redesenhada. A primeira fatia (fundamentos, navegação e resumo) foi verificada com dados sintéticos. Movimentação e patrimônio têm apresentação e navegação verificadas com dados sintéticos em 1440 e 390 px nos dois temas e em 360 px no escuro. As [capturas de amostra](<../../download/README.md>) documentam essa etapa. Os widgets foram verificados com o painel Mais detalhes financeiros aberto, incluindo interação por teclado e releitura de Metas em SQLite sintético. Movimentação e patrimônio têm verificação funcional com dados sintéticos nos cenários do plano. O smoke integrado percorreu nove destinos em 360, 390 e 1440 px, em ambos os temas, sem recorte do botão de lançamento. Navegador com respostas simuladas e releitura em SQLite são provas separadas; isso não equivale a implantação.
 
-## Component Recipes
-
-### App Shell
-
-Use:
-
-- `Sidebar`
-- header with current view icon/label/subtitle
-- connection status
-- `GlobalSearch`
-- `NotificationPanel`
-- theme toggle
-- user avatar
-- footer financial quick stats
-- `QuickActions`
-- `MobileNav`
-
-### Sidebar Navigation
-
-Recipe:
-
-- grouped labels: `Principal`, `Financeiro`
-- active item uses `bg-primary/10 text-primary`
-- active rail uses `layoutId="sidebar-active"`
-- icon tile uses per-view gradient only when active
-- collapsed mode uses tooltips
-
-### KPI Cards
-
-Recipe:
-
-- card shell with border/radius/shadow
-- semantic left/top rail
-- label in muted text
-- strong financial amount
-- optional helper/delta text
-
-### Search / Command
-
-Recipe:
-
-- `⌘K` hint in header
-- overlay list with transactions, accounts, cards, purchases, categories and
-  investments
-- keyboard-like density, not a marketing modal
-
-### AI Advisor
-
-Recipe:
-
-- persistent assistant bar
-- violet/purple trace is allowed here because source uses AI lane
-- suggestions as pill buttons
-- chat-like message bubble and input
-
-### Tables / Charts
-
-Recipe:
-
-- Recharts for analytical surfaces
-- tables for transactions, cards, billing and reports
-- status badges, mono dates and financial values
-
-### Feedback
-
-Recipe:
-
-- `sonner` toast for realtime update feedback
-- notification panel for persistent messages
-- skeleton cards for loading
-- progress bars for budgets, goals and health score
-
-## Component State Coverage Matrix
-
-| Family | Default | Hover | Focus | Loading | Empty | Overlay | Evidence |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Sidebar nav | source-code observed | source-code observed | not observed | n/a | n/a | tooltip observed | `sidebar.tsx` |
-| Header actions | source-code observed | source-code observed | source-code observed | n/a | n/a | search/notifications | `page.tsx` |
-| KPI cards | screenshot observed | source-code observed | n/a | skeleton observed | n/a | n/a | `dashboard-view.tsx`, screenshots |
-| Charts | screenshot observed | not observed | n/a | skeleton observed | empty not proven | n/a | Recharts imports |
-| Search | screenshot observed | source-code observed | source-code observed | n/a | not proven | runtime screenshot | `qa-final-search.png` |
-| Notifications | screenshot observed | source-code observed | n/a | skeleton observed | not proven | runtime screenshot | `qa-final-notifications.png` |
-| Forms | source-code observed | source-code observed | source-code observed | n/a | validation not fully proven | dialogs/sheets | component imports |
-| Tables | source-code observed | source-code observed | n/a | skeleton observed | not proven | n/a | finance views |
-
-## Premium Theme-Generator Contract
-
-The current source proves a broad product and primitive catalog. Premium
-direction must therefore work as a theme-generator seed:
-
-- keep component anatomy stable across themes
-- change canvas, surface, border, shadow, accent intensity and overlay
-  material through tokens
-- preserve semantic accents across themes: green cash, cyan forecast, amber
-  obligation, rose risk, violet AI
-- show equivalent component families in light and dark before implementation
-- keep source-observed, available-in-code, premium-proposed and
-  not-approved-yet components clearly separated
-
-Do not treat a single attractive light layout as sufficient design-system proof.
-
-## Layout Recipes
-
-- `Desktop shell`: sidebar width around 250px, header height 64px, scrollable
-  main content, footer status.
-- `Dashboard`: quick stats, dashboard view, insights, forecasts, timeline,
-  calendar, net worth and debt widgets stacked vertically.
-- `Mobile`: sheet menu, compact header, bottom nav and safe footer padding.
-- `Overlay`: search and notifications dim the surrounding dashboard.
-
-## Motion / Interaction Contract
-
-Use:
-
-- Framer Motion for page transitions, sidebar hover, active rail and icon spring.
-- CSS shimmer for skeleton/loading.
-- CSS pulse/breathe for status indicators.
-- Hover lift/glow only on interactive cards and buttons.
-
-Do not:
-
-- animate financial numbers in a way that reduces readability.
-- use floating particles as primary product identity.
-- make all cards glow simultaneously.
-
-## Composition Rules For New Screens
-
-1. Start with the app shell and current view metadata.
-2. Use a financial primary object: account, card, transaction, bill, investment,
-   goal, savings box, consortium or forecast.
-3. Use one dominant semantic lane per screen.
-4. Put dense records in tables/lists; put summaries in KPI cards.
-5. Use charts only for trend, distribution, forecast, health or breakdown.
-6. Keep search, notifications, AI and quick actions available unless the screen
-   is an auth/public view.
-
-## Forbidden Patterns
-
-- Generic marketing hero inside the authenticated app shell.
-- New purple/fuchsia gradient as global brand default.
-- Fake financial metrics not backed by data.
-- Decorative chart surfaces with no financial decision value.
-- Raw shadcn card soup without FinanceApp semantic roles.
-- Source-truth redesign inside `design-system.html`.
-
-## Not Observed / Do Not Invent
-
-Until runtime evidence or product need proves them:
-
-- carousel for finance content
-- menubar as primary app navigation
-- context menu for critical money actions
-- resizable panels
-- OTP financial flow
-- hover card as required decision surface
-
-## Rebuild Checklist
-
-- Preserves app shell, sidebar, header and footer.
-- Uses financial semantic lane colors intentionally.
-- Uses cards/tables/charts according to data density.
-- Shows loading and empty states when data can be absent.
-- Keeps search/notifications/AI/quick actions aligned with source behavior.
-- Does not make premium direction overwrite source truth.
-
-## Source Evidence Map
-
-| Rule / Component | Source |
-| --- | --- |
-| App shell | `src/app/page.tsx` |
-| Sidebar | `src/components/finance/sidebar.tsx` |
-| Dashboard metrics/charts | `src/components/finance/dashboard-view.tsx`, `download/qa-dashboard-dark.png` |
-| AI advisor | `src/app/page.tsx`, `download/qa-final-dashboard.png` |
-| Search | `src/app/page.tsx`, `download/qa-final-search.png` |
-| Notifications | `src/app/page.tsx`, `download/qa-final-notifications.png` |
-| CSS helpers | `src/app/globals.css` |
-| shadcn/Radix primitives | `src/components/ui/*`, `package.json` |
-
-## Canonical Theme CSS Contract
-
-Implementation source:
-
-- `docs/reference/design-system.theme.css`
-
-Canonical `--ds-*` tokens:
-
-- `--ds-bg`, `--ds-fg`, `--ds-surface`, `--ds-surface-fg`, `--ds-surface-muted`
-- `--ds-muted-fg`, `--ds-border`, `--ds-input`, `--ds-ring`
-- `--ds-primary`, `--ds-primary-fg`, `--ds-secondary`, `--ds-secondary-fg`
-- `--ds-accent`, `--ds-accent-fg`, `--ds-destructive`, `--ds-destructive-fg`
-- `--ds-accent-positive`, `--ds-accent-info`, `--ds-accent-warning`, `--ds-accent-danger`, `--ds-accent-ai`
-- `--ds-chart-1`, `--ds-chart-2`, `--ds-chart-3`, `--ds-chart-4`, `--ds-chart-5`
-- `--ds-sidebar`, `--ds-sidebar-fg`, `--ds-sidebar-primary`, `--ds-sidebar-primary-fg`
-- `--ds-sidebar-accent`, `--ds-sidebar-accent-fg`, `--ds-sidebar-border`, `--ds-sidebar-ring`
-- `--ds-radius-sm`, `--ds-radius-md`, `--ds-radius-lg`, `--ds-radius-xl`
-- `--ds-shadow-sm`, `--ds-shadow-md`, `--ds-shadow-lg`
-- `--ds-font-sans`, `--ds-font-mono`
-
-Compatibility aliases retained only for the existing showcase HTML:
-
-- `--bg` -> `--ds-bg`
-- `--fg` -> `--ds-fg`
-- `--muted` -> `--ds-muted-fg`
-- `--card` -> `--ds-surface`
-- `--border` -> `--ds-border`
-- `--primary` -> `--ds-primary`
-- `--cyan` -> `--ds-accent-info`
-- `--violet` -> `--ds-accent-ai`
-- `--rose` -> `--ds-accent-danger`
-- `--amber` -> `--ds-accent-warning`
-- `--radius` -> `--ds-radius-lg`
-
-Project shadcn/Tailwind aliases connected in `src/app/globals.css`:
-
-- `--background`, `--foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`
-- `--primary`, `--primary-foreground`, `--secondary`, `--secondary-foreground`
-- `--muted`, `--muted-foreground`, `--accent`, `--accent-foreground`
-- `--destructive`, `--destructive-foreground`, `--border`, `--input`, `--ring`
-
-The implementation API is the `--ds-*` layer. Compatibility aliases must not be
-used for new component work.
-
-## Showcase Class Evidence
-
-The current source-truth HTML uses these showcase classes:
-
-- `.active`, `.amber`, `.avatar`, `.bar`, `.blue`, `.body-preview`, `.brand`, `.brand-mark`
-- `.btn`, `.chart`, `.chip`, `.component-card`, `.component-grid`, `.content`, `.dark-reference`
-- `.donut`, `.emerald`, `.evidence`, `.h1-preview`, `.h2-preview`, `.h3-preview`
-- `.header`, `.header-actions`, `.hero`, `.hero-main`, `.image-grid`, `.input`, `.metric`
-- `.metric-grid`, `.name`, `.nav-icon`, `.nav-item`, `.nav-label`, `.page-title`, `.panel`
-- `.panel-grid`, `.primary`, `.rose`, `.search`, `.shell`, `.shot`, `.sidebar`, `.size`
-- `.spec`, `.spec-row`, `.surface-grid`, `.tile`, `.topnav`
-
-Future regenerated showcase markup should migrate documentation-only wrappers to
-`ds-doc-*` classes and reserve product classes for source-observed component
-anatomy.
+Para aceitar cada fatia, confrontar desktop e celular em ambos os temas, com dados sintéticos, reflow, teclado, foco e estados. Provar paridade por ação antes de retirar a apresentação anterior. Prints históricos não demonstram comportamento presente; resposta simulada e toast não demonstram persistência.

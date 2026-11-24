@@ -1164,3 +1164,47 @@ Stage Summary:
 - Skills organized in 7 categories: AI/ML Core (9), Finance & Data (5), Development & Testing (5), Documents & Export (4), Web & Search (3), Design & UX (3), Content & Marketing (7)
 - 15 skills excluded as non-relevant to financial app context
 - Full README.md report generated with descriptions and usage guide
+
+
+---
+Task ID: QUIET-OS-INTEGRITY-CLOSURE
+Agent: Specs Auditor (Swarm Wave 3)
+Task: Fechamento Quiet Financial OS, integridade dos fluxos financeiros, residuais, QA e arquivamento OpenSpec
+
+Work Log:
+- Sincronizadas as specs delta para as main specs:
+  - `openspec/specs/interface-quiet-financial-os/spec.md`
+  - `openspec/specs/integridade-fluxos-financeiros/spec.md`
+- Atualizados `verify.md` e `evidence.json` de ambas as changes com os resultados da rodada final pós-Waves 1–2:
+  - **Quiet Financial OS & Residuais Frontend/API:** remoção completa de classes slop em `src/app/globals.css` e `src/components/shared/ui-helpers.tsx`; zero usos de `framer-motion` em produção; séries históricas reais de 6 meses em `GET /api/quick-stats` (`monthlySavingsHistory`, `investmentsHistory`, `cardDebtHistory`); CRUD inline (`PUT`/`DELETE` com `AlertDialog` e locks) em transações de `accounts-view.tsx` e `investments-view.tsx`; conexão de `QuickActions -> Nova Meta`, `GlobalSearch -> selected*Id`, `SmartInsights`, `FinancialReports`, `TransactionAnalytics`, `RecurringTransactions`, `ReceiptGenerator`, `ConsortiumsView` (`Select` de contas) e `MonthlyBudgetTracker` (`AlertDialog`).
+  - **Integridade dos Fluxos Financeiros:** vínculo de seleção/identidade em Consórcios e Parcelas, atomicidade em `PUT`/`DELETE` de Compras e itens (mais filtro case-insensitive compatível com SQLite), preservação de data civil em UTC e `America/Bahia`.
+  - **Qualidade, Testes & QA Visual:** `~/.bun/bin/bun --no-env-file test` (`277 pass, 41 skip, 0 fail`, `1.392` asserções), provas SQLite opt-in isoladas em `bwrap` (`0 skips, 0 falhas`: Caixinhas `10/10`, Assembleias `12/12`, Compras atomicidade `6/6`, Parcelas `4/4`, Data civil/Calendário `11/11` em UTC e Bahia), `~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts` (`44 pass, 0 fail`), `tsc --noEmit` (`0` erros), `bun run lint` (`0` erros), `bun run build` (Next.js 16.1.3 standalone OK), matriz Chrome/Playwright `quiet-qa-final` (`54/54` combinações nos 9 destinos × `1440×900`/`390×844`/`360×800` × claro/escuro + painel expandido, `0` overflow/console/page/5xx errors, 10 PNGs em `download/qa-quiet-*.png` e `download/README.md` atualizados).
+  - **Higiene e Áreas Protegidas:** `src/components/ui/` e `prisma/schema.prisma` intactos; `db/custom.db` e `.env` preservados; resíduos (`33210`, `package-lock.json`, `.tmp/quiet-qa/`, `/tmp/quiet-visual-qa.db*`) removidos.
+- Arquivadas as changes concluídas em:
+  - `openspec/changes/archive/2026-11-23-recriar-interface-quiet-financial-os`
+  - `openspec/changes/archive/2026-11-23-corrigir-integridade-dos-fluxos-financeiros`
+- Mantida `openspec/changes/separar-dados-do-pacote/` ativa (`3/4` — tarefa `2.2` aguarda autorização explícita de contexto limpo).
+
+Stage Summary:
+- Specs principais sincronizadas e validadas com `openspec validate --all --strict`
+- Mudanças `recriar-interface-quiet-financial-os` e `corrigir-integridade-dos-fluxos-financeiros` concluídas e arquivadas
+- Change `separar-dados-do-pacote` mantida ativa (3/4)
+
+---
+Task ID: SEPARAR-DADOS-PACOTE-CLOSURE
+Agent: Specs Auditor (Swarm Step 2)
+Task: Fechamento de `separar-dados-do-pacote`, higiene `.env`/`.env.local` e arquivamento OpenSpec
+
+Work Log:
+- Higiene de configuração local executada sem perda de dados: `.env.local` (`chmod 600`, 34 B, ignorado pelo `.gitignore`) criado com `DATABASE_URL` local e `git rm --cached .env` aplicado (`D  .env` no índice, `.env` e `db/custom.db` preservados em disco).
+- Tarefa `2.2` validada em contexto limpo autorizado (`/tmp/sistema-financeiro-release-qa`):
+  - Adicionado `prisma generate` em `package.json` (`scripts.build`) após detectar `Cannot find module '.prisma/client/default'` no build sem `node_modules/.prisma/client` prévio.
+  - `bash .zscripts/build.sh` concluiu com exit `0` gerando `/tmp/build_fullstack_local.u1x7wumh0P.tar.gz`, com inventário `tar -tvzf` livre de `db/`, `.env*`, `.db` e `.sqlite*`.
+  - Provas negativas do launcher em `/tmp/sistema-financeiro-release-extract` (sem `DATABASE_URL` e com banco dentro do pacote) retornaram `rc=1`; startup positivo contra SQLite externo vazio (`/tmp/sistema-financeiro-release-db.sqlite`) subiu Next.js (`3098`) e `mini-services` (`3004`), respondendo `GET /` (`200`) e `GET /api/accounts` (`200 []`), com nota de ausência de `caddy` no host dev (`./start.sh: 151: exec: caddy: not found`, `rc=127`).
+  - Regressão pós-edição: `~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts` → `44 pass, 0 fail` (`321` asserções). Artefatos temporários em `/tmp/` removidos e portas `3098`/`3004` liberadas.
+- Sincronizada `openspec/specs/empacotamento-sem-dados/spec.md`, atualizados `tasks.md`, `verify.md` e `evidence.json`, e arquivada a change em `openspec/changes/archive/2026-11-23-separar-dados-do-pacote/` (preservando `.openspec.yaml`).
+- Validado com `openspec validate --all --strict --no-interactive`: `3 passed, 0 failed` (`empacotamento-sem-dados`, `integridade-fluxos-financeiros`, `interface-quiet-financial-os`) e `openspec list` sem changes ativas pendentes.
+
+Stage Summary:
+- `separar-dados-do-pacote` concluída (4/4), sincronizada para `openspec/specs/empacotamento-sem-dados/spec.md` e arquivada
+- Todas as 3 changes OpenSpec sincronizadas, validadas (`3 passed, 0 failed`) e arquivadas

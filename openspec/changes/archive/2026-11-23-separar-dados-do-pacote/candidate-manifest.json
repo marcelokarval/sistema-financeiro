@@ -1,0 +1,24 @@
+{
+  "paths": [
+    {
+      "path": ".zscripts/build.sh",
+      "state": "present"
+    },
+    {
+      "path": ".zscripts/start.sh",
+      "state": "present"
+    },
+    {
+      "path": ".zscripts/tests/packaging.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "AGENTS.md",
+      "state": "present"
+    },
+    {
+      "path": "docs/operacao-empacotamento.md",
+      "state": "present"
+    }
+  ]
+}

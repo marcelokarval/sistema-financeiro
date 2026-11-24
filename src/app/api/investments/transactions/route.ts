@@ -175,6 +175,31 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    if (
+      type !== undefined &&
+      !["APORTE", "DIVIDENDO", "VENDA", "REINVESTIMENTO", "TAXA", "BONUS"].includes(type)
+    ) {
+      return NextResponse.json(
+        { error: "Tipo de transação inválido. Use: APORTE, DIVIDENDO, VENDA, REINVESTIMENTO, TAXA ou BONUS" },
+        { status: 400 }
+      );
+    }
+
+    const parsedAmount = amount !== undefined ? Number(amount) : undefined;
+    if (parsedAmount !== undefined && (!Number.isFinite(parsedAmount) || parsedAmount <= 0)) {
+      return NextResponse.json(
+        { error: "Valor da transação deve ser maior que zero" },
+        { status: 400 }
+      );
+    }
+
+    if (date !== undefined && date !== null && isNaN(new Date(date).getTime())) {
+      return NextResponse.json(
+        { error: "Data da transação inválida" },
+        { status: 400 }
+      );
+    }
+
     const existingTransaction = await db.investmentTransaction.findUnique({
       where: { id },
     });
@@ -184,6 +209,18 @@ export async function PUT(request: NextRequest) {
         { error: "Transação não encontrada" },
         { status: 404 }
       );
+    }
+
+    if (investmentId !== undefined && investmentId !== existingTransaction.investmentId) {
+      const targetInvestment = await db.investment.findUnique({
+        where: { id: investmentId },
+      });
+      if (!targetInvestment) {
+        return NextResponse.json(
+          { error: "Investimento não encontrado" },
+          { status: 404 }
+        );
+      }
     }
 
     // Desfazer efeito antigo
@@ -203,7 +240,7 @@ export async function PUT(request: NextRequest) {
 
       // Determinar novo tipo e valor para aplicar o novo efeito
       const newType = (type ?? existingTransaction.type) as TransactionType;
-      const newAmount = amount ?? existingTransaction.amount;
+      const newAmount = parsedAmount ?? existingTransaction.amount;
       const newEffects = applyTransactionEffect(newType, newAmount);
 
       // Aplicar novo efeito no investimento
@@ -221,7 +258,7 @@ export async function PUT(request: NextRequest) {
         data: {
           ...(investmentId !== undefined && { investmentId }),
           ...(type !== undefined && { type }),
-          ...(amount !== undefined && { amount }),
+          ...(parsedAmount !== undefined && { amount: parsedAmount }),
           ...(quantity !== undefined && { quantity }),
           ...(unitPrice !== undefined && { unitPrice }),
           ...(date !== undefined && { date: new Date(date) }),
@@ -247,8 +284,21 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/investments/transactions - Excluir transação de investimento
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id } = body;
+    let id = new URL(request.url).searchParams.get("id");
+    if (!id) {
+      const rawBody = await request.text();
+      if (rawBody.trim()) {
+        try {
+          const parsed = JSON.parse(rawBody) as { id?: string };
+          id = parsed.id ?? null;
+        } catch {
+          return NextResponse.json(
+            { error: "Corpo JSON inválido" },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     if (!id) {
       return NextResponse.json(
