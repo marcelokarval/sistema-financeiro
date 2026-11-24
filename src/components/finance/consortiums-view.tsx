@@ -23,17 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { ConsortiumEditor, type ConsortiumDraft } from './consortium-editor';
+import { ConsortiumDeleteConfirmation } from './consortium-delete-confirmation';
 
 import { currencyFmt, dateFmt, pct } from '@/lib/helpers';
 import { findPayableConsortiumInstallment, isCurrentConsortiumSelection, readConsortiumInstallments,
@@ -429,6 +421,10 @@ export function ConsortiumsView() {
     }
   };
 
+  const changeEditField = (field: keyof ConsortiumDraft, value: string) => {
+    setEditForm({ ...editForm, [field]: value });
+  };
+
   const updateConsortium = async () => {
     const opening = editOpening;
     const id = editForm.id;
@@ -605,45 +601,8 @@ export function ConsortiumsView() {
           onPay={(inst, event) => openPayDialog(opening, inst, event)}
         />
 
-          {/* Edit Dialog */}
-          <Dialog open={!!editOpening} onOpenChange={(open) => { if (!open) closeEditDialog(); }}>
-            <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Editar Consórcio</DialogTitle>
-                <DialogDescription>
-                  Atualize as informações de assembleia do consórcio
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="consortium-detail-next-assembly">Próxima Data de Assembleia</Label>
-                  <Input id="consortium-detail-next-assembly"
-                    type="date"
-                    value={editForm.nextAssemblyDate}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, nextAssemblyDate: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="consortium-detail-assemblies-attended">Assembleias Assistidas</Label>
-                  <Input id="consortium-detail-assemblies-attended"
-                    type="number"
-                    value={editForm.assembliesAttended}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, assembliesAttended: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={closeEditDialog}>
-                  Cancelar
-                </Button>
-                <Button onClick={updateConsortium} disabled={editingIds.has(editForm.id)}>Salvar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <ConsortiumEditor origin="detail" open={!!editOpening} draft={editForm} saving={editingIds.has(editForm.id)}
+            onFieldChange={changeEditField} onCancel={closeEditDialog} onSave={updateConsortium} onCloseAutoFocus={restoreDialogFocus} />
 
           {/* Pay Installment Dialog */}
           <Dialog open={!!payConfirmation} onOpenChange={(open) => { if (!open) closePayDialog(); }}>
@@ -705,27 +664,8 @@ export function ConsortiumsView() {
             </DialogContent>
           </Dialog>
 
-          {/* Delete Dialog */}
-          <AlertDialog open={!!showDeleteDialog} onOpenChange={onDeleteDialogOpenChange}>
-            <AlertDialogContent onCloseAutoFocus={restoreDialogFocus}>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir Consórcio</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir o consórcio &quot;{c.description}&quot;?
-                  Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
-                  disabled={deleting} onClick={confirmDelete}
-                >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <ConsortiumDeleteConfirmation context={{ origin: 'detail', description: c.description }} open={!!showDeleteDialog} deleting={deleting}
+            onOpenChange={onDeleteDialogOpenChange} onConfirm={confirmDelete} onCloseAutoFocus={restoreDialogFocus} />
       </section>
     );
   }
@@ -948,67 +888,11 @@ export function ConsortiumsView() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Dialog (list view) */}
-        <Dialog open={!!editOpening} onOpenChange={(open) => { if (!open) closeEditDialog(); }}>
-          <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Editar Consórcio</DialogTitle>
-              <DialogDescription>
-                Atualize as informações de assembleia do consórcio
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="consortium-list-next-assembly">Próxima Data de Assembleia</Label>
-                <Input id="consortium-list-next-assembly"
-                  type="date"
-                  value={editForm.nextAssemblyDate}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, nextAssemblyDate: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="consortium-list-assemblies-attended">Assembleias Assistidas</Label>
-                <Input id="consortium-list-assemblies-attended"
-                  type="number"
-                  value={editForm.assembliesAttended}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, assembliesAttended: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={closeEditDialog}>
-                Cancelar
-              </Button>
-              <Button onClick={updateConsortium} disabled={editingIds.has(editForm.id)}>Salvar</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ConsortiumEditor origin="list" open={!!editOpening} draft={editForm} saving={editingIds.has(editForm.id)}
+          onFieldChange={changeEditField} onCancel={closeEditDialog} onSave={updateConsortium} onCloseAutoFocus={restoreDialogFocus} />
 
-        {/* Delete Dialog */}
-        <AlertDialog open={!!showDeleteDialog} onOpenChange={onDeleteDialogOpenChange}>
-          <AlertDialogContent onCloseAutoFocus={restoreDialogFocus}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir Consórcio</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja excluir este consórcio? Esta ação não pode ser desfeita
-                e todas as parcelas associadas serão removidas.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
-                disabled={deleting} onClick={confirmDelete}
-              >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConsortiumDeleteConfirmation context={{ origin: 'list' }} open={!!showDeleteDialog} deleting={deleting}
+          onOpenChange={onDeleteDialogOpenChange} onConfirm={confirmDelete} onCloseAutoFocus={restoreDialogFocus} />
     </section>
   );
 }

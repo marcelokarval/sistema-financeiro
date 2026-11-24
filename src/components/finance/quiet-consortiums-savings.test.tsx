@@ -2,10 +2,12 @@
 
 import { expect, test } from 'bun:test';
 import * as consortiums from './consortiums-view';
+import { ConsortiumEditor } from './consortium-editor';
+import { ConsortiumDeleteConfirmation } from './consortium-delete-confirmation';
 import * as savings from './savings-view';
 import React, { type ReactElement, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { AlertDialog, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogDescription } from '@/components/ui/alert-dialog';
 import { Dialog } from '@/components/ui/dialog';
 import { renderToStaticMarkup } from 'react-dom/server';
 
@@ -16,6 +18,7 @@ const consortium = {
   status: 'CONTEMPLATED', categoryId: null, category: null, accountId: null, isActive: true,
   createdAt: '2026-01-01', updatedAt: '2026-01-01',
 };
+const otherConsortium = { ...consortium, id: 'outra-cota', description: 'Outra cota sintética', assembliesAttended: 8 };
 const goal = {
   id: 'g1', name: 'Reserva sintética', type: 'EMERGENCY_FUND', description: null,
   targetAmount: 500, currentAmount: 200, monthlyContribution: 50, yieldRate: null, targetDate: null,
@@ -127,7 +130,13 @@ const findElement = (node: ReactNode, matches: (element: ViewElement) => boolean
   for (const child of React.Children.toArray(node)) {
     if (!React.isValidElement<Record<string, any>>(child)) continue;
     if (matches(child)) return child;
-    const nested = findElement(child.props.children, matches);
+    let content = child.props.children;
+    if (child.type === ConsortiumEditor) {
+      content = ConsortiumEditor((child as ReactElement<React.ComponentProps<typeof ConsortiumEditor>>).props);
+    } else if (child.type === ConsortiumDeleteConfirmation) {
+      content = ConsortiumDeleteConfirmation((child as ReactElement<React.ComponentProps<typeof ConsortiumDeleteConfirmation>>).props);
+    }
+    const nested = findElement(content, matches);
     if (nested) return nested;
   }
 };
@@ -136,6 +145,7 @@ const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 async function exerciseConsortium(
   respond: (method: string) => Promise<Response>,
   run: (render: () => ViewElement, requests: [string, string, BodyInit | null | undefined][], feedback: string[]) => Promise<void>,
+  readCollection = () => Response.json([otherConsortium, { ...consortium, nextAssemblyDate: '2026-05-15T00:00:00.000Z' }]),
 ) {
   // Executa o estado/handlers do componente sem DOM; a rede nunca chega ao serviço.
   const dispatcher = (React as unknown as { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown } }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
@@ -176,7 +186,8 @@ async function exerciseConsortium(
       const method = init?.method ?? 'GET';
       requests.push([method, url, init?.body]);
       if (method !== 'GET') return respond(method);
-      return Response.json(url === '/api/consortiums' ? [{ ...consortium, id: 'outra-cota' }, consortium] : []);
+      if (url === '/api/consortiums') return readCollection();
+      return Response.json([]);
     }) as typeof fetch;
     toast.success = () => { feedback.push('success'); return 'success'; };
     toast.error = () => { feedback.push('error'); return 'error'; };
@@ -192,12 +203,173 @@ async function exerciseConsortium(
 }
 
 const trigger = { currentTarget: null };
+
+test('lista e detalhe montam as mesmas folhas de edição e confirmação de consórcio', async () => {
+  await exerciseConsortium(async () => { throw new Error('Nenhuma gravação esperada'); }, async (render, requests) => {
+    const leaf = (type: typeof ConsortiumEditor | typeof ConsortiumDeleteConfirmation) => findElement(render(), (e) => e.type === type && e.props.open)?.type;
+    const row = findElement(render(), (e) => e.type === consortiums.ConsortiumRow && e.props.consortium.id === consortium.id)!;
+    row.props.onEdit(trigger);
+    const listEditor = leaf(ConsortiumEditor);
+    row.props.onDelete(trigger);
+    const listConfirmation = leaf(ConsortiumDeleteConfirmation);
+    row.props.onOpen(trigger);
+    formButton(render(), 'Editar').props.onClick(trigger);
+    const detailEditor = leaf(ConsortiumEditor);
+    formButton(render(), 'Excluir').props.onClick(trigger);
+    const detailConfirmation = leaf(ConsortiumDeleteConfirmation);
+    expect([listEditor, listConfirmation, detailEditor, detailConfirmation].map((type) => typeof type)).toEqual([
+      'function', 'function', 'function', 'function',
+    ]);
+    expect(listEditor).toBe(detailEditor);
+    expect(listConfirmation).toBe(detailConfirmation);
+    expect(requests.every(([method]) => method === 'GET')).toBe(true);
+  });
+});
+
 const openFormDialog = (render: () => ViewElement) => findElement(render(), e => e.type === Dialog && e.props.open);
 const formButton = (root: ViewElement, label: string) => findElement(root, e => e.props.onClick && React.Children.toArray(e.props.children).some(child => typeof child === 'string' && child.trim() === label))!;
 const openForm = (render: () => ViewElement, method: 'POST' | 'PUT', id: string) => {
   if (method === 'POST') formButton(render(), 'Novo consórcio').props.onClick(trigger);
   else findElement(render(), e => e.type === consortiums.ConsortiumRow && e.props.consortium.id === id)!.props.onEdit(trigger);
 };
+
+const rowById = (view: ViewElement, id = consortium.id) => findElement(view, (e) => e.type === consortiums.ConsortiumRow && e.props.consortium.id === id);
+const activeDetail = (view: ViewElement) => findElement(view, (e) => e.type === consortiums.ConsortiumDetail)?.props.consortium;
+const activeConfirmation = (render: () => ViewElement) => findElement(render(), (e) => e.type === AlertDialog && e.props.open);
+const openByOrigin = (render: () => ViewElement, origin: 'list' | 'detail', action: 'Edit' | 'Delete') => {
+  const row = rowById(render())!;
+  if (origin === 'list') row.props[`on${action}`](trigger);
+  else {
+    row.props.onOpen();
+    formButton(render(), action === 'Edit' ? 'Editar' : 'Excluir').props.onClick(trigger);
+  }
+};
+
+for (const origin of ['list', 'detail'] as const) {
+  test(`DELETE (${origin}): cancelar sem escrever conserva o contexto e a descrição própria`, async () => {
+    await exerciseConsortium(async () => { throw new Error('Nenhuma gravação esperada'); }, async (render, requests) => {
+      openByOrigin(render, origin, 'Delete');
+      const confirmation = activeConfirmation(render)!;
+      const explanation = findElement(confirmation, (e) => e.type === AlertDialogDescription)!;
+      const html = renderToStaticMarkup(<>{explanation.props.children}</>);
+      if (origin === 'list') {
+        expect(html).toContain('todas as parcelas associadas serão removidas');
+        expect(html).not.toContain(consortium.description);
+      } else {
+        expect(html).toContain(consortium.description);
+        expect(html).not.toContain('todas as parcelas associadas');
+      }
+      const offset = requests.length;
+      confirmation.props.onOpenChange(false);
+      expect(activeConfirmation(render)).toBeUndefined();
+      expect(requests.slice(offset)).toEqual([]);
+      expect(activeDetail(render())?.id).toBe(origin === 'detail' ? consortium.id : undefined);
+    });
+  });
+
+  for (const switchToB of [false, true]) {
+    test(`DELETE (${origin}): A capturado e travado; sucesso atualiza lista ${switchToB ? 'sem fechar ou reidratar B' : 'e fecha a seleção de A'}`, async () => {
+      const response = Promise.withResolvers<Response>();
+      let deleted = false;
+      await exerciseConsortium(() => response.promise, async (render, requests, feedback) => {
+        openByOrigin(render, origin, 'Delete');
+        const confirmation = activeConfirmation(render)!;
+        const submit = findElement(confirmation, (e) => e.type === AlertDialogAction)!;
+        const offset = requests.length;
+        const pending = submit.props.onClick({ preventDefault: noop });
+        await submit.props.onClick({ preventDefault: noop });
+        confirmation.props.onOpenChange(false);
+        expect(activeConfirmation(render)).toBeDefined();
+        expect(findElement(activeConfirmation(render), (e) => e.type === AlertDialogAction)?.props.disabled).toBe(true);
+        if (switchToB) {
+          useAppStore.getState().setSelectedConsortiumId(otherConsortium.id);
+          await settle();
+          expect(activeDetail(render())).toEqual(otherConsortium);
+        }
+        deleted = true;
+        response.resolve(new Response(null, { status: 204 }));
+        await pending;
+        await settle();
+        const installmentsReads: typeof requests = switchToB
+          ? [['GET', '/api/consortiums/installments?consortiumId=outra-cota', undefined]]
+          : [];
+        expect(requests.slice(offset)).toEqual([
+          ['DELETE', '/api/consortiums', '{"id":"c1"}'],
+          ...installmentsReads,
+          ['GET', '/api/consortiums', undefined],
+        ]);
+        expect(feedback).toEqual(['success']);
+        expect(activeConfirmation(render)).toBeUndefined();
+        expect(activeDetail(render())).toEqual(switchToB ? otherConsortium : undefined);
+        if (switchToB) formButton(render(), 'Voltar aos consórcios').props.onClick();
+        expect(rowById(render())).toBeUndefined();
+        expect(rowById(render(), otherConsortium.id)?.props.consortium.assembliesAttended).toBe(99);
+      }, () => Response.json(deleted ? [{ ...otherConsortium, assembliesAttended: 99 }] : [consortium, otherConsortium]));
+    });
+  }
+}
+
+for (const origin of ['list', 'detail'] as const) {
+  for (const failure of ['http', 'invalid-json', 'transport'] as const) {
+    test(`PUT (${origin}): ${failure} conserva rascunho, permite retry e não confunde GET malsucedido com PUT`, async () => {
+      let retry = false;
+      await exerciseConsortium(async () => {
+        if (retry) return new Response(null, { status: 204 });
+        if (failure === 'transport') throw new Error('Rede sintética');
+        if (failure === 'invalid-json') return new Response('não JSON', { status: 503 });
+        return Response.json({ error: 'Falha sintética' }, { status: 503 });
+      }, async (render, requests, feedback) => {
+        openByOrigin(render, origin, 'Edit');
+        const draftField = (suffix: string) => findElement(openFormDialog(render), (e) => e.props.id === `consortium-${origin}-${suffix}`)!;
+        expect(draftField('next-assembly').props.value).toBe('2026-05-15');
+        expect(draftField('assemblies-attended').props.value).toBe('1');
+        draftField('next-assembly').props.onChange({ target: { value: '2027-01-02' } });
+        draftField('assemblies-attended').props.onChange({ target: { value: '0' } });
+        const offset = requests.length;
+        const put: (typeof requests)[number] = ['PUT', '/api/consortiums', '{"id":"c1","nextAssemblyDate":"2027-01-02","assembliesAttended":0}'];
+        await formButton(openFormDialog(render)!, 'Salvar').props.onClick();
+        expect(requests.slice(offset)).toEqual([put]);
+        expect(feedback).toEqual(['error']);
+        expect(draftField('next-assembly').props.value).toBe('2027-01-02');
+        expect(draftField('assemblies-attended').props.value).toBe('0');
+        retry = true;
+        await formButton(openFormDialog(render)!, 'Salvar').props.onClick();
+        await settle();
+        expect(requests.slice(offset)).toEqual([put, put, ['GET', '/api/consortiums', undefined]]);
+        expect(feedback).toEqual(['error', 'success']);
+        expect(openFormDialog(render)).toBeUndefined();
+        expect(activeDetail(render())?.id).toBe(origin === 'detail' ? consortium.id : undefined);
+      }, () => retry ? new Response(null, { status: 503 }) : Response.json([
+        { ...consortium, nextAssemblyDate: '2026-05-15T00:00:00.000Z' }, otherConsortium,
+      ]));
+    });
+  }
+}
+
+for (const later of ['same', 'closed', 'other'] as const) {
+  test(`PUT detalhe: releitura de A respeita seleção ${later}`, async () => {
+    const response = Promise.withResolvers<Response>();
+    let updated = false;
+    await exerciseConsortium(() => response.promise, async (render, requests) => {
+      openByOrigin(render, 'detail', 'Edit');
+      findElement(openFormDialog(render), (e) => e.props.id === 'consortium-detail-next-assembly')!.props.onChange({ target: { value: '' } });
+      const offset = requests.length;
+      const pending = formButton(openFormDialog(render)!, 'Salvar').props.onClick();
+      if (later === 'closed') formButton(render(), 'Voltar aos consórcios').props.onClick();
+      if (later === 'other') useAppStore.getState().setSelectedConsortiumId(otherConsortium.id);
+      updated = true;
+      response.resolve(new Response(null, { status: 204 }));
+      await pending;
+      await settle();
+      expect(requests.slice(offset).filter(([method, url]) => method !== 'GET' || url === '/api/consortiums')).toEqual([
+        ['PUT', '/api/consortiums', '{"id":"c1","nextAssemblyDate":null,"assembliesAttended":1}'],
+        ['GET', '/api/consortiums', undefined],
+      ]);
+      expect(activeDetail(render())?.assembliesAttended).toBe(later === 'same' ? 7 : later === 'other' ? 8 : undefined);
+      expect(openFormDialog(render)).toBeUndefined();
+    }, () => Response.json(updated ? [{ ...consortium, assembliesAttended: 7 }, { ...otherConsortium, assembliesAttended: 99 }] : [consortium, otherConsortium]));
+  });
+}
 
 for (const origin of ['lista', 'detalhe']) {
   test(`DELETE 503 (${origin}): envia a cota selecionada, mantém confirmação e não anuncia sucesso`, async () => {
@@ -298,7 +470,7 @@ test('cadastro independente e PUT de outra cota podem enviar enquanto a primeira
 });
 
 // Portais Radix não aparecem no SSR; verificar o contrato das confirmações na view.
-for (const [file, count] of [["consortiums-view.tsx",2],["savings-view.tsx",1]] as const) {
+for (const [file, count] of [["consortium-delete-confirmation.tsx",1],["savings-view.tsx",1]] as const) {
   test(`${file}: confirmação destrutiva usa cores semânticas e hover legível`, async () => {
     const source = await Bun.file(new URL(file, import.meta.url)).text();
     const actions = [...source.matchAll(/<AlertDialogAction\b([\s\S]*?)<\/AlertDialogAction>/g)];
