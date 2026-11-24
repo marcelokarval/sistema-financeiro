@@ -43,6 +43,11 @@ test('desafio mantém a ação local e expõe progresso, estado e limite', () =>
   expect(html).not.toMatch(/gradient|card-glow/);
 });
 
+const hasProgressBar = (html: string, value: string, label?: string) => {
+  const labelPart = label ? `(?=[^>]*\\baria-label="${label}")` : '';
+  return new RegExp(`<div\\b(?=[^>]*\\brole="progressbar")${labelPart}(?=[^>]*\\baria-valuenow="${value}")[^>]*>`).test(html);
+};
+
 test('meta ativa tem menu nomeado e concluída permite reabrir', () => {
   expect(BudgetUI).toHaveProperty('BudgetGoalRow');
   const goal = { id: 'g', name: 'Meta sintética', description: 'Descrição', targetAmount: 100, currentAmount: 25, categoryId: null, category: null, startDate: '2026-01-01', endDate: null, isCompleted: false };
@@ -52,7 +57,7 @@ test('meta ativa tem menu nomeado e concluída permite reabrir', () => {
   expect(active).toContain('aria-label="Mais ações de Meta sintética"');
   expect(active).toContain('Marcar como concluída');
   expect(active).toContain('R$ 75,00');
-  expect(active).toMatch(/role="progressbar"[^>]*aria-valuenow="25"/);
+  expect(hasProgressBar(active, '25', 'Progresso da meta Meta sintética')).toBe(true);
   expect(row(true)).toContain('Reabrir meta');
   expect(row(true)).not.toContain('Mais ações de Meta sintética');
 });
@@ -110,7 +115,7 @@ test('conquista bloqueada mantém categoria e progresso legíveis', () => {
 test('saúde financeira mostra critérios do score e valores BRL da consulta', () => {
   expect(HealthUI).toHaveProperty('HealthBreakdown');
   const html = renderToStaticMarkup(<HealthUI.HealthBreakdown data={{ totalBalance: 2000, totalCardBalance: 0, totalCardLimit: 0, monthIncome: 1000, monthExpense: 800, recentTransactions: [], recentPurchases: [], expenseByCategory: [], monthlyTrend: [], accountBalances: [] }} />);
-  expect(html).toMatch(/role="progressbar"[^>]*aria-valuenow="61"/);
+  expect(hasProgressBar(html, '61', 'Pontuação de saúde financeira')).toBe(true);
   expect(html).toContain('Regular');
   expect(html).toContain('Dados insuficientes');
   expect(html).toContain('R$ 200,00');
@@ -223,4 +228,102 @@ test('goals-dashboard, financial-health-score e achievement-badges exibem retry 
   expect(achErr).toContain('Tentar novamente');
   expect(achErr).toContain('Não foi possível carregar');
   expect(achEmpty).toContain('Nenhuma conquista disponível');
+});
+
+import { FinanceProgress } from '@/components/shared/finance-progress';
+
+test('FinanceProgress expõe descrição, faixa/unidade e valor acessível determinado em 0 e em valor não nulo', () => {
+  const zeroHtml = renderToStaticMarkup(
+    <FinanceProgress
+      label="Progresso da meta"
+      description="Reserva de emergência"
+      value={0}
+      min={0}
+      max={100}
+      unit="%"
+      showRange
+    />,
+  );
+  expect(zeroHtml).toContain('data-slot="progress"');
+  expect(zeroHtml).toContain('data-slot="progress-indicator"');
+  expect(zeroHtml).toContain('Progresso da meta');
+  expect(zeroHtml).toContain('Reserva de emergência');
+  expect(zeroHtml).toContain('0%');
+  expect(zeroHtml).toContain('100%');
+  expect(hasProgressBar(zeroHtml, '0', 'Progresso da meta')).toBe(true);
+  expect(zeroHtml).toContain('aria-valuemin="0"');
+  expect(zeroHtml).toContain('aria-valuemax="100"');
+
+  const partialHtml = renderToStaticMarkup(
+    <FinanceProgress
+      label="Pontuação de saúde financeira"
+      value={78}
+      min={0}
+      max={100}
+      unit="pontos"
+      valueText="78 de 100 pontos"
+      showRange
+    />,
+  );
+  expect(partialHtml).toContain('Pontuação de saúde financeira');
+  expect(partialHtml).toContain('0 pontos');
+  expect(partialHtml).toContain('100 pontos');
+  expect(hasProgressBar(partialHtml, '78', 'Pontuação de saúde financeira')).toBe(true);
+  expect(partialHtml).toContain('aria-valuetext="78 de 100 pontos"');
+  expect(partialHtml).toContain('aria-valuemin="0"');
+  expect(partialHtml).toContain('aria-valuemax="100"');
+});
+
+test('budget-goals e financial-health-score usam FinanceProgress com valor determinado em 0 e não nulo', () => {
+  const budgetSrc = readFileSync(new URL('./budget-goals.tsx', import.meta.url), 'utf8');
+  const healthSrc = readFileSync(new URL('./financial-health-score.tsx', import.meta.url), 'utf8');
+  expect(budgetSrc).toContain("from '@/components/shared/finance-progress'");
+  expect(healthSrc).toContain("from '@/components/shared/finance-progress'");
+
+  const noop = () => {};
+  const zeroGoal = {
+    id: 'g0',
+    name: 'Meta zerada',
+    description: '',
+    targetAmount: 200,
+    currentAmount: 0,
+    categoryId: null,
+    category: null,
+    startDate: '2026-01-01',
+    endDate: null,
+    isCompleted: false,
+  };
+  const zeroRowHtml = renderToStaticMarkup(<BudgetUI.BudgetGoalRow goal={zeroGoal} onEdit={noop} onDelete={noop} onToggle={noop} />);
+  expect(hasProgressBar(zeroRowHtml, '0', 'Progresso da meta Meta zerada')).toBe(true);
+  expect(zeroRowHtml).toContain('aria-valuemin="0"');
+  expect(zeroRowHtml).toContain('aria-valuemax="100"');
+
+  const partialRowHtml = renderToStaticMarkup(
+    <BudgetUI.BudgetGoalRow goal={{ ...zeroGoal, currentAmount: 90 }} onEdit={noop} onDelete={noop} onToggle={noop} />,
+  );
+  expect(hasProgressBar(partialRowHtml, '45', 'Progresso da meta Meta zerada')).toBe(true);
+
+  const zeroScoreHtml = renderToStaticMarkup(
+    <HealthUI.HealthBreakdown
+      data={{
+        totalBalance: 0,
+        totalCardBalance: 100,
+        totalCardLimit: 100,
+        monthIncome: 0,
+        monthExpense: 500,
+        recentTransactions: [],
+        recentPurchases: [],
+        expenseByCategory: [],
+        monthlyTrend: [
+          { month: 'jan', income: 0, expense: 100 },
+          { month: 'fev', income: 0, expense: 100 },
+          { month: 'mar', income: 0, expense: 200 },
+        ],
+        accountBalances: [],
+      }}
+    />,
+  );
+  expect(hasProgressBar(zeroScoreHtml, '0', 'Pontuação de saúde financeira')).toBe(true);
+  expect(zeroScoreHtml).toContain('aria-valuemin="0"');
+  expect(zeroScoreHtml).toContain('aria-valuemax="100"');
 });

@@ -22,6 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { currencyFmt } from '@/lib/helpers';
+import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
 
 // ─── Helpers ───────────────────────────────────────────────────────
 
@@ -140,59 +141,62 @@ export function ExpenseBreakdown() {
     ? chartData.find((d) => d.categoryId === activeCategory)
     : null;
 
+  const panelStatus: QueryPanelStatus =
+    query.status === 'loading'
+      ? 'loading'
+      : query.status === 'error' || !data
+        ? 'error'
+        : 'success';
+
+  const controls = (
+    <>
+      {/* Monthly trend toggle */}
+      <div role="group" aria-label="Período das despesas" className="flex flex-wrap items-center gap-1 rounded-md bg-muted/50 p-0.5">
+        <Button
+          aria-pressed={showCurrentMonth}
+          variant={showCurrentMonth ? 'default' : 'ghost'}
+          size="sm"
+          className="min-h-9 px-2 text-xs"
+          onClick={() => selectPeriod('1')}
+        >
+          Mês atual
+        </Button>
+        <Button
+          aria-pressed={!showCurrentMonth}
+          variant={!showCurrentMonth ? 'default' : 'ghost'}
+          size="sm"
+          className="min-h-9 px-2 text-xs"
+          onClick={() => selectPeriod('6')}
+        >
+          6 meses
+        </Button>
+      </div>
+      <Button
+        variant="outline"
+        size="icon"
+        className="size-9"
+        aria-label="Atualizar despesas por categoria"
+        onClick={refresh}
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+      </Button>
+    </>
+  );
+
   return (
-    <section aria-labelledby="quiet-expense-breakdown" className="min-w-0 rounded-lg border border-border bg-card text-card-foreground">
-
-      <header className="border-b border-border px-3 py-3 sm:px-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="min-w-0">
-            <h3 id="quiet-expense-breakdown" className="text-sm font-semibold">Detalhamento de despesas</h3>
-            <p className="text-xs text-muted-foreground">Distribuição por categoria · {showCurrentMonth ? 'mês atual' : 'últimos 6 meses'}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Monthly trend toggle */}
-            <div role="group" aria-label="Período das despesas" className="flex flex-wrap items-center gap-1 rounded-md bg-muted/50 p-0.5">
-              <Button
-                aria-pressed={showCurrentMonth}
-                variant={showCurrentMonth ? 'default' : 'ghost'}
-                size="sm"
-                className="min-h-9 px-2 text-xs"
-                onClick={() => selectPeriod('1')}
-              >
-                Mês atual
-              </Button>
-              <Button
-                aria-pressed={!showCurrentMonth}
-                variant={!showCurrentMonth ? 'default' : 'ghost'}
-                size="sm"
-                className="min-h-9 px-2 text-xs"
-                onClick={() => selectPeriod('6')}
-              >
-                6 meses
-              </Button>
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-9"
-              aria-label="Atualizar despesas por categoria"
-              onClick={refresh}
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {query.status === 'loading' ? (
-        <p role="status" className="px-3 py-3 text-sm text-muted-foreground sm:px-4">Carregando despesas por categoria…</p>
-      ) : !data ? (
-        <div className="flex flex-wrap items-center gap-3 px-3 py-3 sm:px-4">
-          <p role="status" className="text-sm text-muted-foreground">Não foi possível carregar as despesas do período selecionado.</p>
-          <Button variant="outline" size="sm" onClick={refresh}>Tentar novamente</Button>
-        </div>
-      ) : (
-        <div className="space-y-4 px-3 py-3 sm:px-4">
+    <QueryPanel
+      titleId="quiet-expense-breakdown"
+      title="Detalhamento de despesas"
+      subtitle={`Distribuição por categoria · ${showCurrentMonth ? 'mês atual' : 'últimos 6 meses'}`}
+      controls={controls}
+      status={panelStatus}
+      loadingMessage="Carregando despesas por categoria…"
+      errorMessage="Não foi possível carregar as despesas do período selecionado."
+      emptyMessage="Nenhuma despesa registrada no período selecionado."
+      onRetry={refresh}
+    >
+      {data && (
+        <>
           <div className="min-w-0 space-y-2">
             <p className="text-xs text-muted-foreground">Total de despesas</p>
             <p className="break-words font-mono text-lg font-semibold tabular-nums">{currencyFmt(data.totalExpense)}</p>
@@ -435,8 +439,8 @@ export function ExpenseBreakdown() {
               </ol>
             </div>
           )}
-        </div>
+        </>
       )}
-    </section>
+    </QueryPanel>
   );
 }

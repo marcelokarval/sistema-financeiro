@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { currencyFmt } from '@/lib/helpers';
+import { FinanceProgress } from '@/components/shared/finance-progress';
 
 interface BudgetGoal {
   id: string;
@@ -115,10 +116,16 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
         {goal.description && <p className="mt-1 break-words text-sm text-muted-foreground">{goal.description}</p>}
       </div>
       <div className="min-w-0 space-y-1.5 text-xs">
-        <p className="flex flex-wrap justify-between gap-x-2"><span>Progresso</span><span className="font-mono tabular-nums">{Math.round(percent)}%</span></p>
-        <div role="progressbar" aria-label={`Progresso da meta ${goal.name}`} aria-valuenow={width} aria-valuetext={`${Math.round(percent)}%`} className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full bg-primary" style={{ width: `${width}%` }} />
-        </div>
+        <FinanceProgress
+          label="Progresso"
+          ariaLabel={`Progresso da meta ${goal.name}`}
+          value={width}
+          min={0}
+          max={100}
+          unit="%"
+          displayValue={`${Math.round(percent)}%`}
+          valueText={`${Math.round(percent)}%`}
+        />
         <dl className="flex flex-wrap gap-x-4 gap-y-1">
           {([['Atual', goal.currentAmount], ['Alvo', goal.targetAmount], ...(!goal.isCompleted && remaining > 0 ? [['Restante', remaining] as const] : [])] as const).map(([label, value]) => (
             <div key={label} className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(value)}</dd></div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { FinanceProgress } from '@/components/shared/finance-progress';
 import { currencyFmt } from '@/lib/helpers';
 
 function getScoreLabel(score: number): string {
@@ -209,9 +210,15 @@ export function HealthBreakdown({ data }: { data: DashboardData }) {
             <p className="text-xs">{getScoreLabel(score)}</p>
           </div>
           <p className="font-mono text-2xl font-semibold tabular-nums">{score}<span className="text-sm text-muted-foreground">/100 pontos</span></p>
-          <div role="progressbar" aria-label="Pontuação de saúde financeira" aria-valuenow={score} aria-valuetext={`${score} de 100 pontos · ${getScoreLabel(score)}`} className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-primary" style={{ width: `${score}%` }} />
-          </div>
+          <FinanceProgress
+            label="Pontuação de saúde financeira"
+            value={score}
+            min={0}
+            max={100}
+            unit="pontos"
+            valueText={`${score} de 100 pontos · ${getScoreLabel(score)}`}
+            showHeader={false}
+          />
         </div>
         <dl aria-label="Resumo mensal" className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 sm:border-l sm:border-border sm:pl-4">
           <div className="min-w-0"><dt className="text-muted-foreground">Receita do mês</dt><dd className={value}>{currencyFmt(data.monthIncome)}</dd></div>
@@ -227,8 +234,16 @@ export function HealthBreakdown({ data }: { data: DashboardData }) {
               <dt className="break-words">{label}</dt>
               <dd className="col-start-1 row-start-2 break-words text-xs text-muted-foreground sm:col-start-2 sm:row-start-1">{detail}</dd>
               <dd className="col-start-2 row-start-1 whitespace-nowrap font-mono text-xs tabular-nums sm:col-start-3">{points}/{maxPoints} pontos</dd>
-              <dd aria-hidden="true" className="col-span-full h-1 overflow-hidden rounded-full bg-muted">
-                <div className="h-full bg-primary" style={{ width: `${(points / maxPoints) * 100}%` }} />
+              <dd aria-hidden="true" className="col-span-full">
+                <FinanceProgress
+                  label={label}
+                  value={points}
+                  min={0}
+                  max={maxPoints}
+                  unit="pontos"
+                  showHeader={false}
+                  trackClassName="h-1"
+                />
               </dd>
             </div>
           ))}

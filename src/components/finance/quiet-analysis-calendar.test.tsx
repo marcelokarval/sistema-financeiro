@@ -212,3 +212,359 @@ test('financial-calendar usa ChevronRight, botão retry no erro e tamanhos acess
   );
   expect(errorHtml).toContain('Tentar novamente');
 });
+
+import { QueryPanel } from '@/components/shared/query-panel';
+import * as balanceProj from './balance-projection';
+import * as cashFlow from './cash-flow-forecast';
+import * as expenseBk from './expense-breakdown';
+import { currencyFmt } from '@/lib/helpers';
+
+function findButtonByText(node: unknown, label: string): { props: Record<string, any> } | undefined {
+  if (!node || typeof node !== 'object') return undefined;
+  const el = node as { type?: unknown; props?: Record<string, any> };
+  const text = React.Children.toArray(el.props?.children)
+    .map((c) => (typeof c === 'string' || typeof c === 'number' ? String(c) : ''))
+    .join('');
+  if (typeof el.props?.onClick === 'function' && text.includes(label)) {
+    return el as { props: Record<string, any> };
+  }
+  if (typeof el.type === 'function') {
+    const rendered = (el.type as (props: Record<string, any>) => unknown)(el.props ?? {});
+    const hit = findButtonByText(rendered, label);
+    if (hit) return hit;
+  }
+  for (const branch of [el.props?.controls, el.props?.children]) {
+    for (const child of React.Children.toArray(branch)) {
+      const hit = findButtonByText(child, label);
+      if (hit) return hit;
+    }
+  }
+  return undefined;
+}
+
+function runWithReactHarness(renderComponent: () => React.ReactElement) {
+  const reactInternals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previousDispatcher = reactInternals.H;
+  const state: unknown[] = [];
+  const refs: { current: unknown }[] = [];
+  const effects: { deps: readonly unknown[] | undefined; cleanup?: void | (() => void) }[] = [];
+  const callbacks: { deps: readonly unknown[]; fn: unknown }[] = [];
+  const memos: { deps: readonly unknown[]; value: unknown }[] = [];
+  const sameDeps = (a: readonly unknown[] | undefined, b: readonly unknown[] | undefined) =>
+    Boolean(a && b && a.length === b.length && a.every((dep, idx) => Object.is(dep, b[idx])));
+
+  function renderTree() {
+    let s = 0, r = 0, e = 0, c = 0, m = 0;
+    const pendingEffects: Array<{ idx: number; fn: () => void | (() => void); deps: readonly unknown[] | undefined }> = [];
+    reactInternals.H = {
+      useState(initial: unknown) {
+        const i = s++;
+        if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+        return [state[i], (next: unknown) => { state[i] = typeof next === 'function' ? next(state[i]) : next; }];
+      },
+      useRef: (current: unknown) => (refs[r++] ??= { current }),
+      useCallback(fn: unknown, deps: readonly unknown[]) {
+        const i = c++;
+        if (!sameDeps(callbacks[i]?.deps, deps)) callbacks[i] = { fn, deps };
+        return callbacks[i].fn;
+      },
+      useMemo(factory: () => unknown, deps: readonly unknown[]) {
+        const i = m++;
+        if (!sameDeps(memos[i]?.deps, deps)) memos[i] = { deps, value: factory() };
+        return memos[i].value;
+      },
+      useDebugValue: () => {},
+      useId: () => 'test-query-id',
+      useSyncExternalStore: (_sub: unknown, getSnapshot: () => unknown) => getSnapshot(),
+      useEffect(fn: () => void | (() => void), deps?: readonly unknown[]) {
+        const i = e++;
+        if (!effects[i] || !sameDeps(effects[i].deps, deps)) {
+          pendingEffects.push({ idx: i, fn, deps });
+        }
+      },
+    };
+    try {
+      const tree = renderComponent();
+      for (const item of pendingEffects) {
+        if (typeof effects[item.idx]?.cleanup === 'function') {
+          (effects[item.idx].cleanup as () => void)();
+        }
+        effects[item.idx] = { deps: item.deps, cleanup: item.fn() };
+      }
+      return tree;
+    } finally {
+      reactInternals.H = previousDispatcher;
+    }
+  }
+
+  function cleanupAll() {
+    for (const eff of effects) {
+      if (typeof eff?.cleanup === 'function') eff.cleanup();
+    }
+  }
+
+  return { renderTree, cleanupAll };
+}
+
+test('QueryPanel distingue loading, error com Tentar novamente, empty e success com zero real', () => {
+  const loadingHtml = renderToStaticMarkup(
+    <QueryPanel
+      titleId="qp-test"
+      title="Painel sintético"
+      status="loading"
+      loadingMessage="Carregando painel…"
+      controls={<button type="button">6 meses</button>}
+    >
+      <p>Conteúdo não deve aparecer</p>
+    </QueryPanel>,
+  );
+  expect(loadingHtml).toContain('aria-labelledby="qp-test"');
+  expect(loadingHtml).toContain('aria-busy="true"');
+  expect(loadingHtml).toContain('Carregando painel…');
+  expect(loadingHtml).toContain('6 meses');
+  expect(loadingHtml).not.toContain('Conteúdo não deve aparecer');
+
+  let retried = 0;
+  const errorEl = (
+    <QueryPanel
+      titleId="qp-test"
+      title="Painel sintético"
+      status="error"
+      errorMessage="Falha na consulta."
+      onRetry={() => { retried++; }}
+    >
+      <p>Conteúdo não deve aparecer</p>
+    </QueryPanel>
+  );
+  const errorHtml = renderToStaticMarkup(errorEl);
+  expect(errorHtml).toContain('role="alert"');
+  expect(errorHtml).toContain('Falha na consulta.');
+  expect(errorHtml).toContain('Tentar novamente');
+  expect(errorHtml).not.toContain('Conteúdo não deve aparecer');
+
+  const retryBtn = findButtonByText(
+    QueryPanel({
+      titleId: 'qp-test',
+      title: 'Painel sintético',
+      status: 'error',
+      errorMessage: 'Falha na consulta.',
+      onRetry: () => { retried++; },
+      children: null,
+    }),
+    'Tentar novamente',
+  );
+  expect(retryBtn).toBeDefined();
+  retryBtn!.props.onClick();
+  expect(retried).toBe(1);
+
+  const emptyHtml = renderToStaticMarkup(
+    <QueryPanel
+      titleId="qp-test"
+      title="Painel sintético"
+      status="empty"
+      emptyMessage="Nenhum registro no período."
+    >
+      <p>Conteúdo não deve aparecer</p>
+    </QueryPanel>,
+  );
+  expect(emptyHtml).toContain('Nenhum registro no período.');
+  expect(emptyHtml).not.toContain('Tentar novamente');
+  expect(emptyHtml).not.toContain('Conteúdo não deve aparecer');
+
+  const zeroSuccessHtml = renderToStaticMarkup(
+    <QueryPanel
+      titleId="qp-test"
+      title="Painel sintético"
+      status="success"
+      emptyMessage="Nenhum registro no período."
+    >
+      <p>{currencyFmt(0)}</p>
+    </QueryPanel>,
+  );
+  expect(zeroSuccessHtml).toContain('R$ 0,00');
+  expect(zeroSuccessHtml).not.toContain('Nenhum registro no período.');
+});
+
+test('Projeção, Previsão e Despesas adotam QueryPanel preservando zero real e retry', () => {
+  for (const file of ['balance-projection', 'cash-flow-forecast', 'expense-breakdown']) {
+    expect(source(file)).toContain("from '@/components/shared/query-panel'");
+  }
+
+  const BalContent = (balanceProj as Record<string, any>).BalanceProjectionContent;
+  const balZeroHtml = renderToStaticMarkup(
+    <BalContent
+      loading={false}
+      selectedMonths={6}
+      onSelectMonths={() => {}}
+      onRetry={() => {}}
+      data={{
+        accounts: [],
+        monthLabels: ['jan'],
+        totalCurrentBalance: 0,
+        totalProjected: 0,
+        averageMonthlySavings: 0,
+        savingsRate: 0,
+        riskLevel: 'medium',
+        months: 6,
+      }}
+    />,
+  );
+  expect(balZeroHtml).toContain('R$ 0,00');
+  expect(balZeroHtml).toContain('0%');
+  expect(balZeroHtml).toContain('Nenhuma conta para projetar.');
+
+  const CashContent = (cashFlow as Record<string, any>).CashFlowForecastContent;
+  const cashZeroHtml = renderToStaticMarkup(
+    <CashContent
+      loading={false}
+      onRetry={() => {}}
+      data={{
+        forecastMonths: [{ month: 'jan', projectedIncome: 0, projectedExpense: 0, projectedNet: 0, confidence: 0 }],
+        topExpenseCategories: [],
+        riskAlerts: [],
+        trendDirection: 'stable',
+      }}
+    />,
+  );
+  expect(cashZeroHtml).toContain('R$ 0,00');
+  expect(cashZeroHtml).toContain('0% confiança');
+  expect(renderToStaticMarkup(<CashContent loading={false} onRetry={() => {}} data={null} />)).toContain('Tentar novamente');
+});
+
+const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+test('concorrência de período em expense-breakdown mantém B quando A resolve depois com sucesso ou falha', async () => {
+  const originalFetch = globalThis.fetch;
+  const req6 = Promise.withResolvers<Response>();
+  const req1 = Promise.withResolvers<Response>();
+  const req6Retry = Promise.withResolvers<Response>();
+  const req1Again = Promise.withResolvers<Response>();
+  const pendingByUrl = new Map<string, Promise<Response>[]>([
+    ['/api/expense-breakdown?months=6', [req6.promise, req6Retry.promise]],
+    ['/api/expense-breakdown?months=1', [req1.promise, req1Again.promise]],
+  ]);
+  globalThis.fetch = (async (url: string) => pendingByUrl.get(url)!.shift()!) as typeof fetch;
+
+  const harness = runWithReactHarness(() => expenseBk.ExpenseBreakdown());
+  try {
+    let tree = harness.renderTree();
+    const btn1 = findButtonByText(tree, 'Mês atual');
+    expect(btn1).toBeDefined();
+    btn1!.props.onClick();
+    tree = harness.renderTree();
+
+    req1.resolve(Response.json({ categories: [], totalExpense: 0, topCategory: null, monthlyData: [] }));
+    await settle();
+
+    // A (6 meses) resolve atrasada com sucesso: deve ser ignorada
+    req6.resolve(Response.json({ categories: [], totalExpense: 999, topCategory: null, monthlyData: [] }));
+    await settle();
+
+    const htmlAfterLateSuccess = renderToStaticMarkup(harness.renderTree());
+    expect(htmlAfterLateSuccess).toContain('R$ 0,00');
+    expect(htmlAfterLateSuccess).not.toContain('R$ 999,00');
+
+    // Novo ciclo: volta para 6 meses (A2 pendente) -> troca para 1 mês (B2 resolve) -> A2 falha atrasado
+    const btn6 = findButtonByText(harness.renderTree(), '6 meses');
+    btn6!.props.onClick();
+    tree = harness.renderTree();
+    findButtonByText(tree, 'Mês atual')!.props.onClick();
+    harness.renderTree();
+
+    req1Again.resolve(Response.json({ categories: [], totalExpense: 250, topCategory: null, monthlyData: [] }));
+    await settle();
+
+    req6Retry.resolve(new Response(null, { status: 503 }));
+    await settle();
+
+    const htmlAfterLateFailure = renderToStaticMarkup(harness.renderTree());
+    expect(htmlAfterLateFailure).toContain('R$ 250,00');
+    expect(htmlAfterLateFailure).not.toContain('Não foi possível carregar');
+  } finally {
+    harness.cleanupAll();
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('caracterização eb76f7d (divergência aberta, não conformidade Quiet): balance-projection sem guarda em selectedMonths permite A atrasada sobrescrever B', async () => {
+  const originalFetch = globalThis.fetch;
+  const makeProjection = (months: number, totalProjected: number) => Response.json({
+    accounts: [],
+    monthLabels: ['jan'],
+    totalCurrentBalance: 1000,
+    totalProjected,
+    averageMonthlySavings: 100,
+    savingsRate: 10,
+    riskLevel: 'medium',
+    months,
+  });
+
+  // Caso 1: A (6 meses) pendente -> troca para B (3 meses) -> B resolve -> A resolve depois com sucesso
+  {
+    const req6 = Promise.withResolvers<Response>();
+    const req3 = Promise.withResolvers<Response>();
+    globalThis.fetch = (async (url: string) => {
+      if (url === '/api/balance-projection?months=6') return req6.promise;
+      if (url === '/api/balance-projection?months=3') return req3.promise;
+      throw new Error(`URL inesperada: ${url}`);
+    }) as typeof fetch;
+
+    const harness = runWithReactHarness(() => balanceProj.BalanceProjection());
+    try {
+      const initialTree = harness.renderTree();
+      findButtonByText(initialTree, '3 meses')!.props.onClick();
+      harness.renderTree();
+
+      req3.resolve(makeProjection(3, 3333));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 3.333,00');
+
+      req6.resolve(makeProjection(6, 9999));
+      await settle();
+
+      // Reproduz o comportamento observado em eb76f7d: A sobrescreve B mesmo com 3 meses selecionado
+      const afterLateSuccess = renderToStaticMarkup(harness.renderTree());
+      expect(afterLateSuccess).toContain('aria-pressed="true"');
+      expect(afterLateSuccess).toContain('R$ 9.999,00');
+      expect(afterLateSuccess).not.toContain('R$ 3.333,00');
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
+  }
+
+  // Caso 2: A (6 meses) pendente -> troca para B (3 meses) -> B resolve -> A resolve depois com falha
+  {
+    const req6 = Promise.withResolvers<Response>();
+    const req3 = Promise.withResolvers<Response>();
+    globalThis.fetch = (async (url: string) => {
+      if (url === '/api/balance-projection?months=6') return req6.promise;
+      if (url === '/api/balance-projection?months=3') return req3.promise;
+      throw new Error(`URL inesperada: ${url}`);
+    }) as typeof fetch;
+
+    const harness = runWithReactHarness(() => balanceProj.BalanceProjection());
+    try {
+      const initialTree = harness.renderTree();
+      findButtonByText(initialTree, '3 meses')!.props.onClick();
+      harness.renderTree();
+
+      req3.resolve(makeProjection(3, 3333));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 3.333,00');
+
+      req6.resolve(new Response(null, { status: 503 }));
+      await settle();
+
+      // Reproduz o comportamento observado em eb76f7d: erro atrasado de A sobrescreve dados de B
+      const afterLateFailure = renderToStaticMarkup(harness.renderTree());
+      expect(afterLateFailure).toContain('Não foi possível carregar a projeção de saldos.');
+      expect(afterLateFailure).not.toContain('R$ 3.333,00');
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
+  }
+});
