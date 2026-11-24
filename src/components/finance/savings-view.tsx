@@ -3,10 +3,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
 import {
   PiggyBank,
-  Gift,
-  Landmark,
-  TrendingUp,
-  ShieldCheck,
   Plus,
   Pencil,
   Trash2,
@@ -18,26 +14,8 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,17 +32,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { FinanceProgress } from '@/components/shared/finance-progress';
 import { EmptyState } from '@/components/shared/ui-helpers';
 import { currencyFmt, dateFmt, pct } from '@/lib/helpers';
 import { useAppStore } from '@/lib/store';
-
-const SAVINGS_TYPES = [
-  { value: 'SAVINGS', label: 'Poupança', icon: PiggyBank },
-  { value: 'PIGGY_BANK', label: 'Porquinho', icon: Gift },
-  { value: 'CDI', label: 'Conta CDI', icon: Landmark },
-  { value: 'INVESTMENT', label: 'Investimento', icon: TrendingUp },
-  { value: 'EMERGENCY_FUND', label: 'Reserva', icon: ShieldCheck },
-] as const;
+import { SavingsGoalEditor, type SavingsGoalDraft } from './savings-goal-editor';
+import { SavingsContributionDialog, type SavingsContributionDraft } from './savings-contribution-dialog';
 
 const TYPE_FILTER_TABS = [
   { value: 'ALL', label: 'Todos' },
@@ -83,14 +56,6 @@ const TYPE_LABELS: Record<string, string> = {
   INVESTMENT: 'Investimento',
   EMERGENCY_FUND: 'Reserva de Emergência',
 };
-
-const GOAL_COLORS = [
-  { value: '#10b981', label: 'Verde' }, { value: '#0ea5e9', label: 'Azul' },
-  { value: '#8b5cf6', label: 'Violeta' }, { value: '#f59e0b', label: 'Âmbar' },
-  { value: '#f43f5e', label: 'Rosa coral' }, { value: '#06b6d4', label: 'Ciano' },
-  { value: '#6366f1', label: 'Índigo' }, { value: '#ec4899', label: 'Rosa' },
-  { value: '#14b8a6', label: 'Verde-azulado' }, { value: '#84cc16', label: 'Verde-lima' },
-];
 
 // ── Interfaces ─────────────────────────────────────────────────────
 
@@ -119,20 +84,7 @@ interface Account {
 
 // ── Form Types ─────────────────────────────────────────────────────
 
-interface GoalFormData {
-  name: string;
-  type: string;
-  description: string;
-  targetAmount: string;
-  currentAmount: string;
-  monthlyContribution: string;
-  yieldRate: string;
-  targetDate: string;
-  accountId: string;
-  color: string;
-}
-
-const emptyGoalForm: GoalFormData = {
+const emptyGoalForm: SavingsGoalDraft = {
   name: '',
   type: 'SAVINGS',
   description: '',
@@ -145,12 +97,7 @@ const emptyGoalForm: GoalFormData = {
   color: '#10b981',
 };
 
-interface DepositFormData {
-  amount: string;
-  description: string;
-}
-
-const emptyDepositForm: DepositFormData = {
+const emptyDepositForm: SavingsContributionDraft = {
   amount: '',
   description: '',
 };
@@ -172,9 +119,17 @@ export function SavingsView() {
   const [depositingGoal, setDepositingGoal] = useState<SavingsGoal | null>(null);
 
   // Forms
-  const [goalForm, setGoalForm] = useState<GoalFormData>(emptyGoalForm);
-  const [depositForm, setDepositForm] = useState<DepositFormData>(emptyDepositForm);
+  const [goalForm, setGoalForm] = useState<SavingsGoalDraft>(emptyGoalForm);
+  const [depositForm, setDepositForm] = useState<SavingsContributionDraft>(emptyDepositForm);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleGoalFieldChange = (field: keyof SavingsGoalDraft, value: string) => {
+    setGoalForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDepositFieldChange = (field: keyof SavingsContributionDraft, value: string) => {
+    setDepositForm((prev) => ({ ...prev, [field]: value }));
+  };
 
   // ── Data Fetching ────────────────────────────────────────────────
 
@@ -461,282 +416,29 @@ export function SavingsView() {
       </section>
 
         {/* ── Create / Edit Goal Dialog ─────────────────────────────── */}
-        <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
-          <DialogContent onCloseAutoFocus={restoreDialogFocus} className="sm:max-w-lg max-h-[85dvh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingGoal ? 'Editar Meta' : 'Nova Meta de Poupança'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingGoal
-                  ? 'Atualize os dados da sua meta de poupança.'
-                  : 'Defina um objetivo financeiro para começar a poupar.'}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2">
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="goal-name">Nome da meta *</Label>
-                <Input
-                  id="goal-name"
-                  placeholder="Ex: Viagem, Carro novo..."
-                  value={goalForm.name}
-                  onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
-                />
-              </div>
-
-              {/* Type + Color row */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="goal-type">Tipo *</Label>
-                  <Select
-                    value={goalForm.type}
-                    onValueChange={(v) => setGoalForm({ ...goalForm, type: v })}
-                  >
-                    <SelectTrigger id="goal-type" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SAVINGS_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          <span className="flex items-center gap-2">
-                            <t.icon className="w-3.5 h-3.5" aria-hidden="true" />
-                            {t.label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <p id="goal-color-label" className="text-sm font-medium">Cor</p>
-                  <div role="group" aria-labelledby="goal-color-label" className="mt-1 flex flex-wrap gap-2">
-                    {GOAL_COLORS.map(({ value: c, label }) => (
-                      <button
-                        key={c}
-                        type="button"
-                        aria-label={label}
-                        aria-pressed={goalForm.color === c}
-                        className={`size-8 rounded-full border-2 ${
-                          goalForm.color === c
-                            ? 'border-foreground'
-                            : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: c }}
-                        onClick={() => setGoalForm({ ...goalForm, color: c })}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="goal-desc">Descrição</Label>
-                <Textarea
-                  id="goal-desc"
-                  placeholder="Descreva sua meta (opcional)"
-                  value={goalForm.description}
-                  onChange={(e) => setGoalForm({ ...goalForm, description: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              {/* Target + Current amounts */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="goal-target">Valor alvo (R$) *</Label>
-                  <Input
-                    id="goal-target"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={goalForm.targetAmount}
-                    onChange={(e) =>
-                      setGoalForm({ ...goalForm, targetAmount: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="goal-current">Valor atual (R$)</Label>
-                  <Input
-                    id="goal-current"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={goalForm.currentAmount}
-                    onChange={(e) =>
-                      setGoalForm({ ...goalForm, currentAmount: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Monthly Contribution + Yield Rate */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="goal-monthly">Contribuição mensal (R$)</Label>
-                  <Input
-                    id="goal-monthly"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={goalForm.monthlyContribution}
-                    onChange={(e) =>
-                      setGoalForm({ ...goalForm, monthlyContribution: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="goal-yield">Rendimento (% a.a.)</Label>
-                  <Input
-                    id="goal-yield"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={goalForm.yieldRate}
-                    onChange={(e) =>
-                      setGoalForm({ ...goalForm, yieldRate: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Target Date + Account */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="goal-date">Data alvo</Label>
-                  <Input
-                    id="goal-date"
-                    type="date"
-                    value={goalForm.targetDate}
-                    onChange={(e) =>
-                      setGoalForm({ ...goalForm, targetDate: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="goal-account">Conta vinculada</Label>
-                  <Select
-                    value={goalForm.accountId}
-                    onValueChange={(v) => setGoalForm({ ...goalForm, accountId: v })}
-                  >
-                    <SelectTrigger id="goal-account" className="w-full">
-                      <SelectValue placeholder="Nenhuma" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhuma</SelectItem>
-                      {accounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowGoalDialog(false)}
-                disabled={submitting}
-              >
-                Cancelar
-              </Button>
-              <Button onClick={handleSaveGoal} disabled={submitting} className="gap-1.5">
-                {submitting ? (
-                  <>
-                    Salvando...
-                  </>
-                ) : editingGoal ? (
-                  'Salvar Alterações'
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4" />
-                    Criar Meta
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <SavingsGoalEditor
+          mode={editingGoal ? 'edit' : 'create'}
+          open={showGoalDialog}
+          submitting={submitting}
+          form={goalForm}
+          accounts={accounts}
+          onFieldChange={handleGoalFieldChange}
+          onOpenChange={setShowGoalDialog}
+          onCloseAutoFocus={restoreDialogFocus}
+          onSubmit={handleSaveGoal}
+        />
 
         {/* ── Deposit Dialog ────────────────────────────────────────── */}
-        <Dialog open={showDepositDialog} onOpenChange={setShowDepositDialog}>
-          <DialogContent onCloseAutoFocus={restoreDialogFocus} className="sm:max-w-md max-h-[85dvh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Depositar</DialogTitle>
-              <DialogDescription>
-                {depositingGoal
-                  ? `Adicione um valor à meta "${depositingGoal.name}". Atual: ${currencyFmt(depositingGoal.currentAmount)}`
-                  : 'Adicione um valor à meta selecionada.'}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2">
-              {depositingGoal && (
-                <p className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
-                  Conta vinculada: {depositingGoal.account?.name ?? (depositingGoal.accountId ? "Conta vinculada à meta" : "Nenhuma")}
-                </p>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="deposit-amount">Valor do depósito (R$) *</Label>
-                <Input
-                  id="deposit-amount"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="0,00"
-                  value={depositForm.amount}
-                  onChange={(e) =>
-                    setDepositForm({ ...depositForm, amount: e.target.value })
-                  }
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="deposit-desc">Descrição (opcional)</Label>
-                <Input
-                  id="deposit-desc"
-                  placeholder="Ex: Bônus, Economia do mês..."
-                  value={depositForm.description}
-                  onChange={(e) =>
-                    setDepositForm({ ...depositForm, description: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowDepositDialog(false)}
-                disabled={submitting}
-              >
-                Cancelar
-              </Button>
-              <Button onClick={handleDeposit} disabled={submitting} className="gap-1.5">
-                {submitting ? (
-                  <>
-                    Depositando...
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownToLine className="w-4 h-4" />
-                    Depositar
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <SavingsContributionDialog
+          open={showDepositDialog}
+          submitting={submitting}
+          goal={depositingGoal}
+          form={depositForm}
+          onFieldChange={handleDepositFieldChange}
+          onOpenChange={setShowDepositDialog}
+          onCloseAutoFocus={restoreDialogFocus}
+          onSubmit={handleDeposit}
+        />
 
         {/* ── Delete Confirmation Dialog ────────────────────────────── */}
         <AlertDialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
@@ -809,14 +511,13 @@ export function SavingsGoalRow({ goal, onDeposit, onEdit, onDelete }: {
           <SavingsDatum label="Acumulado" value={currencyFmt(goal.currentAmount)} />
           <SavingsDatum label="Meta" value={currencyFmt(goal.targetAmount)} />
         </dl>
-        <div className="flex flex-wrap justify-between gap-x-3 text-xs text-muted-foreground">
-          <span>Progresso da meta</span>
-          <span className="font-mono tabular-nums text-foreground">{Math.round(percent)}%</span>
-        </div>
-        <div role="progressbar" aria-label={`Progresso da meta ${goal.name}`} aria-valuenow={barValue}
-          aria-valuetext={`${Math.round(percent)}% · ${currencyFmt(goal.currentAmount)} de ${currencyFmt(goal.targetAmount)}`} className="h-1.5 rounded-full bg-muted">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${barValue}%` }} />
-        </div>
+        <FinanceProgress
+          label="Progresso da meta"
+          ariaLabel={`Progresso da meta ${goal.name}`}
+          value={barValue}
+          displayValue={`${Math.round(percent)}%`}
+          valueText={`${Math.round(percent)}% · ${currencyFmt(goal.currentAmount)} de ${currencyFmt(goal.targetAmount)}`}
+        />
         {!isComplete && remaining > 0 && <p className="text-xs text-muted-foreground">Faltam {currencyFmt(remaining)}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2">

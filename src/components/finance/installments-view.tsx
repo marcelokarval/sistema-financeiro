@@ -3,7 +3,6 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
 import {
   Plus,
-  X,
   ArrowLeft,
   Landmark,
   CreditCard,
@@ -14,36 +13,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogClose,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import {
   currencyFmt,
   dateFmt,
@@ -51,6 +22,8 @@ import {
 import { createInstallmentSelection, type InstallmentPlan, type InstallmentSelection } from '@/lib/installment-selection';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
+import { InstallmentPlanEditor, type InstallmentPlanDraft } from './installment-plan-editor';
+import { InstallmentDeleteConfirmation } from './installment-delete-confirmation';
 
 // ── Plan Type Config ──────────────────────────────────────────────
 const planTypeConfig: Record<
@@ -145,7 +118,7 @@ export function InstallmentsView() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
 
   // Create form
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<InstallmentPlanDraft>({
     description: '',
     totalAmount: '',
     installmentCount: '',
@@ -156,6 +129,9 @@ export function InstallmentsView() {
     cardId: '',
     categoryId: '',
   });
+  const handleFormFieldChange = (field: keyof InstallmentPlanDraft, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
 
   // ── Data fetching ────────────────────────────────────────────────
   const fetchPlans = useCallback(async () => {
@@ -213,17 +189,21 @@ export function InstallmentsView() {
 
   // ── Auto-calculate monthly value ─────────────────────────────────
   const handleAmountChange = (amount: string) => {
-    const a = parseFloat(amount) || 0;
-    const c = parseInt(form.installmentCount) || 1;
-    const mv = c > 0 ? a / c : 0;
-    setForm({ ...form, totalAmount: amount, monthlyValue: mv > 0 ? mv.toFixed(2) : '' });
+    setForm((prev) => {
+      const a = parseFloat(amount) || 0;
+      const c = parseInt(prev.installmentCount) || 1;
+      const mv = c > 0 ? a / c : 0;
+      return { ...prev, totalAmount: amount, monthlyValue: mv > 0 ? mv.toFixed(2) : '' };
+    });
   };
 
   const handleCountChange = (count: string) => {
-    const a = parseFloat(form.totalAmount) || 0;
-    const c = parseInt(count) || 1;
-    const mv = c > 0 ? a / c : 0;
-    setForm({ ...form, installmentCount: count, monthlyValue: mv > 0 ? mv.toFixed(2) : '' });
+    setForm((prev) => {
+      const a = parseFloat(prev.totalAmount) || 0;
+      const c = parseInt(count) || 1;
+      const mv = c > 0 ? a / c : 0;
+      return { ...prev, installmentCount: count, monthlyValue: mv > 0 ? mv.toFixed(2) : '' };
+    });
   };
 
   // ── Computed summary ─────────────────────────────────────────────
@@ -471,31 +451,17 @@ export function InstallmentsView() {
           <p role="alert" className="rounded-lg border bg-card p-4 text-sm text-destructive">Não foi possível carregar os detalhes do plano.</p>
         )}
         {confirmedPlanId === selection.id && (
-          <AlertDialog open={!!showDeleteDialog} onOpenChange={(open) => { if (!open && !deleteInFlight.current) setShowDeleteDialog(null); }}>
-            <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir plano</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir o plano &quot;{selection.description}&quot;? Esta ação
-                  não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={deleting}
-                  aria-disabled={!selectedPlan}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    if (selectedPlan?.id === showDeleteDialog) return deletePlan(selectedPlan.id);
-                  }}
-                  className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
-                >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <InstallmentDeleteConfirmation
+            open={!!showDeleteDialog}
+            deleting={deleting}
+            planDescription={selection.description}
+            actionDisabled={!selectedPlan}
+            onOpenChange={(open) => { if (!open && !deleteInFlight.current) setShowDeleteDialog(null); }}
+            onCloseAutoFocus={restoreDialogFocus}
+            onConfirm={() => {
+              if (selectedPlan?.id === showDeleteDialog) return deletePlan(selectedPlan.id);
+            }}
+          />
         )}
       </section>
     );
@@ -510,199 +476,31 @@ export function InstallmentsView() {
         }} />
 
         {/* Create Plan Dialog */}
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent showCloseButton={false} onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
-            <DialogHeader className="relative pr-10 text-left">
-              <DialogClose asChild>
-                <Button type="button" size="icon" variant="ghost" aria-label="Fechar formulário" className="absolute right-0 top-0">
-                  <X aria-hidden="true" />
-                </Button>
-              </DialogClose>
-              <DialogTitle>Novo Plano de Parcelas</DialogTitle>
-              <DialogDescription>
-                Cadastre um novo financiamento, empréstimo ou parcelamento
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="plan-form-description">Descrição</Label>
-                <Input id="plan-form-description"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Ex: Financiamento do Apartamento..."
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="plan-form-type">Tipo</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(v) => setForm({ ...form, type: v })}
-                >
-                  <SelectTrigger id="plan-form-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(planTypeConfig).map(([key, cfg]) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center gap-2">
-                          <cfg.icon className="w-4 h-4" />
-                          {cfg.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="plan-form-totalAmount">Valor Total (R$)</Label>
-                  <Input id="plan-form-totalAmount"
-                    type="number"
-                    step="0.01"
-                    value={form.totalAmount}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    placeholder="0,00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="plan-form-installmentCount">Nº de Parcelas</Label>
-                  <Input id="plan-form-installmentCount"
-                    type="number"
-                    min="1"
-                    value={form.installmentCount}
-                    onChange={(e) => handleCountChange(e.target.value)}
-                    placeholder="12"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="plan-form-monthlyValue">Valor da Parcela (R$)</Label>
-                <Input id="plan-form-monthlyValue"
-                  type="number"
-                  step="0.01"
-                  value={form.monthlyValue}
-                  onChange={(e) => setForm({ ...form, monthlyValue: e.target.value })}
-                  placeholder="Auto-calculado"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Calculado automaticamente pelo valor total ÷ parcelas
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="plan-form-interestRate">Taxa de Juros (% a.a.)</Label>
-                  <Input id="plan-form-interestRate"
-                    type="number"
-                    step="0.01"
-                    value={form.interestRate}
-                    onChange={(e) => setForm({ ...form, interestRate: e.target.value })}
-                    placeholder="0,00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="plan-form-startDate">Data de Início</Label>
-                  <Input id="plan-form-startDate"
-                    type="date"
-                    value={form.startDate}
-                    onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="plan-form-cardId">Cartão (opcional)</Label>
-                <Select
-                  value={form.cardId}
-                  onValueChange={(v) => setForm({ ...form, cardId: v })}
-                >
-                  <SelectTrigger id="plan-form-cardId">
-                    <SelectValue placeholder="Nenhum cartão" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cards.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: c.color }}
-                          />
-                          {c.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="plan-form-categoryId">Categoria</Label>
-                <Select
-                  value={form.categoryId}
-                  onValueChange={(v) => setForm({ ...form, categoryId: v })}
-                >
-                  <SelectTrigger id="plan-form-categoryId">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories
-                      .filter((c) => c.type === 'EXPENSE')
-                      .map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: c.color }}
-                            />
-                            {c.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={createPlan}
-                disabled={creating || !form.description || !form.totalAmount || !form.installmentCount}
-              >
-                {creating ? 'Criando…' : 'Criar Plano'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <InstallmentPlanEditor
+          open={showCreateDialog}
+          creating={creating}
+          form={form}
+          cards={cards}
+          categories={categories}
+          planTypes={planTypeConfig}
+          onFieldChange={handleFormFieldChange}
+          onAmountChange={handleAmountChange}
+          onCountChange={handleCountChange}
+          onOpenChange={setShowCreateDialog}
+          onCloseAutoFocus={restoreDialogFocus}
+          onSubmit={createPlan}
+        />
 
         {/* Delete confirmation */}
-        <AlertDialog open={!!showDeleteDialog} onOpenChange={(open) => { if (!open && !deleteInFlight.current) setShowDeleteDialog(null); }}>
-          <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir plano</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja excluir este plano? Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={deleting}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (showDeleteDialog) return deletePlan(showDeleteDialog);
-                }}
-                className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
-              >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <InstallmentDeleteConfirmation
+          open={!!showDeleteDialog}
+          deleting={deleting}
+          onOpenChange={(open) => { if (!open && !deleteInFlight.current) setShowDeleteDialog(null); }}
+          onCloseAutoFocus={restoreDialogFocus}
+          onConfirm={() => {
+            if (showDeleteDialog) return deletePlan(showDeleteDialog);
+          }}
+        />
     </>
   );
 }

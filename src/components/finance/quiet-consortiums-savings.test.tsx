@@ -5,6 +5,9 @@ import * as consortiums from './consortiums-view';
 import { ConsortiumEditor } from './consortium-editor';
 import { ConsortiumDeleteConfirmation } from './consortium-delete-confirmation';
 import * as savings from './savings-view';
+import { SavingsGoalEditor } from './savings-goal-editor';
+import { SavingsContributionDialog } from './savings-contribution-dialog';
+import { FinanceProgress } from '@/components/shared/finance-progress';
 import React, { type ReactElement, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription } from '@/components/ui/alert-dialog';
@@ -50,7 +53,7 @@ test('caixinha expõe depósito, conta vinculada e progresso sem depender da cor
   expect(html).toContain('Conta sintética');
   expect(html).toMatch(/<button [^>]*aria-label="Depositar em Reserva sintética"/);
   expect(html).toContain('aria-label="Mais ações de Reserva sintética"');
-  expect(html).toMatch(/role="progressbar"[^>]*aria-label="Progresso da meta Reserva sintética"[^>]*aria-valuenow="40"/);
+  expect(html).toMatch(/<div\b(?=[^>]*\brole="progressbar")(?=[^>]*\baria-label="Progresso da meta Reserva sintética")(?=[^>]*\baria-valuenow="40")[^>]*>/);
   expect(html).toContain('R$ 200,00');
   expect(html).not.toMatch(/gradient|card-glow|#f43f5e/);
 });
@@ -136,6 +139,10 @@ const findElement = (node: ReactNode, matches: (element: ViewElement) => boolean
       content = ConsortiumEditor((child as ReactElement<React.ComponentProps<typeof ConsortiumEditor>>).props);
     } else if (child.type === ConsortiumDeleteConfirmation) {
       content = ConsortiumDeleteConfirmation((child as ReactElement<React.ComponentProps<typeof ConsortiumDeleteConfirmation>>).props);
+    } else if (child.type === SavingsGoalEditor) {
+      content = SavingsGoalEditor((child as ReactElement<React.ComponentProps<typeof SavingsGoalEditor>>).props);
+    } else if (child.type === SavingsContributionDialog) {
+      content = SavingsContributionDialog((child as ReactElement<React.ComponentProps<typeof SavingsContributionDialog>>).props);
     } else if (child.type === FinanceFormDialogShell) {
       content = FinanceFormDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props);
     } else if (child.type === FinanceConfirmationDialogShell) {
@@ -670,4 +677,273 @@ test('ConsortiumDeleteConfirmation adota FinanceConfirmationDialogShell com pape
   expect(action?.props.className).toContain('text-[var(--ds-destructive-fg)]');
   expect(action?.props.className).toContain('hover:bg-destructive');
   expect(action?.props.className).toContain('hover:underline');
+});
+
+test('savings-view adota FinanceProgress em SavingsGoalRow preservando percentual, saldo e valores acessíveis', async () => {
+  const source = await Bun.file(new URL('savings-view.tsx', import.meta.url)).text();
+  expect(source).toContain("from '@/components/shared/finance-progress'");
+  expect(source).toContain('<FinanceProgress');
+  const html = renderToStaticMarkup(<savings.SavingsGoalRow goal={goal} onDeposit={noop} onEdit={noop} onDelete={noop} />);
+  expect(html).toContain('data-slot="progress"');
+  expect(html).toContain('aria-label="Progresso da meta Reserva sintética"');
+  expect(html).toContain('aria-valuenow="40"');
+  expect(html).toContain('aria-valuetext="40% · R$ 200,00 de R$ 500,00"');
+  expect(html).toContain('Faltam R$ 300,00');
+  const zeroHtml = renderToStaticMarkup(
+    <savings.SavingsGoalRow goal={{ ...goal, currentAmount: 0 }} onDeposit={noop} onEdit={noop} onDelete={noop} />,
+  );
+  expect(zeroHtml).toContain('aria-valuenow="0"');
+  expect(zeroHtml).toContain('0%');
+});
+
+test('SavingsGoalEditor adota FinanceFormDialogShell em criação e edição, sem closeLabel extra e com pendência', () => {
+  const onOpenChange = () => {};
+  const onCloseAutoFocus = () => {};
+  const onSubmit = async () => {};
+  const editEl = SavingsGoalEditor({
+    mode: 'edit',
+    open: true,
+    submitting: true,
+    form: {
+      name: 'Reserva sintética',
+      type: 'EMERGENCY_FUND',
+      description: '',
+      targetAmount: '500',
+      currentAmount: '0',
+      monthlyContribution: '',
+      yieldRate: '0',
+      targetDate: '',
+      accountId: 'none',
+      color: '#10b981',
+    },
+    accounts: [{ id: 'a1', name: 'Conta sintética' }],
+    onFieldChange: () => {},
+    onOpenChange,
+    onCloseAutoFocus,
+    onSubmit,
+  });
+
+  expect(editEl.type).toBe(FinanceFormDialogShell);
+  expect(editEl.props.closeLabel).toBeUndefined();
+  expect(editEl.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  const content = findElement(editEl, (e) => e.type === DialogContent);
+  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.className).toContain('max-h-[85dvh]');
+  expect(findElement(editEl, (e) => React.Children.toArray(e.props.children).includes('Editar Meta'))).toBeDefined();
+  const submitBtn = findElement(editEl, (e) => e.props.onClick === onSubmit);
+  expect(submitBtn?.props.disabled).toBe(true);
+
+  const createEl = SavingsGoalEditor({
+    mode: 'create',
+    open: true,
+    submitting: false,
+    form: {
+      name: '',
+      type: 'SAVINGS',
+      description: '',
+      targetAmount: '',
+      currentAmount: '0',
+      monthlyContribution: '',
+      yieldRate: '',
+      targetDate: '',
+      accountId: 'none',
+      color: '#10b981',
+    },
+    accounts: [],
+    onFieldChange: () => {},
+    onOpenChange,
+    onCloseAutoFocus,
+    onSubmit,
+  });
+  expect(findElement(createEl, (e) => React.Children.toArray(e.props.children).includes('Nova Meta de Poupança'))).toBeDefined();
+  expect(findElement(createEl, (e) => e.props.onClick === onSubmit)?.props.disabled).toBe(false);
+});
+
+test('SavingsContributionDialog adota FinanceFormDialogShell preservando conta vinculada, saldo atual e pendência', () => {
+  const onOpenChange = () => {};
+  const onCloseAutoFocus = () => {};
+  const onSubmit = async () => {};
+  const element = SavingsContributionDialog({
+    open: true,
+    submitting: true,
+    goal,
+    form: { amount: '50', description: '' },
+    onFieldChange: () => {},
+    onOpenChange,
+    onCloseAutoFocus,
+    onSubmit,
+  });
+
+  expect(element.type).toBe(FinanceFormDialogShell);
+  expect(element.props.closeLabel).toBeUndefined();
+  expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  const content = findElement(element, (e) => e.type === DialogContent);
+  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.className).toContain('max-h-[85dvh]');
+  expect(renderToStaticMarkup(<>{element.props.children}</>)).toContain('Conta vinculada: Conta sintética');
+  expect(renderToStaticMarkup(<>{element.props.description}</>)).toContain('R$ 200,00');
+  expect(findElement(element, (e) => e.props.onClick === onSubmit)?.props.disabled).toBe(true);
+});
+
+async function exerciseSavings(
+  respond: (method: string, url: string) => Promise<Response>,
+  run: (render: () => ViewElement, requests: [string, string, BodyInit | null | undefined][], feedback: string[]) => Promise<void>,
+  initialGoals = [goal],
+) {
+  const dispatcher = (React as unknown as { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown } }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const { H } = dispatcher;
+  const { success, error } = toast;
+  const originalFetch = globalThis.fetch;
+  const states: unknown[] = [], refs: { current: unknown }[] = [];
+  const requests: [string, string, BodyInit | null | undefined][] = [];
+  const feedback: string[] = [];
+  const cleanups: (() => void)[] = [];
+  let mounted = false;
+  function render() {
+    let stateIndex = 0, refIndex = 0;
+    const effects: (() => void)[] = [];
+    dispatcher.H = {
+      useState(initial: unknown) {
+        const i = stateIndex++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
+      useCallback: (fn: unknown) => fn,
+      useMemo: (factory: () => unknown) => factory(),
+      useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
+    };
+    try {
+      const view = savings.SavingsView();
+      mounted = true;
+      effects.forEach((effect) => {
+        const cleanup = effect();
+        if (typeof cleanup === 'function') cleanups.push(cleanup);
+      });
+      return view;
+    } finally { dispatcher.H = H; }
+  }
+  try {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      requests.push([method, url, init?.body]);
+      if (url === '/api/savings' && method === 'GET') return Response.json(initialGoals);
+      if (url === '/api/accounts' && method === 'GET') return Response.json([{ id: 'a1', name: 'Conta sintética' }]);
+      return respond(method, url);
+    }) as typeof fetch;
+    toast.success = () => { feedback.push('success'); return 'success'; };
+    toast.error = () => { feedback.push('error'); return 'error'; };
+    render();
+    await settle();
+    await run(render, requests, feedback);
+  } finally {
+    cleanups.forEach((cleanup) => cleanup());
+    globalThis.fetch = originalFetch;
+    toast.success = success;
+    toast.error = error;
+    useAppStore.setState(useAppStore.getInitialState(), true);
+  }
+}
+
+test('Caixinhas PUT preserva saldo, opcionais limpos como null e zero explícito', async () => {
+  await exerciseSavings(async () => Response.json(goal), async (render, requests, feedback) => {
+    const row = findElement(render(), (e) => e.type === savings.SavingsGoalRow && e.props.goal.id === 'g1')!;
+    row.props.onEdit(null);
+    let editor = findElement(render(), (e) => e.type === SavingsGoalEditor && e.props.open)!;
+    expect(editor.props.form.currentAmount).toBe('200');
+    editor.props.onFieldChange('description', '   ');
+    editor.props.onFieldChange('monthlyContribution', '');
+    editor.props.onFieldChange('yieldRate', '0');
+    editor.props.onFieldChange('accountId', 'none');
+    editor = findElement(render(), (e) => e.type === SavingsGoalEditor && e.props.open)!;
+    const offset = requests.length;
+    await editor.props.onSubmit();
+    await settle();
+
+    const putReq = requests.slice(offset).find(([m]) => m === 'PUT')!;
+    expect(JSON.parse(String(putReq[2]))).toEqual({
+      id: 'g1',
+      name: 'Reserva sintética',
+      type: 'EMERGENCY_FUND',
+      description: null,
+      targetAmount: 500,
+      currentAmount: 200,
+      monthlyContribution: null,
+      yieldRate: 0,
+      targetDate: null,
+      accountId: null,
+      color: '#f43f5e',
+    });
+    expect(feedback).toEqual(['success']);
+    expect(findElement(render(), (e) => e.type === SavingsGoalEditor && e.props.open)).toBeUndefined();
+  });
+});
+
+test('Caixinhas depósito omite description quando vazia e preserva saldo/erros sem fechar em falha', async () => {
+  let failNext = true;
+  await exerciseSavings(async () => {
+    if (failNext) return Response.json({ error: 'Falha sintética' }, { status: 503 });
+    return Response.json({ ...goal, currentAmount: 250 });
+  }, async (render, requests, feedback) => {
+    const row = findElement(render(), (e) => e.type === savings.SavingsGoalRow && e.props.goal.id === 'g1')!;
+    row.props.onDeposit(null);
+    let dialog = findElement(render(), (e) => e.type === SavingsContributionDialog && e.props.open)!;
+    dialog.props.onFieldChange('amount', '50');
+    dialog.props.onFieldChange('description', '   ');
+    dialog = findElement(render(), (e) => e.type === SavingsContributionDialog && e.props.open)!;
+    const offset = requests.length;
+    await dialog.props.onSubmit();
+
+    expect(findElement(render(), (e) => e.type === SavingsContributionDialog && e.props.open)?.props.form.amount).toBe('50');
+    expect(feedback).toEqual(['error']);
+    expect(requests.slice(offset).map(([m, u]) => [m, u])).toEqual([['POST', '/api/savings/deposit']]);
+
+    failNext = false;
+    await findElement(render(), (e) => e.type === SavingsContributionDialog && e.props.open)!.props.onSubmit();
+    await settle();
+    const postReq = requests.slice(offset + 1).find(([m]) => m === 'POST')!;
+    expect(JSON.parse(String(postReq[2]))).toEqual({ savingsGoalId: 'g1', amount: 50 });
+    expect(feedback).toEqual(['error', 'success']);
+    expect(findElement(render(), (e) => e.type === SavingsContributionDialog && e.props.open)).toBeUndefined();
+  });
+});
+
+for (const failure of ['http', 'transport'] as const) {
+  test(`Caixinhas editor (${failure}): preserva aberto, rascunho e não dispara GET de sucesso`, async () => {
+    await exerciseSavings(async () => {
+      if (failure === 'transport') throw new Error('Rede sintética');
+      return Response.json({ error: 'Falha sintética' }, { status: 503 });
+    }, async (render, requests, feedback) => {
+      formButton(render(), 'Nova meta').props.onClick({ currentTarget: null });
+      let editor = findElement(render(), (e) => e.type === SavingsGoalEditor && e.props.open)!;
+      editor.props.onFieldChange('name', 'Meta rascunho');
+      editor.props.onFieldChange('targetAmount', '1000');
+      editor = findElement(render(), (e) => e.type === SavingsGoalEditor && e.props.open)!;
+      const offset = requests.length;
+      await editor.props.onSubmit();
+
+      const after = findElement(render(), (e) => e.type === SavingsGoalEditor && e.props.open);
+      expect(after?.props.form.name).toBe('Meta rascunho');
+      expect(after?.props.form.targetAmount).toBe('1000');
+      expect(feedback).toEqual(['error']);
+      expect(requests.slice(offset).map(([m, u]) => [m, u])).toEqual([['POST', '/api/savings']]);
+    });
+  });
+}
+
+test('Caixinhas exclusão: AlertDialogAction mantém fechamento automático sem preventDefault e não relê no erro', async () => {
+  await exerciseSavings(async () => Response.json({ error: 'Falha' }, { status: 503 }), async (render, requests, feedback) => {
+    const row = findElement(render(), (e) => e.type === savings.SavingsGoalRow && e.props.goal.id === 'g1')!;
+    row.props.onDelete(null);
+    const confirmation = activeConfirmation(render)!;
+    const action = findElement(confirmation, (e) => e.type === AlertDialogAction)!;
+    const offset = requests.length;
+    const event = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+    const pending = action.props.onClick(event);
+    expect(event.defaultPrevented).toBe(false);
+    await pending;
+    expect(feedback).toEqual(['error']);
+    expect(requests.slice(offset).map(([m, u]) => [m, u])).toEqual([['DELETE', '/api/savings']]);
+  });
 });

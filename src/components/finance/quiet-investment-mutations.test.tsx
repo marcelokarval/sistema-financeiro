@@ -9,6 +9,8 @@ import { InvestmentEntries, InvestmentPortfolio, InvestmentsView } from './inves
 import { InvestmentDeleteConfirmation } from './investment-delete-confirmation';
 import { InvestmentEditor } from './investment-editor';
 import { InstallmentEntries, InstallmentPortfolio, InstallmentsView } from './installments-view';
+import { InstallmentPlanEditor } from './installment-plan-editor';
+import { InstallmentDeleteConfirmation } from './installment-delete-confirmation';
 
 const a = { id: 'a', name: 'Investimento A', type: 'CDB', investedAmount: 1200, currentBalance: 1350, yieldRate: 0 };
 const b = { ...a, id: 'b', name: 'Investimento B' };
@@ -26,11 +28,15 @@ function find(node: ReactNode, matches: (element: Element) => boolean): Element 
       ? InvestmentEditor(child.props as Parameters<typeof InvestmentEditor>[0])
       : child.type === InvestmentDeleteConfirmation
         ? InvestmentDeleteConfirmation(child.props as Parameters<typeof InvestmentDeleteConfirmation>[0])
-        : child.type === FinanceFormDialogShell
-          ? FinanceFormDialogShell(child.props as Parameters<typeof FinanceFormDialogShell>[0])
-          : child.type === FinanceConfirmationDialogShell
-            ? FinanceConfirmationDialogShell(child.props as Parameters<typeof FinanceConfirmationDialogShell>[0])
-            : child.props.children;
+        : child.type === InstallmentPlanEditor
+          ? InstallmentPlanEditor(child.props as Parameters<typeof InstallmentPlanEditor>[0])
+          : child.type === InstallmentDeleteConfirmation
+            ? InstallmentDeleteConfirmation(child.props as Parameters<typeof InstallmentDeleteConfirmation>[0])
+            : child.type === FinanceFormDialogShell
+              ? FinanceFormDialogShell(child.props as Parameters<typeof FinanceFormDialogShell>[0])
+              : child.type === FinanceConfirmationDialogShell
+                ? FinanceConfirmationDialogShell(child.props as Parameters<typeof FinanceConfirmationDialogShell>[0])
+                : child.props.children;
     const nested = find(expanded, matches);
     if (nested) return nested;
   }
@@ -43,6 +49,8 @@ const isOpen = (element: Element) => element.props.open === true && element.prop
 const openDialog = (element: Element) =>
   element.type !== InvestmentEditor
   && element.type !== InvestmentDeleteConfirmation
+  && element.type !== InstallmentPlanEditor
+  && element.type !== InstallmentDeleteConfirmation
   && element.type !== FinanceFormDialogShell
   && element.type !== FinanceConfirmationDialogShell
   && isOpen(element);
