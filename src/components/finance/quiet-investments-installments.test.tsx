@@ -87,7 +87,18 @@ test('detalhe não oferece pagamento de parcela de outro plano', () => {
 
 // SSR não renderiza os portais Radix. Este contrato de markup não prova foco:
 // a interação do editor/confirmador pelos dois caminhos pertence ao QA no DOM.
-for (const file of ['investment-editor.tsx', 'investments-view.tsx', 'installments-view.tsx']) {
+test('investment-editor.tsx: formulário usa FinanceFormDialogShell com saída superior nomeada', () => {
+  const editorSource = readFileSync(new URL('investment-editor.tsx', import.meta.url), 'utf8');
+  expect(editorSource).toContain('<FinanceFormDialogShell');
+  expect(editorSource).toContain('closeLabel="Fechar formulário"');
+  const shellSource = readFileSync(new URL('../shared/finance-dialog-shell.tsx', import.meta.url), 'utf8');
+  const headers = shellSource.split(/<DialogHeader[^>]*>/).slice(1).map((part) => part.split('</DialogHeader>')[0]);
+  expect(headers).toHaveLength(1);
+  expect(headers[0]).toContain('<DialogClose asChild>');
+  expect(headers[0]).toContain('aria-label={closeLabel}');
+});
+
+for (const file of ['investments-view.tsx', 'installments-view.tsx']) {
   test(`${file}: formulário tem saída superior nomeada`, () => {
     const source = readFileSync(new URL(file, import.meta.url), 'utf8');
     const headers = source.split(/<DialogHeader[^>]*>/).slice(1).map((part) => part.split('</DialogHeader>')[0]);

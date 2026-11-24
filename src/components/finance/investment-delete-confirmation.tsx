@@ -1,15 +1,7 @@
 'use client';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
+import { FinanceConfirmationDialogShell } from '@/components/shared/finance-dialog-shell';
 
 interface InvestmentDeleteConfirmationProps {
   open: boolean;
@@ -24,17 +16,19 @@ export function InvestmentDeleteConfirmation({
   open, deleting, investmentName, onOpenChange, onCloseAutoFocus, onConfirm,
 }: InvestmentDeleteConfirmationProps) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus} className="motion-reduce:animate-none">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Excluir Investimento</AlertDialogTitle>
-          <AlertDialogDescription>
-            {investmentName === undefined
-              ? 'Tem certeza que deseja excluir este investimento? Esta ação não pode ser desfeita.'
-              : <>Tem certeza que deseja excluir <strong>{investmentName}</strong>? Esta ação não pode ser desfeita e todas as transações associadas serão perdidas.</>}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
+    <FinanceConfirmationDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      onCloseAutoFocus={onCloseAutoFocus}
+      contentClassName="motion-reduce:animate-none"
+      title="Excluir Investimento"
+      description={
+        investmentName === undefined
+          ? 'Tem certeza que deseja excluir este investimento? Esta ação não pode ser desfeita.'
+          : <>Tem certeza que deseja excluir <strong>{investmentName}</strong>? Esta ação não pode ser desfeita e todas as transações associadas serão perdidas.</>
+      }
+      footer={
+        <>
           <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             disabled={deleting}
@@ -46,8 +40,8 @@ export function InvestmentDeleteConfirmation({
           >
             Excluir
           </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        </>
+      }
+    />
   );
 }

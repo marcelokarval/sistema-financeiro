@@ -7,8 +7,9 @@ import { ConsortiumDeleteConfirmation } from './consortium-delete-confirmation';
 import * as savings from './savings-view';
 import React, { type ReactElement, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { AlertDialog, AlertDialogAction, AlertDialogDescription } from '@/components/ui/alert-dialog';
-import { Dialog } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const consortium = {
@@ -135,6 +136,10 @@ const findElement = (node: ReactNode, matches: (element: ViewElement) => boolean
       content = ConsortiumEditor((child as ReactElement<React.ComponentProps<typeof ConsortiumEditor>>).props);
     } else if (child.type === ConsortiumDeleteConfirmation) {
       content = ConsortiumDeleteConfirmation((child as ReactElement<React.ComponentProps<typeof ConsortiumDeleteConfirmation>>).props);
+    } else if (child.type === FinanceFormDialogShell) {
+      content = FinanceFormDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props);
+    } else if (child.type === FinanceConfirmationDialogShell) {
+      content = FinanceConfirmationDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceConfirmationDialogShell>>).props);
     }
     const nested = findElement(content, matches);
     if (nested) return nested;
@@ -599,4 +604,70 @@ test('savings-view exibe erro com retry quando /api/savings falha e consome newG
     globalThis.fetch = originalFetch;
     useAppStore.setState(useAppStore.getInitialState(), true);
   }
+});
+
+test('ConsortiumEditor adota FinanceFormDialogShell com papel dialog, sem closeLabel extra e com rodapé específico', () => {
+  let cancelled = 0;
+  const onCloseAutoFocus = () => {};
+  const element = ConsortiumEditor({
+    origin: 'list',
+    open: true,
+    draft: { nextAssemblyDate: '2026-05-15', assembliesAttended: '1' },
+    saving: true,
+    onFieldChange: () => {},
+    onCancel: () => { cancelled++; },
+    onSave: async () => {},
+    onCloseAutoFocus,
+  });
+
+  expect(element.type).toBe(FinanceFormDialogShell);
+  expect(element.props.closeLabel).toBeUndefined();
+  expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+
+  const dialog = findElement(element, (e) => e.type === Dialog);
+  expect(dialog).toBeDefined();
+  expect(findElement(element, (e) => e.type === AlertDialog)).toBeUndefined();
+  const content = findElement(element, (e) => e.type === DialogContent);
+  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  expect(content?.props.className).toContain('max-h-[85dvh]');
+  expect(findElement(element, (e) => React.Children.toArray(e.props.children).includes('Editar Consórcio'))).toBeDefined();
+  const saveButton = findElement(element, (e) => e.props.onClick && React.Children.toArray(e.props.children).includes('Salvar'));
+  expect(saveButton?.props.disabled).toBe(true);
+
+  dialog?.props.onOpenChange(false);
+  expect(cancelled).toBe(1);
+});
+
+test('ConsortiumDeleteConfirmation adota FinanceConfirmationDialogShell com papel alertdialog, pendência e tokens destrutivos', () => {
+  const onOpenChange = () => {};
+  const onCloseAutoFocus = () => {};
+  const onConfirm = async () => {};
+  const element = ConsortiumDeleteConfirmation({
+    context: { origin: 'detail', description: 'Cota sintética' },
+    open: true,
+    deleting: true,
+    onOpenChange,
+    onConfirm,
+    onCloseAutoFocus,
+  });
+
+  expect(element.type).toBe(FinanceConfirmationDialogShell);
+  expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  expect(element.props.onOpenChange).toBe(onOpenChange);
+
+  const alertDialog = findElement(element, (e) => e.type === AlertDialog);
+  expect(alertDialog).toBeDefined();
+  expect(findElement(element, (e) => e.type === Dialog)).toBeUndefined();
+  const content = findElement(element, (e) => e.type === AlertDialogContent);
+  expect(content?.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  expect(findElement(element, (e) => React.Children.toArray(e.props.children).includes('Excluir Consórcio'))).toBeDefined();
+  expect(findElement(element, (e) => e.type === AlertDialogCancel)?.props.disabled).toBe(true);
+  const action = findElement(element, (e) => e.type === AlertDialogAction);
+  expect(action?.props.disabled).toBe(true);
+  expect(action?.props.onClick).toBe(onConfirm);
+  expect(action?.props.className).toContain('bg-destructive');
+  expect(action?.props.className).toContain('text-[var(--ds-destructive-fg)]');
+  expect(action?.props.className).toContain('hover:bg-destructive');
+  expect(action?.props.className).toContain('hover:underline');
 });

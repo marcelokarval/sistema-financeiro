@@ -2,6 +2,9 @@
 import { expect, test } from 'bun:test';
 import React, { type ReactElement, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from '@/components/ui/alert-dialog';
+import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
+import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
 import { InvestmentEntries, InvestmentPortfolio, InvestmentsView } from './investments-view';
 import { InvestmentDeleteConfirmation } from './investment-delete-confirmation';
 import { InvestmentEditor } from './investment-editor';
@@ -19,11 +22,16 @@ function find(node: ReactNode, matches: (element: Element) => boolean): Element 
     if (!React.isValidElement<Record<string, any>>(child)) continue;
     if (matches(child)) return child;
     // Evaluate only the leaf components we own; do not emulate Radix portals or focus.
-    const nested = find(child.type === InvestmentEditor
+    const expanded = child.type === InvestmentEditor
       ? InvestmentEditor(child.props as Parameters<typeof InvestmentEditor>[0])
       : child.type === InvestmentDeleteConfirmation
         ? InvestmentDeleteConfirmation(child.props as Parameters<typeof InvestmentDeleteConfirmation>[0])
-        : child.props.children, matches);
+        : child.type === FinanceFormDialogShell
+          ? FinanceFormDialogShell(child.props as Parameters<typeof FinanceFormDialogShell>[0])
+          : child.type === FinanceConfirmationDialogShell
+            ? FinanceConfirmationDialogShell(child.props as Parameters<typeof FinanceConfirmationDialogShell>[0])
+            : child.props.children;
+    const nested = find(expanded, matches);
     if (nested) return nested;
   }
 }
@@ -32,7 +40,12 @@ const byType = (type: Element["type"]) => (element: Element) => element.type ===
 const withText = (label: string) => (element: Element) => React.Children.toArray(element.props.children).includes(label);
 const formField = (placeholder: string) => (element: Element) => element.props.placeholder === placeholder && element.props.onChange;
 const isOpen = (element: Element) => element.props.open === true && element.props.onOpenChange;
-const openDialog = (element: Element) => element.type !== InvestmentEditor && element.type !== InvestmentDeleteConfirmation && isOpen(element);
+const openDialog = (element: Element) =>
+  element.type !== InvestmentEditor
+  && element.type !== InvestmentDeleteConfirmation
+  && element.type !== FinanceFormDialogShell
+  && element.type !== FinanceConfirmationDialogShell
+  && isOpen(element);
 const trigger = { currentTarget: null };
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
@@ -640,4 +653,82 @@ test('InvestmentsView edita e exclui transação individual via PUT/DELETE /api/
 
     expect(requests.some((r) => r.method === 'DELETE' && r.url === `${transactionsUrl}?id=${tx.id}`)).toBe(true);
   });
+});
+
+test('InvestmentEditor adota FinanceFormDialogShell com papel dialog, closeLabel e rodapé específico', () => {
+  const onOpenChange = () => {};
+  const onCloseAutoFocus = () => {};
+  const onSave = async () => {};
+  const element = InvestmentEditor({
+    mode: 'create',
+    open: true,
+    saving: true,
+    form: {
+      name: '', type: 'STOCK', description: '', investedAmount: '', yieldRate: '0',
+      brokerage: '', ticker: '', accountId: '', categoryId: '',
+    },
+    accounts: [],
+    categories: [],
+    onFieldChange: () => {},
+    onOpenChange,
+    onCloseAutoFocus,
+    onSave,
+  });
+
+  expect(element.type).toBe(FinanceFormDialogShell);
+  expect(element.props.closeLabel).toBe('Fechar formulário');
+  expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  expect(element.props.onOpenChange).toBe(onOpenChange);
+
+  const dialog = find(element, byType(Dialog));
+  expect(dialog).toBeDefined();
+  expect(find(element, byType(AlertDialog))).toBeUndefined();
+  const content = find(element, byType(DialogContent));
+  expect(content?.props.showCloseButton).toBe(false);
+  expect(content?.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  expect(content?.props.className).toContain('motion-reduce:animate-none');
+  const closeButton = find(find(element, byType(DialogClose)), (node) => node.props['aria-label'] === 'Fechar formulário');
+  expect(closeButton).toBeDefined();
+  expect(find(element, withText('Novo Investimento'))).toBeDefined();
+  expect(find(element, withText('Preencha os dados do novo investimento'))).toBeDefined();
+  expect(find(element, withText('Cancelar'))).toBeDefined();
+  expect(find(element, withText('Salvando…'))?.props.disabled).toBe(true);
+});
+
+test('InvestmentDeleteConfirmation adota FinanceConfirmationDialogShell com papel alertdialog, pendência e tokens destrutivos', () => {
+  let confirmed = 0;
+  const onOpenChange = () => {};
+  const onCloseAutoFocus = () => {};
+  const element = InvestmentDeleteConfirmation({
+    open: true,
+    deleting: true,
+    investmentName: 'Tesouro QA',
+    onOpenChange,
+    onCloseAutoFocus,
+    onConfirm: async () => { confirmed++; },
+  });
+
+  expect(element.type).toBe(FinanceConfirmationDialogShell);
+  expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  expect(element.props.onOpenChange).toBe(onOpenChange);
+
+  const alertDialog = find(element, byType(AlertDialog));
+  expect(alertDialog).toBeDefined();
+  expect(find(element, byType(Dialog))).toBeUndefined();
+  const content = find(element, byType(AlertDialogContent));
+  expect(content?.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
+  expect(content?.props.className).toContain('motion-reduce:animate-none');
+  expect(find(element, withText('Excluir Investimento'))).toBeDefined();
+  expect(find(element, byType(AlertDialogCancel))?.props.disabled).toBe(true);
+  const action = find(element, byType(AlertDialogAction));
+  expect(action?.props.disabled).toBe(true);
+  expect(action?.props.className).toContain('bg-destructive');
+  expect(action?.props.className).toContain('text-[var(--ds-destructive-fg)]');
+  expect(action?.props.className).toContain('hover:bg-destructive');
+  expect(action?.props.className).toContain('hover:underline');
+
+  const event = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+  void action?.props.onClick(event);
+  expect(event.defaultPrevented).toBe(true);
+  expect(confirmed).toBe(1);
 });
