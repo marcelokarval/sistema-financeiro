@@ -7,6 +7,7 @@ import { Sidebar } from './sidebar';
 import { MobileNav } from './mobile-nav';
 import { QuickStatsOverview } from './quick-stats-overview';
 import { readFileSync } from 'node:fs';
+import { useAppStore } from '@/lib/store';
 
 const noop = () => {};
 
@@ -54,4 +55,25 @@ describe('navegação e shell transversal Quiet Financial OS', () => {
     expect(notifSrc).toContain('Tentar novamente');
     expect(notifSrc).toContain('localStorage');
   });
+});
+
+
+test('a solicitação de lançamento navega para Contas sem escolher conta e pode ser cancelada', () => {
+  const initial = useAppStore.getState();
+  try {
+    useAppStore.setState({ currentView: 'dashboard', selectedAccountId: null, newTransactionRequested: false });
+    useAppStore.getState().requestNewTransaction();
+    expect(useAppStore.getState()).toMatchObject({
+      currentView: 'accounts', selectedAccountId: null, newTransactionRequested: true,
+    });
+    useAppStore.getState().clearNewTransactionRequest();
+    expect(useAppStore.getState()).toMatchObject({
+      currentView: 'accounts', selectedAccountId: null, newTransactionRequested: false,
+    });
+    useAppStore.getState().requestNewTransaction();
+    useAppStore.getState().setCurrentView('purchases');
+    expect(useAppStore.getState()).toMatchObject({ currentView: 'purchases', newTransactionRequested: false });
+  } finally {
+    useAppStore.setState(initial, true);
+  }
 });

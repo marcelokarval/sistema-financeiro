@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { currencyFmt } from '@/lib/helpers';
 import { purchaseDateForInput } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
+import { AccountTransactionFields, type AccountTransactionForm } from './account-transaction-fields';
 
 // ── Helpers ────────────────────────────────────────────────────────
 const dateFmt = (d: string) => {
@@ -125,7 +126,7 @@ export function transactionDraftForAccount<T>(
   return draft?.accountId === accountId ? reconcileTransactionDraft(draft, accounts, true) : null;
 }
 
-const emptyTransactionForm = () => ({
+const emptyTransactionForm = (): AccountTransactionForm => ({
   type: 'EXPENSE',
   amount: '',
   description: '',
@@ -134,7 +135,7 @@ const emptyTransactionForm = () => ({
   notes: '',
 });
 
-type TransactionDraft = BoundTransactionDraft<ReturnType<typeof emptyTransactionForm>> & { session: symbol };
+type TransactionDraft = BoundTransactionDraft<AccountTransactionForm> & { session: symbol };
 
 // ── Component ──────────────────────────────────────────────────────
 // The ref owns the synchronous lock; state exposes it without moving keyboard focus.
@@ -849,77 +850,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                   Registrar nova transação em {selectedAccount.name}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="tx-type">Tipo</Label>
-                  <Select
-                    value={txForm.type}
-                    onValueChange={(v) => setTxForm({ ...txForm, type: v })}
-                  >
-                    <SelectTrigger id="tx-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EXPENSE">Despesa</SelectItem>
-                      <SelectItem value="INCOME">Receita</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="tx-description">Descrição</Label>
-                  <Input id="tx-description"
-                    value={txForm.description}
-                    onChange={(e) =>
-                      setTxForm({ ...txForm, description: e.target.value })
-                    }
-                    placeholder="Ex: Salário, Almoço..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="tx-amount">Valor (R$)</Label>
-                  <Input id="tx-amount"
-                    type="number"
-                    step="0.01"
-                    value={txForm.amount}
-                    onChange={(e) =>
-                      setTxForm({ ...txForm, amount: e.target.value })
-                    }
-                    placeholder="0,00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="tx-date">Data</Label>
-                  <Input id="tx-date"
-                    type="date"
-                    value={txForm.date}
-                    onChange={(e) =>
-                      setTxForm({ ...txForm, date: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="tx-category">Categoria</Label>
-                  <Select
-                    value={txForm.categoryId}
-                    onValueChange={(v) =>
-                      setTxForm({ ...txForm, categoryId: v })
-                    }
-                  >
-                    <SelectTrigger id="tx-category">
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories
-                        .filter((c) => c.type === txForm.type)
-                        .map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <AccountTransactionFields mode="create" value={txForm} onChange={setTxForm} categories={categories} />
               <DialogFooter>
                 <Button
                   variant="outline"
@@ -949,59 +880,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                 <DialogTitle>Editar Transação</DialogTitle>
                 <DialogDescription>Atualize os dados da transação em {selectedAccount.name}</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="edit-tx-type">Tipo</Label>
-                  <Select value={editTxForm.type} onValueChange={(v) => setEditTxForm({ ...editTxForm, type: v })}>
-                    <SelectTrigger id="edit-tx-type"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EXPENSE">Despesa</SelectItem>
-                      <SelectItem value="INCOME">Receita</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="edit-tx-description">Descrição</Label>
-                  <Input
-                    id="edit-tx-description"
-                    value={editTxForm.description}
-                    onChange={(e) => setEditTxForm({ ...editTxForm, description: e.target.value })}
-                    placeholder="Ex: Salário, Almoço..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-tx-amount">Valor (R$)</Label>
-                  <Input
-                    id="edit-tx-amount"
-                    type="number"
-                    step="0.01"
-                    value={editTxForm.amount}
-                    onChange={(e) => setEditTxForm({ ...editTxForm, amount: e.target.value })}
-                    placeholder="0,00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-tx-date">Data</Label>
-                  <Input
-                    id="edit-tx-date"
-                    type="date"
-                    value={editTxForm.date}
-                    onChange={(e) => setEditTxForm({ ...editTxForm, date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-tx-category">Categoria</Label>
-                  <Select value={editTxForm.categoryId || '__none__'} onValueChange={(v) => setEditTxForm({ ...editTxForm, categoryId: v === '__none__' ? '' : v })}>
-                    <SelectTrigger id="edit-tx-category"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Nenhuma</SelectItem>
-                      {categories.filter((c) => c.type === editTxForm.type).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <AccountTransactionFields mode="edit" value={editTxForm} onChange={setEditTxForm} categories={categories} />
               <DialogFooter>
                 <Button variant="outline" onClick={() => { ++editTxOpening.current; setEditingTransaction(null); }}>Cancelar</Button>
                 <Button aria-disabled={pending.has(`tx-edit:${editingTransaction.id}`)} onClick={() => void saveEditedTransaction()}>Salvar</Button>
