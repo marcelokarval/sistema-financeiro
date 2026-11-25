@@ -1,10 +1,10 @@
 # Contrato visual — Quiet Financial OS
 
-A linguagem Quiet Financial OS foi escolhida para o FinanceApp. O [desenho aceito](<../../openspec/changes/archive/2026-11-23-recriar-interface-quiet-financial-os/design.md>) define a migração; os fluxos e métricas são os do produto atual, não os do protótipo. A [direção Premium v2](<design-system.premium-direction.md>) e suas vitrines são referências históricas, não fontes normativas para novas telas.
+A linguagem Quiet Financial OS foi escolhida para o FinanceApp. O [desenho aceito](<../../openspec/changes/archive/2026-11-23-recriar-interface-quiet-financial-os/design.md>) define a migração; os fluxos e métricas são os do produto atual, não os do protótipo. A direção Premium v2 e suas vitrines históricas não são fontes normativas para novas telas.
 
 ## Fundamentos
 
-- A folha [design-system.premium-theme.css](<design-system.premium-theme.css>) é a fonte dos tokens `--ds-*`, consumidos por [globals.css](<../../src/app/globals.css>). Preservar o import e os aliases usados pelos componentes. [design-system.theme.css](<design-system.theme.css>) é a base da [vitrine original](<design-system.html>), não a autoridade do tema da aplicação.
+- A folha [design-system.premium-theme.css](<design-system.premium-theme.css>) é a fonte dos tokens `--ds-*`, consumidos por [globals.css](<../../src/app/globals.css>). Preservar o import e os aliases usados pelos componentes; vitrines e folhas de tema anteriores não são a autoridade do tema da aplicação.
 - Escuro com grafite neutro, superfícies discretas e ciano para ação; claro com superfícies neutras e a mesma hierarquia. Reservar cores semânticas para significados financeiros e usar texto ou ícone em conjunto. Não usar gradientes por destino, brilho ou cartões ornamentais como identidade.
 - Geist para leitura, Geist Mono e números tabulares para montantes. Formatar moeda em pt-BR/BRL com `currencyFmt()`. Usar tokens — não repetir cores em cada componente.
 - Colocar contornos e elevação onde tiverem função. Preferir listas/tabelas para registros, faixas para indicadores e painéis para decisões. Foco visível, rótulos acessíveis, contraste e respeito a movimento reduzido.

@@ -32,9 +32,8 @@ yarn-error.log*
 
 # env files
 .env
-.env.local
-.env.production
-.env.development
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -64,6 +63,7 @@ server.log
 .claude
 .z-ai-config
 .tmp/
+.playwright-cli/
 local-*
 test
 prompt

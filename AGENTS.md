@@ -1,152 +1,105 @@
 # AGENTS.md — Sistema Financeiro Pessoal
 
-> **Guia de conduta para agentes de IA trabalhando neste projeto.**
-> Leia este arquivo antes de qualquer alteração no código ou estrutura.
+> **Guia de conduta para agentes de IA neste repositório (`marcelokarval/sistema-financeiro`).**
+> Leia antes de alterar código, configuração ou documentação.
 
 ---
 
-## 1. Sobre o Projeto
-
-Sistema Financeiro Pessoal — Single Page Application para gestão financeira doméstica.
-
-- **Stack:** Next.js 16 + TypeScript + Prisma (SQLite) + shadcn/ui + Tailwind CSS v4 + Zustand + Recharts + Framer Motion
-- **Runtime:** Bun (lockfile: `bun.lock`). **NÃO usar npm/yarn.**
-- **Banco:** SQLite via Prisma. `db/custom.db` é um caminho de desenvolvimento, não um insumo de release nem fallback de execução. Não trate regras de ignore como prova de que um arquivo sensível não é rastreado.
-- **Idioma da UI:** Português Brasileiro (pt-BR), moeda BRL
-- **Tema:** Dark/Light com design system premium (variáveis CSS `--ds-*` em `docs/reference/`)
-
----
-
-## 2. Estrutura de Diretórios — ONDE COLOCAR CADA COISA
+## 1. Estrutura do Repositório
 
 ```
 sistema-financeiro/
 ├── src/
 │   ├── app/
-│   │   ├── api/          # Rotas API (uma subpasta por recurso)
-│   │   │   ├── accounts/route.ts
-│   │   │   ├── investments/route.ts    # ← NOVO sistema de investimentos
-│   │   │   └── ...
-│   │   ├── globals.css   # CSS global (importa design system)
+│   │   ├── api/            # Rotas API (uma subpasta por recurso)
+│   │   ├── globals.css     # CSS global (importa o tema Quiet Financial OS)
 │   │   ├── layout.tsx
-│   │   └── page.tsx      # Página principal (SPA)
+│   │   └── page.tsx        # Shell da SPA (9 visões)
 │   ├── components/
-│   │   ├── finance/      # Componentes de negócio (UM arquivo por widget)
-│   │   ├── shared/       # Componentes compartilhados reutilizáveis
-│   │   └── ui/           # Componentes shadcn/ui (NÃO editar manualmente)
-│   ├── hooks/            # Custom React hooks
-│   └── lib/              # Utilidades, store (Zustand), db (Prisma client)
+│   │   ├── finance/        # Componentes de negócio (kebab-case.tsx)
+│   │   ├── shared/         # Primitivos financeiros compartilhados
+│   │   └── ui/             # Componentes shadcn/ui (NÃO editar manualmente)
+│   ├── hooks/              # Hooks React customizados
+│   └── lib/                # store.ts (Zustand), db.ts (Prisma), helpers.ts, utils.ts (cn), api-validation.ts
 ├── prisma/
-│   └── schema.prisma     # Schema do banco de dados
-├── public/               # Assets estáticos
-├── mini-services/        # Microserviços auxiliares
-├── agent-ctx/            # Contexto para agents (task-specific)
+│   ├── schema.prisma       # Schema SQLite
+│   └── seed.ts             # Massa opcional para desenvolvimento/demo
+├── mini-services/
+│   └── finance-ws/         # Servidor Socket.io auxiliar (porta 3004)
+├── .zscripts/              # build.sh, start.sh, mini-services-start.sh, test-sqlite.sh, gate AST e testes
 ├── docs/
-│   ├── reference/        # Design system contracts, temas, specs
-│   ├── helm/             # Planejamento e controle do agent
-│   ├── prompts/          # Prompts reutilizáveis
-│   └── research/         # Pesquisas e convenções
-├── download/
-│   ├── archive/          # Worklogs de CRs concluídas (CR6, CR7, CR8, CR9...)
-│   ├── *.png             # Screenshots de QA
-│   └── README.md         # Índice de downloads
-├── .zscripts/            # Scripts de build/dev (ambiente Z)
-├── .env.example          # Template de variáveis de ambiente
-├── worklog.md            # Worklog ativo (CR atual)
-└── AGENTS.md             # ← ESTE ARQUIVO
+│   ├── operacao-empacotamento.md  # Runbook oficial de build e start de release
+│   └── reference/          # Contrato visual Quiet Financial OS, tokens e gate AST
+├── download/               # Capturas de QA visual e README.md de índice
+├── openspec/               # config.yaml (superpowers-bridge), specs/ canônicas e changes/
+├── .github/workflows/ci.yml
+├── Caddyfile               # Proxy :81 -> :3000 e XTransformPort=3004 -> :3004
+├── .env.example            # Template inerte (DATABASE_URL="file:../db/custom.db")
+├── README.md               # Documentação pública do projeto
+└── AGENTS.md               # Este arquivo
 ```
 
-### Regras de organização:
-
-| Tipo de arquivo | Onde colocar | Exemplo |
-|---|---|---|
-| Novo componente de negócio | `src/components/finance/` | `investments-view.tsx` |
-| Componente compartilhado | `src/components/shared/` | `widget-card.tsx` |
-| Nova rota API | `src/app/api/<recurso>/route.ts` | `api/investments/route.ts` |
-| Worklog de CR concluída | `download/archive/` | `CR8-worklog.md` |
-| Worklog ativo (em andamento) | Raiz: `worklog.md` | — |
-| Contexto de task para agent | `agent-ctx/` | `CR9-goals-dashboard-main.md` |
-| Screenshot de QA | `download/` | `qa-dashboard.png` |
-| Artefato temporário | `.tmp/` (ignorado pelo git) | renders, testes visuais |
-| Banco de dados local | `db/` (ignorado pelo git) | `custom.db` |
-
-### **NUNCA** coloque na raiz:
-- Worklogs de CRs concluídas → `download/archive/`
-- Screenshots → `download/`
-- Scripts auxiliares → `.zscripts/`
-- Documentação → `docs/`
+### Onde colocar cada artefato
+- Novo componente de negócio → `src/components/finance/<kebab-case>.tsx`
+- Componente financeiro compartilhado → `src/components/shared/<kebab-case>.tsx`
+- Nova rota API → `src/app/api/<recurso>/route.ts`
+- Mudanças planejadas e specs → `openspec/changes/<change>/` (`schema: superpowers-bridge`)
+- Capturas de QA → `download/` (nunca na raiz)
+- Artefatos temporários → `.tmp/` (ignorado pelo Git)
 
 ---
 
-## 3. Convenções de Código
+## 2. Convenções de Código e Quiet Financial OS
 
-### Naming
-- Componentes: `kebab-case.tsx` → `investments-view.tsx`
-- Rotas API: `kebab-case` → `/api/investments/transactions`
-- Hooks: `use-kebab-case.ts` → `use-realtime.ts`
-- CSS variables: `--ds-kebab-case` para design system, `--kebab-case` para shadcn
-
-### Imports
-```typescript
-// Ordem: react → next → third-party → @/ components → @/ lib → @/ hooks
-import { useState, useMemo } from 'react';
-import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
-import { currencyFmt } from '@/lib/helpers';
-import { useRealtime } from '@/hooks/use-realtime';
-```
-
-### Componentes
-- Todo componente de widget em `finance/` é `'use client'`
-- Usa Zustand store (`src/lib/store.ts`) para estado global de navegação
-- Fetching via hooks customizados ou fetch direto nos componentes
-- Formatação de moeda SEMPRE via `currencyFmt()` de `helpers.ts`
-
-### Design System
-- O CSS global importa `docs/reference/design-system.premium-theme.css`
-- Todas as cores/theme vão por variáveis CSS `--ds-*`
-- **NÃO** hardcoded oklch/hex nos componentes — use as variáveis Tailwind (`bg-card`, `text-primary`, etc.)
-- Glass effects: classe `glass-card` quando necessário
-
-### Banco de dados
-- Schema: `prisma/schema.prisma`
-- Para mudanças no schema em desenvolvimento: `bun run db:push` como operação explícita. O launcher de release exige `DATABASE_URL` explícita para um SQLite externo já provisionado; não cria, popula nem sincroniza a base.
-- **NUNCA** commitar `db/custom.db`
+- **Runtime e pacotes:** Bun `1.4.2` (`bun.lock`). **NÃO** usar `npm` ou `yarn`.
+- **Naming:** arquivos em `kebab-case`, rotas API em `kebab-case`, hooks em `use-kebab-case.ts`, variáveis do design system em `--ds-kebab-case`.
+- **Imports (ordem):** `react` → `next` → third-party → `@/components` → `@/lib` → `@/hooks`.
+  ```typescript
+  import { useState } from 'react';
+  import { toast } from 'sonner';
+  import { Card } from '@/components/ui/card';
+  import { currencyFmt } from '@/lib/helpers';
+  import { cn } from '@/lib/utils';
+  import { useRealtime } from '@/hooks/use-realtime';
+  ```
+- **Componentes e UI:**
+  - Widgets e views em `src/components/finance/` usam `'use client'`, estado de navegação via `src/lib/store.ts` e moeda formatada com `currencyFmt()`.
+  - Compose classes condicionais com `cn()` (`@/lib/utils`). **VETO a `raw-conditional-class-name`** (template literal em `className` com ternária de strings), verificado por `bun --no-env-file run arch:check`.
+  - **VETO a `framer-motion`**: proibido importar `framer-motion` em `src/`.
+  - **NÃO** hardcode cores hex/oklch nos componentes; preserve o import de `docs/reference/design-system.premium-theme.css` em `src/app/globals.css` e use variáveis Tailwind / `--ds-*`.
+  - **NÃO** edite componentes em `src/components/ui/` manualmente — use a CLI do shadcn.
+  - Mantenha UI em **pt-BR**, moeda em **BRL** e verifique **dark mode e light mode**.
 
 ---
 
-## 4. Fluxo de Trabalho (Change Requests)
+## 3. Fluxo OpenSpec (`superpowers-bridge`)
 
-1. **Task context** → criar arquivo em `agent-ctx/CR<n>-<nome>.md` com scope e detalhes
-2. **Implementar** → seguir estrutura de diretórios acima
-3. **Worklog ativo** → documentar progresso em `worklog.md` (raiz)
-4. **Ao concluir CR** → mover worklog para `download/archive/CR<n>-worklog.md`
-5. **Screenshots de QA** → salvar em `download/`
+- `openspec/config.yaml` define `schema: superpowers-bridge`.
+- Cada mudança não trivial segue o ciclo `brainstorm.md` → `proposal.md` → `design.md` → `specs/<capability>/spec.md` → `tasks.md` → `plan.md` (`Bridge task contract: 1`) + `candidate-manifest.json` → `preflight` → TDD (`RED -> GREEN`) → `candidate` → revisão independente → `verify.md` (`evidence.json`) → `retrospective.md`.
+- Consulte [docs/reference/design-system.contract.md](docs/reference/design-system.contract.md) ao alterar telas ou navegação.
 
 ---
 
-## 5. Comandos
+## 4. Comandos de Verificação e Banco
+
+Em checkouts limpos ou após alterar `prisma/schema.prisma`, gere o Prisma Client **antes** de `typecheck`:
 
 ```bash
-bun install                  # Instalar dependências
-bun run dev                  # Dev server (porta 3000)
-bun run build                # Compilar Next; não equivale a empacotar uma release
-bun run db:push              # Sync schema com banco local
-bun run db:generate          # Gerar Prisma client
+bun install                        # Instalar dependências
+bun --no-env-file run db:generate  # Gerar Prisma Client (obrigatório pré-typecheck em checkout limpo)
+bun run db:push                    # Sincronizar schema com SQLite local (apenas dev explícito)
+bun run dev                        # Servidor Next.js em desenvolvimento (porta 3000)
 bun --no-env-file run check        # typecheck + lint + arch:check + test + test:scripts
-bun --no-env-file run arch:check   # Gate AST com baseline em 25b44535c5068b99044afa03f7ecf318e7a9726f
+bun --no-env-file run arch:check   # Gate AST (baseline 25b44535c5068b99044afa03f7ecf318e7a9726f)
 bun --no-env-file run test:scripts # Suítes de empacotamento e arquitetura em .zscripts/
-bun --no-env-file run test:sqlite  # 5 suítes opt-in SQLite em sandbox isolado (bwrap + tmpfs)
+bun --no-env-file run test:sqlite  # 5 suítes opt-in SQLite isoladas (bwrap + tmpfs)
+bun --no-env-file run build        # Build Next (requer DATABASE_URL sintática; não empacota release)
 ```
-
-Para produzir e verificar o `tar.gz` de release ou iniciar o pacote, siga o [guia de operação do pacote](<docs/operacao-empacotamento.md>). Não execute o empacotador a partir de um checkout com segredos ou dados reais. A proteção da branch `main` no GitHub via ruleset leve exigindo o status check do CI (`.github/workflows/ci.yml`) será aplicada como operação externa no repositório após o primeiro CI verde.
 
 ---
 
-## 6. Regras de Segurança
+## 5. Governança, Release e Segurança
 
-- **NUNCA** commitar `.env`, `db/custom.db`, `.tmp/`, ou `node_modules/`
-- **NUNCA** editar componentes em `src/components/ui/` manualmente — usar CLI do shadcn
-- **NUNCA** remover o import do design system premium em `globals.css`
-- **SEMPRE** testar dark mode E light mode ao alterar estilos
-- **SEMPRE** manter textos em pt-BR e moeda em BRL
+- **GitHub / CI:** o workflow `.github/workflows/ci.yml` executa todos os gates em `ubuntu-latest` (Bun `1.4.2`). O ruleset leve `main-ci-protection` (`id: 28102433`) já está ativo na branch `main` de `marcelokarval/sistema-financeiro`, exigindo o status check do CI.
+- **Banco local vs. release:** `db/custom.db` é apenas caminho local de desenvolvimento (`DATABASE_URL="file:../db/custom.db"` em `.env.example`), nunca insumo de release ou fallback. Para produzir/validar tarball ou subir o pacote com SQLite externo, siga [docs/operacao-empacotamento.md](docs/operacao-empacotamento.md).
+- **Segredos e higiene:** **NUNCA** commitar `.env`, `.env.*` (exceto `.env.example`), `db/custom.db`, `.tmp/`, `.playwright-cli/` ou `node_modules/`, nem expor valores de `.env` em logs/mensagens.

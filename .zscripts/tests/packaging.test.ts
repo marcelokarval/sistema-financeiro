@@ -410,3 +410,69 @@ test("mini-services-start.sh propaga SIGTERM aos filhos bun e preserva saída n�
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+const repoRoot = join(scripts, "..");
+
+test("higiene de ambiente: .env.example usa file:../db/custom.db sem GITHUB_TOKEN e .env.local está ausente", () => {
+  const envExample = readFileSync(join(repoRoot, ".env.example"), "utf8").trim();
+  expect(envExample).toBe('DATABASE_URL="file:../db/custom.db"');
+  expect(envExample).not.toContain("GITHUB_TOKEN");
+  expect(envExample).not.toContain("/home/z/my-project/");
+  expect(existsSync(join(repoRoot, ".env.local"))).toBe(false);
+});
+
+test("higiene de ignore: .gitignore cobre .env.*, !.env.example e .playwright-cli/", () => {
+  const lines = readFileSync(join(repoRoot, ".gitignore"), "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim());
+  expect(lines).toContain(".env.*");
+  expect(lines).toContain("!.env.example");
+  expect(lines).toContain(".playwright-cli/");
+});
+
+test("higiene de toolchain: tsconfig.json e eslint.config.mjs não referenciam examples nem skills", () => {
+  const tsconfig = JSON.parse(readFileSync(join(repoRoot, "tsconfig.json"), "utf8")) as {
+    exclude?: string[];
+  };
+  expect(tsconfig.exclude).not.toContain("examples");
+  expect(tsconfig.exclude).not.toContain("skills");
+
+  const eslintSource = readFileSync(join(repoRoot, "eslint.config.mjs"), "utf8");
+  const ignoresMatch = eslintSource.match(/ignores:\s*\[([\s\S]*?)\]/);
+  expect(ignoresMatch).not.toBeNull();
+  const ignoresItems = Array.from(ignoresMatch![1].matchAll(/["']([^"']+)["']/g), (match) => match[1]);
+  expect(ignoresItems).not.toContain("examples");
+  expect(ignoresItems).not.toContain("examples/**");
+  expect(ignoresItems).not.toContain("skills");
+});
+
+test("documentação pública: README.md raiz orienta setup e links canônicos para marcelokarval/sistema-financeiro", () => {
+  const readmePath = join(repoRoot, "README.md");
+  expect(existsSync(readmePath)).toBe(true);
+  const readme = readFileSync(readmePath, "utf8");
+  expect(readme).toContain("marcelokarval/sistema-financeiro");
+  expect(readme).not.toContain("marcelo-karval");
+  expect(readme).toContain("bun --no-env-file run db:generate");
+  expect(readme).toContain("docs/operacao-empacotamento.md");
+  expect(readme).toContain("docs/reference/design-system.contract.md");
+  expect(readme).toContain("AGENTS.md");
+  expect(readme).toContain("openspec/specs/");
+});
+
+test("guia de agentes: AGENTS.md enxuto remove referências legadas e documenta ruleset ativo", () => {
+  const agents = readFileSync(join(repoRoot, "AGENTS.md"), "utf8");
+  expect(agents).not.toContain("Framer Motion");
+  expect(agents).not.toContain("agent-ctx/");
+  expect(agents).not.toContain("worklog.md");
+  expect(agents).not.toContain("Sobre o Projeto");
+  expect(agents).toContain("main-ci-protection");
+  expect(agents).toContain("28102433");
+  expect(agents).toContain("bun --no-env-file run db:generate");
+});
+
+test("contrato visual: docs/reference/design-system.contract.md não aponta para artefatos históricos removidos", () => {
+  const contract = readFileSync(join(repoRoot, "docs/reference/design-system.contract.md"), "utf8");
+  expect(contract).not.toContain("design-system.premium-direction.md");
+  expect(contract).not.toContain("design-system.theme.css");
+  expect(contract).not.toContain("design-system.html");
+});
