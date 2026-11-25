@@ -1,0 +1,1944 @@
+{
+  "paths": [
+    {
+      "path": "agent-ctx/CR5-datefilter-fullstack-dev.md",
+      "state": "absent"
+    },
+    {
+      "path": "agent-ctx/CR5-recurring-fullstack-dev.md",
+      "state": "absent"
+    },
+    {
+      "path": "agent-ctx/CR6-forecast.md",
+      "state": "absent"
+    },
+    {
+      "path": "agent-ctx/CR7-balance-projection-fullstack-dev.md",
+      "state": "absent"
+    },
+    {
+      "path": "agent-ctx/CR8-budget-tracker-main.md",
+      "state": "absent"
+    },
+    {
+      "path": "agent-ctx/CR9-goals-dashboard-main.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/analise-360-accelerate.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/helm/core/control-plane/README.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/helm/core/control-plane/branch-enforcement-matrix.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/helm/core/control-plane/quick-invocation-map.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/helm/core/delegation/README.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/helm/core/delegation/subagent-model.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/helm/core/hardening/README.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/helm/core/issue-topology/README.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/helm/core/issue-topology/issue-driven-mutation-stack.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/manual-agente-humano.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/plano-accelerate-zai.md.bak",
+      "state": "absent"
+    },
+    {
+      "path": "docs/plano-helm.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/prompts/CRON_QA_REVIEW.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/prompts/GENERATE_KNOWLEDGE_BASE.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/reference/design-system.html",
+      "state": "absent"
+    },
+    {
+      "path": "docs/reference/design-system.premium-direction.html",
+      "state": "absent"
+    },
+    {
+      "path": "docs/reference/design-system.premium-direction.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/reference/design-system.slop-audit.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/reference/design-system.theme.css",
+      "state": "absent"
+    },
+    {
+      "path": "docs/research/ARCHITECTURE_CONVENTIONS.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/research/LIBRARY_RESEARCH.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/research/POLISHING_RULES.md",
+      "state": "absent"
+    },
+    {
+      "path": "docs/research/comparacao-anterior-vs-atual.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/archive/CR8-styling-worklog.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/archive/CR8-worklog.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/archive/CR9-achievements-worklog.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/archive/CR9-bills-worklog.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/archive/worklog_backup.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr6-worklog.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr7-final-top.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr7-qa-accounts.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr7-qa-cards.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr7-qa-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr7-qa-mobile.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr7-qa-purchases.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr7-qa-widgets.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr7-summary.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr8-qa-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr8-qa-dashboard2.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr8-qa-dashboard3.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/cr9-qa-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-accounts-dark.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-accounts-new.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-accounts-v22.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-accounts.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-card-detail.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-cards-dark.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-cards.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-categories-dark.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-categories-new.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-categories.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-cr9-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-dark-theme.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-dashboard-bottom.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-dashboard-dark.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-dashboard-full.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-dashboard-light.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-dashboard-v22.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-dashboard-widgets.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-accounts.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-bottom.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-dashboard-goals.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-dashboard-reports.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-fab.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-midpage.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-notifications-v2.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-notifications.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-search.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-v23.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-final-widgets.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-greeting-banner.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-light-theme.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-light-v22.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-mobile-dark.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-mobile-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-mobile.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-notifications.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-purchase-expanded.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-purchases-expanded.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-purchases-full.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-purchases.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-round7-new-widgets.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-round7-top.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-search.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-v2-cards.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-v2-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-v2-light.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-v2-mobile.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa-v2-purchases.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa5-accounts.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa5-cards.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa5-categories.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa5-dashboard.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/qa5-purchases.png",
+      "state": "absent"
+    },
+    {
+      "path": "download/worklog-CR8.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/worklog-CR9.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/worklog-backup.md",
+      "state": "absent"
+    },
+    {
+      "path": "download/worklog-update.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ASR/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ASR/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ASR/scripts/asr.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/LLM/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/LLM/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/LLM/scripts/chat.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/README.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/TTS/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/TTS/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/TTS/tts.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/VLM/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/VLM/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/VLM/scripts/vlm.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/agent-browser/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/2024-02-17-radical-transparency-sales.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/2024-02-17-raycast-spotlight-superpowers.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/2024-02-17-short-form-content-marketing.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/2024-02-17-typing-speed-benefits.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/2024-03-14-effective-ai-prompts.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/2024-11-08-ai-revolutionizing-entry-level-sales.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/2025-11-12-why-ai-art-is-useless.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/README.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/_meta.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/manage_examples.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/blog-writer/style-guide.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/_rules.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/d3.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/echarts.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/matplotlib.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/mermaid.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/mindmap-css.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/playwright-css.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/radial-grid.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/references/seaborn.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/charts/setup.sh",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/coding-agent/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/coding-agent/_meta.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/coding-agent/criteria.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/coding-agent/execution.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/coding-agent/memory-template.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/coding-agent/planning.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/coding-agent/state.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/coding-agent/verification.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/content-strategy/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/content-strategy/_meta.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/contentanalysis/ExtractWisdom/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/contentanalysis/ExtractWisdom/Workflows/Extract.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/contentanalysis/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/chart-templates.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/common-rules.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/decorations.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/design-system.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/docx-js-advanced.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/docx-js-core.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/faq.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/math-formulas.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/ooxml.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/references/toc.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/routes/comment.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/routes/create.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/routes/edit.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/routes/format.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/routes/read.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scenes/academic.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scenes/contract.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scenes/copywriting.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scenes/exam.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scenes/official-doc.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scenes/report.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scenes/resume.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/__init__.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/add_toc_placeholders.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/document.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/postcheck.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/templates/comments.xml",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/templates/commentsExtended.xml",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/templates/commentsExtensible.xml",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/templates/commentsIds.xml",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/templates/people.xml",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/scripts/utilities.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/docx/setup.sh",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/finance/Finance_API_Doc.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/finance/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/fullstack-dev/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-edit/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-edit/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-edit/scripts/image-edit.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-generation/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-generation/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-generation/scripts/image-generation.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-understand/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-understand/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/image-understand/scripts/image-understand.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/market-research-reports/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/market-research-reports/assets/FORMATTING_GUIDE.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/market-research-reports/assets/market_report_template.tex",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/market-research-reports/assets/market_research.sty",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/market-research-reports/references/data_analysis_patterns.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/market-research-reports/references/report_structure_guide.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/market-research-reports/references/visual_generation_guide.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/market-research-reports/scripts/generate_market_visuals.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/marketing-mode/README.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/marketing-mode/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/marketing-mode/_meta.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/marketing-mode/mode-prompt.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/marketing-mode/skill.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/multi-search-engine/CHANGELOG.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/multi-search-engine/CHANNELLOG.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/multi-search-engine/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/multi-search-engine/_meta.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/multi-search-engine/config.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/multi-search-engine/metadata.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/multi-search-engine/references/international-search.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/briefs/academic.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/briefs/creative.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/briefs/poster.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/briefs/process-advanced.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/briefs/process.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/briefs/report.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/configs/components.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/configs/fonts.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/configs/visual_framework.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/references/resume-academic.tex",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/references/resume-altacv.tex",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/cover_validate.js",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/design_engine.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/html2pdf-next.js",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/html2poster.js",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/pdf.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/pdf_qa.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/poster_validate.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/setup.sh",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/scripts/toc_validate.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/charts.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/cover-backgrounds.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/cover.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/fill-engine.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/geometry.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/overflow.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/pagination.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/palette.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/pdf/typesetting/typography.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/podcast-generate/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/podcast-generate/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/podcast-generate/generate.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/podcast-generate/package.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/podcast-generate/readme.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/podcast-generate/test_data/segments.jsonl",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/podcast-generate/tsconfig.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/beamer.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/components.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/data-viz-components.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/design-system.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/html2pptx.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/pml.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/sml.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/wml.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ISO-IEC29500-4_2016/xml.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ecma/fouth-edition/opc-digSig.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/ecma/fouth-edition/opc-relationships.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/mce/mc.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/microsoft/wml-2010.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/microsoft/wml-2012.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/microsoft/wml-2018.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/microsoft/wml-cex-2018.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/microsoft/wml-cid-2016.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/microsoft/wml-sdtdatahash-2020.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/schemas/microsoft/wml-symex-2015.xsd",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/pack.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/unpack.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validate.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/__init__.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/__pycache__/__init__.cpython-313.pyc",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/__pycache__/base.cpython-313.pyc",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/__pycache__/docx.cpython-313.pyc",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/__pycache__/pptx.cpython-313.pyc",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/__pycache__/redlining.cpython-313.pyc",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/base.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/docx.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/pptx.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/ooxml/scripts/validation/redlining.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/references/beamer.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/references/latex.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/references/paper-navbar.tex",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/references/progress-navbar.tex",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/scripts/__pycache__/inventory.cpython-313.pyc",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/scripts/html2pptx.js",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/scripts/inventory.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/scripts/pdf.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/scripts/rearrange.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/scripts/replace.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/scripts/thumbnail.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/setup.sh",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ppt/themes.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/seo-content-writer/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/seo-content-writer/_meta.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/seo-content-writer/references/content-structure-templates.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/seo-content-writer/references/title-formulas.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/agents/analyzer.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/agents/comparator.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/agents/grader.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/assets/eval_review.html",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/eval-viewer/generate_review.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/eval-viewer/viewer.html",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/references/schemas.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/__init__.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/aggregate_benchmark.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/generate_report.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/improve_description.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/package_skill.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/quick_validate.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/run_eval.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/run_loop.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-creator/scripts/utils.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/skill-vetter/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/package.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/src/analyzer.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/src/dataFetcher.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/src/dividend.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/src/index.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/src/rumorScanner.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/src/types.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/src/watchlist.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/stock-analysis-skill/tsconfig.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/storyboard-manager/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/storyboard-manager/index.js",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/storyboard-manager/package.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/storyboard-manager/references/character_development.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/storyboard-manager/references/story_structures.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/storyboard-manager/scripts/consistency_checker.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/storyboard-manager/scripts/timeline_tracker.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/_meta.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/charts.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/colors.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/icons.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/landing.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/products.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/react-performance.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/astro.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/flutter.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/html-tailwind.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/jetpack-compose.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/nextjs.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/nuxt-ui.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/nuxtjs.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/react-native.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/react.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/shadcn.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/svelte.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/swiftui.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/stacks/vue.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/styles.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/typography.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/ui-reasoning.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/ux-guidelines.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/assets/data/web-interface.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/charts.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/colors.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/icons.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/landing.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/products.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/react-performance.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/astro.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/flutter.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/html-tailwind.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/jetpack-compose.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/nextjs.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/nuxt-ui.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/nuxtjs.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/react-native.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/react.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/shadcn.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/svelte.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/swiftui.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/stacks/vue.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/styles.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/typography.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/ui-reasoning.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/ux-guidelines.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/data/web-interface.csv",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/references/upstream-README.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/references/upstream-skill-content.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/scripts/__init__.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/scripts/core.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/scripts/design_system.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/ui-ux-pro-max/scripts/search.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/video-generation/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/video-generation/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/video-generation/scripts/video.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/video-understand/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/video-understand/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/video-understand/scripts/video-understand.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/visual-design-foundations/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/visual-design-foundations/references/color-systems.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/visual-design-foundations/references/spacing-iconography.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/visual-design-foundations/references/typography-systems.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-reader/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-reader/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-reader/scripts/web-reader.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-search/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-search/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-search/scripts/web_search.ts",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/config-extraction.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/encoded-definitions.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/extraction-workflow.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/porting-strategy.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/shader-injection.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/shaders-com.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/tech-signatures.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/tsl-extraction.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/references/unicorn-studio.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/scripts/fetch-rendered-dom.mjs",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/web-shader-extractor/scripts/scan-bundle.sh",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/writing-plans/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/writing-plans/_meta.json",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/LICENSE.txt",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/SKILL.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/engines/chart-templates.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/engines/chart.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/engines/design.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/engines/vba-templates.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/quality/pipeline.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/advanced.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/analyze-recipes.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/analyze.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/convert.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/create.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/edit-patterns.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/edit.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/finance.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/finance_lite.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/scenes/vba.md",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/setup.sh",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/templates/base.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/templates/palettes.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/skills/xlsx/xlsx.py",
+      "state": "absent"
+    },
+    {
+      "path": "examples/websocket/frontend.tsx",
+      "state": "absent"
+    },
+    {
+      "path": "examples/websocket/server.ts",
+      "state": "absent"
+    },
+    {
+      "path": "worklog.md",
+      "state": "absent"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "candidate": "0090d945f6e11911b765dba6cd69a60360aba8645a8d72fab50320846342f371",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "sha256sum db/custom.db && stat -c '%s %n' db/custom.db && git ls-files db/ && test -z \"$(git ls-files db/)\"",
+        "outcome": "expected_failure",
+        "details": "db/custom.db estava rastreado em .git/index com 204800 bytes e SHA-256 aa5ea1e9200992b3bd177bbfc6ae472d2f647ebb422443c317463e48ecf41ac8"
+      },
+      "green": {
+        "command": "git rm --cached db/custom.db && test -z \"$(git ls-files db/)\" && stat -c '%s %n' db/custom.db && sha256sum db/custom.db",
+        "outcome": "passed",
+        "details": "git ls-files db/ vazio e db/custom.db preservado intacto no disco com 204800 bytes e SHA-256 aa5ea1e9200992b3bd177bbfc6ae472d2f647ebb422443c317463e48ecf41ac8"
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bridge_guard.py candidate --repo /home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro --base 7c90a219399cad00569c1dca3064cea860c2ba3d --change openspec/changes/higienizar-arvore-e-legados-repositorio-publico",
+        "outcome": "expected_failure",
+        "details": "Os 486 arquivos legados (485 do manifesto mais examples/skills/ppt/scripts/tectonic de 10747904 B), diretorios vazios e residuos .tmp, dev.log e .playwright-cli ainda existiam no disco e indice"
+      },
+      "green": {
+        "command": "git rm -f (486 caminhos) && rm -rf .tmp dev.log .playwright-cli && test ! -e examples/skills/ppt/scripts/tectonic && test -z \"$(git ls-files examples/)\" && bun --no-env-file run check && bun --no-env-file run test:sqlite",
+        "outcome": "passed",
+        "details": "486 legados e residuos locais removidos, 487 remocoes no indice Git, ativos preservados intactos, check aprovado (533 unitarios + 72 scripts), 54 aprovados em test:sqlite e build concluido com exit 0"
+      }
+    }
+  ],
+  "structural": {
+    "command": "openspec validate --all --strict --no-interactive && bridge_guard.py candidate --repo /home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro --base 7c90a219399cad00569c1dca3064cea860c2ba3d --change openspec/changes/higienizar-arvore-e-legados-repositorio-publico",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-pub-8 (#301) / verifier-pub-8-r2 (#305) / Commit 1 09006f49806ac3c1a4268feced17a08d5070723d",
+    "status": "pass",
+    "candidate": "0090d945f6e11911b765dba6cd69a60360aba8645a8d72fab50320846342f371"
+  },
+  "unresolved": []
+}
