@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
+  ArrowLeftRight,
   ArrowUpRight,
   ArrowDownRight,
+  Building2,
+  CalendarClock,
   Wallet,
   CreditCard,
   ShoppingBag,
   Tag,
+  TrendingUp,
 } from 'lucide-react';
 import {
   Dialog,
@@ -44,6 +48,9 @@ const searchDestinations: Record<SearchResultType, ViewType> = {
   accounts: 'accounts',
   cards: 'cards',
   categories: 'categories',
+  investments: 'investments',
+  installments: 'installments',
+  consortiums: 'consortiums',
 };
 
 export function searchDestination(type: string): ViewType | undefined {
@@ -102,6 +109,175 @@ export function handleSearchKeyDown(
   }
 }
 
+export type GlobalSearchStatus = {
+  rawData: Record<string, any[]>;
+  error: boolean;
+};
+
+export async function requestGlobalSearch(
+  signal: AbortSignal,
+  publish: (result: GlobalSearchStatus) => void,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<void> {
+  const endpoints = [
+    ['transactions', '/api/transactions'],
+    ['purchases', '/api/purchases'],
+    ['accounts', '/api/accounts'],
+    ['cards', '/api/cards'],
+    ['categories', '/api/categories'],
+    ['investments', '/api/investments'],
+    ['installments', '/api/installments'],
+    ['consortiums', '/api/consortiums'],
+  ] as const;
+
+  let failedCount = 0;
+  const entries = await Promise.all(
+    endpoints.map(async ([key, url]) => {
+      try {
+        const res = await fetcher(url, { signal });
+        if (res.ok) return [key, await res.json()] as const;
+        failedCount++;
+        return [key, []] as const;
+      } catch {
+        failedCount++;
+        return [key, []] as const;
+      }
+    }),
+  );
+
+  if (!signal.aborted) {
+    publish({
+      rawData: Object.fromEntries(entries),
+      error: failedCount > 0,
+    });
+  }
+}
+
+export function buildSearchResults(rawData: Record<string, any[]>, query: string): SearchResult[] {
+  const q = query.trim().toLowerCase();
+  const results: SearchResult[] = [];
+
+  for (const t of rawData.transactions ?? []) {
+    const txDate = formatPurchaseDate(t.date);
+    const searchable = `${t.description || ''} ${t.category?.name || ''} ${t.type || ''} ${txDate}`.toLowerCase();
+    if (q && !searchable.includes(q)) continue;
+
+    const isTransfer = t.type === 'TRANSFER';
+    const isIn = t.type === 'INCOME';
+    results.push({
+      id: t.id,
+      type: 'transactions',
+      label: t.description || 'Sem descrição',
+      secondary: isTransfer
+        ? `${currencyFmt(t.amount)} · Transferência · ${txDate}`
+        : `${isIn ? '+' : '-'}${currencyFmt(t.amount)} · ${txDate}`,
+      icon: isTransfer ? ArrowLeftRight : isIn ? ArrowUpRight : ArrowDownRight,
+      iconTone: isTransfer ? 'text-muted-foreground' : isIn ? 'text-(--ds-accent-positive)' : 'text-(--ds-accent-danger)',
+      meta: t.accountId ? { accountId: t.accountId } : undefined,
+    });
+  }
+
+  for (const p of rawData.purchases ?? []) {
+    const date = formatPurchaseDate(p.date);
+    const searchable = `${p.merchant || ''} ${p.card?.name || ''} ${p.category?.name || ''} ${date}`.toLowerCase();
+    if (q && !searchable.includes(q)) continue;
+
+    results.push({
+      id: p.id,
+      type: 'purchases',
+      label: p.merchant || 'Sem estabelecimento',
+      secondary: `${currencyFmt(p.totalAmount)} · ${date}${p.card ? ` · ${p.card.name}` : ''}`,
+      icon: ShoppingBag,
+    });
+  }
+
+  for (const a of rawData.accounts ?? []) {
+    const searchable = `${a.name || ''} ${accountTypeLabels[a.type] || ''} ${currencyFmt(a.balance)}`.toLowerCase();
+    if (q && !searchable.includes(q)) continue;
+
+    results.push({
+      id: a.id,
+      type: 'accounts',
+      label: a.name || 'Sem nome',
+      secondary: `${currencyFmt(a.balance)} · ${accountTypeLabels[a.type] || a.type}`,
+      icon: Wallet,
+    });
+  }
+
+  for (const c of rawData.cards ?? []) {
+    const searchable = `${c.name || ''} ${c.brand || ''} ${c.lastFourDigits || ''} ${cardTypeLabels[c.type] || ''}`.toLowerCase();
+    if (q && !searchable.includes(q)) continue;
+
+    results.push({
+      id: c.id,
+      type: 'cards',
+      label: `${c.name || 'Cartão'} · •••• ${c.lastFourDigits || '0000'}`,
+      secondary: `${cardTypeLabels[c.type] || c.type} · ${c.brand || ''} · Fatura: ${currencyFmt(c.currentBalance || 0)}`,
+      icon: CreditCard,
+    });
+  }
+
+  for (const cat of rawData.categories ?? []) {
+    const searchable = `${cat.name || ''} ${categoryTypeLabels[cat.type] || ''}`.toLowerCase();
+    if (q && !searchable.includes(q)) continue;
+
+    results.push({
+      id: cat.id,
+      type: 'categories',
+      label: cat.name || 'Sem nome',
+      secondary: categoryTypeLabels[cat.type] || cat.type,
+      icon: Tag,
+    });
+  }
+
+  for (const inv of rawData.investments ?? []) {
+    const searchable = `${inv.name || ''} ${inv.ticker || ''} ${inv.type || ''} ${inv.brokerage || ''}`.toLowerCase();
+    if (q && !searchable.includes(q)) continue;
+
+    const details = [inv.ticker, inv.type, inv.brokerage].filter(Boolean).join(' · ');
+    results.push({
+      id: inv.id,
+      type: 'investments',
+      label: inv.name || 'Sem nome',
+      secondary: `${currencyFmt(inv.currentBalance || 0)}${details ? ` · ${details}` : ''}`,
+      icon: TrendingUp,
+    });
+  }
+
+  for (const ins of rawData.installments ?? []) {
+    const searchable = `${ins.description || ''} ${ins.type || ''} ${ins.status || ''} ${ins.card?.name || ''} ${ins.category?.name || ''}`.toLowerCase();
+    if (q && !searchable.includes(q)) continue;
+
+    const count = ins.installmentCount ?? 0;
+    const paid = ins.paidInstallments ?? 0;
+    results.push({
+      id: ins.id,
+      type: 'installments',
+      label: ins.description || 'Sem descrição',
+      secondary: `${currencyFmt(ins.monthlyValue || 0)}/mês · ${paid}/${count}${ins.card?.name ? ` · ${ins.card.name}` : ''}`,
+      icon: CalendarClock,
+    });
+  }
+
+  for (const con of rawData.consortiums ?? []) {
+    const searchable = `${con.description || ''} ${con.group || ''} ${con.quota || ''} ${con.administrator || ''} ${con.status || ''}`.toLowerCase();
+    if (q && !searchable.includes(q)) continue;
+
+    const details = [con.administrator, con.group && con.quota ? `Grupo ${con.group} · Cota ${con.quota}` : con.group || con.quota]
+      .filter(Boolean)
+      .join(' · ');
+    results.push({
+      id: con.id,
+      type: 'consortiums',
+      label: con.description || 'Sem descrição',
+      secondary: `${currencyFmt(con.totalAmount || 0)}${details ? ` · ${details}` : ''}`,
+      icon: Building2,
+    });
+  }
+
+  return results;
+}
+
 export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -110,41 +286,28 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchAll = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setLoading(true);
     setError(false);
     try {
-      const endpoints = [
-        ['transactions', '/api/transactions'],
-        ['purchases', '/api/purchases'],
-        ['accounts', '/api/accounts'],
-        ['cards', '/api/cards'],
-        ['categories', '/api/categories'],
-      ] as const;
-
-      let failedCount = 0;
-      const entries = await Promise.all(
-        endpoints.map(async ([key, url]) => {
-          try {
-            const res = await fetch(url);
-            if (res.ok) return [key, await res.json()] as const;
-            failedCount++;
-            return [key, []] as const;
-          } catch {
-            failedCount++;
-            return [key, []] as const;
-          }
-        })
-      );
-
-      setError(failedCount > 0);
-      setRawData(Object.fromEntries(entries));
+      await requestGlobalSearch(controller.signal, (result) => {
+        setError(result.error);
+        setRawData(result.rawData);
+      });
     } catch {
-      setError(true);
-      console.error('Erro ao buscar dados para busca global');
+      if (!controller.signal.aborted) {
+        setError(true);
+        console.error('Erro ao buscar dados para busca global');
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -152,8 +315,12 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
     if (isOpen) {
       setQuery('');
       setActiveIndex(0);
-      fetchAll();
+      void fetchAll();
+      return () => {
+        abortControllerRef.current?.abort();
+      };
     }
+    abortControllerRef.current?.abort();
   }, [isOpen, fetchAll]);
 
   useEffect(() => {
@@ -162,86 +329,11 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
     }
   }, [isOpen]);
 
-  const flatResults = useMemo<SearchResult[]>(() => {
-    const q = query.trim().toLowerCase();
-    const results: SearchResult[] = [];
-
-    for (const t of rawData.transactions ?? []) {
-      const txDate = formatPurchaseDate(t.date);
-      const searchable = `${t.description || ''} ${t.category?.name || ''} ${t.type || ''} ${txDate}`.toLowerCase();
-      if (q && !searchable.includes(q)) continue;
-
-      const isIn = t.type === 'INCOME';
-      results.push({
-        id: t.id,
-        type: 'transactions',
-        label: t.description || 'Sem descrição',
-        secondary: `${isIn ? '+' : '-'}${currencyFmt(t.amount)} · ${txDate}`,
-        icon: isIn ? ArrowUpRight : ArrowDownRight,
-        iconTone: isIn ? 'text-(--ds-accent-positive)' : 'text-(--ds-accent-danger)',
-        meta: t.accountId ? { accountId: t.accountId } : undefined,
-      });
-    }
-
-    for (const p of rawData.purchases ?? []) {
-      const date = formatPurchaseDate(p.date);
-      const searchable = `${p.merchant || ''} ${p.card?.name || ''} ${p.category?.name || ''} ${date}`.toLowerCase();
-      if (q && !searchable.includes(q)) continue;
-
-      results.push({
-        id: p.id,
-        type: 'purchases',
-        label: p.merchant || 'Sem estabelecimento',
-        secondary: `${currencyFmt(p.totalAmount)} · ${date}${p.card ? ` · ${p.card.name}` : ''}`,
-        icon: ShoppingBag,
-      });
-    }
-
-    for (const a of rawData.accounts ?? []) {
-      const searchable = `${a.name || ''} ${accountTypeLabels[a.type] || ''} ${currencyFmt(a.balance)}`.toLowerCase();
-      if (q && !searchable.includes(q)) continue;
-
-      results.push({
-        id: a.id,
-        type: 'accounts',
-        label: a.name || 'Sem nome',
-        secondary: `${currencyFmt(a.balance)} · ${accountTypeLabels[a.type] || a.type}`,
-        icon: Wallet,
-      });
-    }
-
-    for (const c of rawData.cards ?? []) {
-      const searchable = `${c.name || ''} ${c.brand || ''} ${c.lastFourDigits || ''} ${cardTypeLabels[c.type] || ''}`.toLowerCase();
-      if (q && !searchable.includes(q)) continue;
-
-      results.push({
-        id: c.id,
-        type: 'cards',
-        label: `${c.name || 'Cartão'} · •••• ${c.lastFourDigits || '0000'}`,
-        secondary: `${cardTypeLabels[c.type] || c.type} · ${c.brand || ''} · Fatura: ${currencyFmt(c.currentBalance || 0)}`,
-        icon: CreditCard,
-      });
-    }
-
-    for (const cat of rawData.categories ?? []) {
-      const searchable = `${cat.name || ''} ${categoryTypeLabels[cat.type] || ''}`.toLowerCase();
-      if (q && !searchable.includes(q)) continue;
-
-      results.push({
-        id: cat.id,
-        type: 'categories',
-        label: cat.name || 'Sem nome',
-        secondary: categoryTypeLabels[cat.type] || cat.type,
-        icon: Tag,
-      });
-    }
-
-    return results;
-  }, [rawData, query]);
+  const flatResults = useMemo<SearchResult[]>(() => buildSearchResults(rawData, query), [rawData, query]);
 
   const groupedResults = useMemo<SearchGroup[]>(() => {
     const groups: SearchGroup[] = [];
-    const order = ['transactions', 'purchases', 'accounts', 'cards', 'categories'];
+    const order = ['transactions', 'purchases', 'accounts', 'cards', 'categories', 'investments', 'installments', 'consortiums'];
 
     for (const key of order) {
       const meta = searchGroupMeta[key];
@@ -288,7 +380,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
             <header className="shrink-0 border-b border-border px-4 pb-3 pt-4 sm:px-5">
               <DialogTitle className="pr-8 text-base">Busca Global</DialogTitle>
               <DialogDescription className="mt-1.5 pr-6 text-xs">
-                Transações, compras, contas, cartões e categorias
+                Transações, compras, contas, cartões, categorias, investimentos, parcelas e consórcios
               </DialogDescription>
               <div className="relative mt-3">
                 <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

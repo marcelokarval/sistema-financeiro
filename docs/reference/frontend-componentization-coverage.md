@@ -175,17 +175,17 @@ Distinção explícita entre **observado em navegador**, **fonte lida** e **cont
   - `src/components/finance/installments-view.tsx` (`InstallmentMetrics`, `dc801ca5...`) — tipografia da primeira métrica de parcelas.
   - `src/components/finance/investments-view.tsx` (`InvestmentMetrics`, `dc801ca5...`) — tipografia da primeira métrica de investimentos.
   - `src/components/finance/networth-evolution.tsx` (`NetworthEvolutionContent`, `6435d42a...` e `7926f6ea...`) — seletor de intervalo e tom de variação patrimonial.
-- **Resultado do gate AST reconciliado:** `77 arquivos; 6 ocorrências em 6 identidades; 33 avisos; 0 erros.` (`exit 0`, `0 unbaselined`, `0 ceiling-exceeded`, `0 orphan`).
+- **Resultado do gate AST reconciliado:** `77 arquivos; 6 ocorrências em 6 identidades; 34 avisos; 0 erros.` (`exit 0`, `0 unbaselined`, `0 ceiling-exceeded`, `0 orphan`).
 
-### 6.2 Classificação dos 33 Avisos Não Bloqueantes (`HEAD`)
+### 6.2 Classificação dos 34 Avisos Não Bloqueantes (`HEAD`)
 
-Os `33` avisos restantes são **sinais de revisão estrutural** (não violações bloqueantes nem regressions, redução de `134` na Onda 2 para `33` no fechamento):
+Os `34` avisos restantes são **sinais de revisão estrutural** (não violações bloqueantes nem regressions, redução de `134` na Onda 2 para `34` no fechamento):
 
 | Regra | Quantidade | Arquivos / Símbolos | Classificação técnica |
 |---|---:|---|---|
 | `non-literal-class-interpolation` | 20 | `layout.tsx` (`RootLayout`, 1), `accounts-view.tsx` (`AccountsView`, 1), `balance-projection.tsx` (`BalanceProjectionContent`, 5), `dashboard-view.tsx` (`DashboardView` 1, `Metric` 1, `Panel` 1, `Flow` 2, `DashboardDetails` 3), `installments-view.tsx` (`InstallmentEntries`, 1), `receipt-generator.tsx` (`ReceiptWorkspace`, 3) | Composição legítima de constantes tipográficas (`moneyClass`, `muted`, `disclosure`, `accountPanel`, `config.className`) e variáveis de fonte (`geistSans.variable`, `geistMono.variable`) em templates estáticos sem ternária crua. |
 | `dense-jsx-callback` | 8 | `accounts-view.tsx` (13 tags), `balance-projection.tsx` (21 tags), `cash-flow-forecast.tsx` (14 tags), `dashboard-view.tsx` (`DashboardDetails`, 12 tags), `installments-view.tsx` (`InstallmentPortfolio`, 15 tags), `investments-view.tsx` (`InvestmentPortfolio` 18, `InvestmentEntries` 13), `recurring-transactions.tsx` (`RecurringPanel`, 18 tags) | Listas/cartões semânticos (`dl`/`ul`/`article`) com conteúdo de domínio coeso onde fragmentação adicional seria extração cosmética. |
-| `large-tsx-file` | 5 | `accounts-view.tsx` (1067 linhas), `consortiums-view.tsx` (994 linhas), `investments-view.tsx` (894 linhas), `installments-view.tsx` (647 linhas), `savings-view.tsx` (547 linhas) | Controladores operacionais com estado de abertura, seleção, locks e listas após extração dos editores/confirmações/diálogos para submódulos. |
+| `large-tsx-file` | 6 | `accounts-view.tsx` (1070 linhas), `consortiums-view.tsx` (996 linhas), `investments-view.tsx` (894 linhas), `installments-view.tsx` (647 linhas), `savings-view.tsx` (584 linhas), `balance-projection.tsx` (503 linhas) | Controladores operacionais com estado de abertura, seleção, locks e listas após extração dos editores/confirmações/diálogos para submódulos. |
 
 ### 6.3 Verificação de Caminho Protegido (`eb76f7d` → `HEAD`)
 

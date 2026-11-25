@@ -67,6 +67,7 @@ describe("GET /api/quick-stats - séries históricas de 6 meses", () => {
         { id: "t-oct-in", type: "INCOME", amount: 1200, description: "Out", date: new Date(2026, 9, 10) },
         { id: "t-nov-in", type: "INCOME", amount: 2000, description: "Nov", date: new Date(2026, 10, 5) },
         { id: "t-nov-out", type: "EXPENSE", amount: 400, description: "Nov", date: new Date(2026, 10, 8) },
+        { id: "t-nov-transfer", type: "TRANSFER", amount: 900, description: "Transferência", date: new Date(2026, 10, 12) },
       ],
     });
 
@@ -91,6 +92,7 @@ describe("GET /api/quick-stats - séries históricas de 6 meses", () => {
         totalBalance: number;
         cardDebt: number;
         investments: number;
+        netWorth: number;
         monthlySavings: number;
       };
       sparklines: {
@@ -122,5 +124,7 @@ describe("GET /api/quick-stats - séries históricas de 6 meses", () => {
     expect(data.monthlySavingsHistory).toEqual([1000, -200, 0, 0, 950, 1300]);
     expect(data.investmentsHistory).toEqual([0, 0, 1000, 1000, 1000, 1500]);
     expect(data.cardDebtHistory).toEqual([200, 200, 200, 200, 450, 750]);
+    expect(data.sparklines.balance).toEqual([3700, 3500, 3500, 3500, 4450, 5750]);
+    expect(data.sparklines.balance[5]).toBe(data.current.netWorth);
   });
 });

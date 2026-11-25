@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { parseCivilDateEnd, parseCivilDateStart } from "@/lib/api-validation";
 import { formatPurchaseDate } from "@/lib/purchase-date";
 import { Prisma } from "@prisma/client";
 
@@ -30,14 +31,33 @@ export async function GET(request: NextRequest) {
     }
 
     // Build date filter
+    const parsedStart = startDate ? parseCivilDateStart(startDate) : null;
+    if (startDate && parsedStart === null) {
+      return NextResponse.json(
+        { error: "Data inicial inválida" },
+        { status: 400 }
+      );
+    }
+
+    const parsedEnd = endDate ? parseCivilDateEnd(endDate) : null;
+    if (endDate && parsedEnd === null) {
+      return NextResponse.json(
+        { error: "Data final inválida" },
+        { status: 400 }
+      );
+    }
+
+    if (parsedStart && parsedEnd && parsedStart > parsedEnd) {
+      return NextResponse.json(
+        { error: "Intervalo de datas inválido" },
+        { status: 400 }
+      );
+    }
+
     const buildDateFilter = (): Prisma.DateTimeFilter | undefined => {
       const filter: Prisma.DateTimeFilter = {};
-      if (startDate) filter.gte = new Date(startDate);
-      if (endDate) {
-        const toDate = new Date(endDate);
-        toDate.setHours(23, 59, 59, 999);
-        filter.lte = toDate;
-      }
+      if (parsedStart) filter.gte = parsedStart;
+      if (parsedEnd) filter.lte = parsedEnd;
       return Object.keys(filter).length > 0 ? filter : undefined;
     };
 
@@ -75,7 +95,7 @@ export async function GET(request: NextRequest) {
           t.id,
           translateTransactionType(t.type),
           formatCurrency(t.amount),
-          escapeCsv(t.description),
+          t.description,
           formatDate(t.date),
           t.category?.name ?? "",
           t.account?.name ?? "",
@@ -121,7 +141,7 @@ export async function GET(request: NextRequest) {
 
           return [
             p.id,
-            escapeCsv(p.merchant),
+            p.merchant,
             formatCurrency(p.totalAmount),
             formatPurchaseDate(p.date),
             p.card ? `${p.card.name} (****${p.card.lastFourDigits})` : "",
@@ -156,7 +176,7 @@ export async function GET(request: NextRequest) {
 
         const rows = accounts.map((a) => [
           a.id,
-          escapeCsv(a.name),
+          a.name,
           typeLabels[a.type] ?? a.type,
           formatCurrency(a.balance),
           a.isActive ? "Sim" : "Não",
@@ -198,11 +218,17 @@ function buildCsv(headers: string[], rows: string[][]): string {
 
 function escapeCsv(value: string): string {
   if (!value) return "";
-  // Escape double quotes by doubling them, and wrap in quotes if contains semicolon, quote, or newline
-  if (value.includes('"') || value.includes(";") || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const neutralized = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  // Escape double quotes by doubling them, and wrap in quotes if contains semicolon, quote, CR, or LF
+  if (
+    neutralized.includes('"') ||
+    neutralized.includes(";") ||
+    neutralized.includes("\n") ||
+    neutralized.includes("\r")
+  ) {
+    return `"${neutralized.replace(/"/g, '""')}"`;
   }
-  return value;
+  return neutralized;
 }
 
 function formatDate(date: Date): string {

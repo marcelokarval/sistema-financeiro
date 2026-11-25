@@ -1,5 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  mapPrismaError,
+  parseFiniteNumber,
+  parseJsonBody,
+} from "@/lib/api-validation";
+
+const INVESTMENT_TYPES = new Set([
+  "STOCK",
+  "BOND",
+  "FII",
+  "CDB",
+  "LCI",
+  "LCA",
+  "TESOURO",
+  "CRYPTO",
+  "ETF",
+  "OTHER",
+]);
+
+function parseOptionalString(value: unknown): { ok: true; value: string } | { ok: false } {
+  if (value === undefined || value === null) {
+    return { ok: true, value: "" };
+  }
+  if (typeof value !== "string") {
+    return { ok: false };
+  }
+  return { ok: true, value: value.trim() };
+}
+
+function parseOptionalRelationId(value: unknown): { ok: true; value: string | null } | { ok: false } {
+  if (value === undefined || value === null || value === "") {
+    return { ok: true, value: null };
+  }
+  if (typeof value !== "string" || value.trim() === "") {
+    return { ok: false };
+  }
+  return { ok: true, value: value.trim() };
+}
+
+function parseNonNegativeOrZero(value: unknown): number | null {
+  if (value === undefined || value === null) {
+    return 0;
+  }
+  const parsed = parseFiniteNumber(value);
+  return parsed !== null && parsed >= 0 ? parsed : null;
+}
 
 // GET /api/investments - Listar todos os investimentos
 export async function GET(request: NextRequest) {
@@ -32,7 +78,11 @@ export async function GET(request: NextRequest) {
 // POST /api/investments - Criar investimento
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const parsedBody = await parseJsonBody(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
+
     const {
       name,
       type,
@@ -44,18 +94,62 @@ export async function POST(request: NextRequest) {
       ticker,
       accountId,
       categoryId,
-    } = body;
+    } = parsedBody.data;
 
-    if (!name || name.trim() === "") {
+    if (typeof name !== "string" || name.trim() === "") {
       return NextResponse.json(
         { error: "Nome do investimento é obrigatório" },
         { status: 400 }
       );
     }
 
-    if (!type || type.trim() === "") {
+    if (typeof type !== "string" || type.trim() === "" || !INVESTMENT_TYPES.has(type.trim())) {
       return NextResponse.json(
-        { error: "Tipo do investimento é obrigatório" },
+        { error: "Tipo do investimento é obrigatório e deve ser válido" },
+        { status: 400 }
+      );
+    }
+
+    const parsedDescription = parseOptionalString(description);
+    const parsedBrokerage = parseOptionalString(brokerage);
+    const parsedTicker = parseOptionalString(ticker);
+    if (!parsedDescription.ok || !parsedBrokerage.ok || !parsedTicker.ok) {
+      return NextResponse.json(
+        { error: "Campos de texto inválidos" },
+        { status: 400 }
+      );
+    }
+
+    const parsedInvested = parseNonNegativeOrZero(investedAmount);
+    if (parsedInvested === null) {
+      return NextResponse.json(
+        { error: "Valor investido inválido" },
+        { status: 400 }
+      );
+    }
+
+    const parsedBalance = parseNonNegativeOrZero(currentBalance);
+    if (parsedBalance === null) {
+      return NextResponse.json(
+        { error: "Saldo atual inválido" },
+        { status: 400 }
+      );
+    }
+
+    const parsedYield =
+      yieldRate === undefined || yieldRate === null ? 0 : parseFiniteNumber(yieldRate);
+    if (parsedYield === null) {
+      return NextResponse.json(
+        { error: "Rentabilidade inválida" },
+        { status: 400 }
+      );
+    }
+
+    const parsedAccount = parseOptionalRelationId(accountId);
+    const parsedCategory = parseOptionalRelationId(categoryId);
+    if (!parsedAccount.ok || !parsedCategory.ok) {
+      return NextResponse.json(
+        { error: "Conta ou categoria inválida" },
         { status: 400 }
       );
     }
@@ -64,19 +158,25 @@ export async function POST(request: NextRequest) {
       data: {
         name: name.trim(),
         type: type.trim(),
-        description: description?.trim() ?? "",
-        investedAmount: investedAmount ?? 0,
-        currentBalance: currentBalance ?? 0,
-        yieldRate: yieldRate ?? 0,
-        brokerage: brokerage?.trim() ?? "",
-        ticker: ticker?.trim() ?? "",
-        accountId: accountId ?? null,
-        categoryId: categoryId ?? null,
+        description: parsedDescription.value,
+        investedAmount: parsedInvested,
+        currentBalance: parsedBalance,
+        yieldRate: parsedYield,
+        brokerage: parsedBrokerage.value,
+        ticker: parsedTicker.value,
+        accountId: parsedAccount.value,
+        categoryId: parsedCategory.value,
       },
     });
 
     return NextResponse.json(investment, { status: 201 });
   } catch (error) {
+    const prismaResponse = mapPrismaError(error, {
+      fk: "Conta ou categoria não encontrada",
+    });
+    if (prismaResponse) {
+      return prismaResponse;
+    }
     console.error("Erro ao criar investimento:", error);
     return NextResponse.json(
       { error: "Erro ao criar investimento" },
@@ -88,7 +188,11 @@ export async function POST(request: NextRequest) {
 // PUT /api/investments - Atualizar investimento
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
+    const parsedBody = await parseJsonBody(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
+
     const {
       id,
       name,
@@ -102,16 +206,110 @@ export async function PUT(request: NextRequest) {
       accountId,
       categoryId,
       isActive,
-    } = body;
+    } = parsedBody.data;
 
-    if (!id) {
+    const investmentId = typeof id === "string" ? id.trim() : "";
+    if (!investmentId) {
       return NextResponse.json(
         { error: "ID do investimento é obrigatório" },
         { status: 400 }
       );
     }
 
-    const existing = await db.investment.findUnique({ where: { id } });
+    if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
+      return NextResponse.json(
+        { error: "Nome do investimento é obrigatório" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      type !== undefined &&
+      (typeof type !== "string" || type.trim() === "" || !INVESTMENT_TYPES.has(type.trim()))
+    ) {
+      return NextResponse.json(
+        { error: "Tipo do investimento inválido" },
+        { status: 400 }
+      );
+    }
+
+    let resolvedDescription: string | undefined;
+    if (description !== undefined) {
+      const parsed = parseOptionalString(description);
+      if (!parsed.ok) {
+        return NextResponse.json({ error: "Descrição inválida" }, { status: 400 });
+      }
+      resolvedDescription = parsed.value;
+    }
+
+    let resolvedBrokerage: string | undefined;
+    if (brokerage !== undefined) {
+      const parsed = parseOptionalString(brokerage);
+      if (!parsed.ok) {
+        return NextResponse.json({ error: "Corretora inválida" }, { status: 400 });
+      }
+      resolvedBrokerage = parsed.value;
+    }
+
+    let resolvedTicker: string | undefined;
+    if (ticker !== undefined) {
+      const parsed = parseOptionalString(ticker);
+      if (!parsed.ok) {
+        return NextResponse.json({ error: "Ticker inválido" }, { status: 400 });
+      }
+      resolvedTicker = parsed.value;
+    }
+
+    let resolvedInvested: number | undefined;
+    if (investedAmount !== undefined) {
+      const parsed = parseFiniteNumber(investedAmount);
+      if (parsed === null || parsed < 0) {
+        return NextResponse.json({ error: "Valor investido inválido" }, { status: 400 });
+      }
+      resolvedInvested = parsed;
+    }
+
+    let resolvedBalance: number | undefined;
+    if (currentBalance !== undefined) {
+      const parsed = parseFiniteNumber(currentBalance);
+      if (parsed === null || parsed < 0) {
+        return NextResponse.json({ error: "Saldo atual inválido" }, { status: 400 });
+      }
+      resolvedBalance = parsed;
+    }
+
+    let resolvedYield: number | undefined;
+    if (yieldRate !== undefined) {
+      const parsed = parseFiniteNumber(yieldRate);
+      if (parsed === null) {
+        return NextResponse.json({ error: "Rentabilidade inválida" }, { status: 400 });
+      }
+      resolvedYield = parsed;
+    }
+
+    let resolvedAccount: string | null | undefined;
+    if (accountId !== undefined) {
+      const parsed = parseOptionalRelationId(accountId);
+      if (!parsed.ok) {
+        return NextResponse.json({ error: "Conta inválida" }, { status: 400 });
+      }
+      resolvedAccount = parsed.value;
+    }
+
+    let resolvedCategory: string | null | undefined;
+    if (categoryId !== undefined) {
+      const parsed = parseOptionalRelationId(categoryId);
+      if (!parsed.ok) {
+        return NextResponse.json({ error: "Categoria inválida" }, { status: 400 });
+      }
+      resolvedCategory = parsed.value;
+    }
+
+    if (isActive !== undefined && typeof isActive !== "boolean") {
+      return NextResponse.json({ error: "Flag isActive inválida" }, { status: 400 });
+    }
+
+    const existing = await db.investment.findUnique({ where: { id: investmentId } });
     if (!existing) {
       return NextResponse.json(
         { error: "Investimento não encontrado" },
@@ -120,24 +318,31 @@ export async function PUT(request: NextRequest) {
     }
 
     const investment = await db.investment.update({
-      where: { id },
+      where: { id: investmentId },
       data: {
-        ...(name !== undefined && { name: name.trim() }),
-        ...(type !== undefined && { type: type.trim() }),
-        ...(description !== undefined && { description: description.trim() }),
-        ...(investedAmount !== undefined && { investedAmount }),
-        ...(currentBalance !== undefined && { currentBalance }),
-        ...(yieldRate !== undefined && { yieldRate }),
-        ...(brokerage !== undefined && { brokerage: brokerage.trim() }),
-        ...(ticker !== undefined && { ticker: ticker.trim() }),
-        ...(accountId !== undefined && { accountId: accountId ?? null }),
-        ...(categoryId !== undefined && { categoryId: categoryId ?? null }),
+        ...(name !== undefined && { name: (name as string).trim() }),
+        ...(type !== undefined && { type: (type as string).trim() }),
+        ...(resolvedDescription !== undefined && { description: resolvedDescription }),
+        ...(resolvedInvested !== undefined && { investedAmount: resolvedInvested }),
+        ...(resolvedBalance !== undefined && { currentBalance: resolvedBalance }),
+        ...(resolvedYield !== undefined && { yieldRate: resolvedYield }),
+        ...(resolvedBrokerage !== undefined && { brokerage: resolvedBrokerage }),
+        ...(resolvedTicker !== undefined && { ticker: resolvedTicker }),
+        ...(resolvedAccount !== undefined && { accountId: resolvedAccount }),
+        ...(resolvedCategory !== undefined && { categoryId: resolvedCategory }),
         ...(isActive !== undefined && { isActive }),
       },
     });
 
     return NextResponse.json(investment);
   } catch (error) {
+    const prismaResponse = mapPrismaError(error, {
+      fk: "Conta ou categoria não encontrada",
+      notFound: "Investimento não encontrado",
+    });
+    if (prismaResponse) {
+      return prismaResponse;
+    }
     console.error("Erro ao atualizar investimento:", error);
     return NextResponse.json(
       { error: "Erro ao atualizar investimento" },
@@ -149,17 +354,22 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/investments - Excluir investimento
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id } = body;
+    const parsedBody = await parseJsonBody(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
 
-    if (!id) {
+    const { id } = parsedBody.data;
+    const investmentId = typeof id === "string" ? id.trim() : "";
+
+    if (!investmentId) {
       return NextResponse.json(
         { error: "ID do investimento é obrigatório" },
         { status: 400 }
       );
     }
 
-    const existing = await db.investment.findUnique({ where: { id } });
+    const existing = await db.investment.findUnique({ where: { id: investmentId } });
     if (!existing) {
       return NextResponse.json(
         { error: "Investimento não encontrado" },
@@ -167,13 +377,19 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await db.investment.delete({ where: { id } });
+    await db.investment.delete({ where: { id: investmentId } });
 
     return NextResponse.json({
       success: true,
       message: "Investimento excluído com sucesso",
     });
   } catch (error) {
+    const prismaResponse = mapPrismaError(error, {
+      notFound: "Investimento não encontrado",
+    });
+    if (prismaResponse) {
+      return prismaResponse;
+    }
     console.error("Erro ao excluir investimento:", error);
     return NextResponse.json(
       { error: "Erro ao excluir investimento" },

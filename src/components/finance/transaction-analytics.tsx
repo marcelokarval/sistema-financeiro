@@ -57,36 +57,66 @@ function AnalyticsLoadingSkeleton() {
   );
 }
 
-export function TransactionAnalytics() {
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
-  const [activeTab, setActiveTab] = useState('overview');
+export type TransactionAnalyticsRequest = { typeFilter: 'ALL' | 'INCOME' | 'EXPENSE' };
+export type TransactionAnalyticsStatus =
+  | { status: 'ready'; data: AnalyticsData }
+  | { status: 'error' };
+export type TransactionAnalyticsResult = {
+  request: TransactionAnalyticsRequest;
+  result: TransactionAnalyticsStatus;
+};
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams({ months: '6' });
-      if (typeFilter !== 'ALL') params.set('type', typeFilter);
-      const res = await fetch(`/api/transaction-analytics?${params}`);
-      if (res.ok) setData(await res.json());
-    } catch (e) {
-      console.error('Erro ao buscar análise de transações', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [typeFilter]);
+export async function requestTransactionAnalytics(
+  request: TransactionAnalyticsRequest,
+  signal: AbortSignal,
+  publish: (response: TransactionAnalyticsResult) => void,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<void> {
+  let result: TransactionAnalyticsStatus;
+  try {
+    const params = new URLSearchParams({ months: '6' });
+    if (request.typeFilter !== 'ALL') params.set('type', request.typeFilter);
+    const res = await fetcher(`/api/transaction-analytics?${params}`, { signal });
+    result = res.ok ? { status: 'ready', data: await res.json() } : { status: 'error' };
+  } catch {
+    result = { status: 'error' };
+  }
+  if (!signal.aborted) publish({ request, result });
+}
+
+export function currentTransactionAnalytics(
+  request: TransactionAnalyticsRequest,
+  settled: TransactionAnalyticsResult | null,
+): TransactionAnalyticsStatus | { status: 'loading' } {
+  return settled?.request === request ? settled.result : { status: 'loading' };
+}
+
+export function TransactionAnalytics() {
+  const [request, setRequest] = useState<TransactionAnalyticsRequest>({ typeFilter: 'ALL' });
+  const [settled, setSettled] = useState<TransactionAnalyticsResult | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const query = currentTransactionAnalytics(request, settled);
+  const data = query.status === 'ready' ? query.data : null;
+  const loading = query.status === 'loading';
+
+  const fetchData = useCallback(() => {
+    setRequest((prev) => ({ typeFilter: prev.typeFilter }));
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const controller = new AbortController();
+    void requestTransactionAnalytics(request, controller.signal, setSettled);
+    return () => controller.abort();
+  }, [request]);
 
   return (
     <TransactionAnalyticsContent
       data={data}
       loading={loading}
-      typeFilter={typeFilter}
-      onTypeFilterChange={setTypeFilter}
+      typeFilter={request.typeFilter}
+      onTypeFilterChange={(typeFilter) => {
+        if (typeFilter !== request.typeFilter) setRequest({ typeFilter });
+      }}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       fetchData={fetchData}

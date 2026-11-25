@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { normalizeRecurringToMonthly } from "@/lib/api-validation";
 
 const currencyFmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -22,8 +23,9 @@ export async function GET() {
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // 3 months ago for trend analysis
+    // 3 complete months prior to current month for trend analysis
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const threeCompleteMonthsEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
     const [
       accounts,
@@ -66,14 +68,14 @@ export async function GET() {
         where: { date: { gte: currentMonthStart, lte: currentMonthEnd } },
         select: { totalAmount: true, categoryId: true, date: true },
       }),
-      // Last 3 months expense transactions
+      // Last 3 complete months expense transactions
       db.transaction.findMany({
-        where: { type: "EXPENSE", date: { gte: threeMonthsAgo, lte: currentMonthEnd } },
+        where: { type: "EXPENSE", date: { gte: threeMonthsAgo, lte: threeCompleteMonthsEnd } },
         select: { amount: true, categoryId: true, date: true },
       }),
-      // Last 3 months purchases
+      // Last 3 complete months purchases
       db.purchase.findMany({
-        where: { date: { gte: threeMonthsAgo, lte: currentMonthEnd } },
+        where: { date: { gte: threeMonthsAgo, lte: threeCompleteMonthsEnd } },
         select: { totalAmount: true, categoryId: true, date: true },
       }),
       // Previous month expense transactions (for comparison)
@@ -292,7 +294,10 @@ export async function GET() {
     // ──────────────────────────────────────
     if (recurringTransactions.length > 0) {
       const activeRecurringCount = recurringTransactions.length;
-      const recurringTotal = recurringTransactions.reduce((s, r) => s + r.amount, 0);
+      const recurringTotal = recurringTransactions.reduce(
+        (s, r) => s + normalizeRecurringToMonthly(r.amount, r.frequency),
+        0
+      );
       insights.push({
         id: "recurring-summary",
         type: "info",

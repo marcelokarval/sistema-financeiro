@@ -98,6 +98,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const parsedAmount = typeof amount === "boolean" ? NaN : Number(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return NextResponse.json(
+        { error: "Valor da transação deve ser maior que zero" },
+        { status: 400 }
+      );
+    }
+
+    if (date !== undefined && date !== null && isNaN(new Date(date).getTime())) {
+      return NextResponse.json(
+        { error: "Data da transação inválida" },
+        { status: 400 }
+      );
+    }
+
     const investment = await db.investment.findUnique({
       where: { id: investmentId },
     });
@@ -112,7 +127,7 @@ export async function POST(request: NextRequest) {
     const transactionType = type as TransactionType;
     const { currentBalanceDelta, investedAmountDelta } = applyTransactionEffect(
       transactionType,
-      amount
+      parsedAmount
     );
 
     const transaction = await db.$transaction(async (tx) => {
@@ -120,7 +135,7 @@ export async function POST(request: NextRequest) {
         data: {
           investmentId,
           type: transactionType,
-          amount,
+          amount: parsedAmount,
           quantity: quantity ?? 0,
           unitPrice: unitPrice ?? 0,
           date: date ? new Date(date) : new Date(),

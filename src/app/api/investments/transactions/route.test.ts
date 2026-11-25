@@ -5,9 +5,10 @@ import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 
-describe("PUT e DELETE /api/investments/transactions - validação e reconciliação", () => {
+describe("POST, PUT e DELETE /api/investments/transactions - validação e reconciliação", () => {
   let tempDir: string;
   let localDb: PrismaClient;
+  let POST: typeof import("./route").POST;
   let PUT: typeof import("./route").PUT;
   let DELETE: typeof import("./route").DELETE;
 
@@ -26,7 +27,7 @@ describe("PUT e DELETE /api/investments/transactions - validação e reconcilia�
     }
 
     mock.module("@/lib/db", () => ({ db: localDb }));
-    ({ PUT, DELETE } = await import("./route"));
+    ({ POST, PUT, DELETE } = await import("./route"));
   });
 
   beforeEach(async () => {
@@ -91,5 +92,49 @@ describe("PUT e DELETE /api/investments/transactions - validação e reconcilia�
     // Reverted APORTE (200): currentBalance=800, investedAmount=800; applied DIVIDENDO (50): currentBalance=850, investedAmount=800
     expect(inv.currentBalance).toBe(850);
     expect(inv.investedAmount).toBe(800);
+  });
+
+  test("POST rejeita amount inválido (0, negativo, NaN, Infinity, texto) e date inválida com 400", async () => {
+    for (const payload of [
+      { investmentId: "inv-1", type: "APORTE", amount: 0 },
+      { investmentId: "inv-1", type: "APORTE", amount: -10 },
+      { investmentId: "inv-1", type: "APORTE", amount: "NaN" },
+      { investmentId: "inv-1", type: "APORTE", amount: "Infinity" },
+      { investmentId: "inv-1", type: "APORTE", amount: "abc" },
+      { investmentId: "inv-1", type: "APORTE", amount: 100, date: "data-invalida" },
+    ]) {
+      const req = new NextRequest("http://localhost/api/investments/transactions", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+    }
+
+    const inv = await localDb.investment.findUniqueOrThrow({ where: { id: "inv-1" } });
+    expect(inv.currentBalance).toBe(1000);
+    expect(inv.investedAmount).toBe(1000);
+    expect(await localDb.investmentTransaction.count()).toBe(1);
+  });
+
+  test("POST cria transação válida com amount numérico e atualiza saldos", async () => {
+    const req = new NextRequest("http://localhost/api/investments/transactions", {
+      method: "POST",
+      body: JSON.stringify({
+        investmentId: "inv-1",
+        type: "APORTE",
+        amount: "250",
+        date: "2026-11-15T12:00:00.000Z",
+        description: "Novo aporte",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    const created = await res.json();
+    expect(created.amount).toBe(250);
+
+    const inv = await localDb.investment.findUniqueOrThrow({ where: { id: "inv-1" } });
+    expect(inv.currentBalance).toBe(1250);
+    expect(inv.investedAmount).toBe(1250);
   });
 });

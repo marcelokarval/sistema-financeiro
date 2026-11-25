@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
     const [transactions, purchases, recurring] = await Promise.all([
       db.transaction.findMany({
         where: {
+          type: { in: ["INCOME", "EXPENSE"] },
           date: {
             gte: today,
             lte: endDate,

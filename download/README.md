@@ -17,4 +17,4 @@ Capturas geradas com dados sintéticos em base SQLite temporária isolada (`/tmp
 | `consortiums` (Consórcios) | `390×844` | `light` | [Consórcios, celular claro](<qa-quiet-consorcios-390-light.png>) |
 | `savings` (Caixinhas) | `390×844` | `dark` | [Caixinhas, celular escuro](<qa-quiet-caixinhas-390-dark.png>) |
 
-A cobertura e os limites do ensaio estão no [plano da mudança](<../openspec/changes/recriar-interface-quiet-financial-os/plan.md>). Os PNGs não integram o manifesto nem o digest do candidato de empacotamento final.
+A cobertura e os limites do ensaio estão no [plano da mudança](<../openspec/changes/archive/2026-11-23-recriar-interface-quiet-financial-os/plan.md>). Os PNGs não integram o manifesto nem o digest do candidato de empacotamento final.

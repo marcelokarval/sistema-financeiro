@@ -198,8 +198,8 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
         setPendingDeleteBudget(null);
         refreshBudgets();
       } else {
-        const data = await res.json();
-        toast.error(data.error || 'Erro ao excluir');
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error || 'Erro ao excluir');
       }
     } catch {
       toast.error('Erro de conexão');

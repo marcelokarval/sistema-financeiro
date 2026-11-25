@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Instalar bubblewrap e habilitar userns no runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun --no-env-file run typecheck
+
+      - name: Lint
+        run: bun --no-env-file run lint
+
+      - name: Gate de arquitetura frontend
+        run: bun --no-env-file run arch:check
+
+      - name: Testes unitários
+        run: bun --no-env-file test
+
+      - name: Testes de scripts e empacotamento
+        run: bun --no-env-file run test:scripts
+
+      - name: Testes SQLite isolados (opt-in)
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: bun --no-env-file run test:sqlite
+
+      - name: Build de produção Next.js
+        env:
+          DATABASE_URL: file:${{ runner.temp }}/ci-build-inert.db
+        run: bun --no-env-file run build

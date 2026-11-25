@@ -3,15 +3,16 @@
 import { describe, expect, test } from 'bun:test';
 import React, { createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Wallet } from 'lucide-react';
+import { Wallet, ArrowLeftRight, TrendingUp, CalendarClock, Building2 } from 'lucide-react';
 import { Sidebar } from './sidebar';
 import { MobileNav } from './mobile-nav';
 import { QuickStatsOverview } from './quick-stats-overview';
 import { AppHeader } from './app-header';
 import { AppOverlays } from './app-overlays';
-import { GlobalSearchResult, SearchResults } from './global-search-result';
+import { GlobalSearchResult, SearchResults, searchGroupMeta } from './global-search-result';
 import { readFileSync } from 'node:fs';
 import { useAppStore, type ViewType } from '@/lib/store';
+import * as globalSearchModule from './global-search';
 import { searchDestination, type SearchResultType } from './global-search';
 import * as pageModule from '@/app/page';
 
@@ -265,15 +266,8 @@ describe('contrato alinhado da Busca Global (Alternativa A)', () => {
         currentView: 'categories',
       });
 
-      const resolveExtended = (type: string): ViewType | undefined => {
-        if (type === 'investments' || type === 'installments' || type === 'consortiums') {
-          return type;
-        }
-        return searchDestination(type);
-      };
-
       resetStore();
-      applySearchSelection!('investments', 'inv-1', undefined, useAppStore.getState(), resolveExtended);
+      applySearchSelection!('investments', 'inv-1');
       expect(useAppStore.getState()).toMatchObject({
         ...emptySelections,
         currentView: 'investments',
@@ -281,7 +275,7 @@ describe('contrato alinhado da Busca Global (Alternativa A)', () => {
       });
 
       resetStore();
-      applySearchSelection!('installments', 'ins-1', undefined, useAppStore.getState(), resolveExtended);
+      applySearchSelection!('installments', 'ins-1');
       expect(useAppStore.getState()).toMatchObject({
         ...emptySelections,
         currentView: 'installments',
@@ -289,7 +283,7 @@ describe('contrato alinhado da Busca Global (Alternativa A)', () => {
       });
 
       resetStore();
-      applySearchSelection!('consortiums', 'con-1', undefined, useAppStore.getState(), resolveExtended);
+      applySearchSelection!('consortiums', 'con-1');
       expect(useAppStore.getState()).toMatchObject({
         ...emptySelections,
         currentView: 'consortiums',
@@ -343,5 +337,115 @@ describe('contrato alinhado da Busca Global (Alternativa A)', () => {
     expect(searchRow).not.toContain('Não afirma conformidade Quiet');
     expect(searchRow).toMatch(/Alternativa A/i);
     expect(searchRow).toMatch(/Conforme Quiet/i);
+  });
+
+  test('Task 1.2: searchDestination e searchGroupMeta cobrem os 8 domínios da Alternativa A preservando singular e __proto__', () => {
+    const expectedDestinations: Record<string, ViewType> = {
+      transactions: 'accounts',
+      purchases: 'purchases',
+      accounts: 'accounts',
+      cards: 'cards',
+      categories: 'categories',
+      investments: 'investments',
+      installments: 'installments',
+      consortiums: 'consortiums',
+    };
+    for (const [key, view] of Object.entries(expectedDestinations)) {
+      expect(searchDestination(key)).toBe(view);
+      expect(searchGroupMeta[key]).toBeDefined();
+    }
+    expect(searchGroupMeta.investments?.icon).toBe(TrendingUp);
+    expect(searchGroupMeta.installments?.icon).toBe(CalendarClock);
+    expect(searchGroupMeta.consortiums?.icon).toBe(Building2);
+    expect(searchDestination('investment')).toBeUndefined();
+    expect(searchDestination('__proto__')).toBeUndefined();
+  });
+
+  test('Task 1.2: requestGlobalSearch consulta os 8 endpoints, descarta abortados e buildSearchResults indexa novos domínios e TRANSFER neutro', async () => {
+    const requestGlobalSearch = (globalSearchModule as Record<string, any>).requestGlobalSearch;
+    const buildSearchResults = (globalSearchModule as Record<string, any>).buildSearchResults;
+    expect(typeof requestGlobalSearch).toBe('function');
+    expect(typeof buildSearchResults).toBe('function');
+
+    const requested: Array<{ url: string; signal?: AbortSignal | null }> = [];
+    const published: Array<Record<string, any>> = [];
+    const controller = new AbortController();
+
+    await requestGlobalSearch(
+      controller.signal,
+      (res: Record<string, any>) => published.push(res),
+      async (url: string, init?: RequestInit) => {
+        requested.push({ url, signal: init?.signal });
+        if (url === '/api/investments') {
+          return Response.json([{ id: 'inv-1', name: 'Tesouro Selic', ticker: 'SELIC', type: 'RENDA_FIXA', brokerage: 'XP', currentBalance: 5000 }]);
+        }
+        if (url === '/api/installments') {
+          return Response.json([{ id: 'ins-1', description: 'Notebook Parcelado', monthlyValue: 350, installmentCount: 10, paidInstallments: 4, type: 'CARD_INSTALLMENT', status: 'ACTIVE', card: { name: 'Nubank' } }]);
+        }
+        if (url === '/api/consortiums') {
+          return Response.json([{ id: 'con-1', description: 'Consórcio Imóvel', totalAmount: 200000, group: '101', quota: '22', administrator: 'Porto', status: 'ACTIVE' }]);
+        }
+        return Response.json([]);
+      },
+    );
+
+    expect(requested.map((r) => r.url)).toEqual([
+      '/api/transactions',
+      '/api/purchases',
+      '/api/accounts',
+      '/api/cards',
+      '/api/categories',
+      '/api/investments',
+      '/api/installments',
+      '/api/consortiums',
+    ]);
+    expect(requested.every((r) => r.signal === controller.signal)).toBe(true);
+    expect(published).toHaveLength(1);
+    expect(published[0].error).toBe(false);
+
+    // AbortController deve descartar publicação tardia mesmo em falha
+    const abortedController = new AbortController();
+    const abortedPublished: Array<Record<string, any>> = [];
+    abortedController.abort();
+    await requestGlobalSearch(
+      abortedController.signal,
+      (res: Record<string, any>) => abortedPublished.push(res),
+      async () => new Response(null, { status: 503 }),
+    );
+    expect(abortedPublished).toEqual([]);
+
+    const built = buildSearchResults(
+      {
+        ...published[0].rawData,
+        transactions: [
+          { id: 'tx-t', description: 'Transferência Reserva', amount: 300, type: 'TRANSFER', date: '2026-11-10', accountId: 'acc-1' },
+          { id: 'tx-e', description: 'Mercado', amount: 120, type: 'EXPENSE', date: '2026-11-10', accountId: 'acc-1' },
+        ],
+      },
+      '',
+    );
+
+    const transfer = built.find((item: any) => item.id === 'tx-t');
+    expect(transfer).toBeDefined();
+    expect(transfer.icon).toBe(ArrowLeftRight);
+    expect(transfer.iconTone).toBe('text-muted-foreground');
+    expect(transfer.secondary).not.toMatch(/^-/);
+    expect(transfer.secondary).toContain('Transferência');
+
+    const transferHtml = renderToStaticMarkup(
+      <ul>
+        <GlobalSearchResult result={transfer} index={0} active={false} onActivate={noop} onSelect={noop} />
+      </ul>,
+    );
+    expect(transferHtml).not.toContain('text-(--ds-accent-danger)');
+    expect(transferHtml).toContain('text-muted-foreground');
+
+    const expense = built.find((item: any) => item.id === 'tx-e');
+    expect(expense.iconTone).toBe('text-(--ds-accent-danger)');
+    expect(expense.secondary).toMatch(/^-/);
+
+    expect(built.some((item: any) => item.type === 'investments' && item.id === 'inv-1' && item.label === 'Tesouro Selic')).toBe(true);
+    expect(built.some((item: any) => item.type === 'installments' && item.id === 'ins-1' && item.label === 'Notebook Parcelado')).toBe(true);
+    expect(built.some((item: any) => item.type === 'consortiums' && item.id === 'con-1' && item.label === 'Consórcio Imóvel')).toBe(true);
   });
 });

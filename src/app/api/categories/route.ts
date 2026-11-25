@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { mapPrismaError, parseJsonBody } from "@/lib/api-validation";
+
+const CATEGORY_TYPES = new Set(["INCOME", "EXPENSE"]);
 
 // GET /api/categories - List all categories
 export async function GET() {
@@ -25,28 +28,54 @@ export async function GET() {
 // POST /api/categories - Create category
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, icon, type, color, isActive } = body;
+    const parsedBody = await parseJsonBody(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
 
-    if (!name || name.trim() === "") {
+    const { name, icon, type, color, isActive } = parsedBody.data;
+
+    if (typeof name !== "string" || name.trim() === "") {
       return NextResponse.json(
         { error: "Category name is required" },
         { status: 400 }
       );
     }
 
+    const resolvedType = type === undefined || type === null ? "EXPENSE" : type;
+    if (typeof resolvedType !== "string" || !CATEGORY_TYPES.has(resolvedType)) {
+      return NextResponse.json(
+        { error: "Invalid category type" },
+        { status: 400 }
+      );
+    }
+
+    if (icon !== undefined && icon !== null && typeof icon !== "string") {
+      return NextResponse.json({ error: "Invalid icon" }, { status: 400 });
+    }
+    if (color !== undefined && color !== null && typeof color !== "string") {
+      return NextResponse.json({ error: "Invalid color" }, { status: 400 });
+    }
+    if (isActive !== undefined && typeof isActive !== "boolean") {
+      return NextResponse.json({ error: "Invalid isActive flag" }, { status: 400 });
+    }
+
     const category = await db.category.create({
       data: {
         name: name.trim(),
-        icon: icon || "tag",
-        type: type || "EXPENSE",
-        color: color || "#6b7280",
+        icon: typeof icon === "string" && icon.trim() ? icon.trim() : "tag",
+        type: resolvedType,
+        color: typeof color === "string" && color.trim() ? color.trim() : "#6b7280",
         isActive: isActive ?? true,
       },
     });
 
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
+    const prismaResponse = mapPrismaError(error);
+    if (prismaResponse) {
+      return prismaResponse;
+    }
     console.error("Error creating category:", error);
     return NextResponse.json(
       { error: "Failed to create category" },
@@ -58,17 +87,46 @@ export async function POST(request: NextRequest) {
 // PUT /api/categories - Update category
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id, name, icon, type, color, isActive } = body;
+    const parsedBody = await parseJsonBody(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
 
-    if (!id) {
+    const { id, name, icon, type, color, isActive } = parsedBody.data;
+    const categoryId = typeof id === "string" ? id.trim() : "";
+
+    if (!categoryId) {
       return NextResponse.json(
         { error: "Category id is required" },
         { status: 400 }
       );
     }
 
-    const existing = await db.category.findUnique({ where: { id } });
+    if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
+      return NextResponse.json(
+        { error: "Category name is required" },
+        { status: 400 }
+      );
+    }
+
+    if (type !== undefined && (typeof type !== "string" || !CATEGORY_TYPES.has(type))) {
+      return NextResponse.json(
+        { error: "Invalid category type" },
+        { status: 400 }
+      );
+    }
+
+    if (icon !== undefined && typeof icon !== "string") {
+      return NextResponse.json({ error: "Invalid icon" }, { status: 400 });
+    }
+    if (color !== undefined && typeof color !== "string") {
+      return NextResponse.json({ error: "Invalid color" }, { status: 400 });
+    }
+    if (isActive !== undefined && typeof isActive !== "boolean") {
+      return NextResponse.json({ error: "Invalid isActive flag" }, { status: 400 });
+    }
+
+    const existing = await db.category.findUnique({ where: { id: categoryId } });
     if (!existing) {
       return NextResponse.json(
         { error: "Category not found" },
@@ -77,18 +135,22 @@ export async function PUT(request: NextRequest) {
     }
 
     const category = await db.category.update({
-      where: { id },
+      where: { id: categoryId },
       data: {
-        ...(name !== undefined && { name: name.trim() }),
-        ...(icon !== undefined && { icon }),
-        ...(type !== undefined && { type }),
-        ...(color !== undefined && { color }),
+        ...(name !== undefined && { name: (name as string).trim() }),
+        ...(icon !== undefined && { icon: (icon as string).trim() }),
+        ...(type !== undefined && { type: type as string }),
+        ...(color !== undefined && { color: (color as string).trim() }),
         ...(isActive !== undefined && { isActive }),
       },
     });
 
     return NextResponse.json(category);
   } catch (error) {
+    const prismaResponse = mapPrismaError(error, { notFound: "Category not found" });
+    if (prismaResponse) {
+      return prismaResponse;
+    }
     console.error("Error updating category:", error);
     return NextResponse.json(
       { error: "Failed to update category" },
@@ -100,17 +162,22 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/categories - Delete category
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id } = body;
+    const parsedBody = await parseJsonBody(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
 
-    if (!id) {
+    const { id } = parsedBody.data;
+    const categoryId = typeof id === "string" ? id.trim() : "";
+
+    if (!categoryId) {
       return NextResponse.json(
         { error: "Category id is required" },
         { status: 400 }
       );
     }
 
-    const existing = await db.category.findUnique({ where: { id } });
+    const existing = await db.category.findUnique({ where: { id: categoryId } });
     if (!existing) {
       return NextResponse.json(
         { error: "Category not found" },
@@ -118,10 +185,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await db.category.delete({ where: { id } });
+    await db.category.delete({ where: { id: categoryId } });
 
     return NextResponse.json({ success: true, message: "Category deleted" });
   } catch (error) {
+    const prismaResponse = mapPrismaError(error, { notFound: "Category not found" });
+    if (prismaResponse) {
+      return prismaResponse;
+    }
     console.error("Error deleting category:", error);
     return NextResponse.json(
       { error: "Failed to delete category" },

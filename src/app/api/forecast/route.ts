@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { normalizeRecurringToMonthly } from "@/lib/api-validation";
 
 // GET /api/forecast?months=3 — Cash flow forecast based on historical patterns + recurring transactions
 export async function GET(request: NextRequest) {
@@ -9,7 +10,8 @@ export async function GET(request: NextRequest) {
     let forecastMonths = 3;
 
     if (monthsParam) {
-      const parsed = parseInt(monthsParam, 10);
+      const trimmed = monthsParam.trim();
+      const parsed = /^\d+$/.test(trimmed) ? Number.parseInt(trimmed, 10) : NaN;
       if (isNaN(parsed) || parsed < 1 || parsed > 6) {
         return NextResponse.json(
           { error: "O parâmetro 'months' deve ser um número entre 1 e 6." },
@@ -143,10 +145,11 @@ export async function GET(request: NextRequest) {
     let recurringExpense = 0;
 
     for (const r of recurringTransactions) {
+      const monthlyAmount = normalizeRecurringToMonthly(r.amount, r.frequency);
       if (r.type === "INCOME") {
-        recurringIncome += r.amount;
+        recurringIncome += monthlyAmount;
       } else if (r.type === "EXPENSE") {
-        recurringExpense += r.amount;
+        recurringExpense += monthlyAmount;
       }
     }
 

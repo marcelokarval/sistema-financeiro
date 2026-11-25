@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { toLocalCivilDateKey } from '@/lib/api-validation';
 
 interface TimelineItem {
   type: 'transaction' | 'purchase';
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
     const [transactions, purchases] = await Promise.all([
       db.transaction.findMany({
         where: {
+          type: { in: ['INCOME', 'EXPENSE'] },
           date: { gte: startDate, lte: endDate },
         },
         include: { category: true },
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
     const dateMap = new Map<string, TimelineItem[]>();
 
     for (const tx of transactions) {
-      const dateKey = tx.date.toISOString().split('T')[0];
+      const dateKey = toLocalCivilDateKey(tx.date);
       const items = dateMap.get(dateKey) || [];
       const isIncome = tx.type === 'INCOME';
       items.push({
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
     }
 
     for (const p of purchases) {
-      const dateKey = p.date.toISOString().split('T')[0];
+      const dateKey = toLocalCivilDateKey(p.date);
       const items = dateMap.get(dateKey) || [];
       items.push({
         type: 'purchase',
@@ -89,7 +91,7 @@ export async function GET(request: NextRequest) {
     const currentDate = new Date(startDate);
 
     while (currentDate <= endDate) {
-      const dateKey = currentDate.toISOString().split('T')[0];
+      const dateKey = toLocalCivilDateKey(currentDate);
       const items = dateMap.get(dateKey) || [];
 
       let income = 0;

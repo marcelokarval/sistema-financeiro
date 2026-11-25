@@ -1,12 +1,15 @@
 import { createServer } from 'http'
 import { Server } from 'socket.io'
+import { resolveFinanceWsConfig } from './config'
+
+const wsConfig = resolveFinanceWsConfig(process.env)
 
 const httpServer = createServer()
 const io = new Server(httpServer, {
   // DO NOT change the path, it is used by Caddy to forward the request to the correct port
   path: '/',
   cors: {
-    origin: '*',
+    origin: wsConfig.corsOrigin,
     methods: ['GET', 'POST'],
   },
   pingTimeout: 60000,
@@ -171,9 +174,8 @@ io.on('connection', (socket) => {
 
 // ─── Start Server ──────────────────────────────────────────────────
 
-const PORT = 3004
-httpServer.listen(PORT, () => {
-  console.log(`[finance-ws] Socket.io server running on port ${PORT}`)
+httpServer.listen(wsConfig.port, wsConfig.host, () => {
+  console.log(`[finance-ws] Socket.io server running on ${wsConfig.host}:${wsConfig.port}`)
 })
 
 // Graceful shutdown

@@ -13,23 +13,32 @@ export async function GET(request: NextRequest) {
       orderBy: { name: 'asc' },
     });
 
-    // ── Date range: last 3 months ──
+    // ── Date range: last 3 complete months ──
     const now = new Date();
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const threeCompleteMonthsEnd = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      0,
+      23,
+      59,
+      59,
+      999
+    );
 
-    // ── Fetch transactions (income + expense) in last 3 months ──
+    // ── Fetch transactions (income + expense) in last 3 complete months ──
     const transactions = await db.transaction.findMany({
       where: {
-        date: { gte: threeMonthsAgo },
+        date: { gte: threeMonthsAgo, lte: threeCompleteMonthsEnd },
         type: { in: ['INCOME', 'EXPENSE'] },
         accountId: { not: null },
       },
     });
 
-    // ── Fetch purchases (expenses) in last 3 months ──
+    // ── Fetch purchases (expenses) in last 3 complete months ──
     const purchases = await db.purchase.findMany({
       where: {
-        date: { gte: threeMonthsAgo },
+        date: { gte: threeMonthsAgo, lte: threeCompleteMonthsEnd },
         accountId: { not: null },
       },
     });

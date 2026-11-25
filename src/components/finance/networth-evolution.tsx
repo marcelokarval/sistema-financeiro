@@ -88,35 +88,66 @@ export function NetworthEvolutionTooltip({
   );
 }
 // ─── Main Component ────────────────────────────────────────────────
+export type NetworthRequest = { months: number };
+export type NetworthStatus =
+  | { status: 'ready'; data: NetworthResponse }
+  | { status: 'error' };
+export type NetworthResult = {
+  request: NetworthRequest;
+  result: NetworthStatus;
+};
+
+export async function requestNetworthEvolution(
+  request: NetworthRequest,
+  signal: AbortSignal,
+  publish: (response: NetworthResult) => void,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<void> {
+  let result: NetworthStatus;
+  try {
+    const res = await fetcher(`/api/networth?months=${request.months}`, { signal });
+    result = res.ok ? { status: 'ready', data: await res.json() } : { status: 'error' };
+  } catch {
+    result = { status: 'error' };
+  }
+  if (!signal.aborted) publish({ request, result });
+}
+
+export function currentNetworthEvolution(
+  request: NetworthRequest,
+  settled: NetworthResult | null,
+): NetworthStatus | { status: 'loading' } {
+  // A new object identifies a new request even on retry or a return to the same period.
+  return settled?.request === request ? settled.result : { status: 'loading' };
+}
+
 export function NetworthEvolution() {
-  const [data, setData] = useState<NetworthResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedMonths, setSelectedMonths] = useState(6);
-  const fetchData = useCallback(async (months: number) => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/networth?months=${months}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      }
-    } catch (e) {
-      console.error('Erro ao buscar patrimônio:', e);
-    } finally {
-      setLoading(false);
-    }
+  const [request, setRequest] = useState<NetworthRequest>({ months: 6 });
+  const [settled, setSettled] = useState<NetworthResult | null>(null);
+  const query = currentNetworthEvolution(request, settled);
+  const data = query.status === 'ready' ? query.data : null;
+  const loading = query.status === 'loading';
+
+  const fetchData = useCallback((months: number) => {
+    setRequest({ months });
   }, []);
+
   useEffect(() => {
-    fetchData(selectedMonths);
-  }, [selectedMonths, fetchData]);
+    const controller = new AbortController();
+    void requestNetworthEvolution(request, controller.signal, setSettled);
+    return () => controller.abort();
+  }, [request]);
+
   return (
     <NetworthEvolutionContent
       data={data}
       loading={loading}
-      selectedMonths={selectedMonths}
-      onSelectMonths={setSelectedMonths}
+      selectedMonths={request.months}
+      onSelectMonths={(months) => {
+        if (months !== request.months) setRequest({ months });
+      }}
       fetchData={fetchData}
-      onRetry={() => fetchData(selectedMonths)}
+      onRetry={() => setRequest({ months: request.months })}
     />
   );
 }

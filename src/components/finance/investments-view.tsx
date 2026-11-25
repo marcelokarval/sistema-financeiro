@@ -134,6 +134,7 @@ export function InvestmentsView() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [dividendEntries, setDividendEntries] = useState<{ investmentId?: string; type: string; amount: number }[]>([]);
+  const [dividendLoadError, setDividendLoadError] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
 
   // Dialogs
@@ -196,12 +197,19 @@ export function InvestmentsView() {
   }, []);
 
   const fetchDividends = useCallback(async () => {
+    setDividendLoadError(false);
     try {
       const res = await fetch('/api/investments/transactions');
-      if (!res.ok) return;
+      if (!res.ok) {
+        setDividendEntries([]);
+        setDividendLoadError(true);
+        return;
+      }
       const allTxs: { investmentId?: string; type: string; amount: number }[] = await res.json();
       setDividendEntries(allTxs.filter((tx) => tx.type === 'DIVIDENDO'));
     } catch (e) {
+      setDividendEntries([]);
+      setDividendLoadError(true);
       console.error(e);
     }
   }, []);
@@ -719,7 +727,7 @@ export function InvestmentsView() {
 
   return (
     <>
-      <InvestmentPortfolio summary={summary} count={investments.length} records={filteredInvestments} filter={activeFilter} loadError={loadError} onRetry={() => { setLoading(true); void fetchInvestments(); void fetchDividends(); }}
+      <InvestmentPortfolio summary={summary} count={investments.length} records={filteredInvestments} filter={activeFilter} loadError={loadError} dividendLoadError={dividendLoadError} onRetry={() => { setLoading(true); void fetchInvestments(); void fetchDividends(); }} onRetryDividends={() => { void fetchDividends(); }}
         onFilter={setActiveFilter} onNew={(event) => rememberDialogOrigin(event.currentTarget, openNewInvestment)} onOpen={(investment) => {
           detailOrigin.current = `investment-row-${investment.id}`;
           openInvestmentDetail(investment);
@@ -764,9 +772,9 @@ function InvestmentMetrics({ label, metrics }: { label: string; metrics: { label
   );
 }
 
-export function InvestmentPortfolio({ summary, count, records, filter, loadError, onRetry, onFilter, onNew, onOpen, onEdit, onDelete }: {
+export function InvestmentPortfolio({ summary, count, records, filter, loadError, dividendLoadError, onRetry, onRetryDividends, onFilter, onNew, onOpen, onEdit, onDelete }: {
   summary: { totalInvested: number; currentTotal: number; rentabilidade: number; dividendsReceived: number };
-  count: number; records: Investment[]; filter: string; loadError?: boolean; onRetry?: () => void; onFilter: (value: string) => void; onNew: (event: MouseEvent<HTMLButtonElement>) => void;
+  count: number; records: Investment[]; filter: string; loadError?: boolean; dividendLoadError?: boolean; onRetry?: () => void; onRetryDividends?: () => void; onFilter: (value: string) => void; onNew: (event: MouseEvent<HTMLButtonElement>) => void;
   onOpen: (investment: Investment) => void; onEdit: (investment: Investment, event: MouseEvent<HTMLButtonElement>) => void;
   onDelete: (id: string, event: MouseEvent<HTMLButtonElement>) => void;
 }) {
@@ -785,11 +793,21 @@ export function InvestmentPortfolio({ summary, count, records, filter, loadError
           {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>Tentar novamente</Button>}
         </div>
       )}
+      {!loadError && dividendLoadError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-4 text-sm">
+          <p className="text-destructive">Não foi possível carregar os dividendos.</p>
+          {onRetryDividends && <Button size="sm" variant="outline" onClick={onRetryDividends}>Tentar novamente</Button>}
+        </div>
+      )}
       <InvestmentMetrics label="Resumo da carteira" metrics={[
         { label: 'Valor atual', value: currencyFmt(summary.currentTotal), note: 'Soma dos saldos atuais' },
         { label: 'Total investido', value: currencyFmt(summary.totalInvested), note: `${count} investimento${count !== 1 ? 's' : ''}` },
         { label: 'Rentabilidade total', value: percentFmt(summary.rentabilidade), note: summary.rentabilidade >= 0 ? 'Lucro acumulado' : 'Prejuízo acumulado' },
-        { label: 'Dividendos recebidos', value: currencyFmt(summary.dividendsReceived), note: 'Consulte o histórico de cada investimento' },
+        {
+          label: 'Dividendos recebidos',
+          value: dividendLoadError ? '—' : currencyFmt(summary.dividendsReceived),
+          note: dividendLoadError ? 'Não foi possível carregar os dividendos' : 'Consulte o histórico de cada investimento',
+        },
       ]} />
       <section aria-labelledby="investment-records-title" className="space-y-3">
         <h3 id="investment-records-title" className="font-semibold">Carteira</h3>

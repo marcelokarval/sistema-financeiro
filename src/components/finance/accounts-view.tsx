@@ -616,8 +616,8 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        toast.error(data.error || 'Erro na transferência');
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error || 'Erro na transferência');
         return;
       }
 

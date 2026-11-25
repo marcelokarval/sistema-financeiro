@@ -289,3 +289,124 @@ for (const kind of ["absent", "empty", "malformed", "nonSQLite", "query", "fragm
   "control", "authority", "missing", "directory", "zero", "internal", "internalLink", "valid", "validLink"]) {
   test(`launcher valida a fronteira do SQLite antes dos serviços: ${kind}`, () => launcher(kind));
 }
+
+test("Caddyfile restringe XTransformPort exclusivamente para 3004 sem wildcard ou placeholder dinâmico", () => {
+  const caddyfile = readFileSync(join(scripts, "..", "Caddyfile"), "utf8");
+  expect(caddyfile).toContain("query XTransformPort=3004");
+  expect(caddyfile).toContain("reverse_proxy localhost:3004");
+  expect(caddyfile).not.toContain("XTransformPort=*");
+  expect(caddyfile).not.toContain("{query.XTransformPort}");
+});
+
+function isPidAlive(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function sysBinWithoutCaddy(root: string) {
+  const sysbin = join(root, "sysbin");
+  mkdirSync(sysbin, { recursive: true });
+  for (const cmd of ["sh", "realpath", "ps", "sleep", "dirname", "basename", "sed", "cat"]) {
+    const resolved = Bun.which(cmd);
+    if (resolved) symlinkSync(resolved, join(sysbin, cmd));
+  }
+  return sysbin;
+}
+
+test("launcher falha antes dos serviços quando caddy não está no PATH", () => {
+  fixture((root) => {
+    const pkg = join(root, "package");
+    const external = join(root, "outside", `${marker}.db`);
+    put(root, `outside/${marker}.db`, "synthetic nonempty fixture");
+    put(pkg, "next-service-dist/server.js", "synthetic");
+    put(pkg, "Caddyfile", "synthetic");
+    copyFileSync(join(scripts, "start.sh"), join(pkg, "start.sh"));
+    put(root, "bin/bun", '#!/bin/sh\nprintf "bun\n" >> "$HOME/launcher.log"\nexec /bin/sleep 2\n', true);
+    put(pkg, "mini-services-start.sh", 'printf "mini\n" >> "$HOME/launcher.log"\n');
+    const sysbin = sysBinWithoutCaddy(root);
+    const result = runShell("sh", join(pkg, "start.sh"), root, {
+      DATABASE_URL: `file:${external}`,
+      PATH: `${root}/bin:${sysbin}`,
+    });
+    expect(result.status, result.output).not.toBe(0);
+    expect(result.output.toLowerCase()).toContain("caddy");
+    expect(existsSync(join(root, "launcher.log"))).toBe(false);
+  });
+});
+
+test("launcher preserva código de saída do caddy e encerra NEXT_PID e MINI_PID", () => {
+  fixture((root) => {
+    const pkg = join(root, "package");
+    const external = join(root, "outside", `${marker}.db`);
+    put(root, `outside/${marker}.db`, "synthetic nonempty fixture");
+    put(pkg, "next-service-dist/server.js", "synthetic");
+    put(pkg, "Caddyfile", "synthetic");
+    copyFileSync(join(scripts, "start.sh"), join(pkg, "start.sh"));
+    put(root, "bin/bun", '#!/bin/sh\nprintf "%s\\n" "$$" > "$HOME/next.pid"\nexec /bin/sleep 10 >/dev/null 2>&1\n', true);
+    put(pkg, "mini-services-start.sh", 'printf "%s\\n" "$$" > "$HOME/mini.pid"\nexec /bin/sleep 10 >/dev/null 2>&1\n');
+    put(root, "bin/caddy", "#!/bin/sh\nexit 17\n", true);
+    let nextPid = 0;
+    let miniPid = 0;
+    try {
+      const result = runShell("sh", join(pkg, "start.sh"), root, {
+        DATABASE_URL: `file:${external}`,
+      });
+      nextPid = Number(readFileSync(join(root, "next.pid"), "utf8").trim());
+      miniPid = Number(readFileSync(join(root, "mini.pid"), "utf8").trim());
+      expect(result.status, result.output).toBe(17);
+      expect(isPidAlive(nextPid)).toBe(false);
+      expect(isPidAlive(miniPid)).toBe(false);
+    } finally {
+      for (const pid of [nextPid, miniPid]) {
+        if (pid > 0) {
+          try { process.kill(pid, "SIGKILL"); } catch {}
+        }
+      }
+    }
+  });
+});
+
+test("mini-services-start.sh propaga SIGTERM aos filhos bun e preserva saída não zero", async () => {
+  const root = mkdtempSync(join(tmpdir(), "packaging-test-"));
+  let childPid = 0;
+  let proc: ReturnType<typeof Bun.spawn> | undefined;
+  try {
+    copyFileSync(join(scripts, "mini-services-start.sh"), join(root, "mini-services-start.sh"));
+    put(root, "mini-services-dist/mini-service-demo.js", "export {};\n");
+    put(root, "bin/bun", '#!/bin/sh\nprintf "%s\\n" "$$" > "$HOME/service.pid"\nexec /bin/sleep 10 >/dev/null 2>&1\n', true);
+    proc = Bun.spawn(["sh", join(root, "mini-services-start.sh")], {
+      cwd: root,
+      env: { PATH: `${root}/bin:/usr/bin:/bin`, HOME: root, LC_ALL: "C" },
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    const pidFile = join(root, "service.pid");
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (existsSync(pidFile)) {
+        const raw = readFileSync(pidFile, "utf8").trim();
+        if (/^\d+$/.test(raw)) {
+          childPid = Number(raw);
+          break;
+        }
+      }
+      await Bun.sleep(50);
+    }
+    expect(childPid).toBeGreaterThan(0);
+    await Bun.sleep(700);
+    proc.kill("SIGTERM");
+    const exitCode = await proc.exited;
+    expect(exitCode).not.toBe(0);
+    expect(isPidAlive(childPid)).toBe(false);
+  } finally {
+    try { proc?.kill("SIGKILL"); } catch {}
+    if (childPid > 0) {
+      try { process.kill(childPid, "SIGKILL"); } catch {}
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});

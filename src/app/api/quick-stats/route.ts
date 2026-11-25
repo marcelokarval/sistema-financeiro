@@ -131,13 +131,13 @@ export async function GET() {
     const savingsRate = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
 
     // --- Sparklines ---
-    // Balance: net worth approximation per month (income - expense cumulative is the trend)
-    // We approximate balance trend by cumulative net of each month
-    let runningBalance = netWorth - monthlySavings; // approximate starting balance
-    const balanceSparkline = monthlyData.map((m) => {
-      runningBalance += m.income - m.expense;
-      return Math.round(runningBalance * 100) / 100;
-    });
+    // Balance: reconstruct backwards from current netWorth so balanceSparkline[5] === netWorth
+    const balanceSparkline = new Array<number>(monthlyData.length);
+    let runningBalance = netWorth;
+    for (let i = monthlyData.length - 1; i >= 0; i--) {
+      balanceSparkline[i] = Math.round(runningBalance * 100) / 100;
+      runningBalance -= monthlyData[i].income - monthlyData[i].expense;
+    }
 
     const incomeSparkline = monthlyData.map((m) =>
       Math.round(m.income * 100) / 100

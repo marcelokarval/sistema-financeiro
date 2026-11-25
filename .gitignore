@@ -57,6 +57,9 @@ dev.log
 dev.out.log
 server.log
 
+# PIDs
+*.pid
+
 # Agent/editor artifacts
 .claude
 .z-ai-config
