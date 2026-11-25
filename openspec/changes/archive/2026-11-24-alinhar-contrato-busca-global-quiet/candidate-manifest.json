@@ -1,0 +1,28 @@
+{
+  "paths": [
+    {
+      "path": "src/app/page.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/global-search.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-navigation.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-search-parity.qa.mjs",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/design-system.contract.md",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/frontend-componentization-coverage.md",
+      "state": "present"
+    }
+  ]
+}

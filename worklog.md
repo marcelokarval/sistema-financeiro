@@ -1227,3 +1227,31 @@ Work Log:
 Stage Summary:
 - `formalizar-componentizacao-extrema-frontend` concluída (`23/23`), sincronizada para `openspec/specs/arquitetura-componentes-frontend/spec.md` e arquivada
 - Validação OpenSpec estrita: `4 passed, 0 failed` e `0` changes ativas pendentes
+
+---
+Task ID: QUIET-RESIDUAL-AND-SEARCH-CLOSURE
+Agent: Closer Quiet (Swarm Etapas 2–4)
+Task: Correção das divergências residuais Quiet, alinhamento da Busca Global (Alternativa A), QA nas 6 células e arquivamento OpenSpec
+
+Work Log:
+- **Commit 1 em `main` (`842223348705d087b2e6d9e3031a04a3d33237f4`, base `80f1f406443f235f4659aad2ff0ded8f20f3c6bc`):**
+  - `balance-projection.tsx`: proteção de período com `AbortController`, identidade `{ months }` (`requestBalanceProjection` / `currentBalanceProjection`) e descarte de resposta/erro tardio mantendo `MonthSelector` (`87145e91...`).
+  - `monthly-budget-tracker.tsx`: retorno antecipado e parse resiliente (`await res.json().catch(() => ({}))`) em `!res.ok` retendo `MonthlyBudgetEditor` e rascunho sem `refreshBudgets()` prematuro.
+  - `accounts-view.tsx` e `cards-view.tsx`: limpeza de `dialogReturn.current` após `DELETE` `2xx` na mesma abertura (`account/Excluir/late`, `card/Excluir/late`, `cartoes/exclusao-matriz-temporal`), promovendo foco ao botão sobrevivente (`Nova conta` / `Novo cartão`).
+  - `consortiums-view.tsx` e `savings-view.tsx`: limpeza de `dialogOrigin.current` em `confirmDelete` (`res.ok`, sanando `list/Excluir/late`) e restauração pós-remoção via `restoreSavingsFocusAfterDeletion` para `#savings-create` (`caixinhas/exclusao/late`).
+  - `src/app/page.tsx` (`applySearchSelection`), `docs/reference/design-system.contract.md#L24`, `quiet-navigation.test.tsx` e `quiet-search-parity.qa.mjs`: alinhados à decisão **Alternativa A** do responsável de produto (removido `historicalAutoOpenDeviation`).
+  - `docs/reference/frontend-componentization-coverage.md` (Seção 5): reconciliada para conformidade Quiet sem `preexistingQuietDivergences` em aberto.
+- **Verificação integrada nas 6 células (`360/390/1440 × light/dark`) em `systemd-run --user` + `bwrap` (`qa-runner-2`, `task-59`/`task-158`/`task-237`):**
+  - Gate AST (`check-frontend-architecture.ts --baseline-ref 25b44535c5068b99044afa03f7ecf318e7a9726f`): `77 arquivos; 6 ocorrências em 6 identidades; 34 avisos; 0 erros`.
+  - `tsc --noEmit`: `0` erros; `eslint .`: `0` erros; `bun --no-env-file test`: `388 pass, 41 skip [opt-ins SQLite], 0 fail` (`2664 expect() calls` em `32` arquivos).
+  - 7/7 runners `.qa.mjs` aprovados (`exit 0`, `0` skips, `0` `preexistingQuietDivergences`): `quiet-goals-widgets` (`60`), `quiet-keyed-deletion-focus` (`78`), `quiet-cards-purchases-categories` (`120`), `quiet-consortiums-editor` (`108`), `quiet-installments-savings-dialogs` (`54`), `quiet-search-parity` (`102`), `quiet-componentization` (`54`). `systemctl --user list-units 'finance-qa-*' --all` vazio.
+- **`bridge_guard.py verify` (`--base 80f1f406443f235f4659aad2ff0ded8f20f3c6bc`):**
+  - `corrigir-divergencias-residuais-quiet-financial-os`: `{"status": "ok", "candidate": "944f45347ea85e432eb88a88039769ef20ed3894041913ab8fd9ff4fc7b2329a"}`.
+  - `alinhar-contrato-busca-global-quiet`: `{"status": "ok", "candidate": "e2698a7ffdd63115845ca87fdcb3b97e9bdd415527724f5a898b642c68c611c5"}`.
+- **Sincronização e arquivamento OpenSpec:**
+  - Mesclados ambos os deltas em `openspec/specs/interface-quiet-financial-os/spec.md` (`openspec validate --specs --strict --no-interactive`: aprovado).
+  - Arquivadas as changes em `openspec/changes/archive/2026-11-24-corrigir-divergencias-residuais-quiet-financial-os/` e `openspec/changes/archive/2026-11-24-alinhar-contrato-busca-global-quiet/` (preservando `.openspec.yaml`, `verify.md`, `evidence.json`, `retrospective.md`).
+
+Stage Summary:
+- Commit 1 (`842223348705d087b2e6d9e3031a04a3d33237f4`) e validação isolada nas 6 células concluídos com zero divergências Quiet residuais
+- `openspec/specs/interface-quiet-financial-os/spec.md` sincronizada e ambas as changes validadas e arquivadas (`4 passed, 0 failed`, `0` changes ativas)
