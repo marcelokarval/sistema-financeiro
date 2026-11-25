@@ -186,8 +186,8 @@ test('widgets de fluxo e análise removem framer-motion, cores Tailwind fixas, s
 });
 
 test('SpendingTimelineContent adota FinanceRow nos itens expandidos mantendo sinal, BRL, tokens e máscara', () => {
-  const tlSrc = readFileSync(new URL('./spending-timeline.tsx', import.meta.url), 'utf8');
-  expect(tlSrc).toContain("from '@/components/shared/finance-row'");
+  const dayDetailsSrc = readFileSync(new URL('./spending-day-details.tsx', import.meta.url), 'utf8');
+  expect(dayDetailsSrc).toContain("from '@/components/shared/finance-row'");
 
   const TimelineContent = timeline.SpendingTimelineContent;
   const html = renderToStaticMarkup(
@@ -377,4 +377,63 @@ test('CashFlowForecastContent e BalanceProjectionContent adotam FinanceChartTool
   );
   expect(balMaskedHtml).toContain('R$ ••••••');
   expect(balMaskedHtml).not.toMatch(/1\.850|50/);
+});
+
+test('Task 0018: spending-timeline adota QueryPanel/FinanceMetric e delega detalhes mantendo zeros e dias sem movimento', () => {
+  const tlSrc = readFileSync(new URL('./spending-timeline.tsx', import.meta.url), 'utf8');
+  expect(tlSrc).toContain("from '@/components/shared/query-panel'");
+  expect(tlSrc).toContain("from '@/components/shared/finance-metric'");
+  const dayDetailsSrc = readFileSync(new URL('./spending-day-details.tsx', import.meta.url), 'utf8');
+  expect(dayDetailsSrc).toContain("from '@/components/shared/finance-row'");
+
+  const emptyHtml = renderToStaticMarkup(
+    <timeline.SpendingTimelineContent
+      data={[]}
+      loading={false}
+      error={false}
+      activeDays={30}
+      expandedDay={null}
+      onSelectDays={() => {}}
+      onToggleDay={() => {}}
+      onRetry={() => {}}
+    />,
+  );
+  expect(emptyHtml).toContain('Sem dados de movimentação para exibir.');
+
+  const zeroDayHtml = renderToStaticMarkup(
+    <timeline.SpendingTimelineContent
+      data={[{ date: '2026-01-14', income: 0, expense: 0, net: 0, count: 0, runningBalance: 0, items: [] }]}
+      loading={false}
+      error={false}
+      activeDays={7}
+      expandedDay={null}
+      onSelectDays={() => {}}
+      onToggleDay={() => {}}
+      onRetry={() => {}}
+    />,
+  );
+  expect(zeroDayHtml).toContain('Sem movimentações');
+  expect(zeroDayHtml).toContain('+R$ 0,00');
+});
+
+test('Task 0018: expense-breakdown adota FinanceChartTooltip e delega detalhes de categoria mantendo top 3 simples', () => {
+  const detailsSrc = readFileSync(new URL('./expense-category-details.tsx', import.meta.url), 'utf8');
+  expect(detailsSrc).toContain("from '@/components/shared/finance-chart-tooltip'");
+
+  const ExpenseTooltip = (expenses as Record<string, any>).ExpenseBreakdownTooltip;
+  expect(typeof ExpenseTooltip).toBe('function');
+  const activeHtml = renderToStaticMarkup(
+    <ExpenseTooltip
+      active
+      payload={[{ name: 'Moradia', value: 1250, payload: { color: '#8b5cf6' } }]}
+    />,
+  );
+  expect(activeHtml).toContain('Moradia:');
+  expect(activeHtml).toContain('R$ 1.250,00');
+  expect(renderToStaticMarkup(<ExpenseTooltip active={false} payload={[{ name: 'Moradia', value: 1250 }]} />)).toBe('');
+  const maskedHtml = renderToStaticMarkup(
+    <ExpenseTooltip active showValues={false} payload={[{ name: 'Moradia', value: 1250 }]} />,
+  );
+  expect(maskedHtml).toContain('R$ ••••••');
+  expect(maskedHtml).not.toContain('1.250');
 });

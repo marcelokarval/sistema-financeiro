@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Building2, CalendarClock, CreditCard, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { currencyFmt } from '@/lib/helpers';
+import { cn } from '@/lib/utils';
 import { observeQuery, type QueryResult, type SettledQuery } from './dashboard-query';
 
 interface Bill {
@@ -67,20 +68,20 @@ export function UpcomingBillsPanel({ query, refresh, showValues }: { query: Quer
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold sm:text-base">Próximos vencimentos</h2>
-          <p className={`${smallText} mt-1`}>Atrasados e próximos 30 dias · independente do período do resumo.</p>
+          <p className={cn(smallText, 'mt-1')}>Atrasados e próximos 30 dias · independente do período do resumo.</p>
         </div>
         <Button variant="ghost" size="icon" className="shrink-0" aria-label="Atualizar vencimentos" onClick={refresh}><RefreshCw aria-hidden="true" /></Button>
       </div>
-      {query.status === 'loading' && <p role="status" className={`${smallText} mt-4`}>Carregando vencimentos…</p>}
+      {query.status === 'loading' && <p role="status" className={cn(smallText, 'mt-4')}>Carregando vencimentos…</p>}
       {query.status === 'error' && <div className="mt-4 space-y-2"><p role="alert" className="text-sm text-destructive">Não foi possível carregar os próximos pagamentos.</p><Button size="sm" variant="outline" onClick={refresh}>Tentar novamente</Button></div>}
       {query.status === 'ready' && (
         <>
-          {query.data.bills.length === 0 ? <p className={`${smallText} mt-4`}>Nenhum pagamento pendente no recorte.</p> : (
+          {query.data.bills.length === 0 ? <p className={cn(smallText, 'mt-4')}>Nenhum pagamento pendente no recorte.</p> : (
             <BillList bills={query.data.bills} money={money} />
           )}
           {groups.filter((group) => group.bills.length > 0).map((group) => (
             <details key={group.label} className="mt-2 border-t border-border pt-2">
-              <summary className={`${disclosure} flex flex-wrap items-baseline justify-between gap-x-2`}>
+              <summary className={cn(disclosure, 'flex flex-wrap items-baseline justify-between gap-x-2')}>
                 <span>{group.label} ({group.bills.length})</span>
                 <span className={moneyClass}>{money(group.bills.reduce((sum, bill) => sum + bill.amount, 0))}</span>
               </summary>
@@ -94,7 +95,12 @@ export function UpcomingBillsPanel({ query, refresh, showValues }: { query: Quer
                 ['Até o fim da semana, incluindo atrasados', query.data.summary.thisWeek],
                 ['Até o fim do mês, incluindo atrasados', query.data.summary.thisMonth],
                 ['Atrasados e próximos 30 dias', { count: query.data.bills.length, amount: query.data.summary.totalAmount }],
-              ] as const).map(([label, total]) => <div key={label} className="flex flex-wrap justify-between gap-x-2"><dt className={smallText}>{label} ({total.count})</dt><dd className={moneyClass}>{money(total.amount)}</dd></div>)}
+              ] as const).map(([label, total]) => (
+                <div key={label} className="flex flex-wrap justify-between gap-x-2">
+                  <dt className={smallText}>{label} ({total.count})</dt>
+                  <dd className={moneyClass}>{money(total.amount)}</dd>
+                </div>
+              ))}
             </dl>
           </details>
         </>
@@ -116,10 +122,10 @@ function BillList({ bills, money }: { bills: Bill[]; money: (amount: number) => 
               <div className="min-w-0">
                 <p className="break-words text-sm font-medium">{bill.title}</p>
                 <p className={smallText}>{bill.source} · {dateFmt.format(new Date(bill.dueDate))}</p>
-                <p className={`text-xs ${state}`}>{dayLabel(bill.daysUntilDue)}</p>
+                <p className={cn('text-xs', state)}>{dayLabel(bill.daysUntilDue)}</p>
               </div>
             </div>
-            <p className={`${moneyClass} ml-auto text-sm`}>{money(bill.amount)}</p>
+            <p className={cn(moneyClass, 'ml-auto text-sm')}>{money(bill.amount)}</p>
           </li>
         );
       })}
