@@ -6,7 +6,6 @@ import { ptBR } from 'date-fns/locale';
 import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,12 +16,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { currencyFmt } from '@/lib/helpers';
+import { cn } from '@/lib/utils';
 import { observeQuery, type QueryResult, type SettledQuery } from './dashboard-query';
+import {
+  MonthlyBudgetEditor,
+  type MonthlyBudgetCategoryOption,
+  type MonthlyBudgetDraft,
+} from './monthly-budget-editor';
 
 interface BudgetItem {
   id: string;
@@ -35,13 +37,6 @@ interface BudgetItem {
   remaining: number;
   percentage: number;
   isOverBudget: boolean;
-}
-
-interface CategoryOption {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
 }
 
 const smallText = 'text-xs leading-relaxed text-muted-foreground';
@@ -57,7 +52,7 @@ function BudgetRow({ budget, money, showValues, onEdit, onDelete }: {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="break-words text-sm font-medium">{budget.categoryName}</p>
-          <p className={`${smallText} ${moneyClass}`}>{money(budget.spent)} de {money(budget.amount)}</p>
+          <p className={cn(smallText, moneyClass)}>{money(budget.spent)} de {money(budget.amount)}</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -71,10 +66,10 @@ function BudgetRow({ budget, money, showValues, onEdit, onDelete }: {
       </div>
       {showValues && (
         <div aria-hidden="true" className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className={`h-full rounded-full ${bar}`} style={{ width: `${Math.min(budget.percentage, 100)}%` }} />
+          <div className={cn('h-full rounded-full', bar)} style={{ width: `${Math.min(budget.percentage, 100)}%` }} />
         </div>
       )}
-      <div className={`mt-1.5 flex flex-wrap justify-between gap-x-2 ${smallText}`}>
+      <div className={cn('mt-1.5 flex flex-wrap justify-between gap-x-2', smallText)}>
         <span>{label}{showValues && ` · ${budget.percentage.toFixed(0)}% utilizado`}</span>
         <span className={moneyClass}>{budget.isOverBudget ? `Excedido em ${money(Math.abs(budget.remaining))}` : `Resta ${money(budget.remaining)}`}</span>
       </div>
@@ -87,7 +82,7 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
   const [request, setRequest] = useState(0);
   const [settled, setSettled] = useState<{ key: string; result: SettledQuery<BudgetItem[]> } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [categories, setCategories] = useState<MonthlyBudgetCategoryOption[]>([]);
   const [editingBudget, setEditingBudget] = useState<BudgetItem | null>(null);
   const [formCategoryId, setFormCategoryId] = useState('');
   const [formAmount, setFormAmount] = useState('');
@@ -117,7 +112,7 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
   useEffect(() => observeQuery(async (signal) => {
     const response = await fetch('/api/categories', { signal });
     if (!response.ok) throw new Error('Categorias indisponíveis');
-    type Category = CategoryOption & { type: string };
+    type Category = MonthlyBudgetCategoryOption & { type: string };
     const data: { categories: Category[] } | Category[] = await response.json();
     return (Array.isArray(data) ? data : data.categories).filter((category) => category.type === 'EXPENSE');
   }, (result) => { if (result.status === 'ready') setCategories(result.data); }), [refreshCounter]);
@@ -140,6 +135,13 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
     setFormMonth(String(currentMonth));
     setFormYear(String(currentYear));
     setDialogOpen(true);
+  };
+
+  const handleFieldChange = (field: keyof MonthlyBudgetDraft, value: string) => {
+    if (field === 'categoryId') setFormCategoryId(value);
+    else if (field === 'amount') setFormAmount(value);
+    else if (field === 'month') setFormMonth(value);
+    else if (field === 'year') setFormYear(value);
   };
 
   // Submit handler
@@ -212,21 +214,6 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
     }
   };
 
-  const months = [
-    { value: '1', label: 'Janeiro' },
-    { value: '2', label: 'Fevereiro' },
-    { value: '3', label: 'Março' },
-    { value: '4', label: 'Abril' },
-    { value: '5', label: 'Maio' },
-    { value: '6', label: 'Junho' },
-    { value: '7', label: 'Julho' },
-    { value: '8', label: 'Agosto' },
-    { value: '9', label: 'Setembro' },
-    { value: '10', label: 'Outubro' },
-    { value: '11', label: 'Novembro' },
-    { value: '12', label: 'Dezembro' },
-  ];
-
   const years = [currentYear - 1, currentYear, currentYear + 1].map(String);
 
   const budgets = query.status === 'ready' ? query.data : [];
@@ -258,107 +245,23 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
       ))}
 
       {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle>
-              {editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}
-            </DialogTitle>
-            <DialogDescription>Informe a categoria, o valor e o período do limite.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Category */}
-            <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-category`}>Categoria</Label>
-              <Select
-                value={formCategoryId}
-                onValueChange={setFormCategoryId}
-              >
-                <SelectTrigger id={`${fieldId}-category`} className="w-full">
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full inline-block"
-                          style={{ backgroundColor: cat.color }}
-                        />
-                        {cat.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-amount`}>Valor do Limite (R$)</Label>
-              <Input
-                id={`${fieldId}-amount`}
-                type="number"
-                placeholder="0,00"
-                step="0.01"
-                min="0"
-                value={formAmount}
-                onChange={(e) => setFormAmount(e.target.value)}
-              />
-            </div>
-
-            {/* Month / Year */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor={`${fieldId}-month`}>Mês</Label>
-                <Select value={formMonth} onValueChange={setFormMonth}>
-                  <SelectTrigger id={`${fieldId}-month`} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={`${fieldId}-year`}>Ano</Label>
-                <Select value={formYear} onValueChange={setFormYear}>
-                  <SelectTrigger id={`${fieldId}-year`} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((y) => (
-                      <SelectItem key={y} value={y}>
-                        {y}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              disabled={submitting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || !formCategoryId || !formAmount}
-            >
-              {submitting ? 'Salvando...' : editingBudget ? 'Atualizar' : 'Criar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MonthlyBudgetEditor
+        mode={editingBudget ? 'edit' : 'create'}
+        open={dialogOpen}
+        submitting={submitting}
+        fieldId={fieldId}
+        form={{
+          categoryId: formCategoryId,
+          amount: formAmount,
+          month: formMonth,
+          year: formYear,
+        }}
+        categories={categories}
+        years={years}
+        onFieldChange={handleFieldChange}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleSubmit}
+      />
 
       <AlertDialog
         open={!!pendingDeleteBudget}
@@ -402,11 +305,11 @@ export function BudgetHeader({ status, monthLabel, openCreateDialog, refreshBudg
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold sm:text-base">Orçamento mensal</h2>
-          <p className={`${smallText} mt-1`}>Mês atual · {monthLabel}.</p>
+          <p className={cn(smallText, 'mt-1')}>Mês atual · {monthLabel}.</p>
         </div>
         {status !== 'loading' && <Button variant="outline" size="sm" onClick={openCreateDialog}><Plus aria-hidden="true" />Novo limite</Button>}
       </div>
-      {status === 'loading' && <p role="status" className={`${smallText} mt-4`}>Carregando orçamento…</p>}
+      {status === 'loading' && <p role="status" className={cn(smallText, 'mt-4')}>Carregando orçamento…</p>}
       {status === 'error' && <div className="mt-4 space-y-2"><p role="alert" className="text-sm text-destructive">Não foi possível carregar o orçamento.</p><Button size="sm" variant="outline" onClick={refreshBudgets}>Tentar novamente</Button></div>}
     </>
   );

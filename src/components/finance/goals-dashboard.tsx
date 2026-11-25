@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FinanceMetric } from '@/components/shared/finance-metric';
+import { FinanceProgress } from '@/components/shared/finance-progress';
 import { currencyFmt } from '@/lib/helpers';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -121,30 +123,98 @@ export function GoalCategoryLabel({ color, label }: { color: string | null; labe
   );
 }
 
-function GoalProgressBar({ percent, label }: { percent: number; label: string }) {
-  const width = Math.min(100, Math.max(0, percent));
-  return (
-    <div role="progressbar" aria-label={label} aria-valuenow={width} aria-valuetext={`${Math.round(percent)}%`} className="h-1.5 overflow-hidden rounded-full bg-muted">
-      <div className="h-full bg-primary" style={{ width: `${width}%` }} />
-    </div>
-  );
-}
-
 export function GoalsProgress({ summary }: { summary: Summary }) {
+  const width = Math.min(100, Math.max(0, summary.overallProgress));
   return (
     <div className="space-y-2 rounded-md border border-border px-3 py-2.5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h3 className="text-sm font-medium">Progresso geral</h3>
         <p className="text-xs">{getProgressLabel(summary.overallProgress)} · <span className={amount}>{Math.round(summary.overallProgress)}%</span></p>
       </div>
-      <GoalProgressBar percent={summary.overallProgress} label="Progresso geral das metas" />
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <FinanceProgress
+        label="Progresso geral das metas"
+        value={width}
+        min={0}
+        max={100}
+        unit="%"
+        valueText={`${Math.round(summary.overallProgress)}%`}
+        showHeader={false}
+      />
+      <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
         {([['Acumulado', summary.totalCurrentAmount], ['Total alvo', summary.totalTargetAmount], ['Restante', Math.max(summary.totalTargetAmount - summary.totalCurrentAmount, 0)]] as const).map(([label, value]) => (
-          <div key={label} className="min-w-0"><dt className="text-xs text-muted-foreground">{label}</dt><dd className={amount}>{currencyFmt(value)}</dd></div>
+          <FinanceMetric key={label} variant="compact" label={label} value={currencyFmt(value)} valueClassName="text-sm" />
         ))}
       </dl>
       {summary.estimatedCompletion && <p className="text-xs text-muted-foreground">Previsão de conclusão: {summary.estimatedCompletion}</p>}
     </div>
+  );
+}
+
+function CombinedGoalRow({ goal, isExpanded, onToggleExpand }: {
+  goal: CombinedGoal;
+  isExpanded: boolean;
+  onToggleExpand: (id: string) => void;
+}) {
+  const width = Math.min(100, Math.max(0, goal.progress));
+  return (
+    <li className="min-w-0 space-y-2 py-3">
+      <Button variant="ghost" type="button" aria-expanded={isExpanded} onClick={() => onToggleExpand(goal.id)} className="h-auto min-h-9 w-full justify-between whitespace-normal px-2 py-1.5 text-left">
+        <span className="min-w-0 break-words">{goal.name}</span><ChevronDown aria-hidden="true" className={isExpanded ? 'rotate-180' : ''} />
+      </Button>
+      <div className="space-y-1.5 px-2 text-xs">
+        <div className="flex flex-wrap justify-between gap-x-2">
+          <p className="flex min-w-0 flex-wrap gap-x-2 gap-y-1 break-words">
+            <span>{goal.isCompleted ? 'Concluída' : 'Em andamento'}</span>
+            {goal.source === 'budget' && <span className="text-muted-foreground">Orçamento</span>}
+            {goal.categoryName && <GoalCategoryLabel color={goal.categoryColor} label={goal.categoryName} />}
+          </p>
+          <span className="font-mono tabular-nums">{Math.round(goal.progress)}%</span>
+        </div>
+        <FinanceProgress
+          label={`Progresso da meta ${goal.name}`}
+          value={width}
+          min={0}
+          max={100}
+          unit="%"
+          valueText={`${Math.round(goal.progress)}%`}
+          showHeader={false}
+        />
+        <p className="break-words text-muted-foreground">Atual: {currencyFmt(goal.currentAmount)} · Alvo: {currencyFmt(goal.targetAmount)}</p>
+      </div>
+      {isExpanded && (
+        <dl className="grid grid-cols-2 gap-2 border-t border-border px-2 pt-2 text-xs sm:grid-cols-4">
+          <FinanceMetric variant="compact" label="Faltam" value={currencyFmt(Math.max(goal.targetAmount - goal.currentAmount, 0))} valueClassName="text-sm" />
+          {goal.monthlyContribution > 0 && (
+            <FinanceMetric
+              variant="compact"
+              label="Contribuição mensal"
+              value={`${currencyFmt(goal.monthlyContribution)}/mês`}
+              caption={Math.max(goal.targetAmount - goal.currentAmount, 0) > 0 ? `~${Math.ceil(Math.max(goal.targetAmount - goal.currentAmount, 0) / goal.monthlyContribution)} meses` : undefined}
+              valueClassName="text-sm"
+            />
+          )}
+          {goal.startDate && <div><dt className="text-muted-foreground">Início</dt><dd>{new Date(goal.startDate).toLocaleDateString('pt-BR')}</dd></div>}
+          {(goal.endDate || goal.targetDate) && <div><dt className="text-muted-foreground">Prazo</dt><dd>{new Date((goal.endDate || goal.targetDate)!).toLocaleDateString('pt-BR')}</dd></div>}
+        </dl>
+      )}
+    </li>
+  );
+}
+
+function GoalInvestmentRow({ inv }: { inv: InvestmentItem }) {
+  const invType = INVESTMENT_TYPES[inv.type] || INVESTMENT_TYPES.OTHER;
+  const isPositive = inv.returnRate >= 0;
+  const profit = inv.currentAmount - inv.totalInvested;
+  return (
+    <li className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4">
+      <div className="min-w-0"><h3 className="break-words text-sm font-medium">{inv.name}</h3><p className="break-words text-xs text-muted-foreground">{invType.label}{inv.ticker && ` · ${inv.ticker}`}</p></div>
+      <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+        <FinanceMetric variant="compact" label="Valor atual" value={currencyFmt(inv.currentAmount)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label="Investido" value={currencyFmt(inv.totalInvested)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label="Resultado" value={`${profit >= 0 ? '+' : ''}${currencyFmt(profit)}`} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label="Retorno" value={`${isPositive ? '+' : ''}${inv.returnRate.toFixed(1)}%`} valueClassName="text-sm" />
+      </dl>
+    </li>
   );
 }
 
@@ -266,9 +336,9 @@ export function GoalsDashboardContent({
   return (
     <section data-qa="quiet-goals-dashboard" aria-label="Central de metas" className={panel}>
       <header><h2 className="font-semibold">Central de metas</h2><p className="text-xs text-muted-foreground">Acompanhe seus objetivos financeiros</p></header>
-      <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs sm:grid-cols-4">
         {([['Total de metas', summary.totalGoals], ['Em progresso', summary.inProgressGoals], ['Concluídas', summary.completedGoals], ['Total acumulado', currencyFmt(summary.totalCurrentAmount)]] as const).map(([label, value]) => (
-          <div key={label} className="min-w-0"><dt className="text-xs text-muted-foreground">{label}</dt><dd className={amount}>{value}</dd></div>
+          <FinanceMetric key={label} variant="compact" label={label} value={value} valueClassName="text-sm" />
         ))}
       </dl>
       <Tabs defaultValue="overview" className="min-w-0">
@@ -279,11 +349,11 @@ export function GoalsDashboardContent({
         </TabsList>
         <TabsContent value="overview" className="min-w-0 space-y-4 pt-2">
           <GoalsProgress summary={summary} />
-          <dl aria-label="Acumulado por grupo" className="grid grid-cols-2 gap-3 border-b border-border pb-3 sm:grid-cols-4">
-            <div className="min-w-0"><dt className="text-xs text-muted-foreground">Metas de orçamento</dt><dd className={amount}>{currencyFmt(budgetGoals.reduce((s, g) => s + g.currentAmount, 0))}</dd><dd className="text-xs text-muted-foreground">{budgetGoals.length} meta{budgetGoals.length !== 1 ? 's' : ''}</dd></div>
-            <div className="min-w-0"><dt className="text-xs text-muted-foreground">Economias</dt><dd className={amount}>{currencyFmt(savingsGoals.reduce((s, g) => s + g.currentAmount, 0))}</dd><dd className="text-xs text-muted-foreground">{savingsGoals.length} meta{savingsGoals.length !== 1 ? 's' : ''}</dd></div>
-            <div className="min-w-0"><dt className="text-xs text-muted-foreground">Investimentos</dt><dd className={amount}>{currencyFmt(investments.reduce((s, i) => s + i.currentAmount, 0))}</dd><dd className="text-xs text-muted-foreground">{investments.length} investimento{investments.length !== 1 ? 's' : ''}</dd></div>
-            <div className="min-w-0"><dt className="text-xs text-muted-foreground">Resultado dos investimentos</dt><dd className={amount}>{currencyFmt(investmentResult)}</dd></div>
+          <dl aria-label="Acumulado por grupo" className="grid grid-cols-2 gap-3 border-b border-border pb-3 text-xs sm:grid-cols-4">
+            <FinanceMetric variant="compact" label="Metas de orçamento" value={currencyFmt(budgetGoals.reduce((s, g) => s + g.currentAmount, 0))} caption={`${budgetGoals.length} meta${budgetGoals.length !== 1 ? 's' : ''}`} valueClassName="text-sm" />
+            <FinanceMetric variant="compact" label="Economias" value={currencyFmt(savingsGoals.reduce((s, g) => s + g.currentAmount, 0))} caption={`${savingsGoals.length} meta${savingsGoals.length !== 1 ? 's' : ''}`} valueClassName="text-sm" />
+            <FinanceMetric variant="compact" label="Investimentos" value={currencyFmt(investments.reduce((s, i) => s + i.currentAmount, 0))} caption={`${investments.length} investimento${investments.length !== 1 ? 's' : ''}`} valueClassName="text-sm" />
+            <FinanceMetric variant="compact" label="Resultado dos investimentos" value={currencyFmt(investmentResult)} valueClassName="text-sm" />
           </dl>
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Metas recentes</h3>
@@ -302,62 +372,23 @@ export function GoalsDashboardContent({
         <TabsContent value="goals" className="min-w-0 pt-2">
           {combinedGoals.length === 0 ? <p className="py-2 text-sm text-muted-foreground">Nenhuma meta encontrada. Crie metas de orçamento ou poupança para acompanhar aqui.</p> : (
             <ul className="divide-y divide-border">
-              {combinedGoals.map((goal) => {
-                const isExpanded = expandedGoal === goal.id;
-                return (
-                  <li key={goal.id} className="min-w-0 space-y-2 py-3">
-                    <Button variant="ghost" type="button" aria-expanded={isExpanded} onClick={() => onToggleExpand(goal.id)} className="h-auto min-h-9 w-full justify-between whitespace-normal px-2 py-1.5 text-left">
-                      <span className="min-w-0 break-words">{goal.name}</span><ChevronDown aria-hidden="true" className={isExpanded ? 'rotate-180' : ''} />
-                    </Button>
-                    <div className="space-y-1.5 px-2 text-xs">
-                      <div className="flex flex-wrap justify-between gap-x-2">
-                        <p className="flex min-w-0 flex-wrap gap-x-2 gap-y-1 break-words">
-                          <span>{goal.isCompleted ? 'Concluída' : 'Em andamento'}</span>
-                          {goal.source === 'budget' && <span className="text-muted-foreground">Orçamento</span>}
-                          {goal.categoryName && <GoalCategoryLabel color={goal.categoryColor} label={goal.categoryName} />}
-                        </p>
-                        <span className="font-mono tabular-nums">{Math.round(goal.progress)}%</span>
-                      </div>
-                      <GoalProgressBar percent={goal.progress} label={`Progresso da meta ${goal.name}`} />
-                      <p className="break-words text-muted-foreground">Atual: {currencyFmt(goal.currentAmount)} · Alvo: {currencyFmt(goal.targetAmount)}</p>
-                    </div>
-                    {isExpanded && (
-                      <dl className="grid grid-cols-2 gap-2 border-t border-border px-2 pt-2 text-xs sm:grid-cols-4">
-                        <div className="min-w-0"><dt className="text-muted-foreground">Faltam</dt><dd className={amount}>{currencyFmt(Math.max(goal.targetAmount - goal.currentAmount, 0))}</dd></div>
-                        {goal.monthlyContribution > 0 && (
-                          <div className="min-w-0"><dt className="text-muted-foreground">Contribuição mensal</dt><dd className={amount}>{currencyFmt(goal.monthlyContribution)}/mês</dd>
-                            {Math.max(goal.targetAmount - goal.currentAmount, 0) > 0 && <dd className="text-muted-foreground">~{Math.ceil(Math.max(goal.targetAmount - goal.currentAmount, 0) / goal.monthlyContribution)} meses</dd>}
-                          </div>
-                        )}
-                        {goal.startDate && <div><dt className="text-muted-foreground">Início</dt><dd>{new Date(goal.startDate).toLocaleDateString('pt-BR')}</dd></div>}
-                        {(goal.endDate || goal.targetDate) && <div><dt className="text-muted-foreground">Prazo</dt><dd>{new Date((goal.endDate || goal.targetDate)!).toLocaleDateString('pt-BR')}</dd></div>}
-                      </dl>
-                    )}
-                  </li>
-                );
-              })}
+              {combinedGoals.map((goal) => (
+                <CombinedGoalRow
+                  key={goal.id}
+                  goal={goal}
+                  isExpanded={expandedGoal === goal.id}
+                  onToggleExpand={onToggleExpand}
+                />
+              ))}
             </ul>
           )}
         </TabsContent>
         <TabsContent value="investments" className="min-w-0 pt-2">
           {investments.length === 0 ? <p className="py-2 text-sm text-muted-foreground">Nenhum investimento. Comece a investir para acompanhar sua carteira aqui.</p> : (
             <ul className="divide-y divide-border">
-              {investments.map((inv) => {
-                const invType = INVESTMENT_TYPES[inv.type] || INVESTMENT_TYPES.OTHER;
-                const isPositive = inv.returnRate >= 0;
-                const profit = inv.currentAmount - inv.totalInvested;
-                return (
-                  <li key={inv.id} className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4">
-                    <div className="min-w-0"><h3 className="break-words text-sm font-medium">{inv.name}</h3><p className="break-words text-xs text-muted-foreground">{invType.label}{inv.ticker && ` · ${inv.ticker}`}</p></div>
-                    <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                      <div className="min-w-0"><dt className="text-muted-foreground">Valor atual</dt><dd className={amount}>{currencyFmt(inv.currentAmount)}</dd></div>
-                      <div className="min-w-0"><dt className="text-muted-foreground">Investido</dt><dd className={amount}>{currencyFmt(inv.totalInvested)}</dd></div>
-                      <div className="min-w-0"><dt className="text-muted-foreground">Resultado</dt><dd className={amount}>{profit >= 0 ? '+' : ''}{currencyFmt(profit)}</dd></div>
-                      <div className="min-w-0"><dt className="text-muted-foreground">Retorno</dt><dd className={amount}>{isPositive ? '+' : ''}{inv.returnRate.toFixed(1)}%</dd></div>
-                    </dl>
-                  </li>
-                );
-              })}
+              {investments.map((inv) => (
+                <GoalInvestmentRow key={inv.id} inv={inv} />
+              ))}
             </ul>
           )}
         </TabsContent>

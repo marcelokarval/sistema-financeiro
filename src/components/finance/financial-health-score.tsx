@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
 import { currencyFmt } from '@/lib/helpers';
 
@@ -189,7 +190,6 @@ interface DashboardData {
 }
 
 const panel = 'min-w-0 space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5';
-const value = 'break-words font-mono text-sm font-semibold tabular-nums';
 
 export function HealthBreakdown({ data }: { data: DashboardData }) {
   const { total: score, breakdown } = calculateScore(data);
@@ -221,9 +221,9 @@ export function HealthBreakdown({ data }: { data: DashboardData }) {
           />
         </div>
         <dl aria-label="Resumo mensal" className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 sm:border-l sm:border-border sm:pl-4">
-          <div className="min-w-0"><dt className="text-muted-foreground">Receita do mês</dt><dd className={value}>{currencyFmt(data.monthIncome)}</dd></div>
-          <div className="min-w-0"><dt className="text-muted-foreground">Despesa do mês</dt><dd className={value}>{currencyFmt(data.monthExpense)}</dd></div>
-          <div className="min-w-0"><dt className="text-muted-foreground">{balance >= 0 ? 'Saldo do mês' : 'Déficit do mês'}</dt><dd className={value}>{currencyFmt(balance)}</dd></div>
+          <FinanceMetric variant="compact" label="Receita do mês" value={currencyFmt(data.monthIncome)} valueClassName="text-sm" />
+          <FinanceMetric variant="compact" label="Despesa do mês" value={currencyFmt(data.monthExpense)} valueClassName="text-sm" />
+          <FinanceMetric variant="compact" label={balance >= 0 ? 'Saldo do mês' : 'Déficit do mês'} value={currencyFmt(balance)} valueClassName="text-sm" />
         </dl>
       </div>
       <div>

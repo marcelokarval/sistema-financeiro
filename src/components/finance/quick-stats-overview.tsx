@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { QueryPanel } from '@/components/shared/query-panel';
 import { currencyFmt } from '@/lib/helpers';
+import { cn } from '@/lib/utils';
 
 // --- Types ---
 interface QuickStatsData {
@@ -119,13 +121,13 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
           Saúde Financeira
         </span>
         <div className="flex items-center gap-1.5">
-          <TrendIcon className={`w-3.5 h-3.5 ${trendColor}`} />
-          <span className={`text-[11px] font-medium ${trendColor}`}>{trendLabel}</span>
+          <TrendIcon className={cn('w-3.5 h-3.5', trendColor)} />
+          <span className={cn('text-[11px] font-medium', trendColor)}>{trendLabel}</span>
         </div>
       </div>
       <div className="flex items-center gap-3">
         <div aria-hidden="true" className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${barWidth}%` }} />
+          <div className={cn('h-full rounded-full', barColor)} style={{ width: `${barWidth}%` }} />
         </div>
         <span className="text-[11px] font-bold tabular-nums text-muted-foreground min-w-[40px] text-right">
           {savingsRate.toFixed(1)}%
@@ -167,23 +169,15 @@ export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: nu
 
   if (loading || !data) {
     return (
-      <section aria-labelledby="quiet-quick-stats" className="min-w-0 rounded-lg border border-border bg-card text-card-foreground">
-        <header className="px-3 py-3 sm:px-4">
-          <h3 id="quiet-quick-stats" className="text-sm font-semibold">Resumo rápido</h3>
-        </header>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-3 text-sm text-muted-foreground sm:px-4">
-          <p role={loading ? 'status' : 'alert'}>{loading ? 'Carregando indicadores…' : 'Não foi possível carregar os indicadores.'}</p>
-          {!loading && (
-            <button
-              type="button"
-              onClick={() => void fetchStats()}
-              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-(--ds-focus)"
-            >
-              Tentar novamente
-            </button>
-          )}
-        </div>
-      </section>
+      <QueryPanel
+        titleId="quiet-quick-stats"
+        title="Resumo rápido"
+        status={loading ? 'loading' : 'error'}
+        loadingMessage="Carregando indicadores…"
+        errorMessage="Não foi possível carregar os indicadores."
+        retryLabel="Tentar novamente"
+        onRetry={() => void fetchStats()}
+      />
     );
   }
 
@@ -276,15 +270,17 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
   ];
 
   return (
-    <section aria-labelledby="quiet-quick-stats" className="min-w-0 rounded-lg border border-border bg-card text-card-foreground">
-      <header className="px-3 py-3 sm:px-4">
-        <h3 id="quiet-quick-stats" className="text-sm font-semibold">Resumo rápido</h3>
-        <p className="text-xs text-muted-foreground">Posição atual e indicadores do mês · variações ante o mês anterior</p>
-      </header>
+    <QueryPanel
+      titleId="quiet-quick-stats"
+      title="Resumo rápido"
+      subtitle="Posição atual e indicadores do mês · variações ante o mês anterior"
+      status="success"
+      contentClassName="space-y-0 p-0 sm:p-0"
+    >
       <dl className="grid grid-cols-2 sm:grid-cols-3 sm:[&>div:not(:nth-child(3n+1))]:border-l max-sm:[&>div:nth-child(even)]:border-l">
         {statsConfig.map((stat) => <StatCard key={stat.label} {...stat} />)}
       </dl>
       <HealthBar savingsRate={current.savingsRate} balanceTrend={balanceTrend} />
-    </section>
+    </QueryPanel>
   );
 }

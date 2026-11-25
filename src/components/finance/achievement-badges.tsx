@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trophy, PiggyBank, Target, TrendingUp, Wallet, CreditCard, Tag, Award, Shield, BarChart3, Zap, Star, Crown, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { FinanceMetric } from '@/components/shared/finance-metric';
+import { FinanceProgress } from '@/components/shared/finance-progress';
 
 const iconMap: Record<string, React.ElementType> = {
   PiggyBank,
@@ -75,9 +77,15 @@ export function AchievementRow({ achievement }: { achievement: Achievement }) {
         ) : (
           <>
             <p className="font-mono tabular-nums">{Math.round(achievement.progress)}%</p>
-            <div role="progressbar" aria-label={`Progresso de ${achievement.title}`} aria-valuenow={width} aria-valuetext={`${Math.round(achievement.progress)}%`} className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className="h-full bg-primary" style={{ width: `${width}%` }} />
-            </div>
+            <FinanceProgress
+              label={`Progresso de ${achievement.title}`}
+              value={width}
+              min={0}
+              max={100}
+              unit="%"
+              valueText={`${Math.round(achievement.progress)}%`}
+              showHeader={false}
+            />
           </>
         )}
       </div>
@@ -170,8 +178,8 @@ export function AchievementBadgesContent({
         <p className="text-sm text-muted-foreground">Nenhuma conquista disponível no momento.</p>
       ) : (
         <>
-          <dl className="grid grid-cols-2 gap-3 border-y border-border py-3">
-            <div><dt className="text-xs text-muted-foreground">Desbloqueadas</dt><dd className="font-mono text-lg font-semibold tabular-nums">{unlockedCount}/{totalCount}</dd></div>
+          <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs">
+            <FinanceMetric variant="compact" label="Desbloqueadas" value={`${unlockedCount}/${totalCount}`} valueClassName="text-lg" />
             <div>
               <dt className="text-xs text-muted-foreground">Completude</dt>
               <dd className="font-mono text-lg font-semibold tabular-nums">{completionPct}%</dd>

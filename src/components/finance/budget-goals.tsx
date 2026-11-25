@@ -4,24 +4,6 @@ import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react
 import { MoreHorizontal, Pencil, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +11,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { currencyFmt } from '@/lib/helpers';
+import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
+import {
+  BudgetGoalEditor,
+  type BudgetGoalCategoryOption,
+  type BudgetGoalDraft,
+} from './budget-goal-editor';
 
 interface BudgetGoal {
   id: string;
@@ -44,22 +32,7 @@ interface BudgetGoal {
   isCompleted: boolean;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface GoalFormData {
-  name: string;
-  description: string;
-  targetAmount: string;
-  currentAmount: string;
-  categoryId: string;
-  endDate: string;
-}
-
-const emptyForm: GoalFormData = {
+const emptyForm: BudgetGoalDraft = {
   name: '',
   description: '',
   targetAmount: '',
@@ -128,7 +101,7 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
         />
         <dl className="flex flex-wrap gap-x-4 gap-y-1">
           {([['Atual', goal.currentAmount], ['Alvo', goal.targetAmount], ...(!goal.isCompleted && remaining > 0 ? [['Restante', remaining] as const] : [])] as const).map(([label, value]) => (
-            <div key={label} className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(value)}</dd></div>
+            <FinanceMetric key={label} variant="compact" label={label} value={currencyFmt(value)} valueClassName="text-xs font-normal" />
           ))}
         </dl>
       </div>
@@ -162,12 +135,12 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
 
 export function BudgetGoalsWidget() {
   const [goals, setGoals] = useState<BudgetGoal[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<BudgetGoalCategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<BudgetGoal | null>(null);
-  const [form, setForm] = useState<GoalFormData>(emptyForm);
+  const [form, setForm] = useState<BudgetGoalDraft>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const createButton = useRef<HTMLButtonElement>(null);
   const dialogOrigin = useRef<HTMLButtonElement | null>(null);
@@ -231,6 +204,10 @@ export function BudgetGoalsWidget() {
       endDate: goal.endDate ? goal.endDate.split('T')[0] : '',
     });
     setDialogOpen(true);
+  };
+
+  const handleFieldChange = (field: keyof BudgetGoalDraft, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async () => {
@@ -330,125 +307,21 @@ export function BudgetGoalsWidget() {
         onToggle={handleToggleComplete}
         onRetry={fetchData}
       />
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md" onCloseAutoFocus={(event) => {
+      <BudgetGoalEditor
+        mode={editingGoal ? 'edit' : 'create'}
+        open={dialogOpen}
+        submitting={submitting}
+        form={form}
+        categories={categories}
+        onFieldChange={handleFieldChange}
+        onOpenChange={setDialogOpen}
+        onCloseAutoFocus={(event) => {
           event.preventDefault();
           restoreBudgetGoalFocus(dialogOrigin.current, createButton.current);
           dialogOrigin.current = null;
-        }}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingGoal ? 'Editar Meta' : 'Nova Meta de Orçamento'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingGoal
-                ? 'Atualize os dados da sua meta de orçamento.'
-                : 'Defina um objetivo financeiro para acompanhar seu progresso.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="goal-name">Nome da meta *</Label>
-              <Input
-                id="goal-name"
-                placeholder="Ex: Reserva de emergência"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="goal-desc">Descrição</Label>
-              <Textarea
-                id="goal-desc"
-                placeholder="Descreva sua meta (opcional)"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={2}
-              />
-            </div>
-
-            <div className="grid gap-3 min-[400px]:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="goal-target">Valor alvo (R$) *</Label>
-                <Input
-                  id="goal-target"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="0,00"
-                  value={form.targetAmount}
-                  onChange={(e) => setForm({ ...form, targetAmount: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="goal-current">Valor atual (R$)</Label>
-                <Input
-                  id="goal-current"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0,00"
-                  value={form.currentAmount}
-                  onChange={(e) => setForm({ ...form, currentAmount: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="goal-category">Categoria</Label>
-                <Select
-                  value={form.categoryId}
-                  onValueChange={(val) => setForm({ ...form, categoryId: val })}
-                >
-                  <SelectTrigger id="goal-category" className="w-full min-w-0">
-                    <SelectValue placeholder="Selecionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="goal-end">Data limite</Label>
-                <Input
-                  id="goal-end"
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmit} disabled={submitting} className="gap-1.5">
-              {submitting ? (
-                <>
-                  Salvando...
-                </>
-              ) : editingGoal ? (
-                'Salvar Alterações'
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  Criar Meta
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        }}
+        onSubmit={handleSubmit}
+      />
     </>
   );
 }

@@ -4,10 +4,12 @@ import { describe, expect, test } from 'bun:test';
 import React, { createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
-import { QuickStatsPanel } from './quick-stats-overview';
+import { QuickStatsOverview, QuickStatsPanel } from './quick-stats-overview';
+import { SmartInsightsContent } from './smart-insights';
 import { InvestmentEntries } from './investments-view';
 import { AdvisorComposer } from './advisor-composer';
 import { NotificationPanel } from './notification-panel';
+import { QueryPanel } from '@/components/shared/query-panel';
 
 describe('Wave 1 — remoção de framer-motion e residuais do core', () => {
   test('nenhum arquivo em src/ importa framer-motion', () => {
@@ -138,5 +140,87 @@ describe('Wave 1 — remoção de framer-motion e residuais do core', () => {
     );
     expect(html).toContain('aria-label="Editar transação: Aporte mensal"');
     expect(html).toContain('aria-label="Excluir transação: Aporte mensal"');
+  });
+});
+
+describe('Task 0017 — SmartInsights e QuickStatsOverview com QueryPanel preservando cálculos, zero e sparkline', () => {
+  test('SmartInsightsContent adota QueryPanel distinguindo carregamento, erro com retry, vazio e sucesso filtrado', () => {
+    const src = readFileSync(new URL('./smart-insights.tsx', import.meta.url), 'utf8');
+    expect(src).toContain("from '@/components/shared/query-panel'");
+    expect(src).toContain('<QueryPanel');
+
+    const tree = SmartInsightsContent({
+      insights: [],
+      loading: false,
+      error: false,
+      activeTab: 'all',
+      onTabChange: () => {},
+      onRetry: () => {},
+    });
+    expect(React.isValidElement(tree)).toBe(true);
+    expect((tree as React.ReactElement).type).toBe(QueryPanel);
+
+    const emptyHtml = renderToStaticMarkup(tree);
+    expect(emptyHtml).toContain('Nenhuma análise disponível');
+    expect(emptyHtml).not.toContain('Tentar novamente');
+
+    const errHtml = renderToStaticMarkup(
+      <SmartInsightsContent
+        insights={[]}
+        loading={false}
+        error={true}
+        activeTab="all"
+        onTabChange={() => {}}
+        onRetry={() => {}}
+      />,
+    );
+    expect(errHtml).toContain('role="alert"');
+    expect(errHtml).toContain('Tentar novamente');
+  });
+
+  test('QuickStatsOverview e QuickStatsPanel adotam QueryPanel preservando refreshCounter, zero real, sparkline e HealthBar', () => {
+    const src = readFileSync(new URL('./quick-stats-overview.tsx', import.meta.url), 'utf8');
+    expect(src).toContain("from '@/components/shared/query-panel'");
+    expect(src).toContain('<QueryPanel');
+    expect(src).toContain('refreshCounter');
+    expect(src).toContain('Tentar novamente');
+
+    const loadingHtml = renderToStaticMarkup(<QuickStatsOverview refreshCounter={2} />);
+    expect(loadingHtml).toContain('aria-busy="true"');
+    expect(loadingHtml).toContain('Carregando indicadores…');
+
+    const zeroPanelEl = QuickStatsPanel({
+      data: {
+        current: {
+          totalBalance: 0,
+          cardDebt: 0,
+          investments: 0,
+          savingsGoals: 0,
+          netWorth: 0,
+          monthlyIncome: 0,
+          monthlyExpense: 0,
+          monthlySavings: 0,
+          savingsRate: 0,
+        },
+        sparklines: {
+          balance: [0, 0],
+          income: [],
+          expense: [],
+        },
+        changes: {
+          incomeVsLastMonth: 0,
+          expenseVsLastMonth: 0,
+          savingsVsLastMonth: 0,
+        },
+      },
+    });
+    expect(React.isValidElement(zeroPanelEl)).toBe(true);
+    expect((zeroPanelEl as React.ReactElement).type).toBe(QueryPanel);
+
+    const zeroHtml = renderToStaticMarkup(zeroPanelEl);
+    expect(zeroHtml).toContain('R$ 0,00');
+    expect(zeroHtml).toContain('0.0%');
+    expect(zeroHtml).toContain('Estável');
+    expect(zeroHtml).not.toContain('do patrimônio (valor absoluto)');
   });
 });

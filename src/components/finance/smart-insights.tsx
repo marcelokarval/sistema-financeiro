@@ -22,8 +22,9 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
 import { useAppStore, type ViewType } from '@/lib/store';
+import { cn } from '@/lib/utils';
 
 // --- Types ---
 interface FinancialInsight {
@@ -95,7 +96,7 @@ export function InsightCard({ insight, onNavigate }: { insight: FinancialInsight
     <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-4">
       <span aria-hidden="true" className={color}>{getInsightIcon(insight.icon, insight.type)}</span>
       <div className="min-w-0 space-y-1">
-        <p className={`text-xs font-medium ${color}`}>{label}</p>
+        <p className={cn('text-xs font-medium', color)}>{label}</p>
         <h4 className="break-words text-sm font-semibold">{insight.title}</h4>
         <p className="break-words text-sm text-muted-foreground">{insight.description}</p>
         {insight.action && (
@@ -204,42 +205,39 @@ export function SmartInsightsContent({
   const positiveCount = insights.filter((i) => i.type === 'success').length;
   const alertCount = insights.filter((i) => i.type === 'warning' || i.type === 'danger').length;
   const infoCount = insights.filter((i) => i.type === 'info').length;
+  const status: QueryPanelStatus = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : !insights.length
+        ? 'empty'
+        : 'success';
 
   return (
-    <section aria-labelledby="quiet-insights" className="min-w-0 rounded-lg border border-border bg-card text-card-foreground">
-      <header className="px-3 py-3 sm:px-4">
-        <h3 id="quiet-insights" className="text-sm font-semibold">Insights inteligentes</h3>
-        <p className="text-xs text-muted-foreground">Análise automática das suas finanças</p>
-      </header>
-      {loading ? (
-        <p role="status" className="border-t border-border px-3 py-3 text-sm text-muted-foreground sm:px-4">Carregando análises…</p>
-      ) : error ? (
-        <div className="flex flex-wrap items-center gap-3 border-t border-border px-3 py-3 sm:px-4">
-          <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar os insights financeiros.</p>
-          <Button variant="outline" size="sm" className="min-h-9" onClick={onRetry}>
-            <RefreshCw aria-hidden="true" className="size-3.5" />
-            Tentar novamente
-          </Button>
-        </div>
-      ) : !insights.length ? (
-        <EmptyState />
-      ) : (
-        <>
-          <Tabs value={activeTab} onValueChange={onTabChange} className="border-y border-border px-3 py-2 sm:px-4">
-            <TabsList aria-label="Filtrar análises" className="grid h-auto w-full grid-cols-2 gap-1 sm:w-fit sm:grid-cols-4">
-              <TabsTrigger value="all" className="min-h-9 text-xs">Todos <span className="font-mono tabular-nums">{insights.length}</span></TabsTrigger>
-              <TabsTrigger value="positive" className="min-h-9 text-xs">Positivos <span className="font-mono tabular-nums">{positiveCount}</span></TabsTrigger>
-              <TabsTrigger value="alerts" className="min-h-9 text-xs">Alertas <span className="font-mono tabular-nums">{alertCount}</span></TabsTrigger>
-              <TabsTrigger value="info" className="min-h-9 text-xs">Informações <span className="font-mono tabular-nums">{infoCount}</span></TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {filteredInsights.length > 0 ? (
-            <ul className="divide-y divide-border">
-              {filteredInsights.map((insight) => <InsightCard key={insight.id} insight={insight} />)}
-            </ul>
-          ) : <EmptyState filtered />}
-        </>
-      )}
-    </section>
+    <QueryPanel
+      titleId="quiet-insights"
+      title="Insights inteligentes"
+      subtitle="Análise automática das suas finanças"
+      status={status}
+      loadingMessage="Carregando análises…"
+      errorMessage="Não foi possível carregar os insights financeiros."
+      emptyMessage="Nenhuma análise disponível. Adicione transações e contas para receber análises automáticas."
+      onRetry={onRetry}
+      contentClassName="space-y-0 p-0 sm:p-0"
+    >
+      <Tabs value={activeTab} onValueChange={onTabChange} className="border-b border-border px-3 py-2 sm:px-4">
+        <TabsList aria-label="Filtrar análises" className="grid h-auto w-full grid-cols-2 gap-1 sm:w-fit sm:grid-cols-4">
+          <TabsTrigger value="all" className="min-h-9 text-xs">Todos <span className="font-mono tabular-nums">{insights.length}</span></TabsTrigger>
+          <TabsTrigger value="positive" className="min-h-9 text-xs">Positivos <span className="font-mono tabular-nums">{positiveCount}</span></TabsTrigger>
+          <TabsTrigger value="alerts" className="min-h-9 text-xs">Alertas <span className="font-mono tabular-nums">{alertCount}</span></TabsTrigger>
+          <TabsTrigger value="info" className="min-h-9 text-xs">Informações <span className="font-mono tabular-nums">{infoCount}</span></TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {filteredInsights.length > 0 ? (
+        <ul className="divide-y divide-border">
+          {filteredInsights.map((insight) => <InsightCard key={insight.id} insight={insight} />)}
+        </ul>
+      ) : <EmptyState filtered />}
+    </QueryPanel>
   );
 }

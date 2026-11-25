@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
+import { FinanceMetric } from '@/components/shared/finance-metric';
+import { FinanceProgress } from '@/components/shared/finance-progress';
 import { currencyFmt } from '@/lib/helpers';
+import { cn } from '@/lib/utils';
 
 // --- Types ---
 interface ChallengeTarget {
@@ -85,19 +88,11 @@ function getSavingsLabel(rate: number) {
 const panel = 'min-w-0 space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5';
 const amount = 'break-words font-mono text-sm font-semibold tabular-nums';
 
-function SpendingProgress({ value, label }: { value: number; label: string }) {
-  const width = Math.min(100, Math.max(value, 0));
-  return (
-    <div role="progressbar" aria-label={label} aria-valuenow={width} aria-valuetext={`${value.toFixed(0)}%`} className="h-1.5 overflow-hidden rounded-full bg-muted">
-      <div className="h-full bg-primary" style={{ width: `${width}%` }} />
-    </div>
-  );
-}
-
 export function ChallengeRow({ challenge }: { challenge: ChallengeTarget }) {
   const [started, setStarted] = useState(() => readStartedChallenges().has(challenge.id));
   const label = challenge.progress >= 80 ? 'No caminho' : challenge.progress >= 50 ? 'Quase lá' : 'Precisa melhorar';
   const formatValue = (v: number, unit: string) => unit === 'currency' ? currencyFmt(v) : `${v.toFixed(1)}%`;
+  const width = Math.min(100, Math.max(challenge.progress, 0));
 
   return (
     <li className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center sm:gap-4">
@@ -107,7 +102,15 @@ export function ChallengeRow({ challenge }: { challenge: ChallengeTarget }) {
       </div>
       <div className="min-w-0 space-y-1.5 text-xs">
         <p className="flex flex-wrap justify-between gap-x-2"><span>{label}</span><span className="font-mono tabular-nums">{challenge.progress.toFixed(0)}%</span></p>
-        <SpendingProgress value={challenge.progress} label={`Progresso de ${challenge.title}`} />
+        <FinanceProgress
+          label={`Progresso de ${challenge.title}`}
+          value={width}
+          min={0}
+          max={100}
+          unit="%"
+          valueText={`${challenge.progress.toFixed(0)}%`}
+          showHeader={false}
+        />
         <p className="break-words text-muted-foreground">Atual: {formatValue(challenge.current, challenge.unit)} · Meta: {formatValue(challenge.target, challenge.unit)}</p>
       </div>
       <Button
@@ -180,20 +183,28 @@ export function SavingsChallengeContent({
         <h2 className="font-semibold">Desafios de economia</h2>
         <p className="text-xs capitalize text-muted-foreground">{format(new Date(), 'MMMM yyyy', { locale: ptBR })}</p>
       </header>
-      <dl aria-label="Economia no mês" className="grid grid-cols-2 gap-3 border-y border-border py-3 sm:grid-cols-3 xl:grid-cols-5">
-        <div className="min-w-0"><dt className="text-xs text-muted-foreground">Taxa de poupança</dt><dd className={amount}>{Math.round(data.savingsRate)}%</dd><dd className="text-xs">{getSavingsLabel(data.savingsRate)}</dd></div>
-        <div className="min-w-0"><dt className="text-xs text-muted-foreground">Economia no mês</dt><dd className={amount}>{currencyFmt(data.currentMonthSavings)}</dd></div>
-        <div className="min-w-0"><dt className="text-xs text-muted-foreground">Média diária de gastos</dt><dd className={amount}>{currencyFmt(data.dailyAverageExpense)}</dd></div>
-        <div className="min-w-0"><dt className="text-xs text-muted-foreground">Economia projetada</dt><dd className={amount}>{currencyFmt(data.projectedSavings)}</dd></div>
-        <div className="min-w-0"><dt className="text-xs text-muted-foreground">Dias restantes</dt><dd className={amount}>{data.daysRemaining}</dd></div>
+      <dl aria-label="Economia no mês" className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs sm:grid-cols-3 xl:grid-cols-5">
+        <FinanceMetric variant="compact" label="Taxa de poupança" value={`${Math.round(data.savingsRate)}%`} caption={getSavingsLabel(data.savingsRate)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label="Economia no mês" value={currencyFmt(data.currentMonthSavings)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label="Média diária de gastos" value={currencyFmt(data.dailyAverageExpense)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label="Economia projetada" value={currencyFmt(data.projectedSavings)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label="Dias restantes" value={data.daysRemaining} valueClassName="text-sm" />
       </dl>
       <div className="space-y-2 rounded-md border border-border px-3 py-2.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h3 className="text-sm font-medium">Gastos de hoje</h3>
           <p className="text-xs">{data.todaySpending > data.dailyTarget ? 'Meta ultrapassada' : 'Dentro da meta'}</p>
         </div>
-        <p className="break-words text-xs text-muted-foreground"><strong className={amount + ' text-foreground'}>{currencyFmt(data.todaySpending)}</strong> de {currencyFmt(data.dailyTarget)} disponíveis · {todayProgress.toFixed(0)}% da meta diária utilizada</p>
-        <SpendingProgress value={todayProgress} label="Uso da meta diária" />
+        <p className="break-words text-xs text-muted-foreground"><strong className={cn(amount, 'text-foreground')}>{currencyFmt(data.todaySpending)}</strong> de {currencyFmt(data.dailyTarget)} disponíveis · {todayProgress.toFixed(0)}% da meta diária utilizada</p>
+        <FinanceProgress
+          label="Uso da meta diária"
+          value={Math.min(100, Math.max(todayProgress, 0))}
+          min={0}
+          max={100}
+          unit="%"
+          valueText={`${todayProgress.toFixed(0)}%`}
+          showHeader={false}
+        />
         {data.todaySpending === 0 && <p className="text-xs text-muted-foreground">Nenhum gasto ainda</p>}
       </div>
       <div>
