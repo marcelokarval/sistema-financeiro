@@ -1,0 +1,147 @@
+{
+  "schemaVersion": "asds.harness-planning-review/1",
+  "packageId": "formalizar-componentizacao-extrema-frontend",
+  "revision": "r6",
+  "candidateSha256": "d34d919d47e93e49a188515c84c6f9a1cc311a03cf615cbb5ae15de97276bf75",
+  "inventoryDigest": "4c4f5dd174dc0d4a3031e77ea69d893d84ee44a51cf1eb3e01ad2e5e2ec01c92",
+  "policyDigest": "c6ef1e1ec8d7be452159ffe673f93cde82079ed187e84aa710dee0ca2064fba6",
+  "kind": "quality",
+  "priorReviewDigest": "2578d387613f9dbb2d4e36928574e469f5bdd8d47198d182afeaf570219f302f",
+  "verdict": "fail",
+  "findings": [
+    {
+      "id": "Q05",
+      "severity": "material",
+      "status": "open",
+      "evidence": "O oráculo de [0017:89](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/tasks/task-0017.md#L88-L91) exige que erro mantenha diálogo/rascunho sem delimitar a falha. No baseline eb76f7d, [Orçamento mensal:160–191](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/finance/monthly-budget-tracker.tsx#L160-L191), POST e PUT não OK com JSON válido anunciam erro, mas passam pelo fechamento e pela releitura; exceção de transporte cai no catch sem fechar. Já [Metas:252–269](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/finance/budget-goals.tsx#L252-L269) retorna antes do fechamento em HTTP não OK. A paridade prometida e a asserção genérica não podem valer juntas para os dois editores; a matriz temporal atual cobre o DELETE de Orçamento, não esse caminho de gravação.",
+      "expectedCorrection": "Delimitar no aceite DOM de 0017 os oráculos por fluxo e tipo de falha: preservar em Metas o diálogo/rascunho em HTTP não OK; em Orçamento distinguir HTTP não OK com JSON válido (anúncio, fechamento e releitura) de rejeição do fetch (diálogo preservado). Comparar foco e estado nos checkpoints pertinentes, sem mudar o controlador para satisfazer a fixture nem trocar a falha HTTP por rejeição de transporte.",
+      "disposition": "A folha 0017 não deve aprovar por um caso de erro mais estreito que o contrato nem exigir mudança de produto para passar; 0023 depende desse aceite."
+    }
+  ],
+  "limitations": [
+    {
+      "description": "Inspect confirmou o PASS de fidelidade registrado #89, o priorReviewDigest exato, 35 referências íntegras, 23 IDs e manifesto c244525dcb9b65f48c5a1ad23aa62cad1b84cd8ed835963c011ae44db18188f1. OpenSpec estrito passou. O validador ASDS nesta etapa pós-F reportou apenas o par ordenado F/Q incompleto; não é erro material adicional nem declaração de entrega. Conferi 18 folhas, cinco agrupadores, 38 arestas sem inversão, seis ondas sem colisão de escrita interna e 17 predecessoras transitivas de 0023.",
+      "blocksCoverage": false
+    },
+    {
+      "description": "Reavaliados Q01–Q04: seis invocações SQLite isoladas com flags e contagens próprias e zero skips; QA local de foco com caminhos explícitos, dados A/B e checkpoints de fechamento/remoção; seis células com CSS real e testemunhas de tema/breakpoint; calibração por blobs de eb76f7d e integração serial com ARCH_BASE_REF independente. A matriz distingue Caixinhas de Parcelas, DELETE de Consórcios da baixa, e releitura aguardada da não aguardada. Não executei produto, fixtures, gate ou navegador; não editei, registrei ou publiquei. As observações de comportamento são de fonte, não resultados de execução.",
+      "blocksCoverage": false
+    }
+  ],
+  "sourceReferenceIds": [
+    "proposal",
+    "design",
+    "spec:arquitetura-componentes-frontend",
+    "tasks-index",
+    "dag",
+    "dag-status",
+    "workflow-metadata",
+    "planning-summary",
+    "source:auditoria",
+    "source:baseline",
+    "source:processo",
+    "source:verificacao-futura",
+    "task:0001",
+    "task:0002",
+    "task:0003",
+    "task:0004",
+    "task:0005",
+    "task:0006",
+    "task:0007",
+    "task:0008",
+    "task:0009",
+    "task:0010",
+    "task:0011",
+    "task:0012",
+    "task:0013",
+    "task:0014",
+    "task:0015",
+    "task:0016",
+    "task:0017",
+    "task:0018",
+    "task:0019",
+    "task:0020",
+    "task:0021",
+    "task:0022",
+    "task:0023"
+  ],
+  "taskIds": [
+    "0001",
+    "0002",
+    "0003",
+    "0004",
+    "0005",
+    "0006",
+    "0007",
+    "0008",
+    "0009",
+    "0010",
+    "0011",
+    "0012",
+    "0013",
+    "0014",
+    "0015",
+    "0016",
+    "0017",
+    "0018",
+    "0019",
+    "0020",
+    "0021",
+    "0022",
+    "0023"
+  ],
+  "author": {
+    "actorId": "specs-canon",
+    "sessionId": "82bd3bde-1474-4705-872a-361588765ca7"
+  },
+  "reviewer": {
+    "actorId": "quality-r6",
+    "sessionId": "462d3f7a-6246-4249-9490-bce5cae1578a",
+    "agentRole": "quality",
+    "parentSessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+  },
+  "assignment": {
+    "id": "ae679c52-db6f-4c11-8ab3-78115a4df31f",
+    "requestedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f",
+    "kind": "quality",
+    "candidateSha256": "d34d919d47e93e49a188515c84c6f9a1cc311a03cf615cbb5ae15de97276bf75",
+    "scopeTaskIds": [
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
+      "0017",
+      "0018",
+      "0019",
+      "0020",
+      "0021",
+      "0022",
+      "0023"
+    ]
+  },
+  "evidence": {
+    "harness": "antigravity-cli/swarm",
+    "sessionId": "462d3f7a-6246-4249-9490-bce5cae1578a",
+    "messageIds": [
+      "ae679c52-db6f-4c11-8ab3-78115a4df31f",
+      "95086b1b-7ccf-41cd-864f-478b7220af3b"
+    ],
+    "requestDigest": "3d495534f01a008219ffce41b963edb7b750943ca7007ea20eaa9b6f601dbd7c",
+    "resultDigest": "7ecddbf5a64d0b6fa56da0880b3f9ce74ba7d73c60c97cdb6ab5c9a09a58086f",
+    "persistedResultPath": "reviews/quality-r6-result.txt",
+    "observedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+  },
+  "envelopeDigest": "3dc162ca1084237d3fb0bc76fdcf4e7e05a631c342780947cf70b6e02ceb2ef1"
+}

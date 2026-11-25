@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "asds.harness-planning-review/1",
+  "packageId": "formalizar-componentizacao-extrema-frontend",
+  "revision": "r3",
+  "candidateSha256": "920c9c0b64b9ebb1dfc047d8d6a187860fc561efcf4230c8015ff4404bbf95e9",
+  "inventoryDigest": "c4c1bd23140cf7651a98e3541a06fe58780213c60e39c707c4c1ee998ceb8fe6",
+  "policyDigest": "c6ef1e1ec8d7be452159ffe673f93cde82079ed187e84aa710dee0ca2064fba6",
+  "kind": "fidelity",
+  "priorReviewDigest": null,
+  "verdict": "pass",
+  "findings": [
+    {
+      "id": "F01",
+      "severity": "material",
+      "status": "resolved",
+      "evidence": "Delta R03:37–39/R04:57–59; 0004:56–59 e 0013:77–80; consortiums-view.tsx:472–542 e integridade-fluxos-financeiros/spec.md:9–18.",
+      "expectedCorrection": "Separar DELETE por ID capturado da baixa dependente da abertura e evitar nova política de exclusão.",
+      "disposition": "Exclusão mantém guarda no retorno; baixa obsoleta antes da confirmação não emite POST; baixa em voo não repovoa outro detalhe."
+    },
+    {
+      "id": "F02",
+      "severity": "material",
+      "status": "resolved",
+      "evidence": "Delta R02:25–27, design:28, 0010:76–82, 0011:61–67 e 0023:107–109; balance-projection.tsx:141–174, expense-breakdown.tsx:59–96 e Quiet:19–25.",
+      "expectedCorrection": "Separar a garantia existente em Despesas da lacuna preexistente na Projeção, sem corrigi-la nem declará-la conformidade Quiet.",
+      "disposition": "0010 compara baseline e extração com B resolvido antes de A (sucesso/falha); 0011 não altera política; 0023 conserva a divergência aberta para decisão externa ao plano."
+    },
+    {
+      "id": "F03",
+      "severity": "material",
+      "status": "resolved",
+      "evidence": "Design:25 e 0016:75–82; page.tsx:115–122,159–176,336–351 e consumo de IDs nas views de Contas, Cartões e Compras.",
+      "expectedCorrection": "Preservar destinos/autoaberturas observados e excluir body da restauração direta de foco.",
+      "disposition": "Origem conectada não-body recebe foco; body, ausência ou desconexão usam o botão quando disponível. Caracterização mantém os destinos por tipo sem ratificar a divergência do contrato visual."
+    }
+  ],
+  "limitations": [
+    {
+      "description": "Inspeção estática e validação estrutural apenas; não rodei QA, testes de produto ou gate futuro. Nenhum arquivo alterado, envelope registrado, pacote publicado ou readback realizado. O harness ainda deve observar o retorno real para qualquer registro.",
+      "blocksCoverage": false
+    }
+  ],
+  "taskIds": [
+    "0001",
+    "0002",
+    "0003",
+    "0004",
+    "0005",
+    "0006",
+    "0007",
+    "0008",
+    "0009",
+    "0010",
+    "0011",
+    "0012",
+    "0013",
+    "0014",
+    "0015",
+    "0016",
+    "0017",
+    "0018",
+    "0019",
+    "0020",
+    "0021",
+    "0022",
+    "0023"
+  ],
+  "sourceReferenceIds": [
+    "proposal",
+    "design",
+    "spec:arquitetura-componentes-frontend",
+    "tasks-index",
+    "dag",
+    "dag-status",
+    "workflow-metadata",
+    "planning-summary",
+    "source:auditoria",
+    "source:baseline",
+    "source:processo",
+    "task:0001",
+    "task:0002",
+    "task:0003",
+    "task:0004",
+    "task:0005",
+    "task:0006",
+    "task:0007",
+    "task:0008",
+    "task:0009",
+    "task:0010",
+    "task:0011",
+    "task:0012",
+    "task:0013",
+    "task:0014",
+    "task:0015",
+    "task:0016",
+    "task:0017",
+    "task:0018",
+    "task:0019",
+    "task:0020",
+    "task:0021",
+    "task:0022",
+    "task:0023"
+  ],
+  "author": {
+    "actorId": "specs-canon",
+    "sessionId": "82bd3bde-1474-4705-872a-361588765ca7"
+  },
+  "reviewer": {
+    "actorId": "fidelity-r3",
+    "sessionId": "e64fd845-40fd-4cde-a17b-4b00c3780436",
+    "agentRole": "fidelity",
+    "parentSessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+  },
+  "assignment": {
+    "id": "2cf4bfea-9540-4b2b-91b2-7a04f7ab5431",
+    "requestedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f",
+    "kind": "fidelity",
+    "candidateSha256": "920c9c0b64b9ebb1dfc047d8d6a187860fc561efcf4230c8015ff4404bbf95e9",
+    "scopeTaskIds": [
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
+      "0017",
+      "0018",
+      "0019",
+      "0020",
+      "0021",
+      "0022",
+      "0023"
+    ]
+  },
+  "evidence": {
+    "harness": "antigravity-cli/swarm",
+    "sessionId": "e64fd845-40fd-4cde-a17b-4b00c3780436",
+    "messageIds": [
+      "2cf4bfea-9540-4b2b-91b2-7a04f7ab5431",
+      "aaca59d5-9439-4508-845e-7a1dfc5d7a2d"
+    ],
+    "requestDigest": "4f0573127d7112f4d6934de63f643b706071cd3b2c018ada290b248c9ebb148f",
+    "resultDigest": "99df3ffd26e35c01770eb8f5b0e1d209ce3c6d58479dbedddc835c092b9a2770",
+    "persistedResultPath": "reviews/fidelity-r3-result.txt",
+    "observedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+  },
+  "envelopeDigest": "3915c9e08f25d45797904e0653a10d9f2deef4e371cd84c09e99ecfcd3c400d9"
+}

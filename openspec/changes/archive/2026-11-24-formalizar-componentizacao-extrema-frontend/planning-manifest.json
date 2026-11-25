@@ -1,0 +1,3403 @@
+{
+  "schemaVersion": "asds.planning-delivery/1",
+  "returnVersion": "asds.planning-return/2",
+  "packageId": "formalizar-componentizacao-extrema-frontend",
+  "revision": "r8",
+  "state": "delivered",
+  "author": {
+    "actorId": "specs-canon",
+    "sessionId": "82bd3bde-1474-4705-872a-361588765ca7"
+  },
+  "context": {
+    "repositoryBase": "eb76f7d0f3ced99248ed3c8e5334fcc8792a348f",
+    "planningOnly": true,
+    "projectRoot": "/home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro"
+  },
+  "attendanceOutcome": "planning_delivered",
+  "synthetic": false,
+  "originalRequestedProduct": {
+    "kind": "planning",
+    "status": "in_progress"
+  },
+  "planningContribution": {
+    "product": "reviewed-planning-package",
+    "executionPerformed": false,
+    "usableTasks": [
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
+      "0017",
+      "0018",
+      "0019",
+      "0020",
+      "0022",
+      "0023"
+    ]
+  },
+  "authority": {
+    "persistenceGranted": true,
+    "destination": "openspec/changes/formalizar-componentizacao-extrema-frontend",
+    "authorization": "Origem: pedido do usuário /swarm corrija as specs usando a pilha correta e direto do ~/.agents; escopo/destino confirmados pela coordenação no board #57 e #64. Persistência e readback do planejamento revisado exclusivamente na change local do projeto vinculado, sem publicação externa, serviço externo, merge, deploy, handoff ou implementação.",
+    "scope": "openspec-change-only"
+  },
+  "reviewPolicy": {
+    "risk": "elevated",
+    "domains": [
+      "architecture",
+      "financial",
+      "sensitive-data",
+      "destructive"
+    ],
+    "independentRequired": true
+  },
+  "layers": {
+    "C01": {
+      "status": "satisfied",
+      "reason": "Escopo somente de planejamento fixado.",
+      "references": [
+        "proposal"
+      ]
+    },
+    "C02": {
+      "status": "reused",
+      "reason": "Auditoria estática preservada e fontes ancoradas ao commit base.",
+      "references": [
+        "source:auditoria",
+        "source:baseline"
+      ]
+    },
+    "C03": {
+      "status": "satisfied",
+      "reason": "Preservações e fronteiras de composição identificadas.",
+      "references": [
+        "design"
+      ]
+    },
+    "C04": {
+      "status": "satisfied",
+      "reason": "Riscos de paridade distinguidos de decisões futuras de produto, inclusive políticas de falha e abertura por domínio.",
+      "references": [
+        "design",
+        "source:baseline"
+      ]
+    },
+    "C05": {
+      "status": "satisfied",
+      "reason": "Fontes, inventário e fronteira do QA conferidos por leitura, sem execução de produto.",
+      "references": [
+        "source:baseline",
+        "source:auditoria",
+        "source:verificacao-futura"
+      ]
+    },
+    "C06": {
+      "status": "satisfied",
+      "reason": "Alternativas e razões registradas.",
+      "references": [
+        "design",
+        "source:processo"
+      ]
+    },
+    "C07": {
+      "status": "satisfied",
+      "reason": "Delta de arquitetura e cenários observáveis declarados.",
+      "references": [
+        "spec:arquitetura-componentes-frontend"
+      ]
+    },
+    "C08": {
+      "status": "satisfied",
+      "reason": "Fronteiras de domínio, UI e gate definidas.",
+      "references": [
+        "design",
+        "source:verificacao-futura"
+      ]
+    },
+    "C09": {
+      "status": "satisfied",
+      "reason": "Contratos decompostos por resultado com indexação única.",
+      "references": [
+        "tasks-index"
+      ]
+    },
+    "C10": {
+      "status": "satisfied",
+      "reason": "Composição distinta das precedências e conflitos.",
+      "references": [
+        "dag",
+        "dag-status"
+      ]
+    },
+    "C11": {
+      "status": "satisfied",
+      "reason": "Microcontratos abrangem escopo, aceite e evidência futura.",
+      "references": [
+        "tasks-index",
+        "source:verificacao-futura"
+      ]
+    },
+    "C12": {
+      "status": "satisfied",
+      "reason": "PASS independente em fidelidade r8 (#106), registrado; auditoria, escopo, requisitos e fronteira futura de QA foram confrontados com o candidato sem achados materiais.",
+      "references": [
+        "review:fidelity",
+        "evidence:fidelity"
+      ]
+    },
+    "C13": {
+      "status": "satisfied",
+      "reason": "PASS independente em qualidade r8 (#111), registrado após fidelidade e vinculado ao seu envelope; viabilidade dos 18 contratos e Q01–Q06 examinadas estaticamente.",
+      "references": [
+        "review:quality",
+        "evidence:quality"
+      ]
+    },
+    "C14": {
+      "status": "satisfied",
+      "reason": "Q06 das rodadas anteriores tratado pelo preflight comum; a fidelidade e a qualidade da r8 congelada não identificaram achados materiais em aberto. Resultados são de revisão de planejamento, não de testes do produto.",
+      "references": [
+        "source:processo",
+        "source:verificacao-futura",
+        "review:fidelity",
+        "review:quality"
+      ]
+    },
+    "C15": {
+      "status": "satisfied",
+      "reason": "Published and reopened exact package inventory",
+      "references": [
+        "proposal",
+        "design",
+        "spec:arquitetura-componentes-frontend",
+        "tasks-index",
+        "dag",
+        "dag-status",
+        "workflow-metadata",
+        "planning-summary",
+        "source:auditoria",
+        "source:baseline",
+        "source:processo",
+        "source:verificacao-futura",
+        "task:0001",
+        "task:0002",
+        "task:0003",
+        "task:0004",
+        "task:0005",
+        "task:0006",
+        "task:0007",
+        "task:0008",
+        "task:0009",
+        "task:0010",
+        "task:0011",
+        "task:0012",
+        "task:0013",
+        "task:0014",
+        "task:0015",
+        "task:0016",
+        "task:0017",
+        "task:0018",
+        "task:0019",
+        "task:0020",
+        "task:0021",
+        "task:0022",
+        "task:0023",
+        "review:fidelity",
+        "evidence:fidelity",
+        "review:quality",
+        "evidence:quality"
+      ]
+    },
+    "C16": {
+      "status": "satisfied",
+      "reason": "Planejamento r8 apto à persistência local autorizada e à releitura canônica; a execução futura, validação de runtime e ativação do schema homônimo permanecem fora desta entrega. Nenhum handoff ou publicação concluídos neste checkpoint.",
+      "references": [
+        "planning-summary",
+        "workflow-metadata",
+        "review:fidelity",
+        "review:quality"
+      ]
+    }
+  },
+  "reviews": [
+    {
+      "schemaVersion": "asds.harness-planning-review/1",
+      "packageId": "formalizar-componentizacao-extrema-frontend",
+      "revision": "r8",
+      "candidateSha256": "f5a8ce824c57f5f837fbda3b1a5afb12cd69d51f0ea08f8caf82ca7232c1aaac",
+      "inventoryDigest": "23baf11cc4e776f5ccbda7fa3101e15299cb09f6bfd05da25f2aee54d822d409",
+      "policyDigest": "c6ef1e1ec8d7be452159ffe673f93cde82079ed187e84aa710dee0ca2064fba6",
+      "kind": "fidelity",
+      "priorReviewDigest": null,
+      "verdict": "pass",
+      "findings": [],
+      "limitations": [
+        {
+          "description": "Reconciliei a auditoria e o inventário com a árvore de eb76f7d: 38 módulos próprios com disposição no design, 48 shadcn, 14 testes e uma demo. R01–R06 têm 11 cenários alcançados pelo aceite das folhas: semântica sem extração cosmética, reuso com dois consumidores, prioridade Investimentos/Consórcios/Contas, paridade por fluxo, disposição por arquivo e gate com referência independente. Busca, Projeção, foco pós-exclusão e falhas de gravação continuam caracterizações, não mudanças de regra nem provas Quiet. Conferi 18 folhas, cinco agrupadores, 38 arestas, seis ondas 5/3/4/3/2/1 sem inversão ou escrita coincidente, 17 predecessoras transitivas de 0023 e 0/23 checkboxes concluídas.",
+          "blocksCoverage": false
+        },
+        {
+          "description": "Q06 está tratado no contrato de verificação futura: [preflight único](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/sources/verificacao-futura.md#L21-L27) exige barreira de saída do SO para bundle/CLI/daemon/Chrome, ambiente allowlisted, scratch privado, cleanup e aceite aberto sem evidência; interceptação de página é segunda camada e CI=1 não substitui a barreira. A leitura estática do launcher corroborou a distinção, sem invocá-lo. Conferi 14 comandos em 13 folhas, inclusive [runner imutável de 0006](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/tasks/task-0006.md#L68-L71) e [fechamento de 0023](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/tasks/task-0023.md#L119-L129). Nenhuma autorização de instalar, reconfigurar o ambiente ou mudar comportamento. Como melhoria editorial opcional, explicitar na [descrição do runner no baseline](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/sources/baseline.md#L13) que ele intercepta tráfego da página, não da árvore de processos; o protocolo vinculante já faz essa distinção, portanto não é achado material.",
+          "blocksCoverage": false
+        },
+        {
+          "description": "Inspect canônico confirmou 35 referências materiais, 23 tarefas e manifesto e70bb47949f6a9951add396adc9018c42b1e7819a8fcd2a4ead697229d05b95f; reviewing sem revisões atuais ou readback, com a dupla ordenada ainda pendente. A validação ASDS do candidato passou apenas no âmbito estrutural. O conflito de schema OpenSpec está documentado e a metadata permanece spec-driven, sem simular migração. Revisão estática, somente leitura: não executei produto, QA, launcher, fixtures ou gate; não editei arquivos, alterei instalações, registrei, publiquei ou fiz readback de entrega.",
+          "blocksCoverage": false
+        }
+      ],
+      "sourceReferenceIds": [
+        "proposal",
+        "design",
+        "spec:arquitetura-componentes-frontend",
+        "tasks-index",
+        "dag",
+        "dag-status",
+        "workflow-metadata",
+        "planning-summary",
+        "source:auditoria",
+        "source:baseline",
+        "source:processo",
+        "source:verificacao-futura",
+        "task:0001",
+        "task:0002",
+        "task:0003",
+        "task:0004",
+        "task:0005",
+        "task:0006",
+        "task:0007",
+        "task:0008",
+        "task:0009",
+        "task:0010",
+        "task:0011",
+        "task:0012",
+        "task:0013",
+        "task:0014",
+        "task:0015",
+        "task:0016",
+        "task:0017",
+        "task:0018",
+        "task:0019",
+        "task:0020",
+        "task:0021",
+        "task:0022",
+        "task:0023"
+      ],
+      "taskIds": [
+        "0001",
+        "0002",
+        "0003",
+        "0004",
+        "0005",
+        "0006",
+        "0007",
+        "0008",
+        "0009",
+        "0010",
+        "0011",
+        "0012",
+        "0013",
+        "0014",
+        "0015",
+        "0016",
+        "0017",
+        "0018",
+        "0019",
+        "0020",
+        "0021",
+        "0022",
+        "0023"
+      ],
+      "author": {
+        "actorId": "specs-canon",
+        "sessionId": "82bd3bde-1474-4705-872a-361588765ca7"
+      },
+      "reviewer": {
+        "actorId": "fidelity-r8",
+        "sessionId": "17342cba-463c-4dae-9af1-b4f52a9df9e8",
+        "agentRole": "fidelity",
+        "parentSessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+      },
+      "assignment": {
+        "id": "4cac270b-6dc5-4319-b0a4-43f884cc85cb",
+        "requestedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f",
+        "kind": "fidelity",
+        "candidateSha256": "f5a8ce824c57f5f837fbda3b1a5afb12cd69d51f0ea08f8caf82ca7232c1aaac",
+        "scopeTaskIds": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "0007",
+          "0008",
+          "0009",
+          "0010",
+          "0011",
+          "0012",
+          "0013",
+          "0014",
+          "0015",
+          "0016",
+          "0017",
+          "0018",
+          "0019",
+          "0020",
+          "0021",
+          "0022",
+          "0023"
+        ]
+      },
+      "evidence": {
+        "harness": "antigravity-cli/swarm",
+        "sessionId": "17342cba-463c-4dae-9af1-b4f52a9df9e8",
+        "messageIds": [
+          "4cac270b-6dc5-4319-b0a4-43f884cc85cb",
+          "71242bbf-ae4b-466d-8c81-e307630e57a8"
+        ],
+        "requestDigest": "8eb46b8d459b457d442a11264e9ef56abf2e2edc05c1adc4c8cb6b1d117314ad",
+        "resultDigest": "e5580c8f5aa62d63b4054ca1836cacc06939340e1491dcde74ff08c1e7079b8a",
+        "persistedResultPath": "reviews/fidelity-r8-result.txt",
+        "observedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+      },
+      "envelopeDigest": "e0c862619dddb950e30a0e52c55636a8bf4b81ffb1bf544adb4652fc507a3597"
+    },
+    {
+      "schemaVersion": "asds.harness-planning-review/1",
+      "packageId": "formalizar-componentizacao-extrema-frontend",
+      "revision": "r8",
+      "candidateSha256": "f5a8ce824c57f5f837fbda3b1a5afb12cd69d51f0ea08f8caf82ca7232c1aaac",
+      "inventoryDigest": "23baf11cc4e776f5ccbda7fa3101e15299cb09f6bfd05da25f2aee54d822d409",
+      "policyDigest": "c6ef1e1ec8d7be452159ffe673f93cde82079ed187e84aa710dee0ca2064fba6",
+      "kind": "quality",
+      "priorReviewDigest": "e0c862619dddb950e30a0e52c55636a8bf4b81ffb1bf544adb4652fc507a3597",
+      "verdict": "pass",
+      "findings": [],
+      "limitations": [
+        {
+          "description": "Q06 resolvido no planejamento. O [preflight vinculante](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/sources/verificacao-futura.md#L21-L31) exige evidência do bloqueio de saída pelo SO para Bun/bundle, CLI, daemon e Chrome, desde antes de help/version até o encerramento; proíbe daemon/sockets herdados, limita ambiente e escrita a insumos aprovados e scratch privado, exige sessão própria, comprovação do encerramento e mantém o aceite aberto se faltar a fronteira ou sua evidência. O [launcher 0.1.22](file:///home/marcelo-karval/.nvm/versions/node/v24.20.0/lib/node_modules/@playwright/cli/playwright-cli.js#L28-L64) verifica CI antes de checar atualização e despacha o comando depois; a variável não substitui o isolamento. Comparei comandos literais e manifesto: 14 em 13 folhas, todos subordinados ao preflight, incluindo as duas provas de [0006](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/tasks/task-0006.md#L68-L71) sem editar o runner existente, e a matriz de [0023](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/tasks/task-0023.md#L113-L129). A descrição abreviada do runner no baseline é imprecisa sobre o alcance da interceptação, mas não cria alternativa ao preflight vinculante. Não foi provado isolamento de runtime nesta revisão.",
+          "blocksCoverage": false
+        },
+        {
+          "description": "Q01–Q05 preservados. O [protocolo SQLite](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/sources/verificacao-futura.md#L5-L19) distingue as seis invocações (12/6/4/10/11/11), fixture exclusiva, opt-ins e zero skips, sem usar o agregado como prova. Os runners de DOM locais têm oráculos próprios e caminhos de escrita delimitados, sem esperar 0023; as [seis células](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/sources/verificacao-futura.md#L33-L39) exigem CSS/tokens reais e testemunhas de fundo e breakpoint antes dos oráculos. [0022](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/tasks/task-0022.md#L45-L63) calibra sobre blobs de eb76f7d e apenas quatro caminhos próprios, integra primeiro no checkout único e fornece ARCH_BASE_REF independente à 0023. [0017](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/tasks/task-0017.md#L83-L93) mantém POST/PUT × três classes de falha por domínio: nos blobs do baseline, Metas retorna antes de fechar no HTTP não OK; Orçamento mensal fecha e relê após erro com JSON decodificável, mas não cai nesse ramo por rejeição de fetch ou parsing. Os checkpoints de foco/estado não tratam paridade de divergência como conformidade Quiet.",
+          "blocksCoverage": false
+        },
+        {
+          "description": "Verifiquei 18 folhas com resultados, donos, escopos e verificações, cinco agrupadores não executáveis, 38 arestas com entregas nomeadas, seis ondas 5/3/4/3/2/1 sem inversões ou interseção de escrita dentro da mesma onda, 17 predecessoras transitivas de 0023 e 0/23 caixas concluídas. A viabilidade é condicional a insumos já autorizados, sem converter a onda em permissão de execução. Recalculei os 37 hashes das referências atuais; inspect canônico da fonte .agents retornou 35 IDs materiais, 23 IDs de tarefa e SHA do manifesto febeb936c725b7daad93c22af01cc761769e0efe3996bedef4c340fb7d713995. O envelope e o resultado persistido de fidelidade conferem com o vínculo r8; o estado permanece reviewing, sem readback, aguardando registro da qualidade. Revisão estática somente leitura: nenhum código de produto, browser, launcher, fixture, sandbox ou gate de produto foi executado; nada foi editado, registrado, instalado, configurado ou publicado.",
+          "blocksCoverage": false
+        }
+      ],
+      "sourceReferenceIds": [
+        "proposal",
+        "design",
+        "spec:arquitetura-componentes-frontend",
+        "tasks-index",
+        "dag",
+        "dag-status",
+        "workflow-metadata",
+        "planning-summary",
+        "source:auditoria",
+        "source:baseline",
+        "source:processo",
+        "source:verificacao-futura",
+        "task:0001",
+        "task:0002",
+        "task:0003",
+        "task:0004",
+        "task:0005",
+        "task:0006",
+        "task:0007",
+        "task:0008",
+        "task:0009",
+        "task:0010",
+        "task:0011",
+        "task:0012",
+        "task:0013",
+        "task:0014",
+        "task:0015",
+        "task:0016",
+        "task:0017",
+        "task:0018",
+        "task:0019",
+        "task:0020",
+        "task:0021",
+        "task:0022",
+        "task:0023"
+      ],
+      "taskIds": [
+        "0001",
+        "0002",
+        "0003",
+        "0004",
+        "0005",
+        "0006",
+        "0007",
+        "0008",
+        "0009",
+        "0010",
+        "0011",
+        "0012",
+        "0013",
+        "0014",
+        "0015",
+        "0016",
+        "0017",
+        "0018",
+        "0019",
+        "0020",
+        "0021",
+        "0022",
+        "0023"
+      ],
+      "author": {
+        "actorId": "specs-canon",
+        "sessionId": "82bd3bde-1474-4705-872a-361588765ca7"
+      },
+      "reviewer": {
+        "actorId": "quality-r8",
+        "sessionId": "ef613a96-351c-4b2f-955b-ed345777b071",
+        "agentRole": "quality",
+        "parentSessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+      },
+      "assignment": {
+        "id": "86a9bdc7-0e18-4a56-b4fe-955110e2e55c",
+        "requestedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f",
+        "kind": "quality",
+        "candidateSha256": "f5a8ce824c57f5f837fbda3b1a5afb12cd69d51f0ea08f8caf82ca7232c1aaac",
+        "scopeTaskIds": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "0007",
+          "0008",
+          "0009",
+          "0010",
+          "0011",
+          "0012",
+          "0013",
+          "0014",
+          "0015",
+          "0016",
+          "0017",
+          "0018",
+          "0019",
+          "0020",
+          "0021",
+          "0022",
+          "0023"
+        ]
+      },
+      "evidence": {
+        "harness": "antigravity-cli/swarm",
+        "sessionId": "ef613a96-351c-4b2f-955b-ed345777b071",
+        "messageIds": [
+          "86a9bdc7-0e18-4a56-b4fe-955110e2e55c",
+          "b5a0ad50-e728-48e9-b636-6c3d37dbf408"
+        ],
+        "requestDigest": "13587ce58b3728524b3357c36f991ee105fefd84ee67b9b797d085b66334e149",
+        "resultDigest": "50fcc11a5eb3107e5004621e65422776a0715b5c1569e9d9e246d569be998509",
+        "persistedResultPath": "reviews/quality-r8-result.txt",
+        "observedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+      },
+      "envelopeDigest": "4eeabef7c46eabeade6730f23ba6d244c10a85d7e19724bf852eab5f569978c4"
+    }
+  ],
+  "blockers": [],
+  "decisions": [],
+  "tasks": [
+    {
+      "id": "0001",
+      "title": "Componentização verificável do frontend",
+      "owner": "Equipe de frontend",
+      "nodeType": "package",
+      "parentId": null,
+      "requirements": [
+        "R01",
+        "R03",
+        "R04",
+        "R02",
+        "R05",
+        "R06"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/investments-view.tsx",
+        "src/components/finance/investment-editor.tsx",
+        "src/components/finance/investment-delete-confirmation.tsx",
+        "src/components/finance/quiet-investment-mutations.test.tsx",
+        "src/components/finance/quiet-investments-installments.test.tsx",
+        "src/components/finance/quiet-investments-editor.qa.mjs",
+        "src/components/finance/consortiums-view.tsx",
+        "src/components/finance/consortium-editor.tsx",
+        "src/components/finance/consortium-delete-confirmation.tsx",
+        "src/components/finance/quiet-consortiums-savings.test.tsx",
+        "src/components/finance/quiet-consortiums-editor.qa.mjs",
+        "src/components/finance/accounts-view.tsx",
+        "src/components/finance/account-transaction-fields.tsx",
+        "src/components/finance/quiet-accounts-cards.test.tsx",
+        "src/components/finance/quiet-navigation.test.tsx",
+        "src/components/finance/quiet-account-transaction-focus.qa.mjs",
+        "src/components/finance/cards-view.tsx",
+        "src/hooks/use-keyed-mutation-lock.ts",
+        "src/hooks/use-keyed-mutation-lock.test.ts",
+        "src/components/finance/quiet-keyed-deletion-focus.qa.mjs",
+        "src/components/shared/finance-dialog-shell.tsx",
+        "src/components/finance/quiet-finance-dialog-shell.qa.mjs",
+        "src/components/shared/finance-row.tsx",
+        "src/components/shared/finance-metric.tsx",
+        "src/components/finance/dashboard-view.tsx",
+        "src/components/finance/spending-timeline.tsx",
+        "src/components/finance/dashboard-view.test.tsx",
+        "src/components/finance/quiet-insights-flow.test.tsx",
+        "src/components/shared/finance-progress.tsx",
+        "src/components/shared/query-panel.tsx",
+        "src/components/finance/budget-goals.tsx",
+        "src/components/finance/financial-health-score.tsx",
+        "src/components/finance/balance-projection.tsx",
+        "src/components/finance/cash-flow-forecast.tsx",
+        "src/components/finance/expense-breakdown.tsx",
+        "src/components/finance/quiet-goals-health.test.tsx",
+        "src/components/finance/quiet-analysis-calendar.test.tsx",
+        "src/components/shared/finance-chart-tooltip.tsx",
+        "src/components/finance/networth-evolution.tsx",
+        "src/components/finance/investment-entry-editor.tsx",
+        "src/components/finance/consortium-installment-payment.tsx",
+        "src/components/finance/account-transfer-dialog.tsx",
+        "src/components/finance/account-picker.tsx",
+        "src/components/finance/quiet-primary-operations.qa.mjs",
+        "src/components/finance/card-editor.tsx",
+        "src/components/finance/purchases-view.tsx",
+        "src/components/finance/purchase-editor.tsx",
+        "src/components/finance/purchase-items-editor.tsx",
+        "src/components/finance/categories-view.tsx",
+        "src/components/finance/category-editor.tsx",
+        "src/components/finance/category-icon-color-picker.tsx",
+        "src/components/finance/quiet-purchases-categories.test.tsx",
+        "src/components/finance/quiet-cards-purchases-categories.qa.mjs",
+        "src/components/finance/installments-view.tsx",
+        "src/components/finance/installment-plan-editor.tsx",
+        "src/components/finance/installment-delete-confirmation.tsx",
+        "src/components/finance/savings-view.tsx",
+        "src/components/finance/savings-goal-editor.tsx",
+        "src/components/finance/savings-contribution-dialog.tsx",
+        "src/components/finance/quiet-installments-savings-dialogs.qa.mjs",
+        "src/app/page.tsx",
+        "src/components/finance/app-header.tsx",
+        "src/components/finance/app-overlays.tsx",
+        "src/components/finance/global-search.tsx",
+        "src/components/finance/global-search-result.tsx",
+        "src/components/finance/notification-panel.tsx",
+        "src/components/finance/ai-advisor.tsx",
+        "src/components/finance/advisor-composer.tsx",
+        "src/components/finance/quiet-search-parity.qa.mjs",
+        "src/components/finance/quiet-core-residuals.test.tsx",
+        "src/components/finance/achievement-badges.tsx",
+        "src/components/finance/budget-goal-editor.tsx",
+        "src/components/finance/goals-dashboard.tsx",
+        "src/components/finance/monthly-budget-tracker.tsx",
+        "src/components/finance/monthly-budget-editor.tsx",
+        "src/components/finance/savings-challenge.tsx",
+        "src/components/finance/smart-insights.tsx",
+        "src/components/finance/quick-stats-overview.tsx",
+        "src/components/finance/quiet-goals-widgets.qa.mjs",
+        "src/components/finance/debt-overview.tsx",
+        "src/components/finance/debt-sections.tsx",
+        "src/components/finance/financial-calendar.tsx",
+        "src/components/finance/financial-calendar-grid.tsx",
+        "src/components/finance/financial-reports.tsx",
+        "src/components/finance/financial-report-tabs.tsx",
+        "src/components/finance/expense-category-details.tsx",
+        "src/components/finance/spending-day-details.tsx",
+        "src/components/finance/transaction-analytics.tsx",
+        "src/components/finance/transaction-analysis-tabs.tsx",
+        "src/components/finance/upcoming-bills.tsx",
+        "src/components/finance/quiet-analytics-calendar.qa.mjs",
+        "src/components/finance/recurring-transactions.tsx",
+        "src/components/finance/recurring-transaction-editor.tsx",
+        "src/components/finance/recurring-delete-confirmation.tsx",
+        "src/components/finance/quiet-recurring-receipts.test.tsx",
+        "src/components/finance/quiet-recurring-focus.qa.mjs",
+        "src/components/finance/receipt-generator.tsx",
+        "src/components/finance/receipt-fields.ts",
+        "src/components/finance/receipt-preview.tsx",
+        ".zscripts/check-frontend-architecture.ts",
+        ".zscripts/frontend-architecture-baseline.json",
+        ".zscripts/check-frontend-architecture.test.ts",
+        "docs/reference/frontend-architecture-gate.md",
+        "docs/reference/frontend-componentization-coverage.md",
+        "src/components/finance/quiet-componentization.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Investimento por carteira e detalhe",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Consórcio por lista e detalhe",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Transação por criação e edição",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Envios concorrentes e respostas tardias",
+        "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas",
+        "arquitetura-componentes-frontend/Gate distingue dívida herdada de regressão"
+      ],
+      "verification": [
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0002",
+      "title": "Fluxos prioritários de domínio",
+      "owner": "Equipe de frontend",
+      "nodeType": "package",
+      "parentId": "0001",
+      "requirements": [
+        "R01",
+        "R03",
+        "R04",
+        "R02"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/investments-view.tsx",
+        "src/components/finance/investment-editor.tsx",
+        "src/components/finance/investment-delete-confirmation.tsx",
+        "src/components/finance/quiet-investment-mutations.test.tsx",
+        "src/components/finance/quiet-investments-installments.test.tsx",
+        "src/components/finance/quiet-investments-editor.qa.mjs",
+        "src/components/finance/consortiums-view.tsx",
+        "src/components/finance/consortium-editor.tsx",
+        "src/components/finance/consortium-delete-confirmation.tsx",
+        "src/components/finance/quiet-consortiums-savings.test.tsx",
+        "src/components/finance/quiet-consortiums-editor.qa.mjs",
+        "src/components/finance/accounts-view.tsx",
+        "src/components/finance/account-transaction-fields.tsx",
+        "src/components/finance/quiet-accounts-cards.test.tsx",
+        "src/components/finance/quiet-navigation.test.tsx",
+        "src/components/finance/quiet-account-transaction-focus.qa.mjs",
+        "src/components/finance/cards-view.tsx",
+        "src/hooks/use-keyed-mutation-lock.ts",
+        "src/hooks/use-keyed-mutation-lock.test.ts",
+        "src/components/finance/quiet-keyed-deletion-focus.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Investimento por carteira e detalhe",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Consórcio por lista e detalhe",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Transação por criação e edição",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Envios concorrentes e respostas tardias"
+      ],
+      "verification": [
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0003",
+      "title": "Consolidar o editor e a confirmação de Investimentos",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0002",
+      "requirements": [
+        "R01",
+        "R03",
+        "R04"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/investments-view.tsx",
+        "src/components/finance/investment-editor.tsx",
+        "src/components/finance/investment-delete-confirmation.tsx",
+        "src/components/finance/quiet-investment-mutations.test.tsx",
+        "src/components/finance/quiet-investments-installments.test.tsx",
+        "src/components/finance/quiet-investments-editor.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Investimento por carteira e detalhe",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-investment-mutations.test.tsx src/components/finance/quiet-investments-installments.test.tsx",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-investments-editor.qa.mjs"
+      ]
+    },
+    {
+      "id": "0004",
+      "title": "Consolidar edição e exclusão de Consórcios",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0002",
+      "requirements": [
+        "R01",
+        "R03",
+        "R04"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/consortiums-view.tsx",
+        "src/components/finance/consortium-editor.tsx",
+        "src/components/finance/consortium-delete-confirmation.tsx",
+        "src/components/finance/quiet-consortiums-savings.test.tsx",
+        "src/components/finance/quiet-consortiums-editor.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Consórcio por lista e detalhe",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-consortiums-savings.test.tsx src/lib/consortium-selection.test.ts",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-consortiums-editor.qa.mjs",
+        "bun --no-env-file test ./src/app/api/consortiums/assembly.test.ts"
+      ]
+    },
+    {
+      "id": "0005",
+      "title": "Unificar campos de transação de Contas",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0002",
+      "requirements": [
+        "R01",
+        "R03",
+        "R04"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/accounts-view.tsx",
+        "src/components/finance/account-transaction-fields.tsx",
+        "src/components/finance/quiet-accounts-cards.test.tsx",
+        "src/components/finance/quiet-navigation.test.tsx",
+        "src/components/finance/quiet-account-transaction-focus.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Transação por criação e edição",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx src/components/finance/quiet-navigation.test.tsx",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-account-transaction-focus.qa.mjs"
+      ]
+    },
+    {
+      "id": "0006",
+      "title": "Centralizar a trava síncrona de Contas e Cartões",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0002",
+      "requirements": [
+        "R02",
+        "R04"
+      ],
+      "dependsOn": [
+        "0005"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0005",
+          "requiredOutput": "Campos de transação comuns à criação e à edição",
+          "reason": "Usar o editor de transações estabilizado antes de ligar sua trava ao hook comum."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/accounts-view.tsx",
+        "src/components/finance/cards-view.tsx",
+        "src/hooks/use-keyed-mutation-lock.ts",
+        "src/components/finance/quiet-accounts-cards.test.tsx",
+        "src/hooks/use-keyed-mutation-lock.test.ts",
+        "src/components/finance/quiet-keyed-deletion-focus.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Envios concorrentes e respostas tardias"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx src/hooks/use-keyed-mutation-lock.test.ts",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-accounts-cards.qa.mjs",
+        "bun --no-env-file src/components/finance/quiet-keyed-deletion-focus.qa.mjs"
+      ]
+    },
+    {
+      "id": "0007",
+      "title": "Padrões transversais comprovados",
+      "owner": "Equipe de frontend",
+      "nodeType": "package",
+      "parentId": "0001",
+      "requirements": [
+        "R01",
+        "R02",
+        "R04"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/shared/finance-dialog-shell.tsx",
+        "src/components/finance/investment-editor.tsx",
+        "src/components/finance/investment-delete-confirmation.tsx",
+        "src/components/finance/consortium-editor.tsx",
+        "src/components/finance/consortium-delete-confirmation.tsx",
+        "src/components/finance/quiet-investment-mutations.test.tsx",
+        "src/components/finance/quiet-consortiums-savings.test.tsx",
+        "src/components/finance/quiet-finance-dialog-shell.qa.mjs",
+        "src/components/shared/finance-row.tsx",
+        "src/components/shared/finance-metric.tsx",
+        "src/components/finance/dashboard-view.tsx",
+        "src/components/finance/accounts-view.tsx",
+        "src/components/finance/cards-view.tsx",
+        "src/components/finance/spending-timeline.tsx",
+        "src/components/finance/dashboard-view.test.tsx",
+        "src/components/finance/quiet-insights-flow.test.tsx",
+        "src/components/finance/quiet-accounts-cards.test.tsx",
+        "src/components/shared/finance-progress.tsx",
+        "src/components/shared/query-panel.tsx",
+        "src/components/finance/budget-goals.tsx",
+        "src/components/finance/financial-health-score.tsx",
+        "src/components/finance/balance-projection.tsx",
+        "src/components/finance/cash-flow-forecast.tsx",
+        "src/components/finance/expense-breakdown.tsx",
+        "src/components/finance/quiet-goals-health.test.tsx",
+        "src/components/finance/quiet-analysis-calendar.test.tsx",
+        "src/components/shared/finance-chart-tooltip.tsx",
+        "src/components/finance/networth-evolution.tsx"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros"
+      ],
+      "verification": [
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0008",
+      "title": "Adotar casca de formulário e confirmação em dois domínios",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0007",
+      "requirements": [
+        "R01",
+        "R02",
+        "R04"
+      ],
+      "dependsOn": [
+        "0003",
+        "0004",
+        "0005"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0003",
+          "requiredOutput": "Editor e confirmação de investimento comuns à carteira e ao detalhe",
+          "reason": "A casca transversal só começa após estabilizar a variante de investimento de lista e detalhe."
+        },
+        {
+          "id": "0004",
+          "requiredOutput": "Editor e confirmação de consórcio comuns à lista e ao detalhe",
+          "reason": "Usar o contrato confirmado para variantes de edição e confirmação de consórcio."
+        },
+        {
+          "id": "0005",
+          "requiredOutput": "Campos de transação comuns à criação e à edição",
+          "reason": "Gate R03 — consumir o aceite de criação e edição de transações antes da migração de apresentação."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/shared/finance-dialog-shell.tsx",
+        "src/components/finance/investment-editor.tsx",
+        "src/components/finance/investment-delete-confirmation.tsx",
+        "src/components/finance/consortium-editor.tsx",
+        "src/components/finance/consortium-delete-confirmation.tsx",
+        "src/components/finance/quiet-investment-mutations.test.tsx",
+        "src/components/finance/quiet-consortiums-savings.test.tsx",
+        "src/components/finance/quiet-finance-dialog-shell.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-investment-mutations.test.tsx src/components/finance/quiet-consortiums-savings.test.tsx",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-finance-dialog-shell.qa.mjs"
+      ]
+    },
+    {
+      "id": "0009",
+      "title": "Adotar linha financeira e métrica com variantes reais",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0007",
+      "requirements": [
+        "R01",
+        "R02",
+        "R04"
+      ],
+      "dependsOn": [
+        "0003",
+        "0004",
+        "0005",
+        "0006"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0003",
+          "requiredOutput": "Editor e confirmação de investimento comuns à carteira e ao detalhe",
+          "reason": "Gate R03 — consumir o aceite dos dois caminhos de Investimentos antes de iniciar a migração de apresentação."
+        },
+        {
+          "id": "0004",
+          "requiredOutput": "Editor e confirmação de consórcio comuns à lista e ao detalhe",
+          "reason": "Gate R03 — consumir o aceite de lista e detalhe de Consórcios antes da migração de apresentação."
+        },
+        {
+          "id": "0005",
+          "requiredOutput": "Campos de transação comuns à criação e à edição",
+          "reason": "Gate R03 — consumir o aceite de criação e edição de transações antes da migração de apresentação."
+        },
+        {
+          "id": "0006",
+          "requiredOutput": "Trava por chave compartilhada e adotada em Contas e Cartões",
+          "reason": "Preservar os callbacks protegidos antes de oferecê-los no slot de ação."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/shared/finance-row.tsx",
+        "src/components/shared/finance-metric.tsx",
+        "src/components/finance/dashboard-view.tsx",
+        "src/components/finance/accounts-view.tsx",
+        "src/components/finance/cards-view.tsx",
+        "src/components/finance/spending-timeline.tsx",
+        "src/components/finance/dashboard-view.test.tsx",
+        "src/components/finance/quiet-insights-flow.test.tsx",
+        "src/components/finance/quiet-accounts-cards.test.tsx"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/dashboard-view.test.tsx src/components/finance/quiet-insights-flow.test.tsx src/components/finance/quiet-accounts-cards.test.tsx",
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0010",
+      "title": "Adotar progresso e estados de consulta nos painéis",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0007",
+      "requirements": [
+        "R01",
+        "R02",
+        "R04"
+      ],
+      "dependsOn": [
+        "0003",
+        "0004",
+        "0005"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0003",
+          "requiredOutput": "Editor e confirmação de investimento comuns à carteira e ao detalhe",
+          "reason": "Gate R03 — consumir o aceite dos dois caminhos de Investimentos antes de iniciar a migração de apresentação."
+        },
+        {
+          "id": "0004",
+          "requiredOutput": "Editor e confirmação de consórcio comuns à lista e ao detalhe",
+          "reason": "Gate R03 — consumir o aceite de lista e detalhe de Consórcios antes da migração de apresentação."
+        },
+        {
+          "id": "0005",
+          "requiredOutput": "Campos de transação comuns à criação e à edição",
+          "reason": "Gate R03 — consumir o aceite de criação e edição de transações antes da migração de apresentação."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/shared/finance-progress.tsx",
+        "src/components/shared/query-panel.tsx",
+        "src/components/finance/budget-goals.tsx",
+        "src/components/finance/financial-health-score.tsx",
+        "src/components/finance/balance-projection.tsx",
+        "src/components/finance/cash-flow-forecast.tsx",
+        "src/components/finance/expense-breakdown.tsx",
+        "src/components/finance/quiet-goals-health.test.tsx",
+        "src/components/finance/quiet-analysis-calendar.test.tsx"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-goals-health.test.tsx src/components/finance/quiet-analysis-calendar.test.tsx",
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0011",
+      "title": "Adotar casca de tooltip sem unificar cálculos",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0007",
+      "requirements": [
+        "R02",
+        "R04"
+      ],
+      "dependsOn": [
+        "0010"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0010",
+          "requiredOutput": "Progresso determinado e painel de consulta adotados por pares reais",
+          "reason": "Ligar tooltips ao estado de sucesso do painel comum sem armazenamento ou fallback de séries na casca; a ligação não corrige a política de período da Projeção."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/shared/finance-chart-tooltip.tsx",
+        "src/components/finance/cash-flow-forecast.tsx",
+        "src/components/finance/balance-projection.tsx",
+        "src/components/finance/networth-evolution.tsx",
+        "src/components/finance/quiet-analysis-calendar.test.tsx",
+        "src/components/finance/quiet-insights-flow.test.tsx"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-analysis-calendar.test.tsx src/components/finance/quiet-insights-flow.test.tsx",
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0012",
+      "title": "Famílias de produção remanescentes",
+      "owner": "Equipe de frontend",
+      "nodeType": "package",
+      "parentId": "0001",
+      "requirements": [
+        "R01",
+        "R04",
+        "R05",
+        "R02"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/investments-view.tsx",
+        "src/components/finance/investment-entry-editor.tsx",
+        "src/components/finance/consortiums-view.tsx",
+        "src/components/finance/consortium-installment-payment.tsx",
+        "src/components/finance/accounts-view.tsx",
+        "src/components/finance/account-transfer-dialog.tsx",
+        "src/components/finance/account-picker.tsx",
+        "src/components/finance/quiet-investments-installments.test.tsx",
+        "src/components/finance/quiet-consortiums-savings.test.tsx",
+        "src/components/finance/quiet-accounts-cards.test.tsx",
+        "src/components/finance/quiet-primary-operations.qa.mjs",
+        "src/components/finance/cards-view.tsx",
+        "src/components/finance/card-editor.tsx",
+        "src/components/finance/purchases-view.tsx",
+        "src/components/finance/purchase-editor.tsx",
+        "src/components/finance/purchase-items-editor.tsx",
+        "src/components/finance/categories-view.tsx",
+        "src/components/finance/category-editor.tsx",
+        "src/components/finance/category-icon-color-picker.tsx",
+        "src/components/finance/quiet-purchases-categories.test.tsx",
+        "src/components/finance/quiet-cards-purchases-categories.qa.mjs",
+        "src/components/finance/installments-view.tsx",
+        "src/components/finance/installment-plan-editor.tsx",
+        "src/components/finance/installment-delete-confirmation.tsx",
+        "src/components/finance/savings-view.tsx",
+        "src/components/finance/savings-goal-editor.tsx",
+        "src/components/finance/savings-contribution-dialog.tsx",
+        "src/components/finance/quiet-installments-savings-dialogs.qa.mjs",
+        "src/app/page.tsx",
+        "src/components/finance/app-header.tsx",
+        "src/components/finance/app-overlays.tsx",
+        "src/components/finance/global-search.tsx",
+        "src/components/finance/global-search-result.tsx",
+        "src/components/finance/notification-panel.tsx",
+        "src/components/finance/ai-advisor.tsx",
+        "src/components/finance/advisor-composer.tsx",
+        "src/components/finance/quiet-navigation.test.tsx",
+        "src/components/finance/quiet-search-parity.qa.mjs",
+        "src/components/finance/quiet-core-residuals.test.tsx",
+        "src/components/finance/achievement-badges.tsx",
+        "src/components/finance/budget-goals.tsx",
+        "src/components/finance/budget-goal-editor.tsx",
+        "src/components/finance/financial-health-score.tsx",
+        "src/components/finance/goals-dashboard.tsx",
+        "src/components/finance/monthly-budget-tracker.tsx",
+        "src/components/finance/monthly-budget-editor.tsx",
+        "src/components/finance/savings-challenge.tsx",
+        "src/components/finance/smart-insights.tsx",
+        "src/components/finance/quick-stats-overview.tsx",
+        "src/components/finance/quiet-goals-health.test.tsx",
+        "src/components/finance/quiet-goals-widgets.qa.mjs",
+        "src/components/finance/debt-overview.tsx",
+        "src/components/finance/debt-sections.tsx",
+        "src/components/finance/financial-calendar.tsx",
+        "src/components/finance/financial-calendar-grid.tsx",
+        "src/components/finance/financial-reports.tsx",
+        "src/components/finance/financial-report-tabs.tsx",
+        "src/components/finance/expense-breakdown.tsx",
+        "src/components/finance/expense-category-details.tsx",
+        "src/components/finance/spending-timeline.tsx",
+        "src/components/finance/spending-day-details.tsx",
+        "src/components/finance/transaction-analytics.tsx",
+        "src/components/finance/transaction-analysis-tabs.tsx",
+        "src/components/finance/upcoming-bills.tsx",
+        "src/components/finance/quiet-analysis-calendar.test.tsx",
+        "src/components/finance/quiet-insights-flow.test.tsx",
+        "src/components/finance/quiet-analytics-calendar.qa.mjs",
+        "src/components/finance/recurring-transactions.tsx",
+        "src/components/finance/recurring-transaction-editor.tsx",
+        "src/components/finance/recurring-delete-confirmation.tsx",
+        "src/components/finance/quiet-recurring-receipts.test.tsx",
+        "src/components/finance/quiet-recurring-focus.qa.mjs",
+        "src/components/finance/receipt-generator.tsx",
+        "src/components/finance/receipt-fields.ts",
+        "src/components/finance/receipt-preview.tsx"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas",
+        "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Envios concorrentes e respostas tardias"
+      ],
+      "verification": [
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0013",
+      "title": "Separar seletor, detalhes e movimentação nas operacionais prioritárias",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0012",
+      "requirements": [
+        "R01",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [
+        "0006",
+        "0008",
+        "0009"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0006",
+          "requiredOutput": "Trava por chave compartilhada e adotada em Contas e Cartões",
+          "reason": "O seletor e transferência consomem as chaves de Contas preservadas."
+        },
+        {
+          "id": "0008",
+          "requiredOutput": "Casca acessível de diálogo adotada em Investimentos e Consórcios",
+          "reason": "Reusar a fronteira de diálogo já estabilizada sem alterar os fluxos."
+        },
+        {
+          "id": "0009",
+          "requiredOutput": "Linha e métrica compartilhadas com adoção verificável",
+          "reason": "O detalhe usa a apresentação financeira estabilizada antes de separar o controlador."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/investments-view.tsx",
+        "src/components/finance/investment-entry-editor.tsx",
+        "src/components/finance/consortiums-view.tsx",
+        "src/components/finance/consortium-installment-payment.tsx",
+        "src/components/finance/accounts-view.tsx",
+        "src/components/finance/account-transfer-dialog.tsx",
+        "src/components/finance/account-picker.tsx",
+        "src/components/finance/quiet-investments-installments.test.tsx",
+        "src/components/finance/quiet-consortiums-savings.test.tsx",
+        "src/components/finance/quiet-accounts-cards.test.tsx",
+        "src/components/finance/quiet-primary-operations.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-investments-installments.test.tsx src/components/finance/quiet-consortiums-savings.test.tsx src/components/finance/quiet-accounts-cards.test.tsx",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-primary-operations.qa.mjs"
+      ]
+    },
+    {
+      "id": "0014",
+      "title": "Separar Cartões, Compras e Categorias por responsabilidade",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0012",
+      "requirements": [
+        "R01",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [
+        "0006",
+        "0008",
+        "0009"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0006",
+          "requiredOutput": "Trava por chave compartilhada e adotada em Contas e Cartões",
+          "reason": "A extração do editor preserva o lock agora comum."
+        },
+        {
+          "id": "0008",
+          "requiredOutput": "Casca acessível de diálogo adotada em Investimentos e Consórcios",
+          "reason": "Os novos cortes preservam semântica e foco da casca estabilizada."
+        },
+        {
+          "id": "0009",
+          "requiredOutput": "Linha e métrica compartilhadas com adoção verificável",
+          "reason": "Usar slots de ações/valores onde a linha comum mantém o contrato."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/cards-view.tsx",
+        "src/components/finance/card-editor.tsx",
+        "src/components/finance/purchases-view.tsx",
+        "src/components/finance/purchase-editor.tsx",
+        "src/components/finance/purchase-items-editor.tsx",
+        "src/components/finance/categories-view.tsx",
+        "src/components/finance/category-editor.tsx",
+        "src/components/finance/category-icon-color-picker.tsx",
+        "src/components/finance/quiet-accounts-cards.test.tsx",
+        "src/components/finance/quiet-purchases-categories.test.tsx",
+        "src/components/finance/quiet-cards-purchases-categories.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx src/components/finance/quiet-purchases-categories.test.tsx",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-cards-purchases-categories.qa.mjs",
+        "bun --no-env-file test ./src/app/api/purchases/route-integrity.test.ts",
+        "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts",
+        "TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts"
+      ]
+    },
+    {
+      "id": "0015",
+      "title": "Separar diálogos de Parcelas e Caixinhas",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0012",
+      "requirements": [
+        "R01",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [
+        "0008",
+        "0010"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0008",
+          "requiredOutput": "Casca acessível de diálogo adotada em Investimentos e Consórcios",
+          "reason": "Consumir papel, foco e pendência da casca estabilizada."
+        },
+        {
+          "id": "0010",
+          "requiredOutput": "Progresso determinado e painel de consulta adotados por pares reais",
+          "reason": "Usar progresso compartilhado em Caixinhas sem alterar percentual ou saldo."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/installments-view.tsx",
+        "src/components/finance/installment-plan-editor.tsx",
+        "src/components/finance/installment-delete-confirmation.tsx",
+        "src/components/finance/savings-view.tsx",
+        "src/components/finance/savings-goal-editor.tsx",
+        "src/components/finance/savings-contribution-dialog.tsx",
+        "src/components/finance/quiet-investments-installments.test.tsx",
+        "src/components/finance/quiet-consortiums-savings.test.tsx",
+        "src/components/finance/quiet-installments-savings-dialogs.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-investments-installments.test.tsx src/components/finance/quiet-consortiums-savings.test.tsx src/lib/installment-selection.test.ts",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-installments-savings-dialogs.qa.mjs",
+        "bun --no-env-file test ./src/app/api/installments/route.test.ts",
+        "bun --no-env-file test ./src/app/api/savings/route.test.ts"
+      ]
+    },
+    {
+      "id": "0016",
+      "title": "Isolar a composição do shell e dos serviços de interface",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0012",
+      "requirements": [
+        "R01",
+        "R02",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [
+        "0005",
+        "0010"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0005",
+          "requiredOutput": "Campos de transação comuns à criação e à edição",
+          "reason": "O shell delega a ação de lançamento ao fluxo de transação já caracterizado."
+        },
+        {
+          "id": "0010",
+          "requiredOutput": "Progresso determinado e painel de consulta adotados por pares reais",
+          "reason": "Resultados e notificações consomem feedback comum quando semântica e retry coincidem."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/app/page.tsx",
+        "src/components/finance/app-header.tsx",
+        "src/components/finance/app-overlays.tsx",
+        "src/components/finance/global-search.tsx",
+        "src/components/finance/global-search-result.tsx",
+        "src/components/finance/notification-panel.tsx",
+        "src/components/finance/ai-advisor.tsx",
+        "src/components/finance/advisor-composer.tsx",
+        "src/components/finance/quiet-navigation.test.tsx",
+        "src/components/finance/quiet-search-parity.qa.mjs",
+        "src/components/finance/quiet-core-residuals.test.tsx"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-navigation.test.tsx src/components/finance/quiet-core-residuals.test.tsx",
+        "bun --no-env-file src/components/finance/quiet-search-parity.qa.mjs",
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0017",
+      "title": "Consolidar indicadores, metas e estados em widgets",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0012",
+      "requirements": [
+        "R01",
+        "R02",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [
+        "0008",
+        "0009",
+        "0010"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0008",
+          "requiredOutput": "Casca acessível de diálogo adotada em Investimentos e Consórcios",
+          "reason": "Preservar foco e mutações nos formulários extraídos de metas e orçamento."
+        },
+        {
+          "id": "0009",
+          "requiredOutput": "Linha e métrica compartilhadas com adoção verificável",
+          "reason": "Usar métrica estabilizada apenas nos indicadores compatíveis."
+        },
+        {
+          "id": "0010",
+          "requiredOutput": "Progresso determinado e painel de consulta adotados por pares reais",
+          "reason": "Usar o contrato de progresso e estados sem recalcular agregados."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/achievement-badges.tsx",
+        "src/components/finance/budget-goals.tsx",
+        "src/components/finance/budget-goal-editor.tsx",
+        "src/components/finance/financial-health-score.tsx",
+        "src/components/finance/goals-dashboard.tsx",
+        "src/components/finance/monthly-budget-tracker.tsx",
+        "src/components/finance/monthly-budget-editor.tsx",
+        "src/components/finance/savings-challenge.tsx",
+        "src/components/finance/smart-insights.tsx",
+        "src/components/finance/quick-stats-overview.tsx",
+        "src/components/finance/quiet-goals-health.test.tsx",
+        "src/components/finance/quiet-core-residuals.test.tsx",
+        "src/components/finance/quiet-goals-widgets.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-goals-health.test.tsx src/components/finance/quiet-core-residuals.test.tsx src/app/api/monthly-budgets/route.test.ts src/app/api/quick-stats/route.test.ts",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-goals-widgets.qa.mjs"
+      ]
+    },
+    {
+      "id": "0018",
+      "title": "Decompor mapas densos de análise e calendário",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0012",
+      "requirements": [
+        "R01",
+        "R02",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [
+        "0009",
+        "0011"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0009",
+          "requiredOutput": "Linha e métrica compartilhadas com adoção verificável",
+          "reason": "Consumir as linhas/métricas estabilizadas nos mapas de dívida, relatórios e timeline."
+        },
+        {
+          "id": "0011",
+          "requiredOutput": "Tooltip financeiro comum adotado em pelo menos dois gráficos",
+          "reason": "A análise usa tooltip comum somente quando os contratos compatíveis já estiverem testados."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/debt-overview.tsx",
+        "src/components/finance/debt-sections.tsx",
+        "src/components/finance/financial-calendar.tsx",
+        "src/components/finance/financial-calendar-grid.tsx",
+        "src/components/finance/financial-reports.tsx",
+        "src/components/finance/financial-report-tabs.tsx",
+        "src/components/finance/expense-breakdown.tsx",
+        "src/components/finance/expense-category-details.tsx",
+        "src/components/finance/spending-timeline.tsx",
+        "src/components/finance/spending-day-details.tsx",
+        "src/components/finance/transaction-analytics.tsx",
+        "src/components/finance/transaction-analysis-tabs.tsx",
+        "src/components/finance/upcoming-bills.tsx",
+        "src/components/finance/quiet-analysis-calendar.test.tsx",
+        "src/components/finance/quiet-insights-flow.test.tsx",
+        "src/components/finance/quiet-analytics-calendar.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-analysis-calendar.test.tsx src/components/finance/quiet-insights-flow.test.tsx",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-analytics-calendar.qa.mjs",
+        "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts",
+        "TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts"
+      ]
+    },
+    {
+      "id": "0019",
+      "title": "Separar editor e confirmação de Recorrências",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0012",
+      "requirements": [
+        "R01",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [
+        "0008"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0008",
+          "requiredOutput": "Casca acessível de diálogo adotada em Investimentos e Consórcios",
+          "reason": "Consumir o contrato do diálogo sem mudar travas específicas de Recorrências."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/recurring-transactions.tsx",
+        "src/components/finance/recurring-transaction-editor.tsx",
+        "src/components/finance/recurring-delete-confirmation.tsx",
+        "src/components/finance/quiet-recurring-receipts.test.tsx",
+        "src/components/finance/quiet-recurring-focus.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Envios concorrentes e respostas tardias",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-recurring-receipts.test.tsx",
+        "bun run typecheck",
+        "bun --no-env-file src/components/finance/quiet-recurring-focus.qa.mjs"
+      ]
+    },
+    {
+      "id": "0020",
+      "title": "Compartilhar o modelo de campos de Recibos",
+      "owner": "Equipe de frontend",
+      "nodeType": "task",
+      "parentId": "0012",
+      "requirements": [
+        "R01",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "src/components/finance/receipt-generator.tsx",
+        "src/components/finance/receipt-fields.ts",
+        "src/components/finance/receipt-preview.tsx",
+        "src/components/finance/quiet-recurring-receipts.test.tsx"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun --no-env-file test src/components/finance/quiet-recurring-receipts.test.tsx",
+        "bun run typecheck",
+        "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts",
+        "TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts"
+      ]
+    },
+    {
+      "id": "0021",
+      "title": "Proteção arquitetural e fechamento",
+      "owner": "Equipe de frontend",
+      "nodeType": "package",
+      "parentId": "0001",
+      "requirements": [
+        "R01",
+        "R06",
+        "R04",
+        "R05"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        ".zscripts/check-frontend-architecture.ts",
+        ".zscripts/frontend-architecture-baseline.json",
+        ".zscripts/check-frontend-architecture.test.ts",
+        "docs/reference/frontend-architecture-gate.md",
+        "docs/reference/frontend-componentization-coverage.md",
+        "src/components/finance/quiet-componentization.qa.mjs"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Gate distingue dívida herdada de regressão",
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+      ],
+      "verification": [
+        "bun run typecheck"
+      ]
+    },
+    {
+      "id": "0022",
+      "title": "Calibrar o gate AST com baseline revisável",
+      "owner": "Equipe de arquitetura frontend",
+      "nodeType": "task",
+      "parentId": "0021",
+      "requirements": [
+        "R01",
+        "R06"
+      ],
+      "dependsOn": [],
+      "dependencyDetails": [],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        ".zscripts/check-frontend-architecture.ts",
+        ".zscripts/frontend-architecture-baseline.json",
+        ".zscripts/check-frontend-architecture.test.ts",
+        "docs/reference/frontend-architecture-gate.md"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+        "arquitetura-componentes-frontend/Gate distingue dívida herdada de regressão"
+      ],
+      "verification": [
+        "bun --no-env-file test .zscripts/check-frontend-architecture.test.ts",
+        "bun .zscripts/check-frontend-architecture.ts --initial-base eb76f7d"
+      ]
+    },
+    {
+      "id": "0023",
+      "title": "Fechar inventário e evidência integrada da migração",
+      "owner": "Equipe de arquitetura frontend",
+      "nodeType": "task",
+      "parentId": "0021",
+      "requirements": [
+        "R04",
+        "R05",
+        "R06"
+      ],
+      "dependsOn": [
+        "0011",
+        "0013",
+        "0014",
+        "0015",
+        "0016",
+        "0017",
+        "0018",
+        "0019",
+        "0020",
+        "0022"
+      ],
+      "dependencyDetails": [
+        {
+          "id": "0011",
+          "requiredOutput": "Tooltip financeiro comum adotado em pelo menos dois gráficos",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0013",
+          "requiredOutput": "Seletor de conta, transferência, editor de movimentação e baixa isolados",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0014",
+          "requiredOutput": "Editores operacionais e linhas de Cartões, Compras e Categorias com provas de paridade",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0015",
+          "requiredOutput": "Diálogos de Parcelas e Caixinhas extraídos, com guardas e defaults preservados",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0016",
+          "requiredOutput": "Shell e serviços de interface separados com navegação e foco caracterizados",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0017",
+          "requiredOutput": "Widgets de metas, saúde e indicadores com editores e progresso verificáveis",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0018",
+          "requiredOutput": "Blocos de análise e agenda isolados com valores e navegação preservados",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0019",
+          "requiredOutput": "Editor e confirmação de Recorrências isolados com identidade da abertura",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0020",
+          "requiredOutput": "Modelo de campos comum à prévia, impressão e exportação de Recibos",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        },
+        {
+          "id": "0022",
+          "requiredOutput": "Gate AST determinístico e baseline versionável",
+          "reason": "Consumir a evidência e a disposição desta fatia no fechamento transversal."
+        }
+      ],
+      "decisionInputs": [],
+      "resolvesDecisions": [],
+      "decisionBundleReason": null,
+      "write": [
+        "docs/reference/frontend-componentization-coverage.md",
+        "src/components/finance/quiet-componentization.qa.mjs",
+        ".zscripts/frontend-architecture-baseline.json"
+      ],
+      "resources": [],
+      "scenarios": [
+        "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+        "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+        "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas",
+        "arquitetura-componentes-frontend/Gate distingue dívida herdada de regressão"
+      ],
+      "verification": [
+        "bun .zscripts/check-frontend-architecture.ts --baseline-ref \"$ARCH_BASE_REF\"",
+        "bun --no-env-file src/components/finance/quiet-componentization.qa.mjs",
+        "bun run typecheck && bun run lint && bun --no-env-file test",
+        "git diff --exit-code eb76f7d -- src/components/ui src/app/api src/app/globals.css prisma package.json bun.lock openspec/config.yaml openspec/specs",
+        "bun --no-env-file test ./src/app/api/consortiums/assembly.test.ts",
+        "bun --no-env-file test ./src/app/api/purchases/route-integrity.test.ts",
+        "bun --no-env-file test ./src/app/api/installments/route.test.ts",
+        "bun --no-env-file test ./src/app/api/savings/route.test.ts",
+        "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts",
+        "TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts"
+      ]
+    }
+  ],
+  "taskManager": {
+    "version": "asds.task-manager-projection/1",
+    "tasks": [
+      {
+        "id": "0003",
+        "title": "Consolidar o editor e a confirmação de Investimentos",
+        "owner": "Equipe de frontend",
+        "status": "ready",
+        "wave": 1,
+        "waitingOn": [],
+        "blockedBy": [],
+        "blocks": [
+          "0008",
+          "0009",
+          "0010"
+        ],
+        "parallelWith": [
+          "0004",
+          "0005",
+          "0020",
+          "0022"
+        ],
+        "serializesWith": [
+          "0008",
+          "0013",
+          "0015"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/investments-view.tsx",
+          "src/components/finance/investment-editor.tsx",
+          "src/components/finance/investment-delete-confirmation.tsx",
+          "src/components/finance/quiet-investment-mutations.test.tsx",
+          "src/components/finance/quiet-investments-installments.test.tsx",
+          "src/components/finance/quiet-investments-editor.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Investimento por carteira e detalhe",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-investment-mutations.test.tsx src/components/finance/quiet-investments-installments.test.tsx",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-investments-editor.qa.mjs"
+        ]
+      },
+      {
+        "id": "0004",
+        "title": "Consolidar edição e exclusão de Consórcios",
+        "owner": "Equipe de frontend",
+        "status": "ready",
+        "wave": 1,
+        "waitingOn": [],
+        "blockedBy": [],
+        "blocks": [
+          "0008",
+          "0009",
+          "0010"
+        ],
+        "parallelWith": [
+          "0003",
+          "0005",
+          "0020",
+          "0022"
+        ],
+        "serializesWith": [
+          "0008",
+          "0013",
+          "0015"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/consortiums-view.tsx",
+          "src/components/finance/consortium-editor.tsx",
+          "src/components/finance/consortium-delete-confirmation.tsx",
+          "src/components/finance/quiet-consortiums-savings.test.tsx",
+          "src/components/finance/quiet-consortiums-editor.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Consórcio por lista e detalhe",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-consortiums-savings.test.tsx src/lib/consortium-selection.test.ts",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-consortiums-editor.qa.mjs",
+          "bun --no-env-file test ./src/app/api/consortiums/assembly.test.ts"
+        ]
+      },
+      {
+        "id": "0005",
+        "title": "Unificar campos de transação de Contas",
+        "owner": "Equipe de frontend",
+        "status": "ready",
+        "wave": 1,
+        "waitingOn": [],
+        "blockedBy": [],
+        "blocks": [
+          "0006",
+          "0008",
+          "0009",
+          "0010",
+          "0016"
+        ],
+        "parallelWith": [
+          "0003",
+          "0004",
+          "0020",
+          "0022"
+        ],
+        "serializesWith": [
+          "0006",
+          "0009",
+          "0013",
+          "0014",
+          "0016"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/accounts-view.tsx",
+          "src/components/finance/account-transaction-fields.tsx",
+          "src/components/finance/quiet-accounts-cards.test.tsx",
+          "src/components/finance/quiet-navigation.test.tsx",
+          "src/components/finance/quiet-account-transaction-focus.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Transação por criação e edição",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx src/components/finance/quiet-navigation.test.tsx",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-account-transaction-focus.qa.mjs"
+        ]
+      },
+      {
+        "id": "0006",
+        "title": "Centralizar a trava síncrona de Contas e Cartões",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 2,
+        "waitingOn": [
+          "0005"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0009",
+          "0013",
+          "0014"
+        ],
+        "parallelWith": [
+          "0008",
+          "0010"
+        ],
+        "serializesWith": [
+          "0005",
+          "0009",
+          "0013",
+          "0014"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/accounts-view.tsx",
+          "src/components/finance/cards-view.tsx",
+          "src/hooks/use-keyed-mutation-lock.ts",
+          "src/components/finance/quiet-accounts-cards.test.tsx",
+          "src/hooks/use-keyed-mutation-lock.test.ts",
+          "src/components/finance/quiet-keyed-deletion-focus.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+          "arquitetura-componentes-frontend/Envios concorrentes e respostas tardias"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx src/hooks/use-keyed-mutation-lock.test.ts",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-accounts-cards.qa.mjs",
+          "bun --no-env-file src/components/finance/quiet-keyed-deletion-focus.qa.mjs"
+        ]
+      },
+      {
+        "id": "0008",
+        "title": "Adotar casca de formulário e confirmação em dois domínios",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 2,
+        "waitingOn": [
+          "0003",
+          "0004",
+          "0005"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0013",
+          "0014",
+          "0015",
+          "0017",
+          "0019"
+        ],
+        "parallelWith": [
+          "0006",
+          "0010"
+        ],
+        "serializesWith": [
+          "0003",
+          "0004",
+          "0013",
+          "0015"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/shared/finance-dialog-shell.tsx",
+          "src/components/finance/investment-editor.tsx",
+          "src/components/finance/investment-delete-confirmation.tsx",
+          "src/components/finance/consortium-editor.tsx",
+          "src/components/finance/consortium-delete-confirmation.tsx",
+          "src/components/finance/quiet-investment-mutations.test.tsx",
+          "src/components/finance/quiet-consortiums-savings.test.tsx",
+          "src/components/finance/quiet-finance-dialog-shell.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-investment-mutations.test.tsx src/components/finance/quiet-consortiums-savings.test.tsx",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-finance-dialog-shell.qa.mjs"
+        ]
+      },
+      {
+        "id": "0009",
+        "title": "Adotar linha financeira e métrica com variantes reais",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 3,
+        "waitingOn": [
+          "0003",
+          "0004",
+          "0005",
+          "0006"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0013",
+          "0014",
+          "0017",
+          "0018"
+        ],
+        "parallelWith": [
+          "0015",
+          "0016",
+          "0019"
+        ],
+        "serializesWith": [
+          "0005",
+          "0006",
+          "0011",
+          "0013",
+          "0014",
+          "0018"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/shared/finance-row.tsx",
+          "src/components/shared/finance-metric.tsx",
+          "src/components/finance/dashboard-view.tsx",
+          "src/components/finance/accounts-view.tsx",
+          "src/components/finance/cards-view.tsx",
+          "src/components/finance/spending-timeline.tsx",
+          "src/components/finance/dashboard-view.test.tsx",
+          "src/components/finance/quiet-insights-flow.test.tsx",
+          "src/components/finance/quiet-accounts-cards.test.tsx"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/dashboard-view.test.tsx src/components/finance/quiet-insights-flow.test.tsx src/components/finance/quiet-accounts-cards.test.tsx",
+          "bun run typecheck"
+        ]
+      },
+      {
+        "id": "0010",
+        "title": "Adotar progresso e estados de consulta nos painéis",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 2,
+        "waitingOn": [
+          "0003",
+          "0004",
+          "0005"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0011",
+          "0015",
+          "0016",
+          "0017"
+        ],
+        "parallelWith": [
+          "0006",
+          "0008"
+        ],
+        "serializesWith": [
+          "0011",
+          "0017",
+          "0018"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/shared/finance-progress.tsx",
+          "src/components/shared/query-panel.tsx",
+          "src/components/finance/budget-goals.tsx",
+          "src/components/finance/financial-health-score.tsx",
+          "src/components/finance/balance-projection.tsx",
+          "src/components/finance/cash-flow-forecast.tsx",
+          "src/components/finance/expense-breakdown.tsx",
+          "src/components/finance/quiet-goals-health.test.tsx",
+          "src/components/finance/quiet-analysis-calendar.test.tsx"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+          "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-goals-health.test.tsx src/components/finance/quiet-analysis-calendar.test.tsx",
+          "bun run typecheck"
+        ]
+      },
+      {
+        "id": "0011",
+        "title": "Adotar casca de tooltip sem unificar cálculos",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 4,
+        "waitingOn": [
+          "0010"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0018",
+          "0023"
+        ],
+        "parallelWith": [
+          "0013",
+          "0017"
+        ],
+        "serializesWith": [
+          "0009",
+          "0010",
+          "0018"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/shared/finance-chart-tooltip.tsx",
+          "src/components/finance/cash-flow-forecast.tsx",
+          "src/components/finance/balance-projection.tsx",
+          "src/components/finance/networth-evolution.tsx",
+          "src/components/finance/quiet-analysis-calendar.test.tsx",
+          "src/components/finance/quiet-insights-flow.test.tsx"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-analysis-calendar.test.tsx src/components/finance/quiet-insights-flow.test.tsx",
+          "bun run typecheck"
+        ]
+      },
+      {
+        "id": "0013",
+        "title": "Separar seletor, detalhes e movimentação nas operacionais prioritárias",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 4,
+        "waitingOn": [
+          "0006",
+          "0008",
+          "0009"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0011",
+          "0017"
+        ],
+        "serializesWith": [
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "0008",
+          "0009",
+          "0014",
+          "0015"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/investments-view.tsx",
+          "src/components/finance/investment-entry-editor.tsx",
+          "src/components/finance/consortiums-view.tsx",
+          "src/components/finance/consortium-installment-payment.tsx",
+          "src/components/finance/accounts-view.tsx",
+          "src/components/finance/account-transfer-dialog.tsx",
+          "src/components/finance/account-picker.tsx",
+          "src/components/finance/quiet-investments-installments.test.tsx",
+          "src/components/finance/quiet-consortiums-savings.test.tsx",
+          "src/components/finance/quiet-accounts-cards.test.tsx",
+          "src/components/finance/quiet-primary-operations.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-investments-installments.test.tsx src/components/finance/quiet-consortiums-savings.test.tsx src/components/finance/quiet-accounts-cards.test.tsx",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-primary-operations.qa.mjs"
+        ]
+      },
+      {
+        "id": "0014",
+        "title": "Separar Cartões, Compras e Categorias por responsabilidade",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 5,
+        "waitingOn": [
+          "0006",
+          "0008",
+          "0009"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0018"
+        ],
+        "serializesWith": [
+          "0005",
+          "0006",
+          "0009",
+          "0013"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/cards-view.tsx",
+          "src/components/finance/card-editor.tsx",
+          "src/components/finance/purchases-view.tsx",
+          "src/components/finance/purchase-editor.tsx",
+          "src/components/finance/purchase-items-editor.tsx",
+          "src/components/finance/categories-view.tsx",
+          "src/components/finance/category-editor.tsx",
+          "src/components/finance/category-icon-color-picker.tsx",
+          "src/components/finance/quiet-accounts-cards.test.tsx",
+          "src/components/finance/quiet-purchases-categories.test.tsx",
+          "src/components/finance/quiet-cards-purchases-categories.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx src/components/finance/quiet-purchases-categories.test.tsx",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-cards-purchases-categories.qa.mjs",
+          "bun --no-env-file test ./src/app/api/purchases/route-integrity.test.ts",
+          "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts",
+          "TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts"
+        ]
+      },
+      {
+        "id": "0015",
+        "title": "Separar diálogos de Parcelas e Caixinhas",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 3,
+        "waitingOn": [
+          "0008",
+          "0010"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0009",
+          "0016",
+          "0019"
+        ],
+        "serializesWith": [
+          "0003",
+          "0004",
+          "0008",
+          "0013"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/installments-view.tsx",
+          "src/components/finance/installment-plan-editor.tsx",
+          "src/components/finance/installment-delete-confirmation.tsx",
+          "src/components/finance/savings-view.tsx",
+          "src/components/finance/savings-goal-editor.tsx",
+          "src/components/finance/savings-contribution-dialog.tsx",
+          "src/components/finance/quiet-investments-installments.test.tsx",
+          "src/components/finance/quiet-consortiums-savings.test.tsx",
+          "src/components/finance/quiet-installments-savings-dialogs.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-investments-installments.test.tsx src/components/finance/quiet-consortiums-savings.test.tsx src/lib/installment-selection.test.ts",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-installments-savings-dialogs.qa.mjs",
+          "bun --no-env-file test ./src/app/api/installments/route.test.ts",
+          "bun --no-env-file test ./src/app/api/savings/route.test.ts"
+        ]
+      },
+      {
+        "id": "0016",
+        "title": "Isolar a composição do shell e dos serviços de interface",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 3,
+        "waitingOn": [
+          "0005",
+          "0010"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0009",
+          "0015",
+          "0019"
+        ],
+        "serializesWith": [
+          "0005",
+          "0017"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/app/page.tsx",
+          "src/components/finance/app-header.tsx",
+          "src/components/finance/app-overlays.tsx",
+          "src/components/finance/global-search.tsx",
+          "src/components/finance/global-search-result.tsx",
+          "src/components/finance/notification-panel.tsx",
+          "src/components/finance/ai-advisor.tsx",
+          "src/components/finance/advisor-composer.tsx",
+          "src/components/finance/quiet-navigation.test.tsx",
+          "src/components/finance/quiet-search-parity.qa.mjs",
+          "src/components/finance/quiet-core-residuals.test.tsx"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-navigation.test.tsx src/components/finance/quiet-core-residuals.test.tsx",
+          "bun --no-env-file src/components/finance/quiet-search-parity.qa.mjs",
+          "bun run typecheck"
+        ]
+      },
+      {
+        "id": "0017",
+        "title": "Consolidar indicadores, metas e estados em widgets",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 4,
+        "waitingOn": [
+          "0008",
+          "0009",
+          "0010"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0011",
+          "0013"
+        ],
+        "serializesWith": [
+          "0010",
+          "0016"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/achievement-badges.tsx",
+          "src/components/finance/budget-goals.tsx",
+          "src/components/finance/budget-goal-editor.tsx",
+          "src/components/finance/financial-health-score.tsx",
+          "src/components/finance/goals-dashboard.tsx",
+          "src/components/finance/monthly-budget-tracker.tsx",
+          "src/components/finance/monthly-budget-editor.tsx",
+          "src/components/finance/savings-challenge.tsx",
+          "src/components/finance/smart-insights.tsx",
+          "src/components/finance/quick-stats-overview.tsx",
+          "src/components/finance/quiet-goals-health.test.tsx",
+          "src/components/finance/quiet-core-residuals.test.tsx",
+          "src/components/finance/quiet-goals-widgets.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+          "arquitetura-componentes-frontend/Estados distintos da consulta e do progresso",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-goals-health.test.tsx src/components/finance/quiet-core-residuals.test.tsx src/app/api/monthly-budgets/route.test.ts src/app/api/quick-stats/route.test.ts",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-goals-widgets.qa.mjs"
+        ]
+      },
+      {
+        "id": "0018",
+        "title": "Decompor mapas densos de análise e calendário",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 5,
+        "waitingOn": [
+          "0009",
+          "0011"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0014"
+        ],
+        "serializesWith": [
+          "0009",
+          "0010",
+          "0011"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/debt-overview.tsx",
+          "src/components/finance/debt-sections.tsx",
+          "src/components/finance/financial-calendar.tsx",
+          "src/components/finance/financial-calendar-grid.tsx",
+          "src/components/finance/financial-reports.tsx",
+          "src/components/finance/financial-report-tabs.tsx",
+          "src/components/finance/expense-breakdown.tsx",
+          "src/components/finance/expense-category-details.tsx",
+          "src/components/finance/spending-timeline.tsx",
+          "src/components/finance/spending-day-details.tsx",
+          "src/components/finance/transaction-analytics.tsx",
+          "src/components/finance/transaction-analysis-tabs.tsx",
+          "src/components/finance/upcoming-bills.tsx",
+          "src/components/finance/quiet-analysis-calendar.test.tsx",
+          "src/components/finance/quiet-insights-flow.test.tsx",
+          "src/components/finance/quiet-analytics-calendar.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Padrão comum em produção sem homogeneizar fluxos",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-analysis-calendar.test.tsx src/components/finance/quiet-insights-flow.test.tsx",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-analytics-calendar.qa.mjs",
+          "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts",
+          "TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts"
+        ]
+      },
+      {
+        "id": "0019",
+        "title": "Separar editor e confirmação de Recorrências",
+        "owner": "Equipe de frontend",
+        "status": "waiting",
+        "wave": 3,
+        "waitingOn": [
+          "0008"
+        ],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0009",
+          "0015",
+          "0016"
+        ],
+        "serializesWith": [
+          "0020"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/recurring-transactions.tsx",
+          "src/components/finance/recurring-transaction-editor.tsx",
+          "src/components/finance/recurring-delete-confirmation.tsx",
+          "src/components/finance/quiet-recurring-receipts.test.tsx",
+          "src/components/finance/quiet-recurring-focus.qa.mjs"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Envios concorrentes e respostas tardias",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-recurring-receipts.test.tsx",
+          "bun run typecheck",
+          "bun --no-env-file src/components/finance/quiet-recurring-focus.qa.mjs"
+        ]
+      },
+      {
+        "id": "0020",
+        "title": "Compartilhar o modelo de campos de Recibos",
+        "owner": "Equipe de frontend",
+        "status": "ready",
+        "wave": 1,
+        "waitingOn": [],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0003",
+          "0004",
+          "0005",
+          "0022"
+        ],
+        "serializesWith": [
+          "0019"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "src/components/finance/receipt-generator.tsx",
+          "src/components/finance/receipt-fields.ts",
+          "src/components/finance/receipt-preview.tsx",
+          "src/components/finance/quiet-recurring-receipts.test.tsx"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas"
+        ],
+        "verification": [
+          "bun --no-env-file test src/components/finance/quiet-recurring-receipts.test.tsx",
+          "bun run typecheck",
+          "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts",
+          "TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts"
+        ]
+      },
+      {
+        "id": "0022",
+        "title": "Calibrar o gate AST com baseline revisável",
+        "owner": "Equipe de arquitetura frontend",
+        "status": "ready",
+        "wave": 1,
+        "waitingOn": [],
+        "blockedBy": [],
+        "blocks": [
+          "0023"
+        ],
+        "parallelWith": [
+          "0003",
+          "0004",
+          "0005",
+          "0020"
+        ],
+        "serializesWith": [
+          "0023"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          ".zscripts/check-frontend-architecture.ts",
+          ".zscripts/frontend-architecture-baseline.json",
+          ".zscripts/check-frontend-architecture.test.ts",
+          "docs/reference/frontend-architecture-gate.md"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Semântica preservada sem extração cosmética",
+          "arquitetura-componentes-frontend/Gate distingue dívida herdada de regressão"
+        ],
+        "verification": [
+          "bun --no-env-file test .zscripts/check-frontend-architecture.test.ts",
+          "bun .zscripts/check-frontend-architecture.ts --initial-base eb76f7d"
+        ]
+      },
+      {
+        "id": "0023",
+        "title": "Fechar inventário e evidência integrada da migração",
+        "owner": "Equipe de arquitetura frontend",
+        "status": "waiting",
+        "wave": 6,
+        "waitingOn": [
+          "0011",
+          "0013",
+          "0014",
+          "0015",
+          "0016",
+          "0017",
+          "0018",
+          "0019",
+          "0020",
+          "0022"
+        ],
+        "blockedBy": [],
+        "blocks": [],
+        "parallelWith": [],
+        "serializesWith": [
+          "0022"
+        ],
+        "decisionInputs": [],
+        "resolvesDecisions": [],
+        "write": [
+          "docs/reference/frontend-componentization-coverage.md",
+          "src/components/finance/quiet-componentization.qa.mjs",
+          ".zscripts/frontend-architecture-baseline.json"
+        ],
+        "resources": [],
+        "scenarios": [
+          "arquitetura-componentes-frontend/Teclado privacidade e janela visual",
+          "arquitetura-componentes-frontend/Integridade dos consumidores financeiros",
+          "arquitetura-componentes-frontend/Família de produção e exclusões rastreadas",
+          "arquitetura-componentes-frontend/Gate distingue dívida herdada de regressão"
+        ],
+        "verification": [
+          "bun .zscripts/check-frontend-architecture.ts --baseline-ref \"$ARCH_BASE_REF\"",
+          "bun --no-env-file src/components/finance/quiet-componentization.qa.mjs",
+          "bun run typecheck && bun run lint && bun --no-env-file test",
+          "git diff --exit-code eb76f7d -- src/components/ui src/app/api src/app/globals.css prisma package.json bun.lock openspec/config.yaml openspec/specs",
+          "bun --no-env-file test ./src/app/api/consortiums/assembly.test.ts",
+          "bun --no-env-file test ./src/app/api/purchases/route-integrity.test.ts",
+          "bun --no-env-file test ./src/app/api/installments/route.test.ts",
+          "bun --no-env-file test ./src/app/api/savings/route.test.ts",
+          "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts",
+          "TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts"
+        ]
+      }
+    ],
+    "readyTaskIds": [
+      "0003",
+      "0004",
+      "0005",
+      "0020",
+      "0022"
+    ],
+    "waitingTaskIds": [
+      "0006",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
+      "0017",
+      "0018",
+      "0019",
+      "0023"
+    ],
+    "blockedTaskIds": [],
+    "completedTaskIds": [],
+    "plannedWaves": [
+      [
+        "0003",
+        "0004",
+        "0005",
+        "0020",
+        "0022"
+      ],
+      [
+        "0006",
+        "0008",
+        "0010"
+      ],
+      [
+        "0009",
+        "0015",
+        "0016",
+        "0019"
+      ],
+      [
+        "0011",
+        "0013",
+        "0017"
+      ],
+      [
+        "0014",
+        "0018"
+      ],
+      [
+        "0023"
+      ]
+    ],
+    "conflicts": [
+      {
+        "tasks": [
+          "0003",
+          "0008"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0003",
+          "0013"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0003",
+          "0015"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0004",
+          "0008"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0004",
+          "0013"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0004",
+          "0015"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0005",
+          "0006"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0005",
+          "0009"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0005",
+          "0013"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0005",
+          "0014"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0005",
+          "0016"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0006",
+          "0009"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0006",
+          "0013"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0006",
+          "0014"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0008",
+          "0013"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0008",
+          "0015"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0009",
+          "0011"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0009",
+          "0013"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0009",
+          "0014"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0009",
+          "0018"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0010",
+          "0011"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0010",
+          "0017"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0010",
+          "0018"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0011",
+          "0018"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0013",
+          "0014"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0013",
+          "0015"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0016",
+          "0017"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0019",
+          "0020"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      },
+      {
+        "tasks": [
+          "0022",
+          "0023"
+        ],
+        "reason": "Overlapping write scope; sequential recommendation, not fusion"
+      }
+    ]
+  },
+  "blockedTaskIds": [],
+  "usableTasks": [
+    "0003",
+    "0004",
+    "0005",
+    "0006",
+    "0008",
+    "0009",
+    "0010",
+    "0011",
+    "0013",
+    "0014",
+    "0015",
+    "0016",
+    "0017",
+    "0018",
+    "0019",
+    "0020",
+    "0022",
+    "0023"
+  ],
+  "references": [
+    {
+      "id": "proposal",
+      "path": "proposal.md",
+      "role": "proposal",
+      "sha256": "815404b708dbf209dce0cff9872e66f742443a7757e03df4c7938a92839c0502"
+    },
+    {
+      "id": "design",
+      "path": "design.md",
+      "role": "design",
+      "sha256": "c50655638bc6e9bd780473574d2fc256f1d8ef68adc31998070bb26484ce8614"
+    },
+    {
+      "id": "spec:arquitetura-componentes-frontend",
+      "path": "specs/arquitetura-componentes-frontend/spec.md",
+      "role": "specification",
+      "sha256": "9fc11623e7ee6c1773505ced881dc6709b669d534c733033fa40f913e09c353b"
+    },
+    {
+      "id": "tasks-index",
+      "path": "tasks.md",
+      "role": "index",
+      "sha256": "d5c7fd79fdf7e1b54be13bace91bf1bf3347672297eebc4f71ea00c2fcf05251"
+    },
+    {
+      "id": "dag",
+      "path": "dag.mmd",
+      "role": "graph",
+      "sha256": "0ea03fd644ceffc010c41498d8b66b8d457c98658feaedee3fc6eae5a02510eb"
+    },
+    {
+      "id": "dag-status",
+      "path": "dag-status.md",
+      "role": "status-view",
+      "sha256": "6de6c8c9f54a4089968b2b246180301acedb990383d47549974c79e7d5f70d2e"
+    },
+    {
+      "id": "workflow-metadata",
+      "path": ".openspec.yaml",
+      "role": "context",
+      "sha256": "0b89965c6919ee9f0b3679bc8491b3c9efd623f2ceac7e5bd3929eff87f22215"
+    },
+    {
+      "id": "planning-summary",
+      "path": "summary.md",
+      "role": "context",
+      "sha256": "fdff639d317961b51cee4ed399cf47087b6eeae150407faa8f76a47c222b9db0"
+    },
+    {
+      "id": "source:auditoria",
+      "path": "sources/auditoria-componentizacao-tsx.md",
+      "role": "source",
+      "sha256": "2b0d54b767d553d20e80e151bc324f6f7fcd6d3d4572c1c0473766f770f3c873"
+    },
+    {
+      "id": "source:baseline",
+      "path": "sources/baseline.md",
+      "role": "source",
+      "sha256": "fc6f7509616bddfbb21b4eac106b0e132bd41344e4f24f595f02898211fcac35"
+    },
+    {
+      "id": "source:processo",
+      "path": "sources/processo.md",
+      "role": "context",
+      "sha256": "b53836d994a45a9781afbc2a362a8b6c3624e2cfd5ac280b10c3b55079618f9e"
+    },
+    {
+      "id": "source:verificacao-futura",
+      "path": "sources/verificacao-futura.md",
+      "role": "context",
+      "sha256": "7f693ad4ef5ccb4254a147c4e9bd8cbe4f401aa514802cff50f21e31f4585ce8"
+    },
+    {
+      "id": "task:0001",
+      "path": "tasks/task-0001.md",
+      "role": "contract",
+      "sha256": "9934af4aa15cab15f35a75a797d8cf158bc17cf086d20f6941575ad7cf635f88"
+    },
+    {
+      "id": "task:0002",
+      "path": "tasks/task-0002.md",
+      "role": "contract",
+      "sha256": "3075120e50aa5de22e69512e9c487b635f5d5ecae71b42468ea65625f746a687"
+    },
+    {
+      "id": "task:0003",
+      "path": "tasks/task-0003.md",
+      "role": "contract",
+      "sha256": "8a3e41215a2c5f9dd85d7ccedf360f51ba93ab35c6b54c922ed1251517f489d7"
+    },
+    {
+      "id": "task:0004",
+      "path": "tasks/task-0004.md",
+      "role": "contract",
+      "sha256": "93439023c0e3a6da8d97f8a041fa49ec70bab8371763794805a2cd73a678613b"
+    },
+    {
+      "id": "task:0005",
+      "path": "tasks/task-0005.md",
+      "role": "contract",
+      "sha256": "b0bbd4540fc916b44a2245b7e46fdc9eeddf1dcc31604b3b35ef3b1f4a8b6091"
+    },
+    {
+      "id": "task:0006",
+      "path": "tasks/task-0006.md",
+      "role": "contract",
+      "sha256": "f5cc6778199a43c72f1810abbf9d65f2b2ba114538042d126c3ca3f5503e1c06"
+    },
+    {
+      "id": "task:0007",
+      "path": "tasks/task-0007.md",
+      "role": "contract",
+      "sha256": "b50d38802ad1776eb22498c8b96894f58faa981096620e9483df0c94086f4186"
+    },
+    {
+      "id": "task:0008",
+      "path": "tasks/task-0008.md",
+      "role": "contract",
+      "sha256": "89189f1a6e4c9991ceedc7a51456e3d82ae4f1cf8fffff003ddcfda1a6b034f3"
+    },
+    {
+      "id": "task:0009",
+      "path": "tasks/task-0009.md",
+      "role": "contract",
+      "sha256": "b5dbbd9cd24f5b2a7bc4fe6f862fa8ac6da6fe0ef04052984c1309d9a0d91232"
+    },
+    {
+      "id": "task:0010",
+      "path": "tasks/task-0010.md",
+      "role": "contract",
+      "sha256": "64169319bbf3a862b2482f10f2720134ec1bc22c865608b2aa1b00c299fda94f"
+    },
+    {
+      "id": "task:0011",
+      "path": "tasks/task-0011.md",
+      "role": "contract",
+      "sha256": "785536974ab420e642b4bf408a7e48c675599fa528962769457fa459b61f3e0c"
+    },
+    {
+      "id": "task:0012",
+      "path": "tasks/task-0012.md",
+      "role": "contract",
+      "sha256": "56bd041431648038ff92e53edee54aed1f806de54a39dd2158ee5d4cf11bfd67"
+    },
+    {
+      "id": "task:0013",
+      "path": "tasks/task-0013.md",
+      "role": "contract",
+      "sha256": "929024e0256b1f908771596970cb55d6a92531c5456eb716a78588d7a618c7b2"
+    },
+    {
+      "id": "task:0014",
+      "path": "tasks/task-0014.md",
+      "role": "contract",
+      "sha256": "c5785365aaea95a0904eeb74bcc379064cb1dd70bd84591b4eb92559274d0c85"
+    },
+    {
+      "id": "task:0015",
+      "path": "tasks/task-0015.md",
+      "role": "contract",
+      "sha256": "ce98f7045c50167218b9bd95d5fef56f3381d81f1c1b0ac8b50e1c43d6caf8a4"
+    },
+    {
+      "id": "task:0016",
+      "path": "tasks/task-0016.md",
+      "role": "contract",
+      "sha256": "2ca697fb9b5f81906c3ff34ec220b4bd2ab33fef3813492449f233e31bc93d48"
+    },
+    {
+      "id": "task:0017",
+      "path": "tasks/task-0017.md",
+      "role": "contract",
+      "sha256": "73a87f7ccd0758d8e05070a3bec6748a28f54c393bad6a5413b6f3fbe73ddff8"
+    },
+    {
+      "id": "task:0018",
+      "path": "tasks/task-0018.md",
+      "role": "contract",
+      "sha256": "55ac761197c84b34b21e1f6b0f41e5d350819e9333d9ccbf816756a73a089e0f"
+    },
+    {
+      "id": "task:0019",
+      "path": "tasks/task-0019.md",
+      "role": "contract",
+      "sha256": "75d65b516cbd4bb3301a0a30d79a53cbb61ce73be95654dc92ab2c90a2aa7d45"
+    },
+    {
+      "id": "task:0020",
+      "path": "tasks/task-0020.md",
+      "role": "contract",
+      "sha256": "d3e19f6dbcea487cfd64b7abfe5d6e2e7e3db1990cb20b77a038f3c0346ade4b"
+    },
+    {
+      "id": "task:0021",
+      "path": "tasks/task-0021.md",
+      "role": "contract",
+      "sha256": "f1fdaca5ab8f546d23ff49c8965f217ab21304d693bac04dd38873817910659c"
+    },
+    {
+      "id": "task:0022",
+      "path": "tasks/task-0022.md",
+      "role": "contract",
+      "sha256": "cd70d2cfe0b2d7a06b82939ebb3b09cc9aeccd1e84b78c526acd8256731c85f7"
+    },
+    {
+      "id": "task:0023",
+      "path": "tasks/task-0023.md",
+      "role": "contract",
+      "sha256": "95eb16b1e224248145db42cc50e636bdaa0e154de02ee7bde7e37ef62116c295"
+    },
+    {
+      "id": "review:fidelity",
+      "path": "reviews/fidelity-r8.json",
+      "role": "review",
+      "sha256": "809165ff6e426ef262f80b6450816f3439ef74f6feef6ae8dfb0a1e9368ae270"
+    },
+    {
+      "id": "evidence:fidelity",
+      "path": "reviews/fidelity-r8-result.txt",
+      "role": "review-evidence",
+      "sha256": "e5580c8f5aa62d63b4054ca1836cacc06939340e1491dcde74ff08c1e7079b8a"
+    },
+    {
+      "id": "review:quality",
+      "path": "reviews/quality-r8.json",
+      "role": "review",
+      "sha256": "9dd45456b7543f15755d9d6e492da71fe4245e863f925ce70f3f1c6eaf128367"
+    },
+    {
+      "id": "evidence:quality",
+      "path": "reviews/quality-r8-result.txt",
+      "role": "review-evidence",
+      "sha256": "50fcc11a5eb3107e5004621e65422776a0715b5c1569e9d9e246d569be998509"
+    }
+  ],
+  "candidateSha256": "f5a8ce824c57f5f837fbda3b1a5afb12cd69d51f0ea08f8caf82ca7232c1aaac",
+  "readback": {
+    "status": "matched",
+    "revision": "r8",
+    "candidateSha256": "f5a8ce824c57f5f837fbda3b1a5afb12cd69d51f0ea08f8caf82ca7232c1aaac",
+    "readbackSha256": "837b9fff6bd9547f950a1fa762ff82ec60b4e86a7eb79165092701c051ddb0f4",
+    "destination": "openspec/changes/formalizar-componentizacao-extrema-frontend",
+    "synthetic": false,
+    "executionEvidence": false,
+    "verifiedBy": "7784a1d1-b97a-42ee-8fe7-94e6500e693f",
+    "evidence": "Deterministic inventory readback before final-state publication",
+    "referenceIds": [
+      "proposal",
+      "design",
+      "spec:arquitetura-componentes-frontend",
+      "tasks-index",
+      "dag",
+      "dag-status",
+      "workflow-metadata",
+      "planning-summary",
+      "source:auditoria",
+      "source:baseline",
+      "source:processo",
+      "source:verificacao-futura",
+      "task:0001",
+      "task:0002",
+      "task:0003",
+      "task:0004",
+      "task:0005",
+      "task:0006",
+      "task:0007",
+      "task:0008",
+      "task:0009",
+      "task:0010",
+      "task:0011",
+      "task:0012",
+      "task:0013",
+      "task:0014",
+      "task:0015",
+      "task:0016",
+      "task:0017",
+      "task:0018",
+      "task:0019",
+      "task:0020",
+      "task:0021",
+      "task:0022",
+      "task:0023",
+      "review:fidelity",
+      "evidence:fidelity",
+      "review:quality",
+      "evidence:quality"
+    ],
+    "taskIds": [
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
+      "0017",
+      "0018",
+      "0019",
+      "0020",
+      "0022",
+      "0023"
+    ],
+    "usableTasks": [
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
+      "0017",
+      "0018",
+      "0019",
+      "0020",
+      "0022",
+      "0023"
+    ],
+    "blockedTaskIds": [],
+    "checks": {
+      "bytes": true,
+      "files": true,
+      "ids": true,
+      "relations": true,
+      "decisions": true,
+      "reviews": true
+    }
+  }
+}

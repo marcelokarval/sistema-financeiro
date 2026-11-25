@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "asds.planning-store-receipt/1",
+  "status": "matched",
+  "revision": "r8",
+  "destination": "/home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend",
+  "files": [
+    {
+      "path": "planning-manifest.json",
+      "sha256": "74e3f96276f26f09d89e1fae67f810661425ad4faf647a5e7a34323669fac21f"
+    },
+    {
+      "path": "proposal.md",
+      "sha256": "815404b708dbf209dce0cff9872e66f742443a7757e03df4c7938a92839c0502"
+    },
+    {
+      "path": "design.md",
+      "sha256": "c50655638bc6e9bd780473574d2fc256f1d8ef68adc31998070bb26484ce8614"
+    },
+    {
+      "path": "specs/arquitetura-componentes-frontend/spec.md",
+      "sha256": "9fc11623e7ee6c1773505ced881dc6709b669d534c733033fa40f913e09c353b"
+    },
+    {
+      "path": "tasks.md",
+      "sha256": "d5c7fd79fdf7e1b54be13bace91bf1bf3347672297eebc4f71ea00c2fcf05251"
+    },
+    {
+      "path": "dag.mmd",
+      "sha256": "0ea03fd644ceffc010c41498d8b66b8d457c98658feaedee3fc6eae5a02510eb"
+    },
+    {
+      "path": "dag-status.md",
+      "sha256": "6de6c8c9f54a4089968b2b246180301acedb990383d47549974c79e7d5f70d2e"
+    },
+    {
+      "path": ".openspec.yaml",
+      "sha256": "0b89965c6919ee9f0b3679bc8491b3c9efd623f2ceac7e5bd3929eff87f22215"
+    },
+    {
+      "path": "summary.md",
+      "sha256": "fdff639d317961b51cee4ed399cf47087b6eeae150407faa8f76a47c222b9db0"
+    },
+    {
+      "path": "sources/auditoria-componentizacao-tsx.md",
+      "sha256": "2b0d54b767d553d20e80e151bc324f6f7fcd6d3d4572c1c0473766f770f3c873"
+    },
+    {
+      "path": "sources/baseline.md",
+      "sha256": "fc6f7509616bddfbb21b4eac106b0e132bd41344e4f24f595f02898211fcac35"
+    },
+    {
+      "path": "sources/processo.md",
+      "sha256": "b53836d994a45a9781afbc2a362a8b6c3624e2cfd5ac280b10c3b55079618f9e"
+    },
+    {
+      "path": "sources/verificacao-futura.md",
+      "sha256": "7f693ad4ef5ccb4254a147c4e9bd8cbe4f401aa514802cff50f21e31f4585ce8"
+    },
+    {
+      "path": "tasks/task-0001.md",
+      "sha256": "9934af4aa15cab15f35a75a797d8cf158bc17cf086d20f6941575ad7cf635f88"
+    },
+    {
+      "path": "tasks/task-0002.md",
+      "sha256": "3075120e50aa5de22e69512e9c487b635f5d5ecae71b42468ea65625f746a687"
+    },
+    {
+      "path": "tasks/task-0003.md",
+      "sha256": "8a3e41215a2c5f9dd85d7ccedf360f51ba93ab35c6b54c922ed1251517f489d7"
+    },
+    {
+      "path": "tasks/task-0004.md",
+      "sha256": "93439023c0e3a6da8d97f8a041fa49ec70bab8371763794805a2cd73a678613b"
+    },
+    {
+      "path": "tasks/task-0005.md",
+      "sha256": "b0bbd4540fc916b44a2245b7e46fdc9eeddf1dcc31604b3b35ef3b1f4a8b6091"
+    },
+    {
+      "path": "tasks/task-0006.md",
+      "sha256": "f5cc6778199a43c72f1810abbf9d65f2b2ba114538042d126c3ca3f5503e1c06"
+    },
+    {
+      "path": "tasks/task-0007.md",
+      "sha256": "b50d38802ad1776eb22498c8b96894f58faa981096620e9483df0c94086f4186"
+    },
+    {
+      "path": "tasks/task-0008.md",
+      "sha256": "89189f1a6e4c9991ceedc7a51456e3d82ae4f1cf8fffff003ddcfda1a6b034f3"
+    },
+    {
+      "path": "tasks/task-0009.md",
+      "sha256": "b5dbbd9cd24f5b2a7bc4fe6f862fa8ac6da6fe0ef04052984c1309d9a0d91232"
+    },
+    {
+      "path": "tasks/task-0010.md",
+      "sha256": "64169319bbf3a862b2482f10f2720134ec1bc22c865608b2aa1b00c299fda94f"
+    },
+    {
+      "path": "tasks/task-0011.md",
+      "sha256": "785536974ab420e642b4bf408a7e48c675599fa528962769457fa459b61f3e0c"
+    },
+    {
+      "path": "tasks/task-0012.md",
+      "sha256": "56bd041431648038ff92e53edee54aed1f806de54a39dd2158ee5d4cf11bfd67"
+    },
+    {
+      "path": "tasks/task-0013.md",
+      "sha256": "929024e0256b1f908771596970cb55d6a92531c5456eb716a78588d7a618c7b2"
+    },
+    {
+      "path": "tasks/task-0014.md",
+      "sha256": "c5785365aaea95a0904eeb74bcc379064cb1dd70bd84591b4eb92559274d0c85"
+    },
+    {
+      "path": "tasks/task-0015.md",
+      "sha256": "ce98f7045c50167218b9bd95d5fef56f3381d81f1c1b0ac8b50e1c43d6caf8a4"
+    },
+    {
+      "path": "tasks/task-0016.md",
+      "sha256": "2ca697fb9b5f81906c3ff34ec220b4bd2ab33fef3813492449f233e31bc93d48"
+    },
+    {
+      "path": "tasks/task-0017.md",
+      "sha256": "73a87f7ccd0758d8e05070a3bec6748a28f54c393bad6a5413b6f3fbe73ddff8"
+    },
+    {
+      "path": "tasks/task-0018.md",
+      "sha256": "55ac761197c84b34b21e1f6b0f41e5d350819e9333d9ccbf816756a73a089e0f"
+    },
+    {
+      "path": "tasks/task-0019.md",
+      "sha256": "75d65b516cbd4bb3301a0a30d79a53cbb61ce73be95654dc92ab2c90a2aa7d45"
+    },
+    {
+      "path": "tasks/task-0020.md",
+      "sha256": "d3e19f6dbcea487cfd64b7abfe5d6e2e7e3db1990cb20b77a038f3c0346ade4b"
+    },
+    {
+      "path": "tasks/task-0021.md",
+      "sha256": "f1fdaca5ab8f546d23ff49c8965f217ab21304d693bac04dd38873817910659c"
+    },
+    {
+      "path": "tasks/task-0022.md",
+      "sha256": "cd70d2cfe0b2d7a06b82939ebb3b09cc9aeccd1e84b78c526acd8256731c85f7"
+    },
+    {
+      "path": "tasks/task-0023.md",
+      "sha256": "95eb16b1e224248145db42cc50e636bdaa0e154de02ee7bde7e37ef62116c295"
+    },
+    {
+      "path": "reviews/fidelity-r8.json",
+      "sha256": "809165ff6e426ef262f80b6450816f3439ef74f6feef6ae8dfb0a1e9368ae270"
+    },
+    {
+      "path": "reviews/fidelity-r8-result.txt",
+      "sha256": "e5580c8f5aa62d63b4054ca1836cacc06939340e1491dcde74ff08c1e7079b8a"
+    },
+    {
+      "path": "reviews/quality-r8.json",
+      "sha256": "9dd45456b7543f15755d9d6e492da71fe4245e863f925ce70f3f1c6eaf128367"
+    },
+    {
+      "path": "reviews/quality-r8-result.txt",
+      "sha256": "50fcc11a5eb3107e5004621e65422776a0715b5c1569e9d9e246d569be998509"
+    }
+  ],
+  "usableTasks": [
+    "0003",
+    "0004",
+    "0005",
+    "0006",
+    "0008",
+    "0009",
+    "0010",
+    "0011",
+    "0013",
+    "0014",
+    "0015",
+    "0016",
+    "0017",
+    "0018",
+    "0019",
+    "0020",
+    "0022",
+    "0023"
+  ],
+  "blockedTaskIds": [],
+  "manifest": {
+    "path": "planning-manifest.json",
+    "sha256": "74e3f96276f26f09d89e1fae67f810661425ad4faf647a5e7a34323669fac21f"
+  },
+  "index": {
+    "path": "tasks.md",
+    "sha256": "d5c7fd79fdf7e1b54be13bace91bf1bf3347672297eebc4f71ea00c2fcf05251"
+  },
+  "completedTaskIds": [],
+  "normalizedIndexSha256": "d5c7fd79fdf7e1b54be13bace91bf1bf3347672297eebc4f71ea00c2fcf05251"
+}

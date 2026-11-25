@@ -1208,3 +1208,22 @@ Work Log:
 Stage Summary:
 - `separar-dados-do-pacote` concluída (4/4), sincronizada para `openspec/specs/empacotamento-sem-dados/spec.md` e arquivada
 - Todas as 3 changes OpenSpec sincronizadas, validadas (`3 passed, 0 failed`) e arquivadas
+
+---
+Task ID: FORMALIZAR-COMPONENTIZACAO-CLOSURE
+Agent: Archiver (Swarm R8 Closure)
+Task: Fechamento das 6 ondas, sincronização e arquivamento de `formalizar-componentizacao-extrema-frontend`
+
+Work Log:
+- Concluídas e integradas localmente em `main` todas as 6 ondas da migração (`25b4453..ea32229`, incluindo remediação pré-0023 `980110c`), cobrindo as 18 folhas executáveis (`0003`..`0023`) e os 5 pacotes estruturantes (`0001`, `0002`, `0007`, `0012`, `0021`).
+- Resultados finais da Task `0023` (Onda 6, commit `ea32229`):
+  - **AST (`check-frontend-architecture.ts`):** `77 arquivos; 6 ocorrências em 6 identidades; 33 avisos; 0 erros` (removidos os `32` `orphan`s sanados no baseline `.zscripts/frontend-architecture-baseline.json`); `check-frontend-architecture.test.ts` `18 pass, 0 fail`.
+  - **DOM headless (`quiet-componentization.qa.mjs`):** `54 cenários` executados nas 6 células (`360/390/1440 × light/dark`), `0 skips`.
+  - **Suíte global (`typecheck` / `lint` / `test`):** `tsc --noEmit` (`0` erros), `eslint .` (`0` erros), `bun --no-env-file test` (`378 pass, 41 skip, 0 fail`).
+  - **Provas SQLite opt-in isoladas (`0 skips`):** `assembly.test.ts` (`12 pass`), `purchases/route-integrity.test.ts` (`6 pass`), `installments/route.test.ts` (`4 pass`), `savings/route.test.ts` (`10 pass`), `purchase-date.test.ts` em `TZ=UTC` (`11 pass`) e `TZ=America/Bahia` (`11 pass`).
+- Atualizados `tasks.md` (`23/23` checkboxes `[x]`) e `dag-status.md` (`✅ Integrada` com commits locais `25b4453..ea32229` e nota de `reviews/planning-store-r8-receipt.json`).
+- Sincronizada a main spec `openspec/specs/arquitetura-componentes-frontend/spec.md` (`R01`–`R06`, `11` cenários) e arquivada a change em `openspec/changes/archive/2026-11-24-formalizar-componentizacao-extrema-frontend/` (preservando `.openspec.yaml`).
+
+Stage Summary:
+- `formalizar-componentizacao-extrema-frontend` concluída (`23/23`), sincronizada para `openspec/specs/arquitetura-componentes-frontend/spec.md` e arquivada
+- Validação OpenSpec estrita: `4 passed, 0 failed` e `0` changes ativas pendentes
