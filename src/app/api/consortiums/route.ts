@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       quota,
       administrator,
       startDate,
+      nextAssemblyDate,
       categoryId,
       accountId,
     } = body;
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
         monthlyPayment,
         installmentCount,
         startDate: start,
+        nextAssemblyDate: nextAssemblyDate ? new Date(nextAssemblyDate) : null,
         categoryId: categoryId || null,
         accountId: accountId || null,
         installments: {
@@ -130,7 +132,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, description, group, quota, administrator, totalAmount, monthlyPayment, status, nextAssemblyDate, categoryId, accountId, isActive } = body;
+    const { id, description, group, quota, administrator, totalAmount, monthlyPayment, status, nextAssemblyDate, assembliesAttended, categoryId, accountId, isActive } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -147,6 +149,16 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // O campo Int do Prisma aceita inteiros com sinal de 32 bits.
+    if (assembliesAttended !== undefined && (
+      !Number.isInteger(assembliesAttended) || assembliesAttended < 0 || assembliesAttended > 2_147_483_647
+    )) {
+      return NextResponse.json(
+        { error: "A contagem de assembleias deve ser um inteiro entre 0 e 2147483647" },
+        { status: 400 }
+      );
+    }
+
     const consortium = await db.consortium.update({
       where: { id },
       data: {
@@ -158,6 +170,7 @@ export async function PUT(request: NextRequest) {
         ...(monthlyPayment !== undefined && { monthlyPayment }),
         ...(status !== undefined && { status }),
         ...(nextAssemblyDate !== undefined && { nextAssemblyDate: nextAssemblyDate ? new Date(nextAssemblyDate) : null }),
+        ...(assembliesAttended !== undefined && { assembliesAttended }),
         ...(categoryId !== undefined && { categoryId: categoryId || null }),
         ...(accountId !== undefined && { accountId: accountId || null }),
         ...(isActive !== undefined && { isActive }),

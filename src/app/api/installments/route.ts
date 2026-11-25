@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
-// GET /api/installments - Listar planos de parcelamento
+// GET /api/installments - Listar planos ou consultar o detalhe pelo ID
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (id !== null) {
+      const plan = await db.installmentPlan.findUnique({
+        where: { id },
+        include: { installments: { orderBy: { number: "asc" } } },
+      });
+
+      if (!plan) {
+        return NextResponse.json(
+          { error: "Plano de parcelamento não encontrado" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(plan);
+    }
+
     const status = searchParams.get("status");
 
     const where = status ? { status } : {};
@@ -96,7 +115,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Gerar parcelas individuais
-      const installmentsData = [];
+      const installmentsData: Prisma.InstallmentCreateManyInput[] = [];
       for (let i = 1; i <= installmentCount; i++) {
         const dueDate = new Date(planStartDate);
         dueDate.setMonth(dueDate.getMonth() + (i - 1));

@@ -130,7 +130,7 @@ Receitas: ${currencyFmt(monthIncome)}
 Despesas (transações): ${currencyFmt(monthExpenseTxTotal)}
 Despesas (compras): ${currencyFmt(monthExpensePurchaseTotal)}
 Despesas Totais: ${currencyFmt(monthTotalExpense)}
-Saldo do Mês: ${currencyFmt(monthNet)} ${monthNet >= 0 ? "(superávit ✅)" : "(déficit ⚠️)"}
+Saldo do Mês: ${currencyFmt(monthNet)} ${monthNet >= 0 ? "(superávit)" : "(déficit)"}
 
 --- Top 5 Categorias de Gasto ---
 ${topCategories.map(([name, amount], i) => `${i + 1}. ${name}: ${currencyFmt(amount)} (${((amount / monthTotalExpense) * 100).toFixed(1)}%)`).join("\n")}

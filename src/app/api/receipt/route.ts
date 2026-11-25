@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { formatPurchaseDate } from "@/lib/purchase-date";
 
 const currencyFmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", {
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
           merchant: purchase.merchant,
           totalAmount: currencyFmt(purchase.totalAmount),
           totalAmountRaw: purchase.totalAmount,
-          date: dateFmt(purchase.date),
+          date: formatPurchaseDate(purchase.date, "receipt"),
           category: purchase.category?.name || "Sem categoria",
           categoryColor: purchase.category?.color || "#6b7280",
           card: purchase.card

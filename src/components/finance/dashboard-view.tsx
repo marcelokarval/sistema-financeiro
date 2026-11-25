@@ -1,923 +1,289 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { format, parseISO, startOfMonth, startOfYear, subMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { motion } from 'framer-motion';
-import {
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  CreditCard,
-  ArrowUpRight,
-  ArrowDownRight,
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
-  PiggyBank,
-  CircleDollarSign,
-  Receipt,
-  ShoppingBag,
-  ArrowLeftRight,
-  Eye,
-  EyeOff,
-  Calendar,
-  Filter,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { format, parseISO } from 'date-fns';
+import { ArrowDownRight, ArrowUpRight, ChevronDown, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Button } from '@/components/ui/button';
+import { FinanceRow } from '@/components/shared/finance-row';
+import { currencyFmt } from '@/lib/helpers';
+import { formatPurchaseDate } from '@/lib/purchase-date';
+import { cn } from '@/lib/utils';
 import { BudgetGoalsWidget } from './budget-goals';
 import { FinancialReportsWidget } from './financial-reports';
 import { FinancialHealthScore } from './financial-health-score';
 import { RecurringTransactionsWidget } from './recurring-transactions';
-import { useScrollReveal } from '@/hooks/use-scroll-reveal';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
-import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Area,
-  AreaChart,
-} from 'recharts';
+import { UpcomingBills } from './upcoming-bills';
+import { MonthlyBudgetTracker } from './monthly-budget-tracker';
+import { currentDashboardResult, dashboardMetrics, fetchDashboard, observeQuery, QUICK_FILTERS, quickRange, type DashboardData, type DashboardRequest, type DashboardResult, type QueryResult, type QuickFilterKey } from './dashboard-query';
 
-const currencyFmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+type Money = (amount: number) => string;
+const moneyClass = 'font-mono tabular-nums tracking-tight';
+const muted = 'text-xs leading-relaxed text-muted-foreground';
+const disclosure = 'cursor-pointer rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring';
+const dayLabel = (day: string) => format(parseISO(day), 'dd/MM/yyyy');
+const axisFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
 
-const shortCurrency = (v: number) => {
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return v.toFixed(0);
-};
-
-const dateFmt = (d: string) => {
-  try { return format(parseISO(d), 'dd/MM/yyyy', { locale: ptBR }); }
-  catch { return d; }
-};
-
-interface DashboardData {
-  totalBalance: number;
-  totalCardBalance: number;
-  totalCardLimit: number;
-  monthIncome: number;
-  monthExpense: number;
-  recentTransactions: any[];
-  recentPurchases: any[];
-  expenseByCategory: any[];
-  monthlyTrend: any[];
-  accountBalances: any[];
-}
-
-const COLORS = ['#22c55e', '#f97316', '#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#f59e0b', '#64748b', '#06b6d4', '#84cc16', '#8b5cf6', '#94a3b8'];
-
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-};
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-};
-
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return '☀️ Bom dia!';
-  if (hour < 18) return '🌤️ Boa tarde!';
-  return '🌙 Boa noite!';
-};
-
-// Quick filter presets
-const QUICK_FILTERS = [
-  { label: 'Este Mês', key: 'month' },
-  { label: 'Últimos 3 Meses', key: 'quarter' },
-  { label: 'Últimos 6 Meses', key: 'halfyear' },
-  { label: 'Este Ano', key: 'year' },
-  { label: 'Tudo', key: 'all' },
-] as const;
-
-type QuickFilterKey = typeof QUICK_FILTERS[number]['key'];
-
-const getQuickFilterRange = (key: QuickFilterKey) => {
-  const now = new Date();
-  switch (key) {
-    case 'month':
-      return {
-        from: startOfMonth(now),
-        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
-      };
-    case 'quarter':
-      return {
-        from: startOfMonth(subMonths(now, 2)),
-        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
-      };
-    case 'halfyear':
-      return {
-        from: startOfMonth(subMonths(now, 5)),
-        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
-      };
-    case 'year':
-      return {
-        from: startOfYear(now),
-        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
-      };
-    case 'all':
-      return {
-        from: new Date(2000, 0, 1),
-        to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
-      };
-  }
-};
-
-export function DashboardView() {
-  useScrollReveal();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [expandedPurchase, setExpandedPurchase] = useState<string | null>(null);
+export function DashboardView({ children, refreshCounter = 0 }: { children?: ReactNode; refreshCounter?: number } = {}) {
+  const [request, setRequest] = useState<DashboardRequest>(() => ({ range: quickRange('month') }));
+  const [settled, setSettled] = useState<DashboardResult | null>(null);
+  const [preset, setPreset] = useState<QuickFilterKey | 'custom'>('month');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [showValues, setShowValues] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<QuickFilterKey>('month');
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
 
-  // Compute effective date range from active filter or custom dates
-  const dateRange = useMemo(() => {
-    if (customFrom && customTo) {
-      return { from: new Date(customFrom), to: new Date(customTo) };
+  useEffect(() => observeQuery(
+    (signal) => fetchDashboard(request.range, signal),
+    (result) => setSettled({ request, refreshCounter, result }),
+  ), [request, refreshCounter]);
+
+  const retry = () => setRequest((current) => ({ range: current.range }));
+  const invalidRange = Boolean(from && to && from > to);
+  function selectPreset(key: QuickFilterKey) {
+    if (preset !== key) {
+      setPreset(key);
+      setRequest({ range: quickRange(key) });
     }
-    return getQuickFilterRange(activeFilter);
-  }, [activeFilter, customFrom, customTo]);
-
-  // Format the active range for display
-  const filterLabel = useMemo(() => {
-    const from = dateRange.from;
-    const to = dateRange.to;
-    const fromStr = format(from, 'MMM/yy', { locale: ptBR });
-    const toStr = format(to, 'MMM/yy', { locale: ptBR });
-    if (fromStr === toStr) return fromStr;
-    return `${fromStr} - ${toStr}`;
-  }, [dateRange]);
-
-  const fetchDashboard = useCallback(async () => {
-    setLoading(true);
-    try {
-      const fromISO = dateRange.from.toISOString().split('T')[0];
-      const toISO = dateRange.to.toISOString().split('T')[0];
-      const res = await fetch(`/api/dashboard?from=${fromISO}&to=${toISO}`);
-      if (res.ok) setData(await res.json());
-    } catch (e) {
-      console.error('Failed to fetch dashboard', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [dateRange]);
-
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
-
-  const handleQuickFilter = (key: QuickFilterKey) => {
-    setActiveFilter(key);
-    setCustomFrom('');
-    setCustomTo('');
-  };
-
-  const handleCustomFilter = () => {
-    if (customFrom && customTo) {
-      setActiveFilter('all'); // Deselect quick filters
-    }
-  };
-
-  if (loading) {
-    return (
-      <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <motion.div key={i} variants={item}>
-              <Skeleton className="h-36 rounded-2xl" />
-            </motion.div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Skeleton className="h-80 rounded-2xl lg:col-span-2" />
-          <Skeleton className="h-80 rounded-2xl" />
-        </div>
-      </motion.div>
-    );
+    setFrom('');
+    setTo('');
   }
-
-  if (!data) return <p>Erro ao carregar dados.</p>;
-
-  const netMonth = data.monthIncome - data.monthExpense;
-  const cardUsagePercent = data.totalCardLimit > 0
-    ? (data.totalCardBalance / data.totalCardLimit) * 100 : 0;
-  const savingsRate = data.monthIncome > 0
-    ? ((data.monthIncome - data.monthExpense) / data.monthIncome) * 100 : 0;
-
-  const mask = (v: string) => showValues ? v : 'R$ ••••••';
+  function applyCustom(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!from || !to || invalidRange) return;
+    setPreset('custom');
+    setRequest({ range: { from, to } });
+  }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      {/* Greeting Banner */}
-      <motion.div
-        variants={item}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 via-primary/80 to-violet-600/90 p-6 sm:p-8 text-primary-foreground shadow-xl shadow-primary/10 glass-enhanced"
-      >
-        {/* Background decoration with animated mesh */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/10 animate-breathe" />
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10 animate-breathe" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/3 right-1/4 w-16 h-16 rounded-full bg-white/5 animate-breathe" style={{ animationDelay: '0.5s' }} />
-          {/* Grid pattern overlay */}
-          <div className="absolute inset-0 opacity-[0.04]" style={{
-            backgroundImage: 'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)',
-            backgroundSize: '40px 40px'
-          }} />
-        </div>
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="min-w-0 space-y-5">
+      <header className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-primary-foreground/80">
-              {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold mt-1 tracking-tight">
-              {getGreeting()}
-            </h2>
-            <p className="text-sm text-primary-foreground/70 mt-1.5">
-              {data && (
-                <>Saldo total: <span className="font-semibold text-white">{mask(currencyFmt(data.totalBalance))}</span>
-                {netMonth >= 0 ? (
-                  <span className="ml-2 inline-flex items-center gap-1 text-emerald-200">
-                    <TrendingUp className="w-3 h-3" /> Superávit de {mask(currencyFmt(netMonth))} este mês
-                  </span>
-                ) : (
-                  <span className="ml-2 inline-flex items-center gap-1 text-rose-200">
-                    <TrendingDown className="w-3 h-3" /> Déficit de {mask(currencyFmt(Math.abs(netMonth)))} este mês
-                  </span>
-                )}
-                </>
-              )}
-            </p>
+            <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Posição financeira</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Resumo financeiro</h2>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={() => setShowValues(!showValues)} className="bg-white/10 border-white/20 text-primary-foreground hover:bg-white/20 hover:text-white">
-              {showValues ? <Eye className="w-4 h-4 mr-1.5" /> : <EyeOff className="w-4 h-4 mr-1.5" />}
-              {showValues ? 'Ocultar' : 'Mostrar'}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => setShowValues((visible) => !visible)}>
+              {showValues ? <Eye aria-hidden="true" /> : <EyeOff aria-hidden="true" />}
+              {showValues ? 'Ocultar valores' : 'Mostrar valores'}
             </Button>
-            <Button variant="outline" size="icon" onClick={fetchDashboard} className="bg-white/10 border-white/20 text-primary-foreground hover:bg-white/20 hover:text-white">
-              <RefreshCw className="w-4 h-4" />
+            <Button type="button" size="icon" variant="outline" aria-label="Atualizar resumo" onClick={retry}>
+              <RefreshCw aria-hidden="true" />
             </Button>
           </div>
         </div>
-      </motion.div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <div role="group" aria-label="Período do resumo" className="flex flex-wrap gap-1">
+            {QUICK_FILTERS.map(({ label, key }) => (
+              <Button type="button" key={key} size="sm" variant={preset === key ? 'secondary' : 'ghost'} aria-pressed={preset === key} onClick={() => selectPreset(key)}>{label}</Button>
+            ))}
+          </div>
+          <p className={`${muted} ${moneyClass}`} aria-live="polite">Período: {dayLabel(request.range.from)} a {dayLabel(request.range.to)}</p>
+        </div>
+        <details>
+          <summary className={disclosure}>Período personalizado</summary>
+          <form className="mt-3 flex flex-wrap items-end gap-3" onSubmit={applyCustom}>
+            <label className={muted}>De<input required type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="mt-1 block min-h-9 max-w-full rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-2 focus-visible:outline-ring" /></label>
+            <label className={muted}>Até<input required type="date" min={from || undefined} value={to} onChange={(event) => setTo(event.target.value)} className="mt-1 block min-h-9 max-w-full rounded-md border border-input bg-background px-2 text-foreground focus-visible:outline-2 focus-visible:outline-ring" /></label>
+            <Button size="sm" type="submit" disabled={!from || !to || invalidRange}>Filtrar</Button>
+            {invalidRange && <p role="alert" className="basis-full text-xs text-destructive">A data final não pode ser anterior à inicial.</p>}
+          </form>
+        </details>
+      </header>
+      <DashboardContent query={currentDashboardResult(request, settled, refreshCounter)} showValues={showValues} retry={retry} refreshCounter={refreshCounter}>
+        {children}
+      </DashboardContent>
+    </div>
+  );
+}
 
-      {/* Date Range Filter Bar */}
-      <motion.div
-        variants={item}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0, transition: { duration: 0.35, delay: 0.1 } }}
-      >
-        <Card className="border shadow-sm bg-card/80 backdrop-blur-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              {/* Quick filter pills */}
-              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                {QUICK_FILTERS.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => handleQuickFilter(f.key)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 whitespace-nowrap ${
-                      activeFilter === f.key && !customFrom && !customTo
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Separator */}
-              <div className="hidden sm:block w-px h-6 bg-border shrink-0" />
-
-              {/* Custom date inputs */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <label htmlFor="date-from" className="text-xs text-muted-foreground font-medium">De</label>
-                  <input
-                    id="date-from"
-                    type="date"
-                    value={customFrom}
-                    onChange={(e) => setCustomFrom(e.target.value)}
-                    className="h-8 px-2 text-xs border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <label htmlFor="date-to" className="text-xs text-muted-foreground font-medium">Até</label>
-                  <input
-                    id="date-to"
-                    type="date"
-                    value={customTo}
-                    onChange={(e) => setCustomTo(e.target.value)}
-                    className="h-8 px-2 text-xs border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  onClick={handleCustomFilter}
-                  disabled={!customFrom || !customTo}
-                  className="h-8 px-3 text-xs gap-1.5"
-                >
-                  <Filter className="w-3 h-3" />
-                  Filtrar
-                </Button>
-              </div>
-
-              {/* Active filter indicator */}
-              {(customFrom && customTo) || activeFilter !== 'month' ? (
-                <div className="flex items-center gap-1.5 ml-auto shrink-0">
-                  <Calendar className="w-3 h-3 text-primary" />
-                  <span className="text-xs text-primary font-medium">
-                    Filtrado: {filterLabel}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 reveal-stagger">
-        <motion.div variants={item} className="reveal-on-scroll">
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow card-spotlight hover-scale-sm">
-            <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Total em Contas</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums number-ticker">{mask(currencyFmt(data.totalBalance))}</p>
-                </div>
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <Wallet className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <div className="flex items-center gap-3 mt-4">
-                {data.accountBalances.slice(0, 3).map((acc: any) => (
-                  <div key={acc.accountId} className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: acc.accountColor }} />
-                    <span className="text-[10px] text-muted-foreground">{acc.accountName.split(' ')[0]}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item} className="reveal-on-scroll">
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow card-spotlight hover-scale-sm">
-            <div className="h-1 bg-gradient-to-r from-rose-500 to-pink-500" />
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Fatura Cartões</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-rose-500 number-ticker">
-                    {mask(currencyFmt(data.totalCardBalance))}
-                  </p>
-                </div>
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-lg shadow-rose-500/20">
-                  <CreditCard className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-muted-foreground">Limite usado</span>
-                  <span className="font-medium">{cardUsagePercent.toFixed(0)}%</span>
-                </div>
-                <Progress value={cardUsagePercent} className="h-1.5" />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Disponível: {mask(currencyFmt(data.totalCardLimit - data.totalCardBalance))}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item} className="reveal-on-scroll">
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow card-spotlight hover-scale-sm">
-            <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-400" />
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Renda Mensal</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-emerald-500 number-ticker">
-                    {mask(currencyFmt(data.monthIncome))}
-                  </p>
-                </div>
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <TrendingUp className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 mt-3">
-                <div className="w-5 h-5 rounded-md bg-emerald-500/10 flex items-center justify-center">
-                  <ArrowUpRight className="w-3 h-3 text-emerald-500" />
-                </div>
-                <span className="text-xs text-foreground/60 font-medium">Entradas do mês</span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item} className="reveal-on-scroll">
-          <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 card-glow card-spotlight hover-scale-sm">
-            <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-400" />
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Despesas Mensais</p>
-                  <p className="text-2xl font-bold mt-2 tracking-tight tabular-nums text-rose-500 number-ticker">
-                    {mask(currencyFmt(data.monthExpense))}
-                  </p>
-                </div>
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-                  <TrendingDown className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-3 min-w-0">
-                <Badge variant={netMonth >= 0 ? 'default' : 'destructive'} className="text-[10px] shrink-0">
-                  {netMonth >= 0 ? 'Superávit' : 'Déficit'}: {mask(currencyFmt(Math.abs(netMonth)))}
-                </Badge>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  Poupança: {savingsRate.toFixed(0)}%
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+export function DashboardContent({ query, showValues, retry, children, refreshCounter = 0 }: { query: QueryResult<DashboardData>; showValues: boolean; retry: () => void; children?: ReactNode; refreshCounter?: number }) {
+  const data = query.status === 'ready' ? query.data : null;
+  const metrics = data ? dashboardMetrics(data) : null;
+  const money: Money = (amount) => showValues ? currencyFmt(amount) : 'R$ ••••••';
+  return (
+    <div className="space-y-[18px]">
+      <section aria-label="Indicadores principais" aria-busy={query.status === 'loading'} className="border-y border-border">
+        {query.status === 'loading' && <p className="pt-3 text-sm text-muted-foreground" role="status">Carregando resumo…</p>}
+        {query.status === 'error' && (
+          <div className="flex flex-wrap items-center gap-3 pt-3">
+            <p className="text-sm text-destructive" role="alert">Não foi possível carregar o resumo.</p>
+            <Button variant="outline" size="sm" onClick={retry}>Tentar novamente</Button>
+          </div>
+        )}
+        <dl className="grid min-w-0 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,.65fr)_minmax(0,.65fr)]">
+          <Metric dominant label="Saldo em contas" caption="Posição atual · contas ativas" value={data ? money(data.totalBalance) : null} />
+          <Metric label="Saldo do período" caption="Entradas menos saídas no intervalo" value={metrics ? money(metrics.net) : null} />
+          <Metric label="Despesas do período" caption="Transações de saída e compras" value={data ? money(data.monthExpense) : null} />
+        </dl>
+      </section>
+      <div className="grid gap-[18px] xl:grid-cols-[minmax(0,1.7fr)_minmax(0,.8fr)]">
+        <div className="min-w-0 xl:col-start-2 xl:row-start-1"><UpcomingBills showValues={showValues} refreshCounter={refreshCounter} /></div>
+        <div className="min-w-0 xl:col-start-1 xl:row-start-1">
+          <Panel title="Entradas e saídas" caption="Agregação mensal da API, desde o início do primeiro mês até a data final do período.">
+            {data ? <Flow trend={data.monthlyTrend} showValues={showValues} money={money} /> : <QueryPlaceholder status={query.status} />}
+          </Panel>
+        </div>
       </div>
-
-      <div className="divider-gradient" />
-
-      {/* Quick Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 card-elevated hover-lift focus-gradient hover-shimmer">
-          <CardContent className="p-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center transition-all duration-300">
-              <PiggyBank className="w-4 h-4 text-emerald-500" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Patrimônio Total</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-sm font-bold truncate">{mask(currencyFmt(data.totalBalance - data.totalCardBalance))}</p>
-                {data.monthlyTrend.length >= 2 && (() => {
-                  const curr = data.monthlyTrend[data.monthlyTrend.length - 1];
-                  const prev = data.monthlyTrend[data.monthlyTrend.length - 2];
-                  const netChange = prev.income > 0 ? ((curr.income - curr.expense) - (prev.income - prev.expense)) / prev.income * 100 : 0;
-                  return netChange >= 0 ? (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500 shrink-0">
-                      <ArrowUpRight className="w-2.5 h-2.5" />
-                      {Math.abs(netChange).toFixed(1)}%
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-500 shrink-0">
-                      <ArrowDownRight className="w-2.5 h-2.5" />
-                      {Math.abs(netChange).toFixed(1)}%
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-500/20 card-elevated hover-lift focus-gradient hover-shimmer">
-          <CardContent className="p-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center transition-all duration-300">
-              <Receipt className="w-4 h-4 text-violet-500" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Compras no Mês</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-sm font-bold">{data.recentPurchases.length} compras</p>
-                {data.monthlyTrend.length >= 2 && (() => {
-                  const curr = data.monthlyTrend[data.monthlyTrend.length - 1];
-                  const prev = data.monthlyTrend[data.monthlyTrend.length - 2];
-                  const change = prev.income > 0 ? ((curr.expense - prev.expense) / prev.income) * 100 : 0;
-                  return change <= 0 ? (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500 shrink-0">
-                      <ArrowDownRight className="w-2.5 h-2.5" />
-                      {Math.abs(change).toFixed(1)}%
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-500 shrink-0">
-                      <ArrowUpRight className="w-2.5 h-2.5" />
-                      {Math.abs(change).toFixed(1)}%
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 card-elevated hover-lift focus-gradient hover-shimmer">
-          <CardContent className="p-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center transition-all duration-300">
-              <ArrowLeftRight className="w-4 h-4 text-blue-500" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Transações</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-sm font-bold">{data.recentTransactions.length} recentes</p>
-                {data.monthlyTrend.length >= 2 && (() => {
-                  const curr = data.monthlyTrend[data.monthlyTrend.length - 1];
-                  const prev = data.monthlyTrend[data.monthlyTrend.length - 2];
-                  const txChange = prev.income > 0 ? ((curr.income + curr.expense) - (prev.income + prev.expense)) / (prev.income + prev.expense) * 100 : 0;
-                  return txChange >= 0 ? (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500 shrink-0">
-                      <ArrowUpRight className="w-2.5 h-2.5" />
-                      {Math.abs(txChange).toFixed(1)}%
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-500 shrink-0">
-                      <ArrowDownRight className="w-2.5 h-2.5" />
-                      {Math.abs(txChange).toFixed(1)}%
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 card-elevated hover-lift focus-gradient hover-shimmer">
-          <CardContent className="p-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center transition-all duration-300">
-              <CircleDollarSign className="w-4 h-4 text-amber-500" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Gasto Médio/dia</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-sm font-bold">{mask(currencyFmt(data.monthExpense / new Date().getDate()))}</p>
-                {data.monthlyTrend.length >= 2 && (() => {
-                  const curr = data.monthlyTrend[data.monthlyTrend.length - 1];
-                  const prev = data.monthlyTrend[data.monthlyTrend.length - 2];
-                  const dayOfMonth = new Date().getDate();
-                  const currDaily = curr.expense / Math.max(dayOfMonth, 1);
-                  const prevDaily = prev.expense / 30;
-                  const dailyChange = prevDaily > 0 ? ((currDaily - prevDaily) / prevDaily) * 100 : 0;
-                  return dailyChange <= 0 ? (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500 shrink-0">
-                      <ArrowDownRight className="w-2.5 h-2.5" />
-                      {Math.abs(dailyChange).toFixed(1)}%
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-500 shrink-0">
-                      <ArrowUpRight className="w-2.5 h-2.5" />
-                      {Math.abs(dailyChange).toFixed(1)}%
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-[18px] xl:grid-cols-[minmax(0,1.45fr)_minmax(0,.75fr)]">
+        <Panel title="Atividade recente" caption="Últimas transações do período selecionado.">
+          {data ? <RecentTransactions transactions={data.recentTransactions} showValues={showValues} /> : <QueryPlaceholder status={query.status} />}
+        </Panel>
+        <MonthlyBudgetTracker showValues={showValues} refreshCounter={refreshCounter} />
       </div>
+      <details className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
+        <summary className={disclosure}>Mais detalhes financeiros</summary>
+        <div className="mt-5 grid min-w-0 gap-4">
+          {data && metrics && <DashboardDetails data={data} metrics={metrics} money={money} showValues={showValues} />}
+          <FinancialHealthScore key={`FinancialHealthScore-${refreshCounter}`} />
+          <FinancialReportsWidget key={`FinancialReportsWidget-${refreshCounter}`} />
+          <RecurringTransactionsWidget key={`RecurringTransactionsWidget-${refreshCounter}`} />
+          <BudgetGoalsWidget key={`BudgetGoalsWidget-${refreshCounter}`} />
+          {children}
+        </div>
+      </details>
+    </div>
+  );
+}
 
-      <div className="divider-gradient" />
+function Metric({ label, caption, value, dominant = false }: { label: string; caption: string; value: string | null; dominant?: boolean }) {
+  return (
+    <div className={dominant ? 'min-w-0 py-4 sm:col-span-2 lg:col-span-1 lg:pr-5' : 'min-w-0 border-t border-border py-3 sm:py-4 sm:pl-4 lg:border-t-0 lg:border-l lg:px-5'}>
+      <dt className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dd className={`${moneyClass} mt-1 font-semibold [overflow-wrap:anywhere] ${dominant ? 'text-4xl sm:text-5xl' : 'text-xl sm:text-2xl'}`}>{value ?? '—'}</dd>
+      <dd className={`${muted} mt-1`}>{caption}</dd>
+    </div>
+  );
+}
 
-      {/* Month-over-Month Trend */}
-      {data.monthlyTrend.length >= 2 && (
-        <motion.div variants={item}>
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <ArrowLeftRight className="w-4 h-4 text-primary" />
-                    Comparativo Mensal
-                  </CardTitle>
-                  <CardDescription>Variação mês a mês nos últimos 6 meses</CardDescription>
-                </div>
-                <Badge variant="secondary" className="text-[10px]">
-                  {data.monthlyTrend.length} meses
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                {data.monthlyTrend.map((m: any, idx: number) => {
-                  const prevIdx = idx - 1;
-                  const incomeChange = prevIdx >= 0 && data.monthlyTrend[prevIdx].income > 0
-                    ? ((m.income - data.monthlyTrend[prevIdx].income) / data.monthlyTrend[prevIdx].income) * 100
-                    : 0;
-                  const expenseChange = prevIdx >= 0 && data.monthlyTrend[prevIdx].expense > 0
-                    ? ((m.expense - data.monthlyTrend[prevIdx].expense) / data.monthlyTrend[prevIdx].expense) * 100
-                    : 0;
+function Panel({ title, caption, children }: { title: string; caption?: string; children: ReactNode }) {
+  return (
+    <section className="h-full min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5" aria-label={title}>
+      <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
+      {caption && <p className={`${muted} mt-1`}>{caption}</p>}
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
 
-                  return (
-                    <div key={m.month} className="text-center p-3 rounded-xl bg-muted/30 border border-border/30">
-                      <p className="text-xs text-muted-foreground font-medium truncate">{m.month}</p>
-                      <div className="mt-2 space-y-1">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-[9px] text-emerald-500">↑</span>
-                          <span className="text-xs font-bold text-emerald-500">
-                            {incomeChange >= 0 ? '+' : ''}{incomeChange.toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-center gap-1">
-                          <span className={`text-[9px] ${expenseChange <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {expenseChange <= 0 ? '↓' : '↑'}
-                          </span>
-                          <span className={`text-xs font-bold ${expenseChange <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {expenseChange >= 0 ? '+' : ''}{expenseChange.toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-[9px] text-muted-foreground mt-1.5">
-                        {mask(currencyFmt(m.income - m.expense))}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+function QueryPlaceholder({ status }: { status: QueryResult<DashboardData>['status'] }) {
+  return status === 'loading' ? (
+    <div aria-hidden="true" className="h-24 rounded-md bg-muted motion-safe:animate-pulse" />
+  ) : <p className={muted}>Dados do resumo indisponíveis.</p>;
+}
+
+function Flow({ trend, showValues, money }: { trend: DashboardData['monthlyTrend']; showValues: boolean; money: Money }) {
+  if (!trend.length) return <p className={muted}>Sem dados para a série mensal.</p>;
+  if (!showValues) return <p className={`${muted} grid min-h-40 place-items-center rounded-md border border-dashed border-border`}>Série oculta enquanto os valores estão ocultos.</p>;
+  return (
+    <>
+      <div className="mb-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-2"><span aria-hidden="true" className="w-4 border-t-2 border-chart-1" />Entradas</span>
+        <span className="flex items-center gap-2"><span aria-hidden="true" className="w-4 border-t-2 border-dashed border-chart-2" />Saídas</span>
+      </div>
+      <div className="h-52 min-w-0 sm:h-60">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <LineChart data={trend} margin={{ top: 8, right: 10, bottom: 0, left: 0 }}>
+            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="month" tickLine={false} axisLine={false} minTickGap={20} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} />
+            <YAxis width={52} tickLine={false} axisLine={false} tickFormatter={(value: number) => axisFmt.format(value)} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} />
+            <Tooltip formatter={(value: number) => currencyFmt(value)} isAnimationActive={false} contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', color: 'var(--card-foreground)' }} />
+            <Line type="linear" dataKey="income" name="Entradas" stroke="var(--chart-1)" strokeWidth={2} dot={trend.length <= 12} isAnimationActive={false} />
+            <Line type="linear" dataKey="expense" name="Saídas" stroke="var(--chart-2)" strokeDasharray="5 3" strokeWidth={2} dot={trend.length <= 12} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      {trend.every(({ income, expense }) => income === 0 && expense === 0) && (
+        <p className={muted}>Totais zerados podem indicar ausência de lançamentos ou valores que somaram zero.</p>
       )}
+      <details className="mt-2">
+        <summary className={disclosure}>Valores por mês</summary>
+        <div className="mt-2 overflow-auto">
+          <table className="w-full text-left text-xs">
+            <thead><tr className="border-b text-muted-foreground"><th scope="col" className="p-2">Mês</th><th scope="col" className="p-2 text-right">Entradas</th><th scope="col" className="p-2 text-right">Saídas</th></tr></thead>
+            <tbody>{trend.map(({ month, income, expense }, index) => <tr className="border-b last:border-0" key={`${month}-${index}`}><th scope="row" className="p-2 font-normal">{month}</th><td className={`${moneyClass} p-2 text-right`}>{money(income)}</td><td className={`${moneyClass} p-2 text-right`}>{money(expense)}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </details>
+    </>
+  );
+}
 
-      {/* Financial Health Score */}
-      <motion.div variants={item}>
-        <FinancialHealthScore />
-      </motion.div>
+function RecentTransactions({ transactions, showValues }: { transactions: DashboardData['recentTransactions']; showValues: boolean }) {
+  if (!transactions.length) return <p className={muted}>Nenhuma transação no período.</p>;
+  return (
+    <ul className="max-h-80 divide-y divide-border overflow-y-auto">
+      {transactions.map((transaction) => {
+        const income = transaction.type === 'INCOME';
+        const Icon = income ? ArrowUpRight : ArrowDownRight;
+        return (
+          <FinanceRow
+            key={transaction.id}
+            variant="compact"
+            tone={income ? 'positive' : 'negative'}
+            description={transaction.description}
+            metadata={`${dayLabel(transaction.date)}${transaction.category ? ` · ${transaction.category.name}` : ''}`}
+            amount={transaction.amount}
+            showValues={showValues}
+            leading={<Icon aria-hidden="true" className={cn('mt-0.5 size-4 shrink-0', income ? 'text-(--ds-accent-positive)' : 'text-(--ds-accent-danger)')} />}
+          />
+        );
+      })}
+    </ul>
+  );
+}
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div variants={item} className="lg:col-span-2">
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base font-semibold">Receitas vs Despesas</CardTitle>
-                  <CardDescription>Evolução nos últimos 6 meses</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data.monthlyTrend}>
-                    <defs>
-                      <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} tickFormatter={shortCurrency} />
-                    <RechartsTooltip
-                      formatter={(value: number, name: string) => [currencyFmt(value), name === 'income' ? 'Receitas' : 'Despesas']}
-                      contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px', color: 'var(--card-foreground)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-                    />
-                    <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIncome)" name="Receitas" dot={{ r: 3, fill: '#22c55e', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#22c55e', strokeWidth: 2, stroke: '#fff' }} />
-                    <Area type="monotone" dataKey="expense" stroke="#f97316" strokeWidth={2.5} fillOpacity={1} fill="url(#colorExpense)" name="Despesas" dot={{ r: 3, fill: '#f97316', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#f97316', strokeWidth: 2, stroke: '#fff' }} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card className="border-0 shadow-md h-full hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Despesas por Categoria</CardTitle>
-              <CardDescription>Distribuição no mês</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={data.expenseByCategory}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={3}
-                      dataKey="total"
-                      nameKey="categoryName"
-                      strokeWidth={0}
-                    >
-                      {data.expenseByCategory.map((_, idx) => (
-                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip
-                      formatter={(value: number) => currencyFmt(value)}
-                      contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px', color: 'var(--card-foreground)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-1.5 mt-2">
-                {data.expenseByCategory.slice(0, 4).map((cat: any, idx: number) => (
-                  <div key={cat.categoryId} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                      <span className="text-muted-foreground">{cat.categoryName}</span>
-                    </div>
-                    <span className="font-medium">{mask(currencyFmt(cat.total))}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+function DashboardDetails({ data, metrics, money, showValues }: { data: DashboardData; metrics: ReturnType<typeof dashboardMetrics>; money: Money; showValues: boolean }) {
+  const pct = (value: number, precision = 0) => showValues ? `${value.toFixed(precision)}%` : '•••';
+  const change = (label: string, value?: number) => value === undefined ? null : <span className={muted}> · {label}: {pct(value, 1)}</span>;
+  return (
+    <>
+      <Panel title="Outros indicadores do resumo" caption="Posição atual de contas e cartões; totais e atividade do período selecionado.">
+        <dl className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
+          <div><dt>Fatura dos cartões</dt><dd className={moneyClass}>{money(data.totalCardBalance)}</dd><dd className={muted}>Limite usado: {pct(metrics.cardUsage)} · Disponível: {money(metrics.cardAvailable)}</dd></div>
+          <div><dt>Contas menos faturas</dt><dd className={moneyClass}>{money(metrics.assetsEstimate)}{change('Variação do saldo mensal', metrics.variations?.net)}</dd></div>
+          <div><dt>Entradas do período</dt><dd className={moneyClass}>{money(data.monthIncome)}</dd><dd className={muted}>{metrics.net >= 0 ? 'Superávit' : 'Déficit'}: {money(Math.abs(metrics.net))} · Poupança: {pct(metrics.savingsRate)}</dd></div>
+          <div><dt>Compras recentes do período</dt><dd>{data.recentPurchases.length}{change('Variação dos gastos mensais', metrics.variations?.expense)}</dd></div>
+          <div><dt>Transações recentes do período</dt><dd>{data.recentTransactions.length}{change('Variação do volume financeiro mensal', metrics.variations?.volume)}</dd></div>
+          <div><dt>Gasto médio por dia</dt><dd className={moneyClass}>{money(metrics.daily)}{change('Variação do gasto médio diário', metrics.variations?.daily)}</dd><dd className={muted}>Total do período dividido pelo dia corrente do mês.</dd></div>
+        </dl>
+        {data.monthlyTrend.length >= 2 && (
+          <details className="mt-4">
+            <summary className={disclosure}>Comparativo mensal</summary>
+            <ul className="mt-2 divide-y divide-border text-xs">{data.monthlyTrend.map((month, index) => {
+              const prev = data.monthlyTrend[index - 1];
+              const income = prev && prev.income > 0 ? ((month.income - prev.income) / prev.income) * 100 : 0;
+              const expense = prev && prev.expense > 0 ? ((month.expense - prev.expense) / prev.expense) * 100 : 0;
+              return <li className="flex flex-wrap gap-x-4 gap-y-1 py-2" key={`${month.month}-${index}`}><span>{month.month}</span><span>Entradas: {pct(income)}</span><span>Saídas: {pct(expense)}</span><span>Saldo: {money(month.income - month.expense)}</span></li>;
+            })}</ul>
+          </details>
+        )}
+      </Panel>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel title="Despesas por categoria" caption="Período selecionado · transações de saída e compras com categoria.">
+          {data.expenseByCategory.length ? <ul className="divide-y divide-border">{data.expenseByCategory.map((category) => <li key={category.categoryId} className="flex flex-wrap justify-between gap-x-4 py-2 text-sm"><span className="break-words">{category.categoryName}</span><span className={moneyClass}>{money(category.total)}</span></li>)}</ul> : <p className={muted}>Nenhuma despesa categorizada no período.</p>}
+        </Panel>
+        <Panel title="Distribuição por conta" caption="Posição atual · contas ativas.">
+          {data.accountBalances.length ? <ul className="divide-y divide-border">{data.accountBalances.map((account) => <li key={account.accountId} className="flex flex-wrap justify-between gap-x-4 py-2 text-sm"><span className="break-words">{account.accountName}</span><span className={moneyClass}>{money(account.balance)}</span></li>)}</ul> : <p className={muted}>Nenhuma conta ativa.</p>}
+        </Panel>
       </div>
-
-      {/* Account Balances */}
-      {data.accountBalances.length > 0 && (
-        <motion.div variants={item}>
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Distribuição por Conta</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {data.accountBalances.map((acc: any) => {
-                  const percent = data.totalBalance > 0 ? (acc.balance / data.totalBalance) * 100 : 0;
-                  return (
-                    <div key={acc.accountId} className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${acc.accountColor}15` }}>
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: acc.accountColor }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium truncate">{acc.accountName}</span>
-                          <span className="text-sm font-semibold">{mask(currencyFmt(acc.balance))}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${percent}%` }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className="h-full rounded-full"
-                            style={{ backgroundColor: acc.accountColor }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Recent Transactions & Purchases */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div variants={item}>
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Últimas Transações</CardTitle>
-                <Badge variant="secondary" className="text-[10px]">{data.recentTransactions.length}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
-                {data.recentTransactions.map((t: any) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-accent/50 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${t.type === 'INCOME' ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
-                        {t.type === 'INCOME' ? (
-                          <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                        ) : (
-                          <ArrowDownRight className="w-4 h-4 text-rose-500" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{t.description}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {dateFmt(t.date)}
-                          {t.category && (
-                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ backgroundColor: `${t.category.color}15`, color: t.category.color }}>
-                              {t.category.name}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`text-sm font-bold whitespace-nowrap ml-2 ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {t.type === 'INCOME' ? '+' : '-'}{mask(currencyFmt(t.amount))}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 card-glow card-spotlight">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Compras Recentes</CardTitle>
-                <Badge variant="secondary" className="text-[10px]">{data.recentPurchases.length}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
-                {data.recentPurchases.map((p: any) => (
-                  <div key={p.id} className="border border-border/50 rounded-xl overflow-hidden">
-                    <button
-                      className="flex items-center justify-between w-full p-3 hover:bg-accent/30 transition-colors"
-                      onClick={() => setExpandedPurchase(expandedPurchase === p.id ? null : p.id)}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
-                          <ShoppingBag className="w-4 h-4 text-violet-500" />
-                        </div>
-                        <div className="min-w-0 text-left">
-                          <p className="text-sm font-medium truncate">{p.merchant}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {dateFmt(p.date)}
-                            {p.card && <span className="ml-1">· {p.card.name}</span>}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-bold">{mask(currencyFmt(p.totalAmount))}</span>
-                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                          {p.items?.length || 0} itens
-                        </span>
-                        {expandedPurchase === p.id ? (
-                          <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                        )}
-                      </div>
-                    </button>
-                    {expandedPurchase === p.id && p.items && p.items.length > 0 && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        transition={{ duration: 0.2 }}
-                        className="border-t border-border/50"
-                      >
-                        <div className="p-3 bg-muted/30 space-y-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                            Itens da Compra
-                          </p>
-                          {p.items.map((it: any) => (
-                            <div key={it.id} className="flex items-center justify-between text-xs pl-3 py-0.5">
-                              <span className="text-muted-foreground truncate flex-1">
-                                <span className="text-foreground/60 mr-1">{it.quantity}x</span>
-                                {it.name}
-                              </span>
-                              <span className="font-medium whitespace-nowrap ml-3 text-[11px]">
-                                {mask(currencyFmt(it.totalPrice))}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Financial Reports Widget */}
-      <motion.div variants={item}>
-        <FinancialReportsWidget />
-      </motion.div>
-
-      {/* Recurring Transactions Widget */}
-      <motion.div variants={item}>
-        <RecurringTransactionsWidget />
-      </motion.div>
-
-      {/* Budget Goals Widget */}
-      <motion.div variants={item}>
-        <BudgetGoalsWidget />
-      </motion.div>
-    </motion.div>
+      <Panel title="Compras recentes" caption="Período selecionado. Abra uma compra para ler seus itens.">
+        {data.recentPurchases.length ? (
+          <ul className="divide-y divide-border">
+            {data.recentPurchases.map((purchase) => (
+              <li key={purchase.id} className="py-2">
+                <details>
+                  <summary className={`${disclosure} group flex list-none flex-wrap items-center justify-between gap-2 [&::-webkit-details-marker]:hidden`}>
+                    <span className="min-w-0 flex-1 basis-36 break-words">{purchase.merchant}<span className={`block ${muted}`}>{formatPurchaseDate(purchase.date)}{purchase.card && ` · ${purchase.card.name}`} · {purchase.items.length} itens</span></span>
+                    <span className={moneyClass}>{money(purchase.totalAmount)}</span><ChevronDown aria-hidden="true" className="size-4 group-open:rotate-180" />
+                  </summary>
+                  {purchase.items.length ? <ul className="mt-2 border-l border-border pl-3">{purchase.items.map((item) => <li key={item.id} className="flex flex-wrap justify-between gap-x-3 py-1 text-xs"><span className="break-words">{item.quantity}× {item.name}</span><span className={moneyClass}>{money(item.totalPrice)}</span></li>)}</ul> : <p className={`${muted} mt-2`}>Nenhum item cadastrado.</p>}
+                </details>
+              </li>
+            ))}
+          </ul>
+        ) : <p className={muted}>Nenhuma compra no período.</p>}
+      </Panel>
+    </>
   );
 }

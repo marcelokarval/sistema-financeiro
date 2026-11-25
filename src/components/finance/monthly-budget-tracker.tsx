@@ -1,56 +1,31 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useId, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  PieChart,
-  Plus,
-  Target,
-  CreditCard,
-  Wallet,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  AlertTriangle,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { currencyFmt } from '@/lib/helpers';
+import { cn } from '@/lib/utils';
+import { observeQuery, type QueryResult, type SettledQuery } from './dashboard-query';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { currencyFmt, containerVariants, itemVariants } from '@/lib/helpers';
+  MonthlyBudgetEditor,
+  type MonthlyBudgetCategoryOption,
+  type MonthlyBudgetDraft,
+} from './monthly-budget-editor';
 
-// --- Types ---
 interface BudgetItem {
   id: string;
   categoryId: string;
@@ -64,252 +39,83 @@ interface BudgetItem {
   isOverBudget: boolean;
 }
 
-interface CategoryOption {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-}
+const smallText = 'text-xs leading-relaxed text-muted-foreground';
+const moneyClass = 'font-mono tabular-nums tracking-tight';
 
-// --- Color helpers ---
-function getProgressColor(pct: number, overBudget: boolean): string {
-  if (overBudget) return 'bg-red-500';
-  if (pct >= 90) return 'bg-rose-500';
-  if (pct >= 60) return 'bg-amber-500';
-  return 'bg-emerald-500';
-}
-
-function getProgressLabel(pct: number, overBudget: boolean): string {
-  if (overBudget) return 'Excedido';
-  if (pct >= 90) return 'Crítico';
-  if (pct >= 60) return 'Atenção';
-  return 'Bom';
-}
-
-// --- Loading Skeleton ---
-function LoadingSkeleton() {
-  return (
-    <Card className="border-0 shadow-md">
-      <div className="h-1 rounded-t-xl bg-gradient-to-r from-emerald-500 to-teal-500" />
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-10 h-10 rounded-xl" />
-          <div className="space-y-1.5 flex-1">
-            <Skeleton className="h-5 w-44" />
-            <Skeleton className="h-3 w-56" />
-          </div>
-          <Skeleton className="h-8 w-28" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-border/50 p-4 space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-6 w-32" />
-            </div>
-          ))}
-        </div>
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="rounded-xl border border-border/50 p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <Skeleton className="w-3 h-3 rounded-full" />
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 w-20 ml-auto" />
-              </div>
-              <Skeleton className="h-2 w-full rounded-full" />
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// --- Budget Card ---
-function BudgetCard({
-  budget,
-  index,
-  onEdit,
-  onDelete,
-}: {
-  budget: BudgetItem;
-  index: number;
-  onEdit: (b: BudgetItem) => void;
-  onDelete: (id: string) => void;
+function BudgetRow({ budget, money, showValues, onEdit, onDelete }: {
+  budget: BudgetItem; money: (amount: number) => string; showValues: boolean; onEdit: () => void; onDelete: () => void;
 }) {
-  const pctColor = getProgressColor(budget.percentage, budget.isOverBudget);
-  const label = getProgressLabel(budget.percentage, budget.isOverBudget);
-  const labelColor = budget.isOverBudget
-    ? 'text-red-500'
-    : budget.percentage >= 90
-    ? 'text-rose-500'
-    : budget.percentage >= 60
-    ? 'text-amber-500'
-    : 'text-emerald-500';
-
+  const label = budget.isOverBudget ? 'Excedido' : budget.percentage >= 90 ? 'Crítico' : budget.percentage >= 60 ? 'Atenção' : 'Bom';
+  const bar = budget.isOverBudget || budget.percentage >= 90 ? 'bg-destructive' : budget.percentage >= 60 ? 'bg-[var(--ds-accent-warning)]' : 'bg-primary';
   return (
-    <motion.div
-      variants={itemVariants}
-      whileHover={{ y: -2, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
-    >
-      <Card className="border-0 shadow-sm hover:shadow-md transition-all">
-        <CardContent className="p-4 space-y-3">
-          {/* Header row */}
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: `${budget.categoryColor}15` }}
-            >
-              <span
-                className="text-sm"
-                dangerouslySetInnerHTML={{
-                  __html: `<iconify-icon icon="lucide:${budget.categoryIcon}" width="16" height="16" style="color:${budget.categoryColor}"></iconify-icon>`,
-                }}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-medium truncate">{budget.categoryName}</h4>
-              <p className="text-[11px] text-muted-foreground">
-                {currencyFmt(budget.spent)} de {currencyFmt(budget.amount)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge
-                variant="outline"
-                className={`text-[10px] px-1.5 py-0 h-5 font-medium ${labelColor}`}
-                style={{
-                  backgroundColor: budget.isOverBudget
-                    ? 'rgba(239,68,68,0.08)'
-                    : budget.percentage >= 90
-                    ? 'rgba(244,63,94,0.08)'
-                    : budget.percentage >= 60
-                    ? 'rgba(245,158,11,0.08)'
-                    : 'rgba(34,197,94,0.08)',
-                }}
-              >
-                {label}
-              </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                    <MoreHorizontal className="w-3.5 h-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onEdit(budget)}>
-                    <Pencil className="w-3.5 h-3.5 mr-2" />
-                    Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onDelete(budget.id)}
-                    className="text-rose-500 focus:text-rose-500"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 mr-2" />
-                    Excluir
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="space-y-1">
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <motion.div
-                className={`h-full rounded-full ${pctColor}`}
-                initial={{ width: 0 }}
-                animate={{
-                  width: `${Math.min(budget.percentage, 100)}%`,
-                }}
-                transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 + index * 0.06 }}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground">
-                {budget.percentage.toFixed(0)}% utilizado
-              </span>
-              <span
-                className={`text-[11px] font-medium ${
-                  budget.isOverBudget ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'
-                }`}
-              >
-                {budget.isOverBudget
-                  ? `Excedido em ${currencyFmt(Math.abs(budget.remaining))}`
-                  : `Resta ${currencyFmt(budget.remaining)}`}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+    <li className="py-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="break-words text-sm font-medium">{budget.categoryName}</p>
+          <p className={cn(smallText, moneyClass)}>{money(budget.spent)} de {money(budget.amount)}</p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={`Ações do limite de ${budget.categoryName}`}><MoreHorizontal aria-hidden="true" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}><Pencil aria-hidden="true" />Editar</DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive"><Trash2 aria-hidden="true" />Excluir</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {showValues && (
+        <div aria-hidden="true" className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className={cn('h-full rounded-full', bar)} style={{ width: `${Math.min(budget.percentage, 100)}%` }} />
+        </div>
+      )}
+      <div className={cn('mt-1.5 flex flex-wrap justify-between gap-x-2', smallText)}>
+        <span>{label}{showValues && ` · ${budget.percentage.toFixed(0)}% utilizado`}</span>
+        <span className={moneyClass}>{budget.isOverBudget ? `Excedido em ${money(Math.abs(budget.remaining))}` : `Resta ${money(budget.remaining)}`}</span>
+      </div>
+    </li>
   );
 }
 
-// --- Main Component ---
-export function MonthlyBudgetTracker() {
-  const [budgets, setBudgets] = useState<BudgetItem[]>([]);
-  const [loading, setLoading] = useState(true);
+export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: { showValues?: boolean; refreshCounter?: number } = {}) {
+  const fieldId = useId();
+  const [request, setRequest] = useState(0);
+  const [settled, setSettled] = useState<{ key: string; result: SettledQuery<BudgetItem[]> } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [categories, setCategories] = useState<MonthlyBudgetCategoryOption[]>([]);
   const [editingBudget, setEditingBudget] = useState<BudgetItem | null>(null);
   const [formCategoryId, setFormCategoryId] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formMonth, setFormMonth] = useState('');
   const [formYear, setFormYear] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [pendingDeleteBudget, setPendingDeleteBudget] = useState<BudgetItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
   const monthLabel = format(now, 'MMMM yyyy', { locale: ptBR });
+  const key = `${currentYear}-${currentMonth}-${request}-${refreshCounter}`;
+  const query = settled?.key === key ? settled.result : { status: 'loading' as const };
+  const refreshBudgets = () => setRequest((value) => value + 1);
+  const money = (amount: number) => showValues ? currencyFmt(amount) : 'R$ ••••••';
 
-  const fetchBudgets = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/monthly-budgets?month=${currentMonth}&year=${currentYear}`);
-      if (res.ok) {
-        const data = await res.json();
-        setBudgets(data.budgets);
-      }
-    } catch (e) {
-      console.error('Erro ao carregar orçamentos:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentMonth, currentYear]);
+  useEffect(() => observeQuery(async (signal) => {
+    const response = await fetch(`/api/monthly-budgets?month=${currentMonth}&year=${currentYear}`, { signal });
+    if (!response.ok) throw new Error('Orçamento indisponível');
+    const data: { budgets: BudgetItem[] } = await response.json();
+    if (!Array.isArray(data?.budgets)) throw new Error('Dados de orçamento inválidos');
+    return data.budgets;
+  }, (result) => setSettled({ key, result })), [currentMonth, currentYear, key]);
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await fetch('/api/categories');
-      if (res.ok) {
-        const data = await res.json();
-        const expenseCategories = (data.categories || data || []).filter(
-          (c: any) => c.type === 'EXPENSE'
-        );
-        setCategories(
-          expenseCategories.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            color: c.color,
-            icon: c.icon,
-          }))
-        );
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchBudgets();
-    fetchCategories();
-  }, [fetchBudgets, fetchCategories]);
-
-  const totalBudget = budgets.reduce((s, b) => s + b.amount, 0);
-  const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
-  const totalRemaining = totalBudget - totalSpent;
-  const totalOverBudget = totalSpent > totalBudget;
+  useEffect(() => observeQuery(async (signal) => {
+    const response = await fetch('/api/categories', { signal });
+    if (!response.ok) throw new Error('Categorias indisponíveis');
+    type Category = MonthlyBudgetCategoryOption & { type: string };
+    const data: { categories: Category[] } | Category[] = await response.json();
+    return (Array.isArray(data) ? data : data.categories).filter((category) => category.type === 'EXPENSE');
+  }, (result) => { if (result.status === 'ready') setCategories(result.data); }), [refreshCounter]);
 
   // Open create dialog
   const openCreateDialog = () => {
@@ -331,6 +137,13 @@ export function MonthlyBudgetTracker() {
     setDialogOpen(true);
   };
 
+  const handleFieldChange = (field: keyof MonthlyBudgetDraft, value: string) => {
+    if (field === 'categoryId') setFormCategoryId(value);
+    else if (field === 'amount') setFormAmount(value);
+    else if (field === 'month') setFormMonth(value);
+    else if (field === 'year') setFormYear(value);
+  };
+
   // Submit handler
   const handleSubmit = async () => {
     const amount = parseFloat(formAmount);
@@ -347,33 +160,27 @@ export function MonthlyBudgetTracker() {
 
     setSubmitting(true);
     try {
-      if (editingBudget) {
-        const res = await fetch('/api/monthly-budgets', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: editingBudget.id, amount }),
-        });
-        if (res.ok) {
-          toast.success('Orçamento atualizado');
-        } else {
-          const data = await res.json();
-          toast.error(data.error || 'Erro ao atualizar');
-        }
-      } else {
-        const res = await fetch('/api/monthly-budgets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ categoryId: formCategoryId, amount, month, year }),
-        });
-        if (res.ok) {
-          toast.success('Orçamento criado');
-        } else {
-          const data = await res.json();
-          toast.error(data.error || 'Erro ao criar');
-        }
+      const res = editingBudget
+        ? await fetch('/api/monthly-budgets', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: editingBudget.id, amount }),
+          })
+        : await fetch('/api/monthly-budgets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryId: formCategoryId, amount, month, year }),
+          });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error || (editingBudget ? 'Erro ao atualizar' : 'Erro ao criar'));
+        return;
       }
+
+      toast.success(editingBudget ? 'Orçamento atualizado' : 'Orçamento criado');
       setDialogOpen(false);
-      fetchBudgets();
+      refreshBudgets();
     } catch {
       toast.error('Erro de conexão');
     } finally {
@@ -383,287 +190,121 @@ export function MonthlyBudgetTracker() {
 
   // Delete handler
   const handleDelete = async (id: string) => {
+    setDeleting(true);
     try {
       const res = await fetch(`/api/monthly-budgets?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
         toast.success('Orçamento excluído');
-        fetchBudgets();
+        setPendingDeleteBudget(null);
+        refreshBudgets();
       } else {
         const data = await res.json();
         toast.error(data.error || 'Erro ao excluir');
       }
     } catch {
       toast.error('Erro de conexão');
+    } finally {
+      setDeleting(false);
     }
   };
 
-  if (loading) return <LoadingSkeleton />;
-
-  const months = [
-    { value: '1', label: 'Janeiro' },
-    { value: '2', label: 'Fevereiro' },
-    { value: '3', label: 'Março' },
-    { value: '4', label: 'Abril' },
-    { value: '5', label: 'Maio' },
-    { value: '6', label: 'Junho' },
-    { value: '7', label: 'Julho' },
-    { value: '8', label: 'Agosto' },
-    { value: '9', label: 'Setembro' },
-    { value: '10', label: 'Outubro' },
-    { value: '11', label: 'Novembro' },
-    { value: '12', label: 'Dezembro' },
-  ];
-
   const years = [currentYear - 1, currentYear, currentYear + 1].map(String);
 
+  const budgets = query.status === 'ready' ? query.data : [];
+  const totalBudget = budgets.reduce((sum, budget) => sum + budget.amount, 0);
+  const totalSpent = budgets.reduce((sum, budget) => sum + budget.spent, 0);
+  const totalRemaining = totalBudget - totalSpent;
+  const totalOverBudget = totalSpent > totalBudget;
+
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-    >
-      <Card className="border-0 shadow-md card-glow">
-        {/* Gradient top border */}
-        <div className="h-1 rounded-t-xl bg-gradient-to-r from-emerald-500 to-teal-500" />
-
-        <CardHeader className="pb-3">
-          <motion.div
-            variants={itemVariants}
-            className="flex items-center justify-between gap-3"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <PieChart className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-semibold">Orçamento Mensal</CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5 capitalize">{monthLabel}</p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 hover:shadow-lg hover:from-emerald-600 hover:to-teal-700 transition-all"
-              onClick={openCreateDialog}
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Novo Limite
-            </Button>
-          </motion.div>
-        </CardHeader>
-
-        <CardContent>
-          {/* Summary Row */}
-          <motion.div
-            variants={itemVariants}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5"
-          >
-            <div className="rounded-xl border border-border/50 bg-gradient-to-br from-primary/5 to-transparent p-4">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Target className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground">Orçamento Total</span>
-              </div>
-              <p className="text-lg font-bold tabular-nums">{currencyFmt(totalBudget)}</p>
-            </div>
-            <div
-              className={`rounded-xl border border-border/50 bg-gradient-to-br ${totalOverBudget ? 'from-rose-500/5 to-transparent' : 'from-emerald-500/5 to-transparent'} p-4`}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center ${totalOverBudget ? 'bg-rose-500/10' : 'bg-emerald-500/10'}`}
-                >
-                  <CreditCard
-                    className={`w-3.5 h-3.5 ${totalOverBudget ? 'text-rose-500' : 'text-emerald-500'}`}
-                  />
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground">Gasto Total</span>
-              </div>
-              <p className={`text-lg font-bold tabular-nums ${totalOverBudget ? 'text-rose-500' : 'text-emerald-500'}`}>
-                {currencyFmt(totalSpent)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border/50 bg-gradient-to-br from-teal-500/5 to-transparent p-4">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                  <Wallet className="w-3.5 h-3.5 text-teal-500" />
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground">Disponível</span>
-              </div>
-              <p className={`text-lg font-bold tabular-nums ${totalOverBudget ? 'text-rose-500' : 'text-emerald-500'}`}>
-                {currencyFmt(totalRemaining)}
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Budget List */}
-          {budgets.length > 0 ? (
-            <motion.div
-              variants={containerVariants}
-              className="space-y-2.5"
-            >
-              <AnimatePresence mode="popLayout">
-                {budgets.map((budget, i) => (
-                  <BudgetCard
-                    key={budget.id}
-                    budget={budget}
-                    index={i}
-                    onEdit={openEditDialog}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="py-12 text-center"
-            >
-              <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                <PieChart className="w-7 h-7 text-muted-foreground" />
-              </div>
-              <h3 className="text-sm font-semibold text-muted-foreground">
-                Nenhum orçamento definido
-              </h3>
-              <p className="text-xs text-muted-foreground/70 mt-1 max-w-xs mx-auto">
-                Defina limites de gastos por categoria para controlar melhor suas
-                finanças
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={openCreateDialog}
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Criar Primeiro Orçamento
-              </Button>
-            </motion.div>
-          )}
-
-          {/* Over-budget warning */}
-          {totalOverBudget && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.4 }}
-              className="mt-4 rounded-xl bg-gradient-to-r from-red-500/5 via-rose-500/5 to-transparent border border-red-500/10 p-3 flex items-center gap-2.5"
-            >
-              <div className="w-7 h-7 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-              </div>
-              <p className="text-xs text-red-500 dark:text-red-400 leading-relaxed">
-                <span className="font-semibold">Atenção:</span> Você ultrapassou o orçamento total em{' '}
-                <span className="font-bold">{currencyFmt(Math.abs(totalRemaining))}</span> este mês.
-              </p>
-            </motion.div>
-          )}
-        </CardContent>
-      </Card>
+    <section aria-label="Orçamento mensal" className="h-full min-w-0 rounded-lg border border-border bg-card p-4 sm:p-5">
+      <BudgetHeader status={query.status} monthLabel={monthLabel} openCreateDialog={openCreateDialog} refreshBudgets={refreshBudgets} />
+      {query.status === 'ready' && (budgets.length ? (
+        <>
+          <dl className="my-3 grid gap-1.5 rounded-md border border-border p-2.5 text-xs">
+            {([['Orçamento total', totalBudget], ['Gasto total', totalSpent], ['Disponível', totalRemaining]] as const).map(([label, amount]) => (
+              <div key={label} className="flex flex-wrap justify-between gap-x-2"><dt className={smallText}>{label}</dt><dd className={moneyClass}>{money(amount)}</dd></div>
+            ))}
+          </dl>
+          <ul className="max-h-80 divide-y divide-border overflow-y-auto">
+            {budgets.map((budget) => <BudgetRow key={budget.id} budget={budget} money={money} showValues={showValues} onEdit={() => openEditDialog(budget)} onDelete={() => setPendingDeleteBudget(budget)} />)}
+          </ul>
+          {totalOverBudget && <p className="mt-2 border-t border-border pt-2 text-xs text-destructive"><strong>Atenção:</strong> orçamento total do mês ultrapassado em {money(Math.abs(totalRemaining))}.</p>}
+        </>
+      ) : (
+        <div className="mt-4 space-y-2">
+          <p className="text-sm font-medium">Nenhum orçamento definido.</p>
+          <p className={smallText}>Defina limites de gastos por categoria para acompanhar o mês.</p>
+        </div>
+      ))}
 
       {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle>
-              {editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Category */}
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Select
-                value={formCategoryId}
-                onValueChange={setFormCategoryId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full inline-block"
-                          style={{ backgroundColor: cat.color }}
-                        />
-                        {cat.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <MonthlyBudgetEditor
+        mode={editingBudget ? 'edit' : 'create'}
+        open={dialogOpen}
+        submitting={submitting}
+        fieldId={fieldId}
+        form={{
+          categoryId: formCategoryId,
+          amount: formAmount,
+          month: formMonth,
+          year: formYear,
+        }}
+        categories={categories}
+        years={years}
+        onFieldChange={handleFieldChange}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleSubmit}
+      />
 
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label>Valor do Limite (R$)</Label>
-              <Input
-                type="number"
-                placeholder="0,00"
-                step="0.01"
-                min="0"
-                value={formAmount}
-                onChange={(e) => setFormAmount(e.target.value)}
-              />
-            </div>
-
-            {/* Month / Year */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Mês</Label>
-                <Select value={formMonth} onValueChange={setFormMonth}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Ano</Label>
-                <Select value={formYear} onValueChange={setFormYear}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((y) => (
-                      <SelectItem key={y} value={y}>
-                        {y}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              disabled={submitting}
+      <AlertDialog
+        open={!!pendingDeleteBudget}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDeleteBudget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDeleteBudget
+                ? `Tem certeza que deseja excluir o limite da categoria "${pendingDeleteBudget.categoryName}"?`
+                : 'Esta ação não pode ser desfeita.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
+              onClick={(event) => {
+                event.preventDefault();
+                if (pendingDeleteBudget) void handleDelete(pendingDeleteBudget.id);
+              }}
             >
-              Cancelar
-            </Button>
-            <Button
-              className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700"
-              onClick={handleSubmit}
-              disabled={submitting || !formCategoryId || !formAmount}
-            >
-              {submitting ? 'Salvando...' : editingBudget ? 'Atualizar' : 'Criar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </motion.div>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
+export function BudgetHeader({ status, monthLabel, openCreateDialog, refreshBudgets }: {
+  status: QueryResult<BudgetItem[]>['status']; monthLabel: string; openCreateDialog: () => void; refreshBudgets: () => void;
+}) {
+  return (
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold sm:text-base">Orçamento mensal</h2>
+          <p className={cn(smallText, 'mt-1')}>Mês atual · {monthLabel}.</p>
+        </div>
+        {status !== 'loading' && <Button variant="outline" size="sm" onClick={openCreateDialog}><Plus aria-hidden="true" />Novo limite</Button>}
+      </div>
+      {status === 'loading' && <p role="status" className={cn(smallText, 'mt-4')}>Carregando orçamento…</p>}
+      {status === 'error' && <div className="mt-4 space-y-2"><p role="alert" className="text-sm text-destructive">Não foi possível carregar o orçamento.</p><Button size="sm" variant="outline" onClick={refreshBudgets}>Tentar novamente</Button></div>}
+    </>
   );
 }

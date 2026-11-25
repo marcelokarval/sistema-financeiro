@@ -20,6 +20,7 @@ export async function GET() {
       savingsGoals,
       allTransactions,
       allPurchases,
+      investmentTransactions,
     ] = await Promise.all([
       // Active accounts
       db.account.findMany({
@@ -50,7 +51,7 @@ export async function GET() {
           type: { in: ["INCOME", "EXPENSE"] },
           date: { gte: rangeStart, lte: rangeEnd },
         },
-        select: { type: true, amount: true, date: true },
+        select: { type: true, amount: true, date: true, cardId: true },
       }),
 
       // Purchases in last 6 months
@@ -58,7 +59,16 @@ export async function GET() {
         where: {
           date: { gte: rangeStart, lte: rangeEnd },
         },
-        select: { totalAmount: true, date: true },
+        select: { totalAmount: true, date: true, cardId: true },
+      }),
+
+      // Investment transactions in last 6 months (for historical balance reconstruction)
+      db.investmentTransaction.findMany({
+        where: {
+          investment: { isActive: true },
+          date: { gte: rangeStart, lte: rangeEnd },
+        },
+        select: { type: true, amount: true, date: true },
       }),
     ]);
 
@@ -136,6 +146,34 @@ export async function GET() {
       Math.round(m.expense * 100) / 100
     );
 
+    const monthlySavingsHistory = monthlyData.map((m) =>
+      Math.round((m.income - m.expense) * 100) / 100
+    );
+
+    const investmentDelta = (type: string, amount: number) =>
+      type === "VENDA" || type === "TAXA" ? -amount : amount;
+
+    const investmentsHistory = monthlyData.map((_, i) => {
+      if (i === 5) return Math.round(totalInvestments * 100) / 100;
+      const mEnd = new Date(currentYear, currentMonth - 5 + i + 1, 0, 23, 59, 59, 999);
+      const afterDelta = investmentTransactions
+        .filter((t) => t.date > mEnd)
+        .reduce((sum, t) => sum + investmentDelta(t.type, t.amount), 0);
+      return Math.round(Math.max(0, totalInvestments - afterDelta) * 100) / 100;
+    });
+
+    const cardDebtHistory = monthlyData.map((_, i) => {
+      if (i === 5) return Math.round(cardDebt * 100) / 100;
+      const mEnd = new Date(currentYear, currentMonth - 5 + i + 1, 0, 23, 59, 59, 999);
+      const laterCardPurchases = allPurchases
+        .filter((p) => p.cardId !== null && p.date > mEnd)
+        .reduce((sum, p) => sum + p.totalAmount, 0);
+      const laterCardExpenses = allTransactions
+        .filter((t) => t.cardId !== null && t.type === "EXPENSE" && t.date > mEnd)
+        .reduce((sum, t) => sum + t.amount, 0);
+      return Math.round(Math.max(0, cardDebt - laterCardPurchases - laterCardExpenses) * 100) / 100;
+    });
+
     // --- Changes (% vs last month) ---
     const incomeVsLastMonth =
       lastMonthData.income > 0
@@ -181,6 +219,9 @@ export async function GET() {
         expenseVsLastMonth: Math.round(expenseVsLastMonth * 10) / 10,
         savingsVsLastMonth: Math.round(savingsVsLastMonth * 10) / 10,
       },
+      monthlySavingsHistory,
+      investmentsHistory,
+      cardDebtHistory,
     });
   } catch (error) {
     console.error("Erro ao buscar resumo rápido:", error);

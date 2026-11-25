@@ -41,9 +41,11 @@ export async function GET(req: NextRequest) {
     // Aggregate spent by categoryId
     const spentMap: Record<string, number> = {};
     for (const t of expenseTransactions) {
+      if (!t.categoryId) continue;
       spentMap[t.categoryId] = (spentMap[t.categoryId] || 0) + t.amount;
     }
     for (const p of purchases) {
+      if (!p.categoryId) continue;
       spentMap[p.categoryId] = (spentMap[p.categoryId] || 0) + p.totalAmount;
     }
 

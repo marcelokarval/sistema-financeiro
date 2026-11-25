@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "asds.harness-planning-review/1",
+  "packageId": "formalizar-componentizacao-extrema-frontend",
+  "revision": "r5",
+  "candidateSha256": "7223efbe9d1961d51a49b1f3c55dac261b2c8f6387a70844ff011e5c0eb2dd1a",
+  "inventoryDigest": "bec24f2ad6f1fbee39ceb97182da80150210e3de4d73f6d843166d73c90a2957",
+  "policyDigest": "c6ef1e1ec8d7be452159ffe673f93cde82079ed187e84aa710dee0ca2064fba6",
+  "kind": "fidelity",
+  "priorReviewDigest": null,
+  "verdict": "fail",
+  "findings": [
+    {
+      "id": "F05",
+      "severity": "material",
+      "status": "open",
+      "evidence": "[0015:74–83](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/openspec/changes/formalizar-componentizacao-extrema-frontend/tasks/task-0015.md#L74-L83) exige que cancelar/deletar conserve foco em controle legítimo, mas a prova DOM de Caixinhas só cancela edição e aporte. Em [savings-view.tsx:451–456](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/finance/savings-view.tsx#L451-L456) e [786–789](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/finance/savings-view.tsx#L786-L789), Excluir captura o botão Mais ações da linha. [A ação Radix](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/finance/savings-view.tsx#L741-L756) não chama preventDefault; o [wrapper](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/ui/alert-dialog.tsx#L121-L130) usa a Action que encaminha a [DialogClose](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/node_modules/@radix-ui/react-alert-dialog/dist/index.mjs#L104-L112), cujo [click chama onOpenChange(false)](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/node_modules/@radix-ui/react-dialog/dist/index.mjs#L260-L275). Com DELETE pendente, [restoreDialogFocus](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/finance/savings-view.tsx#L388-L398) mira a origem ainda conectada. Após sucesso, [handleDeleteGoal](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/finance/savings-view.tsx#L324-L340) dispara [a releitura](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/src/components/finance/savings-view.tsx#L181-L195), que pode remover a linha focada, sem segundo retorno explícito. A [regra visual](file:///home/marcelo-karval/Backup/Projetos/nextjs/sistema-financeiro/docs/reference/design-system.contract.md#L20-L24) exige foco sobrevivente.",
+      "expectedCorrection": "Em 0015, caracterizar também o alerta de exclusão de Caixinhas, mantendo DELETE e GET pendentes de forma controlada. Comparar baseline e candidato no fechamento e após a remoção da linha; conferir Cancelar/Escape sem mutação. Separar paridade de eventual divergência Quiet, levando o resultado ao fechamento 0023; não impor nova regra de fechamento ou foco por causa da extração.",
+      "disposition": "O aceite de 0015 não está demonstrado pelo oráculo que só exercita edição/aporte em Caixinhas. Exigir foco sobrevivente em toda ordem sem caracterizar o baseline pode impor uma correção de produto fora do mandato, assim como no antigo F04 de Consórcios."
+    }
+  ],
+  "limitations": [
+    {
+      "description": "Revisão estática independente e somente de planejamento. Inspect confirma r5, manifesto reviewing sem revisões/readback; ASDS candidato/planejamento e OpenSpec strict passaram, status spec-driven 4/4. Inventários do Git eb76f7d e baseline coincidem (38/48/14/1); famílias cobrem os 38, R01–R06 chegam a 11 cenários nas folhas, com 18 folhas/cinco agrupadores, 0/23 checkboxes, seis ondas 5/3/4/3/2/1 e 38 arestas, sem inversão ou escrita coincidente na mesma onda. F04 está corrigido no plano de Consórcios: 0004/0008/0023 distinguem fechamento e remoção da linha nas duas ordens de GET e preservam DELETE por ID versus POST de baixa por abertura de 0013. Busca e Projeção mantêm o tratamento separado da norma Quiet. F05 descreve um caminho permitido pela fonte, não uma observação de activeElement. Não rodei produto, browser, gate ou fixtures; não editei, registrei, publiquei nem implementei.",
+      "blocksCoverage": false
+    }
+  ],
+  "sourceReferenceIds": [
+    "proposal",
+    "design",
+    "spec:arquitetura-componentes-frontend",
+    "tasks-index",
+    "dag",
+    "dag-status",
+    "workflow-metadata",
+    "planning-summary",
+    "source:auditoria",
+    "source:baseline",
+    "source:processo",
+    "source:verificacao-futura",
+    "task:0001",
+    "task:0002",
+    "task:0003",
+    "task:0004",
+    "task:0005",
+    "task:0006",
+    "task:0007",
+    "task:0008",
+    "task:0009",
+    "task:0010",
+    "task:0011",
+    "task:0012",
+    "task:0013",
+    "task:0014",
+    "task:0015",
+    "task:0016",
+    "task:0017",
+    "task:0018",
+    "task:0019",
+    "task:0020",
+    "task:0021",
+    "task:0022",
+    "task:0023"
+  ],
+  "taskIds": [
+    "0001",
+    "0002",
+    "0003",
+    "0004",
+    "0005",
+    "0006",
+    "0007",
+    "0008",
+    "0009",
+    "0010",
+    "0011",
+    "0012",
+    "0013",
+    "0014",
+    "0015",
+    "0016",
+    "0017",
+    "0018",
+    "0019",
+    "0020",
+    "0021",
+    "0022",
+    "0023"
+  ],
+  "author": {
+    "actorId": "specs-canon",
+    "sessionId": "82bd3bde-1474-4705-872a-361588765ca7"
+  },
+  "reviewer": {
+    "actorId": "fidelity-r5",
+    "sessionId": "440b4619-ea22-4105-a0ef-438e90b19e77",
+    "agentRole": "fidelity",
+    "parentSessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+  },
+  "assignment": {
+    "id": "99a001e0-84ff-4c4e-a16f-dccbc793ebea",
+    "requestedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f",
+    "kind": "fidelity",
+    "candidateSha256": "7223efbe9d1961d51a49b1f3c55dac261b2c8f6387a70844ff011e5c0eb2dd1a",
+    "scopeTaskIds": [
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
+      "0017",
+      "0018",
+      "0019",
+      "0020",
+      "0021",
+      "0022",
+      "0023"
+    ]
+  },
+  "evidence": {
+    "harness": "antigravity-cli/swarm",
+    "sessionId": "440b4619-ea22-4105-a0ef-438e90b19e77",
+    "messageIds": [
+      "99a001e0-84ff-4c4e-a16f-dccbc793ebea",
+      "48501bce-d048-4ab4-92c6-3a04934bef38"
+    ],
+    "requestDigest": "4121c63d3a34121a959feeb9904db940d89194d256973a7515e71fd7540d4eb9",
+    "resultDigest": "090105e3a9b83741405e0eafeada46f7767dc29b0cc768888f15ce6afb3d4b75",
+    "persistedResultPath": "reviews/fidelity-r5-result.txt",
+    "observedBySessionId": "7784a1d1-b97a-42ee-8fe7-94e6500e693f"
+  },
+  "envelopeDigest": "fed98857e6ed8ffa1dcf4a267e61054455bf867d501b6a334b0cccc9f87fc738"
+}

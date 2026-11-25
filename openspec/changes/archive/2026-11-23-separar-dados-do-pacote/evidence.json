@@ -1,0 +1,71 @@
+{
+  "candidate": "96de0e44e4d43e574f1b920d7047d95b37261ae5 (head; digest historico pre-2.2: daaceab9766e5f825b7f57786f2296584ab9d4f6a57311c846a68922747875a0)",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun test ./.zscripts/tests/packaging.test.ts -t \"build|pacote\"",
+        "outcome": "expected_failure",
+        "details": "Implementação anterior exigia banco local, não recusava dotenv antes dos produtores e aceitava saídas indevidas (10 falhas / 2 sucessos)."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts -t \"build|pacote\"",
+        "outcome": "passed",
+        "details": "Build sem SQLite, recusa de dotenv antes dos produtores, montagem isolada, inspeção do tarball e proteção contra CDPATH/symlinks."
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bun test ./.zscripts/tests/packaging.test.ts -t launcher",
+        "outcome": "expected_failure",
+        "details": "17 falhas esperadas contra fallback para /app/db/custom.db e ausência de validação de DATABASE_URL."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts -t launcher",
+        "outcome": "passed",
+        "details": "Validação de SQLite externo preexistente fora do pacote sem revelar URL completa nem executar seed/migração."
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "Inspeção de AGENTS.md e referências ativas antes da reconciliação",
+        "outcome": "expected_failure",
+        "details": "Documentação anterior misturava db:push de desenvolvimento com release empacotada."
+      },
+      "green": {
+        "command": "Reconciliação de docs/operacao-empacotamento.md e AGENTS.md",
+        "outcome": "passed",
+        "details": "Guia de operação e AGENTS.md alinhados ao fluxo de contexto limpo e DATABASE_URL externa."
+      }
+    },
+    {
+      "id": "2.2",
+      "plan": "2.2",
+      "red": {
+        "command": "Build em contexto limpo (/tmp/sistema-financeiro-release-qa) antes de adicionar prisma generate ao scripts.build",
+        "outcome": "expected_failure",
+        "details": "next build falhou em contexto limpo sem node_modules/.prisma/client prévio com Cannot find module '.prisma/client/default'."
+      },
+      "green": {
+        "command": "bash .zscripts/build.sh (em /tmp/sistema-financeiro-release-qa); tar -tvzf /tmp/build_fullstack_local.u1x7wumh0P.tar.gz; sh ./start.sh negativo/positivo em /tmp/sistema-financeiro-release-extract; ~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts",
+        "outcome": "passed",
+        "details": "Pacote /tmp/build_fullstack_local.u1x7wumh0P.tar.gz gerado e inspecionado (0 entradas proibidas); recusas sem DATABASE_URL e com banco interno retornaram rc=1; startup positivo subiu Next.js (3098) e mini-services (3004) com GET / -> 200 e GET /api/accounts -> 200 [] contra /tmp/sistema-financeiro-release-db.sqlite (caddy ausente no host dev: rc=127 na L151); packaging.test.ts 44 pass / 0 fail; cleanup e untracking de .env/.env.local concluídos."
+      }
+    }
+  ],
+  "structural": {
+    "command": "openspec validate --all --strict --no-interactive; git diff --check",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "backend-hygiene + specs-auditor (validação real em contexto limpo /tmp/sistema-financeiro-release-qa)",
+    "status": "pass",
+    "candidate": "96de0e44e4d43e574f1b920d7047d95b37261ae5"
+  },
+  "unresolved": []
+}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { formatPurchaseDate } from "@/lib/purchase-date";
 import { Prisma } from "@prisma/client";
 
 // GET /api/export?type=transactions|purchases|accounts&format=csv&startDate=...&endDate=...
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
 
     // Validate type
-    if (!type || !["transactions", "purchases", "accounts"].includes(type)) {
+    if (type !== "transactions" && type !== "purchases" && type !== "accounts") {
       return NextResponse.json(
         { error: "Tipo de exportação inválido. Use: transactions, purchases ou accounts" },
         { status: 400 }
@@ -29,9 +30,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Build date filter
-    const dateFilter: Prisma.DateTimeNullableFilter | undefined = undefined;
-    const buildDateFilter = () => {
-      const filter: Prisma.DateTimeNullableFilter = {};
+    const buildDateFilter = (): Prisma.DateTimeFilter | undefined => {
+      const filter: Prisma.DateTimeFilter = {};
       if (startDate) filter.gte = new Date(startDate);
       if (endDate) {
         const toDate = new Date(endDate);
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
             p.id,
             escapeCsv(p.merchant),
             formatCurrency(p.totalAmount),
-            formatDate(p.date),
+            formatPurchaseDate(p.date),
             p.card ? `${p.card.name} (****${p.card.lastFourDigits})` : "",
             String(p.items.length),
             installmentInfo,

@@ -1,34 +1,10 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  FileText,
-  Printer,
-  Download,
-  Copy,
-  Check,
-  Sparkles,
-  Tag,
-  CreditCard,
-  Wallet,
-  ShoppingBag,
-  ArrowUpRight,
-  ArrowDownRight,
-  ArrowLeftRight,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import React, { useState, useCallback, useEffect, useRef, useId } from 'react';
+import { FileText, Printer, Download, Copy, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -37,312 +13,105 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { currencyFmt } from '@/lib/helpers';
 
-// --- Types ---
-interface ReceiptData {
-  receiptType: 'transaction' | 'purchase';
-  receiptNumber: string;
-  issuedAt: string;
-  data: {
-    id: string;
-    type?: string;
-    rawType?: string;
-    description?: string;
-    merchant?: string;
-    amount: string;
-    amountRaw: number;
-    date: string;
-    category: string;
-    categoryColor: string;
-    account?: string;
-    accountColor?: string;
-    card: string | null;
-    cardBrand?: string | null;
-    installment?: string | null;
-    notes: string | null;
-    items?: Array<{
-      name: string;
-      quantity: number;
-      unitPrice: string;
-      totalPrice: string;
-      totalPriceRaw: number;
-    }>;
-    itemsCount?: number;
-  };
+import { buildReceiptFields, type ReceiptData } from './receipt-fields';
+import { ReceiptPreview } from './receipt-preview';
+
+const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)] motion-reduce:transition-none';
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-// --- Animation variants ---
-const containerVariants = {
-  hidden: { opacity: 0, y: 12 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
-  },
-};
+export function buildReceiptPrintHtml(receipt: ReceiptData): string {
+  const { rows, items, notes, receiptNumber, issuedDate, total } = buildReceiptFields(receipt);
+  const rowsHtml = rows
+    .map(({ label, value }) => `<div class="receipt-row"><span class="receipt-label">${escapeHtml(label)}</span><span class="receipt-value">${escapeHtml(value ?? '—')}</span></div>`)
+    .join('');
 
-const receiptSlideIn = {
-  hidden: { opacity: 0, x: 40, scale: 0.95 },
-  show: {
-    opacity: 1,
-    x: 0,
-    scale: 1,
-    transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
-  },
-  exit: {
-    opacity: 0,
-    x: -20,
-    scale: 0.97,
-    transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] },
-  },
-};
+  const itemsHtml = items
+    ? `<div class="receipt-divider"></div>
+       <p class="receipt-section-title">Itens (${items.count ?? items.entries.length})</p>
+       ${items.entries
+         .map(
+           (item) => `<div class="receipt-row">
+             <span class="receipt-label">${escapeHtml(item.name)} (${escapeHtml(item.units)})</span>
+             <span class="receipt-value">${escapeHtml(item.total.display)}</span>
+           </div>`,
+         )
+         .join('')}`
+    : '';
 
-const errorShake = {
-  hidden: { opacity: 0, y: -8 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 500, damping: 30 },
-  },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
-};
+  const notesHtml = notes
+    ? `<div class="receipt-divider"></div>
+       <p class="receipt-label">Observações</p>
+       <p class="receipt-notes">${escapeHtml(notes)}</p>`
+    : '';
 
-const typeIcons: Record<string, React.ElementType> = {
-  INCOME: ArrowUpRight,
-  EXPENSE: ArrowDownRight,
-  TRANSFER: ArrowLeftRight,
-  Receita: ArrowUpRight,
-  Despesa: ArrowDownRight,
-  'Transferência': ArrowLeftRight,
-};
-
-function getTypeColor(rawType?: string) {
-  if (rawType === 'INCOME') return 'text-emerald-500';
-  if (rawType === 'EXPENSE') return 'text-rose-500';
-  return 'text-violet-500';
-}
-
-// --- Receipt Print View ---
-function ReceiptContent({ receipt }: { receipt: ReceiptData }) {
-  const isPurchase = receipt.receiptType === 'purchase';
-  const d = receipt.data;
-  const issuedDate = new Date(receipt.issuedAt).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const typeColor = isPurchase ? 'text-violet-500' : getTypeColor(d.rawType);
-
-  return (
-    <div className="font-mono text-[13px] leading-relaxed space-y-4">
-      {/* Header */}
-      <div className="text-center space-y-1.5">
-        <div className="flex items-center justify-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
-            <Sparkles className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <div>
-            <p className="text-base font-bold tracking-tight text-foreground">FinanceApp</p>
-            <p className="text-[10px] text-muted-foreground">Gestão Financeira Inteligente</p>
-          </div>
-        </div>
-        <div className="pt-2">
-          <h3 className="text-xl font-black tracking-widest text-foreground">RECIBO</h3>
-          <div className="flex items-center justify-center gap-2 mt-1">
-            <Badge variant="outline" className="text-[10px] font-mono px-2 py-0 h-5">
-              {receipt.receiptNumber}
-            </Badge>
-            <span className="text-[10px] text-muted-foreground">{issuedDate}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Dashed divider */}
-      <div className="border-t-2 border-dashed border-border/60" />
-
-      {/* Details */}
-      <div className="space-y-2.5">
-        {isPurchase ? (
-          <>
-            <div className="flex justify-between items-start">
-              <span className="text-muted-foreground text-xs">Estabelecimento</span>
-              <span className="font-semibold text-right max-w-[60%]">{d.merchant}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs">Categoria</span>
-              <div className="flex items-center gap-1.5">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: d.categoryColor }}
-                />
-                <span className="font-medium">{d.category}</span>
-              </div>
-            </div>
-            {d.card && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-xs">Cartão</span>
-                <span className="font-medium flex items-center gap-1">
-                  <CreditCard className="w-3 h-3" />
-                  {d.card}
-                </span>
-              </div>
-            )}
-            {d.installment && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-xs">Parcela</span>
-                <span className="font-medium">{d.installment}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs">Data</span>
-              <span className="font-medium">{d.date}</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex justify-between items-start">
-              <span className="text-muted-foreground text-xs">Descrição</span>
-              <span className="font-semibold text-right max-w-[60%]">{d.description}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs">Tipo</span>
-              <span className={`font-semibold ${typeColor}`}>
-                {d.type}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs">Categoria</span>
-              <div className="flex items-center gap-1.5">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: d.categoryColor }}
-                />
-                <span className="font-medium">{d.category}</span>
-              </div>
-            </div>
-            {d.account && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-xs">Conta</span>
-                <span className="font-medium flex items-center gap-1">
-                  <Wallet className="w-3 h-3" />
-                  {d.account}
-                </span>
-              </div>
-            )}
-            {d.card && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-xs">Cartão</span>
-                <span className="font-medium flex items-center gap-1">
-                  <CreditCard className="w-3 h-3" />
-                  {d.card}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs">Data</span>
-              <span className="font-medium">{d.date}</span>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Itemized list for purchases */}
-      {isPurchase && d.items && d.items.length > 0 && (
-        <>
-          <div className="border-t border-dashed border-border/40" />
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground font-semibold tracking-wide uppercase">
-              Itens ({d.itemsCount})
-            </p>
-            {d.items.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-start text-xs py-0.5">
-                <div className="flex-1 min-w-0 pr-2">
-                  <span className="truncate block">{item.name}</span>
-                  <span className="text-muted-foreground text-[11px]">
-                    {item.quantity}x {item.unitPrice}
-                  </span>
-                </div>
-                <span className="font-semibold shrink-0 tabular-nums">{item.totalPrice}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Notes */}
-      {d.notes && (
-        <>
-          <div className="border-t border-dashed border-border/40" />
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Observações</p>
-            <p className="text-xs italic">{d.notes}</p>
-          </div>
-        </>
-      )}
-
-      {/* Total */}
-      <div className="border-t-2 border-dashed border-border/60" />
-      <div className="flex justify-between items-center py-1">
-        <span className="text-sm font-bold">VALOR TOTAL</span>
-        <span className={`text-lg font-black tabular-nums ${typeColor}`}>
-          {d.amount}
-        </span>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t-2 border-dashed border-border/60" />
-      <div className="text-center space-y-1.5 pt-1">
-        <p className="text-xs text-muted-foreground">Obrigado pela preferência!</p>
-        <p className="text-[10px] text-muted-foreground/60">
-          Documento gerado automaticamente pelo FinanceApp
-        </p>
-        <p className="text-[10px] text-muted-foreground/40 font-mono">
-          {receipt.receiptNumber}
-        </p>
-      </div>
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Recibo - FinanceApp</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        padding: 32px;
+        max-width: 420px;
+        margin: 0 auto;
+        color: #111111;
+        background: #ffffff;
+        line-height: 1.5;
+        font-size: 13px;
+      }
+      .receipt-header { text-align: center; margin-bottom: 16px; }
+      .receipt-brand { font-size: 16px; font-weight: 700; }
+      .receipt-subtitle, .receipt-meta { font-size: 12px; color: #555555; }
+      .receipt-title { font-size: 15px; font-weight: 700; margin-top: 10px; letter-spacing: 0.06em; }
+      .receipt-divider { border-top: 1px solid #d4d4d8; margin: 12px 0; }
+      .receipt-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #555555; margin-bottom: 6px; }
+      .receipt-row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+      .receipt-label { color: #555555; }
+      .receipt-value { font-weight: 600; text-align: right; }
+      .receipt-notes { font-size: 12px; font-style: italic; margin-top: 4px; }
+      .receipt-total { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; font-weight: 700; padding: 4px 0; }
+      .receipt-footer { text-align: center; font-size: 12px; color: #555555; margin-top: 8px; }
+      @media print {
+        body { padding: 16px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="receipt-header">
+      <p class="receipt-brand">FinanceApp</p>
+      <p class="receipt-subtitle">Gestão Financeira Inteligente</p>
+      <p class="receipt-title">RECIBO</p>
+      <p class="receipt-meta">${escapeHtml(receiptNumber)} · ${escapeHtml(issuedDate)}</p>
     </div>
-  );
-}
-
-// --- Loading skeleton ---
-function ReceiptSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-2">
-          <Skeleton className="w-8 h-8 rounded-lg" />
-          <div className="space-y-1">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-3 w-36" />
-          </div>
-        </div>
-        <Skeleton className="h-6 w-20 mx-auto" />
-        <Skeleton className="h-4 w-40 mx-auto" />
-      </div>
-      <Skeleton className="h-px w-full" />
-      <div className="space-y-3">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex justify-between">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-        ))}
-      </div>
-      <Skeleton className="h-px w-full" />
-      <div className="flex justify-between">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-6 w-32" />
-      </div>
-      <Skeleton className="h-px w-full" />
-      <div className="text-center space-y-1">
-        <Skeleton className="h-3 w-40 mx-auto" />
-        <Skeleton className="h-2.5 w-52 mx-auto" />
-      </div>
+    <div class="receipt-divider"></div>
+    ${rowsHtml}
+    ${itemsHtml}
+    ${notesHtml}
+    <div class="receipt-divider"></div>
+    <div class="receipt-total">
+      <span>VALOR TOTAL</span>
+      <span>${escapeHtml(total.display)}</span>
     </div>
-  );
+    <div class="receipt-divider"></div>
+    <div class="receipt-footer">
+      <p>Obrigado pela preferência!</p>
+      <p>Documento gerado automaticamente pelo FinanceApp</p>
+      <p>${escapeHtml(receiptNumber)}</p>
+    </div>
+  </body>
+</html>`;
 }
 
 // --- Main Component ---
@@ -392,55 +161,24 @@ export function ReceiptGenerator() {
   }, [receiptType, receiptId]);
 
   const handlePrint = useCallback(() => {
-    if (!receiptRef.current) return;
-    const printContent = receiptRef.current.innerHTML;
+    if (!receiptData) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error('Não foi possível abrir a janela de impressão.');
       return;
     }
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-        <head>
-          <title>Recibo - FinanceApp</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-              font-family: 'Courier New', monospace;
-              padding: 32px;
-              max-width: 400px;
-              margin: 0 auto;
-              color: #1a1a1a;
-              line-height: 1.6;
-            }
-            @media print {
-              body { padding: 16px; }
-            }
-          </style>
-        </head>
-        <body>${printContent}</body>
-      </html>
-    `);
+    printWindow.document.write(buildReceiptPrintHtml(receiptData));
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
     }, 500);
-  }, []);
+  }, [receiptData]);
 
   const buildPlainText = useCallback((): string => {
     if (!receiptData) return '';
-    const r = receiptData;
-    const d = r.data;
-    const issuedDate = new Date(r.issuedAt).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const { receiptNumber, issuedDate, rows, receiptType, items, notes, total } = buildReceiptFields(receiptData);
 
     const divider = '─'.repeat(36);
     const dividerDashed = '-'.repeat(36);
@@ -451,46 +189,37 @@ export function ReceiptGenerator() {
     text += `     Gestão Financeira Inteligente\n`;
     text += `${divider}\n\n`;
     text += `             R E C I B O\n\n`;
-    text += `  Nº: ${r.receiptNumber}\n`;
+    text += `  Nº: ${receiptNumber}\n`;
     text += `  Emissão: ${issuedDate}\n\n`;
     text += `${dividerDashed}\n\n`;
 
-    if (r.receiptType === 'purchase') {
-      text += `  Estabelecimento: ${d.merchant}\n`;
-      text += `  Categoria:       ${d.category}\n`;
-      if (d.card) text += `  Cartão:          ${d.card}\n`;
-      if (d.installment) text += `  Parcela:         ${d.installment}\n`;
-      text += `  Data:            ${d.date}\n`;
-
-      if (d.items && d.items.length > 0) {
-        text += `\n${dividerDashed}\n`;
-        text += `  ITENS (${d.itemsCount})\n`;
-        text += `${dividerDashed}\n`;
-        d.items.forEach((item, idx) => {
-          text += `  ${idx + 1}. ${item.name}\n`;
-          text += `     ${item.quantity}x ${item.unitPrice} = ${item.totalPrice}\n`;
-        });
-      }
-    } else {
-      text += `  Descrição:  ${d.description}\n`;
-      text += `  Tipo:       ${d.type}\n`;
-      text += `  Categoria:  ${d.category}\n`;
-      if (d.account) text += `  Conta:      ${d.account}\n`;
-      if (d.card) text += `  Cartão:     ${d.card}\n`;
-      text += `  Data:       ${d.date}\n`;
+    // Larguras das duas colunas do TXT legado, incluindo os dois-pontos.
+    const labelWidth = receiptType === 'purchase' ? 17 : 12;
+    for (const { label, value } of rows) {
+      text += `  ${(label + ':').padEnd(labelWidth)}${value}\n`;
     }
 
-    if (d.notes) {
+    if (items) {
       text += `\n${dividerDashed}\n`;
-      text += `  Observações: ${d.notes}\n`;
+      text += `  ITENS (${items.count})\n`;
+      text += `${dividerDashed}\n`;
+      items.entries.forEach((item, idx) => {
+        text += `  ${idx + 1}. ${item.name}\n`;
+        text += `     ${item.units} = ${item.total.text}\n`;
+      });
+    }
+
+    if (notes) {
+      text += `\n${dividerDashed}\n`;
+      text += `  Observações: ${notes}\n`;
     }
 
     text += `\n${divider}\n`;
-    text += `  VALOR TOTAL:  ${d.amount}\n`;
+    text += `  VALOR TOTAL:  ${total.text}\n`;
     text += `${divider}\n\n`;
     text += `    Obrigado pela preferência!\n\n`;
     text += `  Documento gerado pelo FinanceApp\n`;
-    text += `  ${r.receiptNumber}\n`;
+    text += `  ${receiptNumber}\n`;
 
     return text;
   }, [receiptData]);
@@ -524,212 +253,177 @@ export function ReceiptGenerator() {
   }, [receiptData, buildPlainText]);
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show">
-      <Card className="border-0 shadow-md card-glow overflow-hidden">
-        {/* Header */}
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-bold tracking-tight">
-                  Gerador de Recibos
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Gere recibos para transações e compras
-                </p>
-              </div>
-            </div>
-            <Badge
-              variant="secondary"
-              className="text-[10px] px-2 py-0 h-5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-            >
-              <FileText className="w-3 h-3 mr-1" />
-              Recibo
-            </Badge>
-          </div>
-        </CardHeader>
+    <ReceiptWorkspace
+      receiptType={receiptType}
+      setReceiptType={setReceiptType}
+      receiptId={receiptId}
+      setReceiptId={setReceiptId}
+      receiptData={receiptData}
+      isLoading={isLoading}
+      error={error}
+      copied={copied}
+      receiptRef={receiptRef}
+      generateReceipt={generateReceipt}
+      handlePrint={handlePrint}
+      handleDownload={handleDownload}
+      handleCopy={handleCopy}
+    />
+  );
+}
 
-        <CardContent className="space-y-4">
-          {/* Input section */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
+interface ReceiptRecordOption {
+  id: string;
+  label: string;
+}
+
+interface ReceiptWorkspaceProps {
+  receiptType: string;
+  setReceiptType: (type: string) => void;
+  receiptId: string;
+  setReceiptId: (id: string) => void;
+  receiptData: ReceiptData | null;
+  isLoading: boolean;
+  error: string | null;
+  copied: boolean;
+  records?: ReceiptRecordOption[];
+  receiptRef?: React.Ref<HTMLDivElement>;
+  generateReceipt: () => void;
+  handlePrint: () => void;
+  handleDownload: () => void;
+  handleCopy: () => void;
+}
+
+export function ReceiptWorkspace({
+  receiptType, setReceiptType, receiptId, setReceiptId, receiptData, isLoading, error, copied,
+  records, receiptRef, generateReceipt, handlePrint, handleDownload, handleCopy,
+}: ReceiptWorkspaceProps) {
+  const id = useId();
+  const [fetchedRecords, setFetchedRecords] = useState<ReceiptRecordOption[]>([]);
+  useEffect(() => {
+    if (records !== undefined) return;
+    let active = true;
+    const endpoint = receiptType === 'purchase' ? '/api/purchases' : '/api/transactions';
+    void fetch(endpoint)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((rows: Array<Record<string, unknown>>) => {
+        if (!active || !Array.isArray(rows)) return;
+        const mapped = rows.slice(0, 20).flatMap((row) => {
+          const itemId = typeof row.id === 'string' ? row.id : '';
+          if (!itemId) return [];
+          const labelBase = receiptType === 'purchase'
+            ? (typeof row.merchant === 'string' ? row.merchant : itemId)
+            : (typeof row.description === 'string' ? row.description : itemId);
+          const rawAmount = receiptType === 'purchase' ? row.totalAmount : row.amount;
+          const amountLabel = typeof rawAmount === 'number' ? ` · ${currencyFmt(rawAmount)}` : '';
+          return [{ id: itemId, label: `${labelBase}${amountLabel}` }];
+        });
+        setFetchedRecords(mapped);
+      })
+      .catch(() => {
+        if (active) setFetchedRecords([]);
+      });
+    return () => { active = false; };
+  }, [receiptType, records]);
+
+  const availableRecords = records ?? fetchedRecords;
+  return (
+    <section aria-labelledby={`${id}-heading`} className="min-w-0 space-y-4" data-testid="quiet-receipts">
+      <header>
+        <h3 id={`${id}-heading`} className="text-lg font-semibold tracking-tight">Gerador de recibos</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Gere comprovantes de transações e compras cadastradas.</p>
+      </header>
+
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <section aria-labelledby={`${id}-source`} className="min-w-0 rounded-lg border border-border bg-card p-4">
+          <h4 id={`${id}-source`} className="text-sm font-semibold">Origem do recibo</h4>
+          <div className="mt-4 grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-receipt-type`}>Tipo de registro</Label>
               <Select value={receiptType} onValueChange={setReceiptType}>
-                <SelectTrigger className="w-full h-10 rounded-lg bg-muted/30 border-border/50">
-                  <SelectValue placeholder="Tipo" />
+                <SelectTrigger id={`${id}-receipt-type`} className={`w-full ${focusClass}`}>
+                  <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="transaction">
-                    <div className="flex items-center gap-2">
-                      <Wallet className="w-3.5 h-3.5" />
-                      Transação
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="purchase">
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      Compra
-                    </div>
-                  </SelectItem>
+                  <SelectItem value="transaction">Transação</SelectItem>
+                  <SelectItem value="purchase">Compra</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1">
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-receipt-picker`}>Selecionar registro recente</Label>
+              <Select
+                value={availableRecords.some((r) => r.id === receiptId) ? receiptId : ''}
+                onValueChange={setReceiptId}
+              >
+                <SelectTrigger id={`${id}-receipt-picker`} className={`w-full ${focusClass}`}>
+                  <SelectValue placeholder="Escolha um registro recente (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableRecords.length === 0 ? (
+                    <SelectItem value="__empty__" disabled>Nenhum registro encontrado</SelectItem>
+                  ) : (
+                    availableRecords.map((rec) => (
+                      <SelectItem key={rec.id} value={rec.id}>{rec.label}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-receipt-id`}>ID do registro</Label>
               <Input
+                id={`${id}-receipt-id`}
                 type="text"
                 value={receiptId}
-                onChange={(e) => setReceiptId(e.target.value)}
-                placeholder="ID da transação ou compra..."
-                className="h-10 rounded-lg bg-muted/30 border-border/50 text-sm placeholder:text-muted-foreground/50"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') generateReceipt();
-                }}
+                onChange={(event) => setReceiptId(event.target.value)}
+                placeholder="ID da transação ou compra"
+                className={focusClass}
+                onKeyDown={(event) => { if (event.key === 'Enter') generateReceipt(); }}
               />
             </div>
-            <Button
-              onClick={generateReceipt}
-              disabled={isLoading || !receiptId.trim()}
-              className="h-10 px-5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md shadow-amber-500/20 disabled:opacity-50 shrink-0"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <FileText className="w-4 h-4 mr-1.5" />
-              )}
-              Gerar
+            <Button onClick={generateReceipt} disabled={isLoading || !receiptId.trim()} className={`justify-self-start ${focusClass}`}>
+              <FileText aria-hidden="true" /> Gerar recibo
             </Button>
           </div>
+        </section>
 
-          {/* Error state */}
-          <AnimatePresence mode="wait">
+        <section aria-labelledby={`${id}-preview`} className="min-w-0 rounded-xl border border-border bg-card">
+          <header className="border-b border-border px-4 py-3">
+            <h4 id={`${id}-preview`} className="text-sm font-semibold">Prévia do recibo</h4>
+          </header>
+          <div className="min-w-0 space-y-4 p-4">
             {error && (
-              <motion.div
-                key="error"
-                variants={errorShake}
-                initial="hidden"
-                animate="show"
-                exit="exit"
-                className="flex items-center gap-3 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20"
-              >
-                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Receipt preview */}
-          <AnimatePresence mode="wait">
-            {(receiptData || isLoading) && (
-              <motion.div
-                key="receipt"
-                variants={receiptSlideIn}
-                initial="hidden"
-                animate="show"
-                exit="exit"
-              >
-                <div
-                  ref={receiptRef}
-                  className="relative bg-white dark:bg-zinc-950 border-2 border-dashed border-border/60 rounded-2xl p-5 shadow-inner"
-                >
-                  {/* Zigzag top */}
-                  <div className="absolute -top-[1px] left-0 right-0 flex justify-center">
-                    <div className="w-full overflow-hidden flex">
-                      {Array.from({ length: 24 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="w-[18px] h-[8px] bg-background -rotate-[45deg] -mr-[8px] -mt-[4px]"
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {isLoading ? (
-                    <ReceiptSkeleton />
-                  ) : receiptData ? (
-                    <ReceiptContent receipt={receiptData} />
-                  ) : null}
-
-                  {/* Zigzag bottom */}
-                  <div className="absolute -bottom-[1px] left-0 right-0 flex justify-center">
-                    <div className="w-full overflow-hidden flex">
-                      {Array.from({ length: 24 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="w-[18px] h-[8px] bg-background -rotate-[45deg] -mr-[8px] -mt-[4px]"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                {!isLoading && receiptData && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3, duration: 0.3 }}
-                    className="flex flex-wrap gap-2 mt-4"
-                  >
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePrint}
-                      className="h-8 text-xs gap-1.5 rounded-lg border-border/50 hover:bg-muted/50"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      Imprimir
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDownload}
-                      className="h-8 text-xs gap-1.5 rounded-lg border-border/50 hover:bg-muted/50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Baixar .txt
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopy}
-                      className="h-8 text-xs gap-1.5 rounded-lg border-border/50 hover:bg-muted/50"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          Copiado!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          Copiar
-                        </>
-                      )}
-                    </Button>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Empty state */}
-          {!receiptData && !isLoading && !error && (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-3">
-                <FileText className="w-6 h-6 text-amber-500/50" />
+              <div role="alert" className="flex items-start gap-2 rounded-md border border-border p-3 text-sm [overflow-wrap:anywhere]">
+                <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
+                <p>{error}</p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Selecione o tipo e insira o ID para gerar um recibo
-              </p>
-              <p className="text-xs text-muted-foreground/60 mt-1">
-                Funciona para transações e compras cadastradas
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </motion.div>
+            )}
+            {isLoading ? (
+              <p role="status" className="py-4 text-sm text-muted-foreground">Gerando recibo…</p>
+            ) : receiptData ? (
+              <>
+                <div ref={receiptRef} className="min-w-0 rounded-lg border border-border bg-background p-3 sm:p-4">
+                  <ReceiptPreview fields={buildReceiptFields(receiptData)} />
+                </div>
+                <div role="group" aria-label="Ações do recibo" className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={handlePrint} className={focusClass}>
+                    <Printer aria-hidden="true" /> Imprimir
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleDownload} className={focusClass}>
+                    <Download aria-hidden="true" /> Baixar .txt
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleCopy} className={focusClass}>
+                    {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                    {copied ? 'Copiado!' : 'Copiar'}
+                  </Button>
+                </div>
+              </>
+            ) : !error && (
+              <p className="py-4 text-sm text-muted-foreground">Selecione o tipo e informe o ID do registro para ver o recibo aqui.</p>
+            )}
+          </div>
+        </section>
+      </div>
+    </section>
   );
 }

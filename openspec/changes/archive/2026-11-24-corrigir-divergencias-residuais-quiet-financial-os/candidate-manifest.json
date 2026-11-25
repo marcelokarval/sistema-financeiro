@@ -1,0 +1,68 @@
+{
+  "paths": [
+    {
+      "path": "src/components/finance/balance-projection.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-analysis-calendar.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/monthly-budget-tracker.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-goals-health.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-goals-widgets.qa.mjs",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/accounts-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/cards-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-accounts-cards.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-keyed-deletion-focus.qa.mjs",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-cards-purchases-categories.qa.mjs",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/consortiums-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/savings-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-consortiums-savings.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-consortiums-editor.qa.mjs",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-installments-savings-dialogs.qa.mjs",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/frontend-componentization-coverage.md",
+      "state": "present"
+    }
+  ]
+}

@@ -1,122 +1,185 @@
 #!/bin/bash
-
-# 将 stderr 重定向到 stdout，避免 execute_command 因为 stderr 输出而报错
+# O executor Z recebe o diagnóstico e o caminho do pacote via stdout.
 exec 2>&1
+set -euo pipefail
+umask 077
 
-set -e
+fail() { printf "Erro de empacotamento: %s\n" "$1" >&2; exit 1; }
 
-# 获取脚本所在目录（.zscripts 目录，即 workspace-agent/.zscripts）
-# 使用 $0 获取脚本路径（兼容 sh 和 bash）
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+script_lexical=$(realpath -ms -- "$0" 2>/dev/null) || fail "launcher de build inválido."
+script_real=$(realpath -e -- "$0" 2>/dev/null) || fail "launcher de build inválido."
+[ "$script_lexical" = "$script_real" ] || fail "link simbólico no caminho do launcher de build."
+SCRIPT_DIR=${script_real%/*}
+PROJECT_DIR=${SCRIPT_DIR%/*}
+cd -- "$PROJECT_DIR"
 
-# Next.js 项目路径
-NEXTJS_PROJECT_DIR="/home/z/my-project"
+# Inspeciona entradas sem abrir dotenv, resolver links ou percorrer o banco.
+blocked_input=$(find -P . \
+    \( -type d \( -path ./.git -o -path ./db \) \) -prune -o \
+    -type l -printf link -quit -o \
+    -iname ".env*" ! \( -name .env.example -type f \) -printf dotenv -quit) \
+    || fail "não foi possível verificar o contexto de build."
+case "$blocked_input" in
+    link) fail "link simbólico no contexto de build." ;;
+    dotenv) fail "dotenv privado no contexto de build." ;;
+esac
+[ ! -e .next ] || fail "o contexto precisa estar sem saída .next anterior."
 
-# 检查 Next.js 项目目录是否存在
-if [ ! -d "$NEXTJS_PROJECT_DIR" ]; then
-    echo "❌ 错误: Next.js 项目目录不存在: $NEXTJS_PROJECT_DIR"
-    exit 1
-fi
+regular_file() { [ -f "$1" ] && [ ! -L "$1" ]; }
 
-echo "🚀 开始构建 Next.js 应用和 mini-services..."
-echo "📁 Next.js 项目路径: $NEXTJS_PROJECT_DIR"
+required_service=mini-services/finance-ws
+[ -d "$required_service" ] && regular_file "$required_service/package.json" \
+    || fail "fontes obrigatórias de finance-ws ausentes."
+regular_file package.json && regular_file bun.lock && [ -d public ] \
+    && regular_file Caddyfile && regular_file "$SCRIPT_DIR/start.sh" \
+    && regular_file "$SCRIPT_DIR/mini-services-start.sh" \
+    || fail "insumo obrigatório de release ausente."
 
-# 切换到 Next.js 项目目录
-cd "$NEXTJS_PROJECT_DIR" || exit 1
+# Planeja todos os produtores a partir dos insumos validados, antes de chamar Bun.
+services=()
+entries=()
+for service in mini-services/*; do
+    [ -d "$service" ] && regular_file "$service/package.json" || continue
+    regular_file "$service/bun.lock" || fail "bun.lock do mini-serviço ausente."
+    entry=""
+    for candidate in src/index.ts index.ts src/index.js index.js; do
+        if regular_file "$service/$candidate"; then entry=$candidate; break; fi
+    done
+    [ -n "$entry" ] || fail "mini-serviço sem ponto de entrada."
+    # Caminho absoluto: o cd do produtor não consulta CDPATH.
+    services+=("$PROJECT_DIR/$service")
+    entries+=("$entry")
+done
 
-# 设置环境变量
-export NEXT_TELEMETRY_DISABLED=1
+build_id=${BUILD_ID:-local}
+case "$build_id" in
+    *[!a-zA-Z0-9_.-]*) fail "BUILD_ID inválido." ;;
+esac
+work=$(mktemp -d -- "/tmp/build_fullstack_${build_id}.XXXXXXXXXX")
+trap 'rm -rf -- "$work"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+stage="$work/package"
+archive="$work/package.tar.gz"
+mkdir -- "$stage" "$work/home" "$work/tmp"
 
-BUILD_DIR="/tmp/build_fullstack_$BUILD_ID"
-echo "📁 清理并创建构建目录: $BUILD_DIR"
-mkdir -p "$BUILD_DIR"
+build_bun() {
+    env -i PATH="$PATH" HOME="$work/home" TMPDIR="$work/tmp" LC_ALL=C \
+        NEXT_TELEMETRY_DISABLED=1 bun "$@"
+}
 
-# 安装依赖
-echo "📦 安装依赖..."
-bun install
+# Inventário estruturado: não interpreta a apresentação textual de tar -tvf.
+# Valida os insumos antes da cópia e confronta o tar com a montagem verificada.
+check_tree() {
+    python3 -I - "$@" <<'PY'
+import os
+from pathlib import Path, PurePosixPath
+import re
+import stat
+import sys
+import tarfile
 
-# 构建 Next.js 应用
-echo "🔨 构建 Next.js 应用..."
-bun run build
 
-# 构建 mini-services
-# 检查 Next.js 项目目录下是否有 mini-services 目录
-if [ -d "$NEXTJS_PROJECT_DIR/mini-services" ]; then
-    echo "🔨 构建 mini-services..."
-    # 使用 workspace-agent 目录下的 mini-services 脚本
-    sh "$SCRIPT_DIR/mini-services-install.sh"
-    sh "$SCRIPT_DIR/mini-services-build.sh"
+data_name = re.compile(r"\.(?:db|sqlite|sqlite3)(?:-(?:journal|wal|shm))?\Z", re.I)
 
-    # 复制 mini-services-start.sh 到 mini-services-dist 目录
-    echo "  - 复制 mini-services-start.sh 到 $BUILD_DIR"
-    cp "$SCRIPT_DIR/mini-services-start.sh" "$BUILD_DIR/mini-services-start.sh"
-    chmod +x "$BUILD_DIR/mini-services-start.sh"
-else
-    echo "ℹ️  mini-services 目录不存在，跳过"
-fi
 
-# 将所有构建产物复制到临时构建目录
-echo "📦 收集构建产物到 $BUILD_DIR..."
+def allowed(name):
+    return all(part.lower() != "db" and not part.lower().startswith(".env")
+               and not data_name.search(part) for part in PurePosixPath(name).parts)
 
-# 复制 Next.js standalone 构建输出
-if [ -d ".next/standalone" ]; then
-    echo "  - 复制 .next/standalone"
-    cp -r .next/standalone "$BUILD_DIR/next-service-dist/"
-fi
 
-# 复制 Next.js 静态文件
-if [ -d ".next/static" ]; then
-    echo "  - 复制 .next/static"
-    mkdir -p "$BUILD_DIR/next-service-dist/.next"
-    cp -r .next/static "$BUILD_DIR/next-service-dist/.next/"
-fi
+def walk_error(error):
+    raise error
 
-# 复制 public 目录
-if [ -d "public" ]; then
-    echo "  - 复制 public"
-    cp -r public "$BUILD_DIR/next-service-dist/"
-fi
 
-# 将测试环境数据库复制到构建产物中，生产环境直接使用这份数据库
-if [ -f "./db/custom.db" ]; then
-    echo "🗄️  复制测试环境数据库到构建产物..."
-    mkdir -p "$BUILD_DIR/db"
-    cp -r ./db/. "$BUILD_DIR/db/"
+def inventory(root):
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("raiz inválida")
+    root = root.resolve(strict=True)
+    entries = {".": ("dir", "")}
+    for directory, dirs, files in os.walk(root, onerror=walk_error, followlinks=False):
+        for leaf in dirs + files:
+            path = Path(directory, leaf)
+            name = path.relative_to(root).as_posix()
+            if not allowed(name):
+                raise ValueError("nome proibido")
+            info = path.lstat()
+            if stat.S_ISLNK(info.st_mode):
+                target = os.readlink(path)
+                if os.path.isabs(target) or not allowed(target):
+                    raise ValueError("destino do link inválido")
+                prefix = path.parent
+                for part in target.split("/"):
+                    prefix /= part
+                    resolved = prefix.resolve(strict=True).relative_to(root)
+                    if not allowed(resolved.as_posix()):
+                        raise ValueError("destino do link proibido")
+                entries[name] = ("symlink", target)
+            elif stat.S_ISDIR(info.st_mode):
+                entries[name] = ("dir", "")
+            elif stat.S_ISREG(info.st_mode) and info.st_nlink == 1:
+                entries[name] = ("file", info.st_size)
+            else:
+                raise ValueError("tipo de entrada proibido")
+    return entries
 
-    echo "🗄️  同步构建产物中的数据库结构..."
-    DATABASE_URL="file:$BUILD_DIR/db/custom.db" bun run db:push
-    echo "✅ 构建产物数据库已准备完成"
-    ls -lah "$BUILD_DIR/db"
-else
-    echo "❌ 未找到测试环境数据库文件 ./db/custom.db，无法继续构建生产包"
-    exit 1
-fi
 
-# 复制 Caddyfile（如果存在）
-if [ -f "Caddyfile" ]; then
-    echo "  - 复制 Caddyfile"
-    cp Caddyfile "$BUILD_DIR/"
-else
-    echo "ℹ️  Caddyfile 不存在，跳过"
-fi
+try:
+    expected = inventory(Path(sys.argv[1]))
+    if len(sys.argv) == 3:
+        with tarfile.open(sys.argv[2], "r:gz") as archive:
+            for entry in archive:
+                name = PurePosixPath(entry.name)
+                if name.is_absolute() or ".." in name.parts:
+                    raise ValueError("caminho de tar inválido")
+                record = expected.pop(name.as_posix())  # recusa extras e duplicatas
+                if entry.isdir():
+                    actual = ("dir", "")
+                elif entry.issym():
+                    actual = ("symlink", entry.linkname)
+                elif entry.type in (tarfile.REGTYPE, tarfile.AREGTYPE):
+                    actual = ("file", entry.size)
+                else:
+                    raise ValueError("tipo de tar proibido")
+                if actual != record:
+                    raise ValueError("entrada de tar diferente da montagem")
+            if expected:
+                raise ValueError("inventário incompleto")
+except (KeyError, OSError, RuntimeError, ValueError, tarfile.TarError):
+    sys.exit("Erro de empacotamento: árvore ou tar contém entrada inválida.")
+PY
+}
 
-# 复制 start.sh 脚本
-echo "  - 复制 start.sh 到 $BUILD_DIR"
-cp "$SCRIPT_DIR/start.sh" "$BUILD_DIR/start.sh"
-chmod +x "$BUILD_DIR/start.sh"
+build_bun install --frozen-lockfile
+build_bun run build
+regular_file .next/standalone/server.js && [ -s .next/standalone/server.js ] \
+    && [ ! -L .next ] \
+    && [ -d .next/standalone/.next/static ] && [ -d .next/standalone/public ] \
+    || fail "saída obrigatória do Next incompleta."
+check_tree .next/standalone
+# O próprio bun run build já coloca estáticos e public dentro do standalone.
+cp -a -- .next/standalone "$stage/next-service-dist"
 
-# 打包到 $BUILD_DIR.tar.gz
-PACKAGE_FILE="${BUILD_DIR}.tar.gz"
-echo ""
-echo "📦 打包构建产物到 $PACKAGE_FILE..."
-cd "$BUILD_DIR" || exit 1
-tar -czf "$PACKAGE_FILE" .
-cd - > /dev/null || exit 1
+mkdir -- "$stage/mini-services-dist"
+for i in "${!services[@]}"; do
+    service=${services[i]}
+    entry=${entries[i]}
+    bundle="$stage/mini-services-dist/mini-service-${service##*/}.js"
+    (cd -- "$service" && build_bun install --frozen-lockfile &&
+        build_bun build "$entry" --outfile "$bundle" --target bun --minify)
+    regular_file "$bundle" && [ -s "$bundle" ] || fail "bundle de mini-serviço incompleto."
+done
 
-# # 清理临时目录
-# rm -rf "$BUILD_DIR"
+install -m 644 -- Caddyfile "$stage/Caddyfile"
+install -m 755 -- "$SCRIPT_DIR/start.sh" "$stage/start.sh"
+install -m 755 -- "$SCRIPT_DIR/mini-services-start.sh" "$stage/mini-services-start.sh"
 
-echo ""
-echo "✅ 构建完成！所有产物已打包到 $PACKAGE_FILE"
-echo "📊 打包文件大小:"
-ls -lh "$PACKAGE_FILE"
+check_tree "$stage"
+env -i PATH="$PATH" LC_ALL=C tar -czf "$archive" -C "$stage" .
+check_tree "$stage" "$archive"
+
+# Publicação local, sem sobrescrever outro resultado e somente após inspeção.
+output="$work.tar.gz"
+ln -T -- "$archive" "$output"
+printf "Pacote verificado: %s\n" "$output"

@@ -1,0 +1,43 @@
+{
+  "candidate": "e2698a7ffdd63115845ca87fdcb3b97e9bdd415527724f5a898b642c68c611c5",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun --no-env-file test src/components/finance/quiet-navigation.test.tsx",
+        "outcome": "expected_failure",
+        "details": "8 aprovados, 3 reprovações: applySearchSelection indefinido e desvio antigo presente no contrato e no QA"
+      },
+      "green": {
+        "command": "bun --no-env-file test src/components/finance/quiet-navigation.test.tsx && bun --no-env-file test src/lib/store.test.ts",
+        "outcome": "passed",
+        "details": "11 e 14 aprovados respectivamente, 0 reprovações, contrato e QA alinhados à Alternativa A"
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bun --no-env-file test src/components/finance/quiet-navigation.test.tsx",
+        "outcome": "expected_failure",
+        "details": "11 aprovados, 1 reprovação: Seção 5.1 de frontend-componentization-coverage.md ainda continha historicalAutoOpenDeviation"
+      },
+      "green": {
+        "command": "bun --no-env-file test src/components/finance/quiet-navigation.test.tsx && bun --no-env-file test && quiet-search-parity.qa.mjs",
+        "outcome": "passed",
+        "details": "12 aprovados na suíte de navegação, 388 aprovados na suíte global e 102 cenários pareados nas 6 células com 0 ignorados"
+      }
+    }
+  ],
+  "structural": {
+    "command": "bun --no-env-file .zscripts/check-frontend-architecture.ts --baseline-ref 25b44535c5068b99044afa03f7ecf318e7a9726f && ./node_modules/.bin/tsc --noEmit && ./node_modules/.bin/eslint .",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-3 (revisão independente Fase 1 #203 e Fase 2 #205)",
+    "status": "pass",
+    "candidate": "e2698a7ffdd63115845ca87fdcb3b97e9bdd415527724f5a898b642c68c611c5"
+  },
+  "unresolved": []
+}

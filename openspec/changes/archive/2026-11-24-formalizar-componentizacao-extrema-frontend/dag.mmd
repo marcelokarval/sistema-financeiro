@@ -1,0 +1,62 @@
+flowchart TD
+  T_0001["0001: Componentização verificável do frontend"]
+  T_0002["0002: Fluxos prioritários de domínio"]
+  T_0003["0003: Consolidar o editor e a confirmação de Investimentos"]
+  T_0004["0004: Consolidar edição e exclusão de Consórcios"]
+  T_0005["0005: Unificar campos de transação de Contas"]
+  T_0006["0006: Centralizar a trava síncrona de Contas e Cartões"]
+  T_0007["0007: Padrões transversais comprovados"]
+  T_0008["0008: Adotar casca de formulário e confirmação em dois domínios"]
+  T_0009["0009: Adotar linha financeira e métrica com variantes reais"]
+  T_0010["0010: Adotar progresso e estados de consulta nos painéis"]
+  T_0011["0011: Adotar casca de tooltip sem unificar cálculos"]
+  T_0012["0012: Famílias de produção remanescentes"]
+  T_0013["0013: Separar seletor, detalhes e movimentação nas operacionais prioritárias"]
+  T_0014["0014: Separar Cartões, Compras e Categorias por responsabilidade"]
+  T_0015["0015: Separar diálogos de Parcelas e Caixinhas"]
+  T_0016["0016: Isolar a composição do shell e dos serviços de interface"]
+  T_0017["0017: Consolidar indicadores, metas e estados em widgets"]
+  T_0018["0018: Decompor mapas densos de análise e calendário"]
+  T_0019["0019: Separar editor e confirmação de Recorrências"]
+  T_0020["0020: Compartilhar o modelo de campos de Recibos"]
+  T_0021["0021: Proteção arquitetural e fechamento"]
+  T_0022["0022: Calibrar o gate AST com baseline revisável"]
+  T_0023["0023: Fechar inventário e evidência integrada da migração"]
+  T_0005 --> T_0006
+  T_0003 --> T_0008
+  T_0004 --> T_0008
+  T_0005 --> T_0008
+  T_0003 --> T_0009
+  T_0004 --> T_0009
+  T_0005 --> T_0009
+  T_0006 --> T_0009
+  T_0003 --> T_0010
+  T_0004 --> T_0010
+  T_0005 --> T_0010
+  T_0010 --> T_0011
+  T_0006 --> T_0013
+  T_0008 --> T_0013
+  T_0009 --> T_0013
+  T_0006 --> T_0014
+  T_0008 --> T_0014
+  T_0009 --> T_0014
+  T_0008 --> T_0015
+  T_0010 --> T_0015
+  T_0005 --> T_0016
+  T_0010 --> T_0016
+  T_0008 --> T_0017
+  T_0009 --> T_0017
+  T_0010 --> T_0017
+  T_0009 --> T_0018
+  T_0011 --> T_0018
+  T_0008 --> T_0019
+  T_0011 --> T_0023
+  T_0013 --> T_0023
+  T_0014 --> T_0023
+  T_0015 --> T_0023
+  T_0016 --> T_0023
+  T_0017 --> T_0023
+  T_0018 --> T_0023
+  T_0019 --> T_0023
+  T_0020 --> T_0023
+  T_0022 --> T_0023

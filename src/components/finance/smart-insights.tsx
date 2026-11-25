@@ -1,10 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Brain,
-  Sparkles,
   ShieldCheck,
   ShieldAlert,
   AlertTriangle,
@@ -23,16 +20,11 @@ import {
   Info,
   AlertCircle,
 } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
+import { useAppStore, type ViewType } from '@/lib/store';
+import { cn } from '@/lib/utils';
 
 // --- Types ---
 interface FinancialInsight {
@@ -78,153 +70,55 @@ function getInsightIcon(iconName: string, type: string) {
   }
 }
 
-// --- Color config per type ---
-function getTypeColors(type: string) {
-  switch (type) {
-    case 'success':
-      return {
-        bg: 'bg-emerald-500/10',
-        text: 'text-emerald-600 dark:text-emerald-400',
-        border: 'border-emerald-500/25',
-        badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-        dot: 'bg-emerald-500',
-      };
-    case 'warning':
-      return {
-        bg: 'bg-amber-500/10',
-        text: 'text-amber-600 dark:text-amber-400',
-        border: 'border-amber-500/25',
-        badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
-        dot: 'bg-amber-500',
-      };
-    case 'danger':
-      return {
-        bg: 'bg-rose-500/10',
-        text: 'text-rose-600 dark:text-rose-400',
-        border: 'border-rose-500/25',
-        badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
-        dot: 'bg-rose-500',
-      };
-    default:
-      return {
-        bg: 'bg-sky-500/10',
-        text: 'text-sky-600 dark:text-sky-400',
-        border: 'border-sky-500/25',
-        badge: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30',
-        dot: 'bg-sky-500',
-      };
-  }
-}
+const typePresentation = {
+  success: { label: 'Positivo', color: 'text-[var(--ds-accent-positive)]' },
+  warning: { label: 'Atenção', color: 'text-[var(--ds-accent-warning)]' },
+  danger: { label: 'Risco', color: 'text-destructive' },
+  info: { label: 'Informação', color: 'text-primary' },
+};
 
 function TrendIndicator({ trend }: { trend: 'up' | 'down' | 'stable' }) {
-  if (trend === 'up') {
-    return <TrendingUp className="w-3.5 h-3.5 text-rose-500" />;
-  }
-  if (trend === 'down') {
-    return <TrendingDown className="w-3.5 h-3.5 text-emerald-500" />;
-  }
-  return <span className="w-3.5 h-3.5 block rounded-full bg-muted-foreground/30" />;
+  return <span className="text-xs text-muted-foreground">{trend === 'up' ? 'Em alta' : trend === 'down' ? 'Em queda' : 'Estável'}</span>;
 }
 
-// --- Animation variants ---
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.07 },
-  },
-};
+export function insightActionDestination(insight: Pick<FinancialInsight, 'id' | 'action'>): ViewType {
+  if (insight.id.startsWith('card-') || insight.action === 'Pagar fatura') return 'cards';
+  if (insight.id.startsWith('category-') || insight.action === 'Ver detalhes da categoria' || insight.action === 'Analisar gastos') return 'categories';
+  if (insight.id.startsWith('goal-') || insight.id === 'emergency-fund' || insight.action === 'Contribuir agora' || insight.action === 'Rever orçamento') return 'savings';
+  if (insight.id === 'income-vs-expense' || insight.action === 'Rever despesas') return 'accounts';
+  return 'dashboard';
+}
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
-  },
-};
-
-const headerVariants = {
-  hidden: { opacity: 0, y: -10 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
-  },
-};
-
-// --- Insight Card ---
-function InsightCard({ insight }: { insight: FinancialInsight }) {
-  const colors = getTypeColors(insight.type);
-
+export function InsightCard({ insight, onNavigate }: { insight: FinancialInsight; onNavigate?: (view: ViewType) => void }) {
+  const { label, color } = typePresentation[insight.type] ?? typePresentation.info;
+  const navigate = onNavigate ?? ((view: ViewType) => useAppStore.getState().setCurrentView(view));
   return (
-    <motion.div
-      variants={itemVariants}
-      whileHover={{ y: -3, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
-    >
-      <Card className="border-0 shadow-sm hover:shadow-md transition-shadow h-full">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            {/* Icon */}
-            <div
-              className={`w-10 h-10 rounded-full ${colors.bg} flex items-center justify-center shrink-0 ${colors.text}`}
-            >
-              {getInsightIcon(insight.icon, insight.type)}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h4 className="text-sm font-medium leading-tight">{insight.title}</h4>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    {insight.description}
-                  </p>
-                </div>
-
-                {/* Metric badge + trend */}
-                {(insight.metric || insight.trend) && (
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    {insight.metric && (
-                      <Badge
-                        variant="outline"
-                        className={`text-xs font-semibold border ${colors.badge} px-2 py-0.5`}
-                      >
-                        {insight.metric}
-                      </Badge>
-                    )}
-                    {insight.trend && (
-                      <div className="flex items-center gap-0.5">
-                        <TrendIndicator trend={insight.trend} />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Action button */}
-              {insight.action && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-3 pt-2 border-t border-border/50"
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-7 text-xs px-3 ${colors.text} hover:${colors.bg} gap-1.5`}
-                  >
-                    <Lightbulb className="w-3 h-3" />
-                    {insight.action}
-                  </Button>
-                </motion.div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-4">
+      <span aria-hidden="true" className={color}>{getInsightIcon(insight.icon, insight.type)}</span>
+      <div className="min-w-0 space-y-1">
+        <p className={cn('text-xs font-medium', color)}>{label}</p>
+        <h4 className="break-words text-sm font-semibold">{insight.title}</h4>
+        <p className="break-words text-sm text-muted-foreground">{insight.description}</p>
+        {insight.action && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-9 h-auto max-w-full whitespace-normal px-2 text-left text-xs"
+            onClick={() => navigate(insightActionDestination(insight))}
+          >
+            <Lightbulb aria-hidden="true" className="size-3" />
+            {insight.action}
+          </Button>
+        )}
+      </div>
+      {(insight.metric || insight.trend) && (
+        <div className="col-start-2 flex min-w-0 flex-wrap items-baseline gap-x-2 sm:col-start-auto sm:flex-col sm:items-end">
+          {insight.metric && <span className="break-words font-mono text-sm tabular-nums">{insight.metric}</span>}
+          {insight.trend && <TrendIndicator trend={insight.trend} />}
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -242,57 +136,11 @@ function filterInsights(insights: FinancialInsight[], tab: string): FinancialIns
   }
 }
 
-// --- Loading skeleton ---
-function LoadingSkeleton() {
+function EmptyState({ filtered = false }: { filtered?: boolean }) {
   return (
-    <Card className="border-0 shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-10 h-10 rounded-xl" />
-          <div className="space-y-1.5">
-            <Skeleton className="h-5 w-44" />
-            <Skeleton className="h-3 w-60" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-9 w-80 mb-4" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="rounded-xl border border-border/50 p-4">
-              <div className="flex items-start gap-3">
-                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-2/3" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// --- Empty state ---
-function EmptyState() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}
-      className="flex flex-col items-center justify-center py-12 text-center"
-    >
-      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-        <Brain className="w-8 h-8 text-muted-foreground" />
-      </div>
-      <h4 className="text-sm font-medium text-muted-foreground">Nenhum insight disponível</h4>
-      <p className="text-xs text-muted-foreground/70 mt-1 max-w-[240px]">
-        Adicione transações e contas para receber análises automáticas das suas finanças.
-      </p>
-    </motion.div>
+    <p role="status" className="px-3 py-4 text-sm text-muted-foreground sm:px-4">
+      {filtered ? 'Nenhuma análise neste filtro.' : 'Nenhuma análise disponível. Adicione transações e contas para receber análises automáticas.'}
+    </p>
   );
 }
 
@@ -300,17 +148,23 @@ function EmptyState() {
 export function SmartInsights() {
   const [insights, setInsights] = useState<FinancialInsight[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
 
   const fetchInsights = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(false);
       const res = await fetch('/api/insights');
-      if (res.ok) {
-        const data = await res.json();
-        setInsights(data);
+      if (!res.ok) {
+        setError(true);
+        return;
       }
+      const data = await res.json();
+      setInsights(data);
     } catch (e) {
       console.error('Erro ao carregar insights:', e);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -320,132 +174,70 @@ export function SmartInsights() {
     fetchInsights();
   }, [fetchInsights]);
 
-  // Loading state
-  if (loading) {
-    return <LoadingSkeleton />;
-  }
+  return (
+    <SmartInsightsContent
+      insights={insights}
+      loading={loading}
+      error={error}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      onRetry={fetchInsights}
+    />
+  );
+}
 
-  // Error / empty data state
-  if (!insights.length) {
-    return (
-      <Card className="border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-base font-semibold">Insights Inteligentes</CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Análise automática das suas finanças
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <EmptyState />
-        </CardContent>
-      </Card>
-    );
-  }
-
+export function SmartInsightsContent({
+  insights,
+  loading,
+  error,
+  activeTab,
+  onTabChange,
+  onRetry,
+}: {
+  insights: FinancialInsight[];
+  loading: boolean;
+  error: boolean;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  onRetry: () => void;
+}) {
   const filteredInsights = filterInsights(insights, activeTab);
   const positiveCount = insights.filter((i) => i.type === 'success').length;
   const alertCount = insights.filter((i) => i.type === 'warning' || i.type === 'danger').length;
   const infoCount = insights.filter((i) => i.type === 'info').length;
+  const status: QueryPanelStatus = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : !insights.length
+        ? 'empty'
+        : 'success';
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
+    <QueryPanel
+      titleId="quiet-insights"
+      title="Insights inteligentes"
+      subtitle="Análise automática das suas finanças"
+      status={status}
+      loadingMessage="Carregando análises…"
+      errorMessage="Não foi possível carregar os insights financeiros."
+      emptyMessage="Nenhuma análise disponível. Adicione transações e contas para receber análises automáticas."
+      onRetry={onRetry}
+      contentClassName="space-y-0 p-0 sm:p-0"
     >
-      <Card className="border-0 shadow-md">
-        {/* Header */}
-        <CardHeader className="pb-3">
-          <motion.div
-            variants={headerVariants}
-            className="flex items-center gap-3"
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-semibold">Insights Inteligentes</CardTitle>
-                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Análise automática das suas finanças
-              </p>
-            </div>
-            <Badge variant="secondary" className="text-xs font-medium tabular-nums">
-              {insights.length} insight{insights.length !== 1 ? 's' : ''}
-            </Badge>
-          </motion.div>
-        </CardHeader>
-
-        <CardContent className="pt-0">
-          {/* Filter tabs */}
-          <motion.div variants={itemVariants} className="mb-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="h-9 p-1">
-                <TabsTrigger value="all" className="text-xs px-3 h-7 gap-1.5">
-                  Todos
-                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] tabular-nums">
-                    {insights.length}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="positive" className="text-xs px-3 h-7 gap-1.5">
-                  Positivos
-                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] tabular-nums">
-                    {positiveCount}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="alerts" className="text-xs px-3 h-7 gap-1.5">
-                  Alertas
-                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] tabular-nums">
-                    {alertCount}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="info" className="text-xs px-3 h-7 gap-1.5">
-                  Info
-                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] tabular-nums">
-                    {infoCount}
-                  </Badge>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </motion.div>
-
-          {/* Insights grid */}
-          <AnimatePresence mode="wait">
-            {filteredInsights.length > 0 ? (
-              <motion.div
-                key={activeTab}
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-                exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-              >
-                {filteredInsights.map((insight) => (
-                  <InsightCard key={insight.id} insight={insight} />
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                key={`empty-${activeTab}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <EmptyState />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </CardContent>
-      </Card>
-    </motion.div>
+      <Tabs value={activeTab} onValueChange={onTabChange} className="border-b border-border px-3 py-2 sm:px-4">
+        <TabsList aria-label="Filtrar análises" className="grid h-auto w-full grid-cols-2 gap-1 sm:w-fit sm:grid-cols-4">
+          <TabsTrigger value="all" className="min-h-9 text-xs">Todos <span className="font-mono tabular-nums">{insights.length}</span></TabsTrigger>
+          <TabsTrigger value="positive" className="min-h-9 text-xs">Positivos <span className="font-mono tabular-nums">{positiveCount}</span></TabsTrigger>
+          <TabsTrigger value="alerts" className="min-h-9 text-xs">Alertas <span className="font-mono tabular-nums">{alertCount}</span></TabsTrigger>
+          <TabsTrigger value="info" className="min-h-9 text-xs">Informações <span className="font-mono tabular-nums">{infoCount}</span></TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {filteredInsights.length > 0 ? (
+        <ul className="divide-y divide-border">
+          {filteredInsights.map((insight) => <InsightCard key={insight.id} insight={insight} />)}
+        </ul>
+      ) : <EmptyState filtered />}
+    </QueryPanel>
   );
 }

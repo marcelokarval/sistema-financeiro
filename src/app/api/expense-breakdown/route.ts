@@ -137,7 +137,11 @@ export async function GET(request: Request) {
     const topCategory = categories[0] || null;
 
     // Build monthly data array
-    const monthlyData = [];
+    const monthlyData: {
+      month: string;
+      monthKey: string;
+      total: number;
+    }[] = [];
     for (let i = months - 1; i >= 0; i--) {
       const monthStart = new Date(currentYear, currentMonth - i, 1);
       const monthKey = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;

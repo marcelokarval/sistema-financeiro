@@ -1,0 +1,96 @@
+{
+  "paths": [
+    {
+      "path": "src/components/finance/consortiums-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-consortiums-savings.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/consortium-selection.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/consortium-selection.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/installments/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/installments/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/installments-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-investments-installments.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/installment-selection.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/installment-selection.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/purchases/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/purchases/route-integrity.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/purchases-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/global-search.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/receipt/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/export/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/purchase-date.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/cards-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/dashboard-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/financial-calendar/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/purchase-date.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/design-system.contract.md",
+      "state": "present"
+    },
+    {
+      "path": "openspec/changes/recriar-interface-quiet-financial-os/plan.md",
+      "state": "present"
+    }
+  ]
+}

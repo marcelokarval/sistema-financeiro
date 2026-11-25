@@ -374,11 +374,12 @@ export async function GET() {
       });
       const topGoal = sortedByProgress[0];
       if (topGoal && topGoal.targetAmount > 0) {
-        const progress = ((topGoal.currentAmount / topGoal.targetAmount) * 100).toFixed(0);
+        const progressValue = (topGoal.currentAmount / topGoal.targetAmount) * 100;
+        const progress = progressValue.toFixed(0);
         const remaining = topGoal.targetAmount - topGoal.currentAmount;
         insights.push({
           id: `goal-${topGoal.id}`,
-          type: progress >= 70 ? "success" : "info",
+          type: progressValue >= 70 ? "success" : "info",
           icon: "Target",
           title: `Meta "${topGoal.name}" está ${progress}% completa`,
           description: remaining > 0

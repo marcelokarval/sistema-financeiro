@@ -1,0 +1,85 @@
+{
+  "candidate": "944f45347ea85e432eb88a88039769ef20ed3894041913ab8fd9ff4fc7b2329a",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun --no-env-file test src/components/finance/quiet-analysis-calendar.test.tsx",
+        "outcome": "expected_failure",
+        "details": "18 aprovados, 1 reprovação: sinal de cancelamento ausente no fetch de balance-projection.tsx"
+      },
+      "green": {
+        "command": "bun --no-env-file test src/components/finance/quiet-analysis-calendar.test.tsx",
+        "outcome": "passed",
+        "details": "19 aprovados, 0 reprovações, 197 asserções com AbortController e identidade de requisição"
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bun --no-env-file test src/components/finance/quiet-goals-health.test.tsx",
+        "outcome": "expected_failure",
+        "details": "25 aprovados, 1 reprovação: diálogo fechou em resposta HTTP não OK e acionou GET prematuro"
+      },
+      "green": {
+        "command": "bun --no-env-file test src/components/finance/quiet-goals-health.test.tsx && quiet-goals-widgets.qa.mjs",
+        "outcome": "passed",
+        "details": "26 aprovados, 0 reprovações e 60 cenários pareados aprovados nas 6 células sem divergências"
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx",
+        "outcome": "expected_failure",
+        "details": "27 aprovados, 2 reprovações: foco no fechamento retornava ao botão condenado da linha em Contas e Cartões"
+      },
+      "green": {
+        "command": "bun --no-env-file test src/components/finance/quiet-accounts-cards.test.tsx && quiet-keyed-deletion-focus.qa.mjs && quiet-cards-purchases-categories.qa.mjs",
+        "outcome": "passed",
+        "details": "29 aprovados, 0 reprovações; 78 e 120 cenários verificados nas 6 células com 0 ignorados"
+      }
+    },
+    {
+      "id": "2.2",
+      "plan": "2.2",
+      "red": {
+        "command": "bun --no-env-file test src/components/finance/quiet-consortiums-savings.test.tsx",
+        "outcome": "expected_failure",
+        "details": "51 aprovados, 4 reprovações: retorno para botão da linha em Consórcios e ausência de restauração pós-remoção em Caixinhas"
+      },
+      "green": {
+        "command": "bun --no-env-file test src/components/finance/quiet-consortiums-savings.test.tsx && quiet-consortiums-editor.qa.mjs && quiet-installments-savings-dialogs.qa.mjs",
+        "outcome": "passed",
+        "details": "55 aprovados, 0 reprovações; 108 e 54 cenários pareados nas 6 células com 0 ignorados"
+      }
+    },
+    {
+      "id": "3.1",
+      "plan": "3.1",
+      "red": {
+        "command": "bun --no-env-file test src/components/finance/quiet-navigation.test.tsx",
+        "outcome": "expected_failure",
+        "details": "11 aprovados, 1 reprovação: Seção 5 de frontend-componentization-coverage.md ainda listava divergências abertas"
+      },
+      "green": {
+        "command": "bun --no-env-file .zscripts/check-frontend-architecture.ts --baseline-ref 25b44535c5068b99044afa03f7ecf318e7a9726f && bun --no-env-file run typecheck && bun --no-env-file run lint && bun --no-env-file test",
+        "outcome": "passed",
+        "details": "aprovado integralmente nas 6 células: 388 aprovados na suíte e todos os 7 runners de navegador com 0 ignorados"
+      }
+    }
+  ],
+  "structural": {
+    "command": "bun --no-env-file .zscripts/check-frontend-architecture.ts --baseline-ref 25b44535c5068b99044afa03f7ecf318e7a9726f && ./node_modules/.bin/tsc --noEmit && ./node_modules/.bin/eslint .",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-3 (revisão independente Fase 1 #203 e Fase 2 #205)",
+    "status": "pass",
+    "candidate": "944f45347ea85e432eb88a88039769ef20ed3894041913ab8fd9ff4fc7b2329a"
+  },
+  "unresolved": []
+}

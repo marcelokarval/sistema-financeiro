@@ -89,7 +89,14 @@ export async function GET(request: Request) {
     });
 
     // Monthly comparison
-    const monthlyComparison = [];
+    const monthlyComparison: {
+      month: string;
+      income: number;
+      expense: number;
+      net: number;
+      count: number;
+      avgPerTx: number;
+    }[] = [];
     for (let i = months - 1; i >= 0; i--) {
       const mStart = new Date(currentYear, currentMonth - i, 1);
       const mEnd = new Date(currentYear, currentMonth - i + 1, 0, 23, 59, 59, 999);

@@ -1164,3 +1164,94 @@ Stage Summary:
 - Skills organized in 7 categories: AI/ML Core (9), Finance & Data (5), Development & Testing (5), Documents & Export (4), Web & Search (3), Design & UX (3), Content & Marketing (7)
 - 15 skills excluded as non-relevant to financial app context
 - Full README.md report generated with descriptions and usage guide
+
+
+---
+Task ID: QUIET-OS-INTEGRITY-CLOSURE
+Agent: Specs Auditor (Swarm Wave 3)
+Task: Fechamento Quiet Financial OS, integridade dos fluxos financeiros, residuais, QA e arquivamento OpenSpec
+
+Work Log:
+- Sincronizadas as specs delta para as main specs:
+  - `openspec/specs/interface-quiet-financial-os/spec.md`
+  - `openspec/specs/integridade-fluxos-financeiros/spec.md`
+- Atualizados `verify.md` e `evidence.json` de ambas as changes com os resultados da rodada final pós-Waves 1–2:
+  - **Quiet Financial OS & Residuais Frontend/API:** remoção completa de classes slop em `src/app/globals.css` e `src/components/shared/ui-helpers.tsx`; zero usos de `framer-motion` em produção; séries históricas reais de 6 meses em `GET /api/quick-stats` (`monthlySavingsHistory`, `investmentsHistory`, `cardDebtHistory`); CRUD inline (`PUT`/`DELETE` com `AlertDialog` e locks) em transações de `accounts-view.tsx` e `investments-view.tsx`; conexão de `QuickActions -> Nova Meta`, `GlobalSearch -> selected*Id`, `SmartInsights`, `FinancialReports`, `TransactionAnalytics`, `RecurringTransactions`, `ReceiptGenerator`, `ConsortiumsView` (`Select` de contas) e `MonthlyBudgetTracker` (`AlertDialog`).
+  - **Integridade dos Fluxos Financeiros:** vínculo de seleção/identidade em Consórcios e Parcelas, atomicidade em `PUT`/`DELETE` de Compras e itens (mais filtro case-insensitive compatível com SQLite), preservação de data civil em UTC e `America/Bahia`.
+  - **Qualidade, Testes & QA Visual:** `~/.bun/bin/bun --no-env-file test` (`277 pass, 41 skip, 0 fail`, `1.392` asserções), provas SQLite opt-in isoladas em `bwrap` (`0 skips, 0 falhas`: Caixinhas `10/10`, Assembleias `12/12`, Compras atomicidade `6/6`, Parcelas `4/4`, Data civil/Calendário `11/11` em UTC e Bahia), `~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts` (`44 pass, 0 fail`), `tsc --noEmit` (`0` erros), `bun run lint` (`0` erros), `bun run build` (Next.js 16.1.3 standalone OK), matriz Chrome/Playwright `quiet-qa-final` (`54/54` combinações nos 9 destinos × `1440×900`/`390×844`/`360×800` × claro/escuro + painel expandido, `0` overflow/console/page/5xx errors, 10 PNGs em `download/qa-quiet-*.png` e `download/README.md` atualizados).
+  - **Higiene e Áreas Protegidas:** `src/components/ui/` e `prisma/schema.prisma` intactos; `db/custom.db` e `.env` preservados; resíduos (`33210`, `package-lock.json`, `.tmp/quiet-qa/`, `/tmp/quiet-visual-qa.db*`) removidos.
+- Arquivadas as changes concluídas em:
+  - `openspec/changes/archive/2026-11-23-recriar-interface-quiet-financial-os`
+  - `openspec/changes/archive/2026-11-23-corrigir-integridade-dos-fluxos-financeiros`
+- Mantida `openspec/changes/separar-dados-do-pacote/` ativa (`3/4` — tarefa `2.2` aguarda autorização explícita de contexto limpo).
+
+Stage Summary:
+- Specs principais sincronizadas e validadas com `openspec validate --all --strict`
+- Mudanças `recriar-interface-quiet-financial-os` e `corrigir-integridade-dos-fluxos-financeiros` concluídas e arquivadas
+- Change `separar-dados-do-pacote` mantida ativa (3/4)
+
+---
+Task ID: SEPARAR-DADOS-PACOTE-CLOSURE
+Agent: Specs Auditor (Swarm Step 2)
+Task: Fechamento de `separar-dados-do-pacote`, higiene `.env`/`.env.local` e arquivamento OpenSpec
+
+Work Log:
+- Higiene de configuração local executada sem perda de dados: `.env.local` (`chmod 600`, 34 B, ignorado pelo `.gitignore`) criado com `DATABASE_URL` local e `git rm --cached .env` aplicado (`D  .env` no índice, `.env` e `db/custom.db` preservados em disco).
+- Tarefa `2.2` validada em contexto limpo autorizado (`/tmp/sistema-financeiro-release-qa`):
+  - Adicionado `prisma generate` em `package.json` (`scripts.build`) após detectar `Cannot find module '.prisma/client/default'` no build sem `node_modules/.prisma/client` prévio.
+  - `bash .zscripts/build.sh` concluiu com exit `0` gerando `/tmp/build_fullstack_local.u1x7wumh0P.tar.gz`, com inventário `tar -tvzf` livre de `db/`, `.env*`, `.db` e `.sqlite*`.
+  - Provas negativas do launcher em `/tmp/sistema-financeiro-release-extract` (sem `DATABASE_URL` e com banco dentro do pacote) retornaram `rc=1`; startup positivo contra SQLite externo vazio (`/tmp/sistema-financeiro-release-db.sqlite`) subiu Next.js (`3098`) e `mini-services` (`3004`), respondendo `GET /` (`200`) e `GET /api/accounts` (`200 []`), com nota de ausência de `caddy` no host dev (`./start.sh: 151: exec: caddy: not found`, `rc=127`).
+  - Regressão pós-edição: `~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts` → `44 pass, 0 fail` (`321` asserções). Artefatos temporários em `/tmp/` removidos e portas `3098`/`3004` liberadas.
+- Sincronizada `openspec/specs/empacotamento-sem-dados/spec.md`, atualizados `tasks.md`, `verify.md` e `evidence.json`, e arquivada a change em `openspec/changes/archive/2026-11-23-separar-dados-do-pacote/` (preservando `.openspec.yaml`).
+- Validado com `openspec validate --all --strict --no-interactive`: `3 passed, 0 failed` (`empacotamento-sem-dados`, `integridade-fluxos-financeiros`, `interface-quiet-financial-os`) e `openspec list` sem changes ativas pendentes.
+
+Stage Summary:
+- `separar-dados-do-pacote` concluída (4/4), sincronizada para `openspec/specs/empacotamento-sem-dados/spec.md` e arquivada
+- Todas as 3 changes OpenSpec sincronizadas, validadas (`3 passed, 0 failed`) e arquivadas
+
+---
+Task ID: FORMALIZAR-COMPONENTIZACAO-CLOSURE
+Agent: Archiver (Swarm R8 Closure)
+Task: Fechamento das 6 ondas, sincronização e arquivamento de `formalizar-componentizacao-extrema-frontend`
+
+Work Log:
+- Concluídas e integradas localmente em `main` todas as 6 ondas da migração (`25b4453..ea32229`, incluindo remediação pré-0023 `980110c`), cobrindo as 18 folhas executáveis (`0003`..`0023`) e os 5 pacotes estruturantes (`0001`, `0002`, `0007`, `0012`, `0021`).
+- Resultados finais da Task `0023` (Onda 6, commit `ea32229`):
+  - **AST (`check-frontend-architecture.ts`):** `77 arquivos; 6 ocorrências em 6 identidades; 33 avisos; 0 erros` (removidos os `32` `orphan`s sanados no baseline `.zscripts/frontend-architecture-baseline.json`); `check-frontend-architecture.test.ts` `18 pass, 0 fail`.
+  - **DOM headless (`quiet-componentization.qa.mjs`):** `54 cenários` executados nas 6 células (`360/390/1440 × light/dark`), `0 skips`.
+  - **Suíte global (`typecheck` / `lint` / `test`):** `tsc --noEmit` (`0` erros), `eslint .` (`0` erros), `bun --no-env-file test` (`378 pass, 41 skip, 0 fail`).
+  - **Provas SQLite opt-in isoladas (`0 skips`):** `assembly.test.ts` (`12 pass`), `purchases/route-integrity.test.ts` (`6 pass`), `installments/route.test.ts` (`4 pass`), `savings/route.test.ts` (`10 pass`), `purchase-date.test.ts` em `TZ=UTC` (`11 pass`) e `TZ=America/Bahia` (`11 pass`).
+- Atualizados `tasks.md` (`23/23` checkboxes `[x]`) e `dag-status.md` (`✅ Integrada` com commits locais `25b4453..ea32229` e nota de `reviews/planning-store-r8-receipt.json`).
+- Sincronizada a main spec `openspec/specs/arquitetura-componentes-frontend/spec.md` (`R01`–`R06`, `11` cenários) e arquivada a change em `openspec/changes/archive/2026-11-24-formalizar-componentizacao-extrema-frontend/` (preservando `.openspec.yaml`).
+
+Stage Summary:
+- `formalizar-componentizacao-extrema-frontend` concluída (`23/23`), sincronizada para `openspec/specs/arquitetura-componentes-frontend/spec.md` e arquivada
+- Validação OpenSpec estrita: `4 passed, 0 failed` e `0` changes ativas pendentes
+
+---
+Task ID: QUIET-RESIDUAL-AND-SEARCH-CLOSURE
+Agent: Closer Quiet (Swarm Etapas 2–4)
+Task: Correção das divergências residuais Quiet, alinhamento da Busca Global (Alternativa A), QA nas 6 células e arquivamento OpenSpec
+
+Work Log:
+- **Commit 1 em `main` (`842223348705d087b2e6d9e3031a04a3d33237f4`, base `80f1f406443f235f4659aad2ff0ded8f20f3c6bc`):**
+  - `balance-projection.tsx`: proteção de período com `AbortController`, identidade `{ months }` (`requestBalanceProjection` / `currentBalanceProjection`) e descarte de resposta/erro tardio mantendo `MonthSelector` (`87145e91...`).
+  - `monthly-budget-tracker.tsx`: retorno antecipado e parse resiliente (`await res.json().catch(() => ({}))`) em `!res.ok` retendo `MonthlyBudgetEditor` e rascunho sem `refreshBudgets()` prematuro.
+  - `accounts-view.tsx` e `cards-view.tsx`: limpeza de `dialogReturn.current` após `DELETE` `2xx` na mesma abertura (`account/Excluir/late`, `card/Excluir/late`, `cartoes/exclusao-matriz-temporal`), promovendo foco ao botão sobrevivente (`Nova conta` / `Novo cartão`).
+  - `consortiums-view.tsx` e `savings-view.tsx`: limpeza de `dialogOrigin.current` em `confirmDelete` (`res.ok`, sanando `list/Excluir/late`) e restauração pós-remoção via `restoreSavingsFocusAfterDeletion` para `#savings-create` (`caixinhas/exclusao/late`).
+  - `src/app/page.tsx` (`applySearchSelection`), `docs/reference/design-system.contract.md#L24`, `quiet-navigation.test.tsx` e `quiet-search-parity.qa.mjs`: alinhados à decisão **Alternativa A** do responsável de produto (removido `historicalAutoOpenDeviation`).
+  - `docs/reference/frontend-componentization-coverage.md` (Seção 5): reconciliada para conformidade Quiet sem `preexistingQuietDivergences` em aberto.
+- **Verificação integrada nas 6 células (`360/390/1440 × light/dark`) em `systemd-run --user` + `bwrap` (`qa-runner-2`, `task-59`/`task-158`/`task-237`):**
+  - Gate AST (`check-frontend-architecture.ts --baseline-ref 25b44535c5068b99044afa03f7ecf318e7a9726f`): `77 arquivos; 6 ocorrências em 6 identidades; 34 avisos; 0 erros`.
+  - `tsc --noEmit`: `0` erros; `eslint .`: `0` erros; `bun --no-env-file test`: `388 pass, 41 skip [opt-ins SQLite], 0 fail` (`2664 expect() calls` em `32` arquivos).
+  - 7/7 runners `.qa.mjs` aprovados (`exit 0`, `0` skips, `0` `preexistingQuietDivergences`): `quiet-goals-widgets` (`60`), `quiet-keyed-deletion-focus` (`78`), `quiet-cards-purchases-categories` (`120`), `quiet-consortiums-editor` (`108`), `quiet-installments-savings-dialogs` (`54`), `quiet-search-parity` (`102`), `quiet-componentization` (`54`). `systemctl --user list-units 'finance-qa-*' --all` vazio.
+- **`bridge_guard.py verify` (`--base 80f1f406443f235f4659aad2ff0ded8f20f3c6bc`):**
+  - `corrigir-divergencias-residuais-quiet-financial-os`: `{"status": "ok", "candidate": "944f45347ea85e432eb88a88039769ef20ed3894041913ab8fd9ff4fc7b2329a"}`.
+  - `alinhar-contrato-busca-global-quiet`: `{"status": "ok", "candidate": "e2698a7ffdd63115845ca87fdcb3b97e9bdd415527724f5a898b642c68c611c5"}`.
+- **Sincronização e arquivamento OpenSpec:**
+  - Mesclados ambos os deltas em `openspec/specs/interface-quiet-financial-os/spec.md` (`openspec validate --specs --strict --no-interactive`: aprovado).
+  - Arquivadas as changes em `openspec/changes/archive/2026-11-24-corrigir-divergencias-residuais-quiet-financial-os/` e `openspec/changes/archive/2026-11-24-alinhar-contrato-busca-global-quiet/` (preservando `.openspec.yaml`, `verify.md`, `evidence.json`, `retrospective.md`).
+
+Stage Summary:
+- Commit 1 (`842223348705d087b2e6d9e3031a04a3d33237f4`) e validação isolada nas 6 células concluídos com zero divergências Quiet residuais
+- `openspec/specs/interface-quiet-financial-os/spec.md` sincronizada e ambas as changes validadas e arquivadas (`4 passed, 0 failed`, `0` changes ativas)

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "rule": "raw-conditional-class-name",
+      "path": "src/components/finance/balance-projection.tsx",
+      "symbol": "MonthSelector",
+      "hash": "87145e913bd164e9698b9c21a6b81dc3ac495c878b764d4d8db326ea9e065bdf",
+      "count": 1,
+      "reason": "Realce do período selecionado no controle da projeção. Manter a ocorrência intacta até a migração da família.",
+      "owner": "Equipe de arquitetura frontend",
+      "removeWhen": "Quando esta composição migrar para cn() ou variante equivalente, preservando apresentação e comportamento."
+    },
+    {
+      "rule": "raw-conditional-class-name",
+      "path": "src/components/finance/dashboard-view.tsx",
+      "symbol": "Metric",
+      "hash": "2e770f033fb35a654777bd32f11e0b397fa0fcd2956e4307681ff3e587caa78f",
+      "count": 1,
+      "reason": "Tamanho dominante do valor principal do Resumo. Manter a ocorrência intacta até a migração da família.",
+      "owner": "Equipe de arquitetura frontend",
+      "removeWhen": "Quando esta composição migrar para cn() ou variante equivalente, preservando apresentação e comportamento."
+    },
+    {
+      "rule": "raw-conditional-class-name",
+      "path": "src/components/finance/installments-view.tsx",
+      "symbol": "InstallmentMetrics",
+      "hash": "dc801ca549faf850302624b6bbe5d4aae5a6b5a249948fa48e7698e541e70c60",
+      "count": 1,
+      "reason": "Tamanho do primeiro indicador de parcelas difere dos demais. Manter a ocorrência intacta até a migração da família.",
+      "owner": "Equipe de arquitetura frontend",
+      "removeWhen": "Quando esta composição migrar para cn() ou variante equivalente, preservando apresentação e comportamento."
+    },
+    {
+      "rule": "raw-conditional-class-name",
+      "path": "src/components/finance/investments-view.tsx",
+      "symbol": "InvestmentMetrics",
+      "hash": "dc801ca549faf850302624b6bbe5d4aae5a6b5a249948fa48e7698e541e70c60",
+      "count": 1,
+      "reason": "Tamanho do primeiro indicador de investimentos difere dos demais. Manter a ocorrência intacta até a migração da família.",
+      "owner": "Equipe de arquitetura frontend",
+      "removeWhen": "Quando esta composição migrar para cn() ou variante equivalente, preservando apresentação e comportamento."
+    },
+    {
+      "rule": "raw-conditional-class-name",
+      "path": "src/components/finance/networth-evolution.tsx",
+      "symbol": "NetworthEvolutionContent",
+      "hash": "6435d42a3a9602ad829506de6452903e6571a741aca73ddf1bd1c3584d3418b3",
+      "count": 1,
+      "reason": "Realce do intervalo selecionado no gráfico patrimonial. Manter a ocorrência intacta até a migração da família.",
+      "owner": "Equipe de arquitetura frontend",
+      "removeWhen": "Quando esta composição migrar para cn() ou variante equivalente, preservando apresentação e comportamento."
+    },
+    {
+      "rule": "raw-conditional-class-name",
+      "path": "src/components/finance/networth-evolution.tsx",
+      "symbol": "NetworthEvolutionContent",
+      "hash": "7926f6eae4519674505e3ca284915eda4e549d3da3ac62c46d4f92b3fe86d41c",
+      "count": 1,
+      "reason": "Tom da variação patrimonial já computada. Manter a ocorrência intacta até a migração da família.",
+      "owner": "Equipe de arquitetura frontend",
+      "removeWhen": "Quando esta composição migrar para cn() ou variante equivalente, preservando apresentação e comportamento."
+    }
+  ]
+}

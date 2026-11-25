@@ -1,0 +1,85 @@
+{
+  "candidate": "96de0e44e4d43e574f1b920d7047d95b37261ae5 (head; digest historico inicial: a3766a4882fc6020dacf70bb1c16af68833b5b62dd20d1c8c75eed440798698a)",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun --no-env-file --no-install test src/lib/consortium-selection.test.ts src/components/finance/quiet-consortiums-savings.test.tsx",
+        "outcome": "expected_failure",
+        "details": "A048: antes da implementação, parcela de outra cota era acionável e a view não aplicava as guardas; no reaceite, não havia releitura de A reaberto."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test src/lib/consortium-selection.test.ts src/components/finance/quiet-consortiums-savings.test.tsx src/app/api/consortiums/assembly.test.ts",
+        "outcome": "passed",
+        "details": "Respostas invertidas, confirmação obsoleta, vínculo de conta em Select e assembleia em SQLite isolado (12 pass / 0 fail) validados na rodada final."
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bun --no-env-file --no-install test src/app/api/installments/route.test.ts src/lib/installment-selection.test.ts src/components/finance/quiet-investments-installments.test.tsx",
+        "outcome": "expected_failure",
+        "details": "A049: detalhe devolvia array e IDs ausentes recebiam 200; segundo RED reproduziu parcela ainda por pagar após pagamento simulado do mesmo plano reaberto."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test src/app/api/installments/route.test.ts src/lib/installment-selection.test.ts src/components/finance/quiet-investments-installments.test.tsx",
+        "outcome": "passed",
+        "details": "4 pass / 0 fail em SQLite isolado (bwrap) para coleção, filtro, detalhe ordenado e 404, além de identidade do refresh e filtro OVERDUE na view."
+      }
+    },
+    {
+      "id": "1.3",
+      "plan": "1.3",
+      "red": {
+        "command": "bun --no-env-file --no-install test src/app/api/purchases/route-integrity.test.ts (bwrap, SQLite opt-in)",
+        "outcome": "expected_failure",
+        "details": "A054: gatilho abortou a mutação na rota base, mas a releitura mostrou perda de filhos nas duas compras alvo; Wave 1 também reprovou mode: insensitive no SQLite."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test src/app/api/purchases/route-integrity.test.ts src/app/api/purchases/route.test.ts",
+        "outcome": "passed",
+        "details": "6 pass / 0 fail (37 asserções) em SQLite isolado com rollback real, além de filtro case-insensitive compatível com SQLite."
+      }
+    },
+    {
+      "id": "1.4",
+      "plan": "1.4",
+      "red": {
+        "command": "TZ=America/Bahia e TZ=UTC bun --no-env-file --no-install test src/lib/purchase-date.test.ts",
+        "outcome": "expected_failure",
+        "details": "A051/A052: 18/11 em Bahia em vez de 19/11 e horário 00:00 indevido no Calendário UTC; CardsView preservou ordem dos hooks para o teste posicional."
+      },
+      "green": {
+        "command": "TZ=UTC e TZ=America/Bahia CALENDAR_D3_SQLITE=1 ~/.bun/bin/bun --no-env-file test src/lib/purchase-date.test.ts",
+        "outcome": "passed",
+        "details": "11 pass / 0 fail (44 asserções) em UTC e America/Bahia em bwrap isolado, cobrindo formulário, Cartões, Resumo, Calendário, Busca, Recibo e CSV."
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "Verificação integrada pré-Wave 1/2 (29 diagnósticos TS + regressão em cards-view.tsx)",
+        "outcome": "expected_failure",
+        "details": "Diagnósticos TS preexistentes e regressão posicional de hooks em cards-view.tsx reproduzida e corrigida antes do aceite final."
+      },
+      "green": {
+        "command": "~/.bun/bin/bun --no-env-file test && ~/.bun/bin/bun test ./.zscripts/tests/packaging.test.ts && ~/.bun/bin/bunx tsc --noEmit && ~/.bun/bin/bun run lint && ~/.bun/bin/bun run build + playwright-cli -s=quiet-qa-final",
+        "outcome": "passed",
+        "details": "277 pass / 41 skip (opt-ins rodados com 0 skips em bwrap) / 0 fail; 44/44 packaging; 0 erros TS; 0 erros lint; build Next 16.1.3 OK; QA Chrome 54/54 em 1440×900, 390×844 e 360×800 claro/escuro."
+      }
+    }
+  ],
+  "structural": {
+    "command": "openspec validate --all --strict --no-interactive; git diff --check; git status -s -uall -- src/components/ui/ prisma/schema.prisma",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "qa-verifier + qa-visual (revalidação integrada pós-Waves 1-2)",
+    "status": "pass",
+    "candidate": "96de0e44e4d43e574f1b920d7047d95b37261ae5"
+  },
+  "unresolved": []
+}
