@@ -13,6 +13,7 @@ import { AccountTransferDialog } from './account-transfer-dialog';
 import { CardsView } from './cards-view';
 import { CardEditor } from './card-editor';
 import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { AlertDialogContent } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceRow } from '@/components/shared/finance-row';
@@ -1032,4 +1033,95 @@ test('AccountTransferDialog adota FinanceFormDialogShell, filtra origem/destino 
   expect(find(toSelect, (node) => node.props.value === 'b')).toBeDefined();
   toSelect.props.onValueChange('b');
   expect(changes).toEqual([['toAccountId', 'b']]);
+});
+
+function assignRef(element: Element, value: unknown) {
+  const ref = (element.props.ref ?? (element as unknown as { ref?: { current: unknown } }).ref) as { current: unknown } | undefined;
+  if (!ref) throw new Error('Ref esperada no controle sobrevivente');
+  ref.current = value;
+}
+
+test('Contas: DELETE 2xx limpa dialogReturn e foca Nova conta mesmo com botão da linha conectado, preservando retorno em cancelamento e falha', async () => {
+  await exerciseAccounts(async ({ render, feedback, answerWrite }) => {
+    const focused: string[] = [];
+    const fallbackTarget = { isConnected: true, focus() { focused.push('Nova conta'); } };
+    const rowTrigger = { isConnected: true, focus() { focused.push('Excluir conta Conta A'); } };
+    const fakeCloseEvent = { preventDefault() {} } as unknown as Event;
+
+    const attachFallback = () => assignRef(required(render(), buttonNamed('Nova conta')), fallbackTarget);
+    const deleteAlert = () => required(render(), (node) => node.type === AlertDialogContent
+      && Boolean(find(node.props.children, (child) => React.Children.toArray(child.props.children).includes('Excluir conta?'))));
+    const openDelete = () => {
+      attachFallback();
+      required(render(), nameIs('Excluir conta Conta A')).props.onClick({ currentTarget: rowTrigger });
+    };
+
+    // 1) Cancelamento mantém retorno ao acionador da linha
+    openDelete();
+    required(render(), dialogTitleIs('Excluir conta?')).props.onOpenChange(false);
+    deleteAlert().props.onCloseAutoFocus(fakeCloseEvent);
+    expect(focused).toEqual(['Excluir conta Conta A']);
+
+    // 2) Falha HTTP de DELETE preserva dialogReturn e retorna ao acionador ao fechar
+    openDelete();
+    answerWrite(async () => Response.json({ error: 'Falha sintética' }, { status: 503 }));
+    await required(required(render(), dialogTitleIs('Excluir conta?')), buttonNamed('Excluir')).props.onClick({ preventDefault() {} });
+    await settle();
+    expect(feedback.at(-1)).toBe('erro: Falha sintética');
+    expect(find(render(), dialogTitleIs('Excluir conta?'))).toBeDefined();
+    required(render(), dialogTitleIs('Excluir conta?')).props.onOpenChange(false);
+    deleteAlert().props.onCloseAutoFocus(fakeCloseEvent);
+    expect(focused).toEqual(['Excluir conta Conta A', 'Excluir conta Conta A']);
+
+    // 3) DELETE 2xx com botão da linha ainda conectado (GET tardio) limpa dialogReturn e foca Nova conta
+    openDelete();
+    answerWrite(async () => new Response(null, { status: 204 }));
+    await required(required(render(), dialogTitleIs('Excluir conta?')), buttonNamed('Excluir')).props.onClick({ preventDefault() {} });
+    await settle();
+    expect(find(render(), dialogTitleIs('Excluir conta?'))).toBeUndefined();
+    deleteAlert().props.onCloseAutoFocus(fakeCloseEvent);
+    expect(focused).toEqual(['Excluir conta Conta A', 'Excluir conta Conta A', 'Nova conta']);
+  });
+});
+
+test('Cartões: DELETE 2xx limpa dialogReturn e foca Novo cartão mesmo com botão da linha conectado, preservando retorno em cancelamento e falha', async () => {
+  await exerciseCards(async ({ render, feedback, answerWrite }) => {
+    const focused: string[] = [];
+    const fallbackTarget = { isConnected: true, focus() { focused.push('Novo cartão'); } };
+    const rowTrigger = { isConnected: true, focus() { focused.push('Excluir cartão Cartão A'); } };
+    const fakeCloseEvent = { preventDefault() {} } as unknown as Event;
+
+    const attachFallback = () => assignRef(required(render(), buttonNamed('Novo cartão')), fallbackTarget);
+    const deleteShell = () => required(render(), (node) => node.type === FinanceConfirmationDialogShell);
+    const openDelete = () => {
+      attachFallback();
+      required(render(), nameIs('Excluir cartão Cartão A')).props.onClick({ currentTarget: rowTrigger });
+    };
+
+    // 1) Cancelamento mantém retorno ao acionador da linha
+    openDelete();
+    deleteShell().props.onOpenChange(false);
+    deleteShell().props.onCloseAutoFocus(fakeCloseEvent);
+    expect(focused).toEqual(['Excluir cartão Cartão A']);
+
+    // 2) Falha HTTP de DELETE preserva dialogReturn e retorna ao acionador ao fechar
+    openDelete();
+    answerWrite(async () => new Response(null, { status: 503 }));
+    await required(required(render(), dialogTitleIs('Excluir cartão?')), buttonNamed('Excluir')).props.onClick({ preventDefault() {} });
+    await settle();
+    expect(feedback.at(-1)).toBe('erro: Erro ao excluir cartão');
+    expect(find(render(), dialogTitleIs('Excluir cartão?'))).toBeDefined();
+    deleteShell().props.onOpenChange(false);
+    deleteShell().props.onCloseAutoFocus(fakeCloseEvent);
+    expect(focused).toEqual(['Excluir cartão Cartão A', 'Excluir cartão Cartão A']);
+
+    // 3) DELETE 2xx com botão da linha ainda conectado (GET tardio) limpa dialogReturn e foca Novo cartão
+    openDelete();
+    answerWrite(async () => new Response(null, { status: 204 }));
+    await required(required(render(), dialogTitleIs('Excluir cartão?')), buttonNamed('Excluir')).props.onClick({ preventDefault() {} });
+    await settle();
+    expect(find(render(), dialogTitleIs('Excluir cartão?'))).toBeUndefined();
+    deleteShell().props.onCloseAutoFocus(fakeCloseEvent);
+    expect(focused).toEqual(['Excluir cartão Cartão A', 'Excluir cartão Cartão A', 'Novo cartão']);
+  });
 });

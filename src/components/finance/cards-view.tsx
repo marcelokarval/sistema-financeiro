@@ -264,7 +264,10 @@ export function CardsView() {
       const res = await fetch('/api/cards', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
       if (!res.ok) { toast.error('Erro ao excluir cartão'); return; }
       toast.success('Cartão excluído!');
-      if (deleteOpening.current === opening) setShowDeleteDialog(null);
+      if (deleteOpening.current === opening) {
+        dialogReturn.current = null;
+        setShowDeleteDialog(null);
+      }
       fetchCards();
     } catch { toast.error('Erro ao excluir cartão'); } finally { release(key); }
   };

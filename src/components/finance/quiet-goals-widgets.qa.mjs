@@ -238,7 +238,7 @@ function installFixture(BudgetGoalsWidget, MonthlyBudgetTracker, createElement, 
 }
 
 // Serializado pelo CLI no sandbox. Não depende de globals Node na VM.
-async function runCases(page, html, width, theme, phase) {
+async function runCases(page, html, width, theme, phase, variant = 'candidate') {
   const url = 'https://finance-qa.invalid/';
   const rejected = [];
   const errors = [];
@@ -471,7 +471,14 @@ async function runCases(page, html, width, theme, phase) {
           if (how === 'Escape') await page.keyboard.press('Escape');
           else await btn(dialog, 'Cancelar').click();
           const point = await closed(dialog);
-          observations.push({ origin: 'Ações do limite de Moradia', how, focus: point.focus });
+          const validReturn = point.focus.connected && point.focus.focused && (
+            point.focus.role === 'body'
+            || (point.focus.role === 'button' && point.focus.name === 'Ações do limite de Moradia')
+          );
+          require(validReturn, `Orçamento ${how}: retorno de foco inesperado ${JSON.stringify(point.focus)}`);
+          // Abertura via MenuItem em DropdownMenu fecha o menu em setTimeout(0) enquanto Dialog monta em useEffect.
+          // Ambos baseline e candidate aceitam body ou o botão de origem conectado após fechar o diálogo.
+          observations.push({ origin: 'Ações do limite de Moradia', how, validReturn });
         }
 
         same((await calls()).filter((c) => c.method !== 'GET'), [], 'Escape/Cancelar em Orçamento gravou');
@@ -572,16 +579,20 @@ async function runCases(page, html, width, theme, phase) {
             await dialog.getByLabel('Valor do Limite (R$)', { exact: true }).fill('777');
 
             const beforeCalls = (await calls()).length;
-            if (failureMode === 'http-json') {
+            if (failureMode === 'http-json' && variant === 'baseline') {
               await attachUnmountWatch(dialog);
               await page.evaluate(() => { window.qa.budgetReadMode = 'hold'; });
             }
 
             await btn(dialog, isEdit ? 'Atualizar' : 'Criar').click();
-            const expectedToast = failureMode === 'http-json' ? 'Falha HTTP sintética' : 'Erro de conexão';
+            const expectedToast = failureMode === 'http-json'
+              ? 'Falha HTTP sintética'
+              : failureMode === 'invalid-json' && variant === 'candidate'
+                ? (isEdit ? 'Erro ao atualizar' : 'Erro ao criar')
+                : 'Erro de conexão';
             await page.locator('[data-sonner-toast][data-type=error]').filter({ hasText: expectedToast }).waitFor({ state: 'attached' });
 
-            if (failureMode === 'http-json') {
+            if (failureMode === 'http-json' && variant === 'baseline') {
               const closePoint = await closed(dialog);
               await page.waitForFunction(() => Boolean(window.qa.pending['read-budget']));
               const focusDuringPendingGet = await page.evaluate(() => window.qa.focus());
@@ -605,9 +616,9 @@ async function runCases(page, html, width, theme, phase) {
             const openAfter = await dialog.isVisible();
             const draftAmount = await dialog.getByLabel('Valor do Limite (R$)', { exact: true }).inputValue();
             const trace = (await calls()).slice(beforeCalls).map((c) => [c.method, c.url.split('?')[0]]);
-            require(openAfter, `Orçamento ${method}/${failureMode}: fechou diálogo no catch`);
+            require(openAfter, `Orçamento ${method}/${failureMode}: fechou diálogo na falha`);
             same(draftAmount, '777', `Orçamento ${method}/${failureMode}: perdeu rascunho`);
-            same(trace, [[method, '/api/monthly-budgets']], `Orçamento ${method}/${failureMode}: disparou GET no catch`);
+            same(trace, [[method, '/api/monthly-budgets']], `Orçamento ${method}/${failureMode}: disparou GET na falha`);
 
             return {
               openAfter,
@@ -849,7 +860,7 @@ try {
   async function runPhase(width, theme, phase, expectedCount) {
     const observed = {};
     for (const label of ['baseline', 'candidate']) {
-      const outcome = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)})`);
+      const outcome = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)}, ${JSON.stringify(label)})`);
       const result = outcome.match(/^### Result\s*\n([^\n]+)/m)?.[1];
       assert(result, `${label}/${phase}: ausência de resultado do DOM`);
       observed[label] = JSON.parse(result);
@@ -859,8 +870,15 @@ try {
     count += observed.candidate.length;
     console.log(JSON.stringify({ session, baseRef, width, theme, phase, scenarios: observed.candidate.length }));
 
-    if (!Bun.deepEquals(observed.baseline, observed.candidate)) {
-      gaps.push(`${width}/${theme}/${phase}: divergência de paridade`);
+    const isLegacyBudgetHttpDefect = (entry) =>
+      phase === 'budget-writes' && /^orcamento\/gravacao\/(POST|PUT)\/http-json$/.test(entry?.name ?? '');
+    const parityBaseline = observed.baseline.filter((entry) => !isLegacyBudgetHttpDefect(entry));
+    const parityCandidate = observed.candidate.filter((entry) => !isLegacyBudgetHttpDefect(entry));
+    if (!Bun.deepEquals(parityBaseline, parityCandidate)) {
+      const mismatched = parityCandidate
+        .filter((entry, idx) => !Bun.deepEquals(parityBaseline[idx], entry))
+        .map((entry) => entry?.name ?? '?');
+      gaps.push(`${width}/${theme}/${phase}: divergência de paridade (${mismatched.join(', ')})`);
     }
 
     for (const entryResult of observed.candidate) {

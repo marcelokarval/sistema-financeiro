@@ -1176,3 +1176,317 @@ for (const outcome of ['ok', 'http503'] as const) {
     }
   });
 }
+
+async function withMockDocument<T>(
+  doc: Record<string, unknown>,
+  fn: () => Promise<T> | T,
+): Promise<T> {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  Object.defineProperty(globalThis, 'document', { configurable: true, writable: true, value: doc });
+  try {
+    return await fn();
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'document', descriptor);
+    else delete (globalThis as Record<string, unknown>).document;
+  }
+}
+
+test('Consórcios lista DELETE: res.ok limpa origem conectada antes do fechamento e foca #consortium-create, mantendo retorno em cancelamento e 503', async () => {
+  let deleteStatus = 204;
+  await exerciseConsortium(async () => new Response(null, { status: deleteStatus }), async (render) => {
+    const focused: string[] = [];
+    const rowTrigger = { isConnected: true, focus() { focused.push('row-delete'); } };
+    const createTarget = { isConnected: true, focus() { focused.push('consortium-create'); } };
+    const fakeCloseEvent = { preventDefault() {} } as unknown as Event;
+
+    await withMockDocument({
+      getElementById: (id: string) => (id === 'consortium-create' ? createTarget : null),
+    }, async () => {
+      const confirmation = () => findElement(render(), (e) => e.type === ConsortiumDeleteConfirmation && e.props.open)!;
+
+      // 1) Cancelamento mantém retorno ao acionador conectado da linha
+      rowById(render())!.props.onDelete({ currentTarget: rowTrigger });
+      const cancelDialog = confirmation();
+      cancelDialog.props.onOpenChange(false);
+      cancelDialog.props.onCloseAutoFocus(fakeCloseEvent);
+      expect(focused).toEqual(['row-delete']);
+
+      // 2) Falha HTTP 503 preserva origem e retorna ao acionador ao fechar
+      deleteStatus = 503;
+      rowById(render())!.props.onDelete({ currentTarget: rowTrigger });
+      const errorDialog = confirmation();
+      await errorDialog.props.onConfirm({ preventDefault: noop });
+      await settle();
+      expect(findElement(render(), (e) => e.type === ConsortiumDeleteConfirmation && e.props.open)).toBeDefined();
+      errorDialog.props.onOpenChange(false);
+      errorDialog.props.onCloseAutoFocus(fakeCloseEvent);
+      expect(focused).toEqual(['row-delete', 'row-delete']);
+
+      // 3) res.ok com botão da linha ainda conectado (GET tardio) limpa dialogOrigin e foca #consortium-create
+      deleteStatus = 204;
+      rowById(render())!.props.onDelete({ currentTarget: rowTrigger });
+      const okDialog = confirmation();
+      await okDialog.props.onConfirm({ preventDefault: noop });
+      await settle();
+      expect(findElement(render(), (e) => e.type === ConsortiumDeleteConfirmation && e.props.open)).toBeUndefined();
+      okDialog.props.onCloseAutoFocus(fakeCloseEvent);
+      expect(focused).toEqual(['row-delete', 'row-delete', 'consortium-create']);
+    });
+  });
+});
+
+test('Consórcios detalhe DELETE: res.ok foca #consortium-create ao fechar A e #consortium-detail-title na troca A -> B', async () => {
+  const focused: string[] = [];
+  const detailTrigger = { isConnected: true, focus() { focused.push('detail-delete'); } };
+  const createTarget = { isConnected: true, focus() { focused.push('consortium-create'); } };
+  const detailTitleTarget = { isConnected: true, focus() { focused.push('consortium-detail-title'); } };
+  const fakeCloseEvent = { preventDefault() {} } as unknown as Event;
+
+  // Caso A: exclusão no detalhe sem troca fecha detalhe e foca #consortium-create
+  await exerciseConsortium(async () => new Response(null, { status: 204 }), async (render) => {
+    await withMockDocument({
+      getElementById: (id: string) => {
+        const hasDetail = Boolean(activeDetail(render()));
+        if (id === 'consortium-detail-title') return hasDetail ? detailTitleTarget : null;
+        if (id === 'consortium-create') return hasDetail ? null : createTarget;
+        return null;
+      },
+    }, async () => {
+      rowById(render())!.props.onOpen();
+      formButton(render(), 'Excluir').props.onClick({ currentTarget: detailTrigger });
+      const okDialog = findElement(render(), (e) => e.type === ConsortiumDeleteConfirmation && e.props.open)!;
+      await okDialog.props.onConfirm({ preventDefault: noop });
+      await settle();
+      expect(activeDetail(render())).toBeUndefined();
+      okDialog.props.onCloseAutoFocus(fakeCloseEvent);
+      expect(focused).toEqual(['consortium-create']);
+    });
+  });
+
+  // Caso B: troca A -> B com DELETE de A em voo foca #consortium-detail-title de B (e não o trigger reutilizado nem #consortium-create)
+  const deferred = Promise.withResolvers<Response>();
+  await exerciseConsortium(() => deferred.promise, async (render) => {
+    await withMockDocument({
+      getElementById: (id: string) => {
+        const hasDetail = Boolean(activeDetail(render()));
+        if (id === 'consortium-detail-title') return hasDetail ? detailTitleTarget : null;
+        if (id === 'consortium-create') return hasDetail ? null : createTarget;
+        return null;
+      },
+    }, async () => {
+      rowById(render())!.props.onOpen();
+      formButton(render(), 'Excluir').props.onClick({ currentTarget: detailTrigger });
+      const okDialog = findElement(render(), (e) => e.type === ConsortiumDeleteConfirmation && e.props.open)!;
+      const pending = okDialog.props.onConfirm({ preventDefault: noop });
+      useAppStore.getState().setSelectedConsortiumId(otherConsortium.id);
+      await settle();
+      expect(activeDetail(render())?.id).toBe(otherConsortium.id);
+
+      deferred.resolve(new Response(null, { status: 204 }));
+      await pending;
+      await settle();
+      expect(activeDetail(render())?.id).toBe(otherConsortium.id);
+      okDialog.props.onCloseAutoFocus(fakeCloseEvent);
+      expect(focused).toEqual(['consortium-create', 'consortium-detail-title']);
+    });
+  });
+});
+
+test('Caixinhas: restoreSavingsFocusAfterDeletion não age antes da remoção, não rouba foco conectado e foca fallback em body/desconectado', () => {
+  expect(savings).toHaveProperty('restoreSavingsFocusAfterDeletion');
+  const restore = (savings as unknown as {
+    restoreSavingsFocusAfterDeletion: (
+      deletedId: string,
+      goals: readonly { id: string }[],
+      activeElement: { isConnected: boolean } | null,
+      body: object,
+      fallback: { isConnected: boolean; focus: () => void } | null,
+    ) => boolean;
+  }).restoreSavingsFocusAfterDeletion;
+
+  let focusCount = 0;
+  const fallback = { isConnected: true, focus: () => { focusCount++; } };
+  const body = { isConnected: true };
+  const otherControl = { isConnected: true };
+  const disconnected = { isConnected: false };
+
+  // Não age enquanto id ainda está em goals
+  expect(restore('g1', [{ id: 'g1' }, { id: 'g2' }], body, body, fallback)).toBe(false);
+  expect(focusCount).toBe(0);
+
+  // Não rouba foco de outro controle conectado
+  expect(restore('g1', [{ id: 'g2' }], otherControl, body, fallback)).toBe(false);
+  expect(focusCount).toBe(0);
+
+  // Foca fallback quando activeElement === body
+  expect(restore('g1', [{ id: 'g2' }], body, body, fallback)).toBe(true);
+  expect(focusCount).toBe(1);
+
+  // Foca fallback quando activeElement está desconectado
+  expect(restore('g1', [{ id: 'g2' }], disconnected, body, fallback)).toBe(true);
+  expect(focusCount).toBe(2);
+
+  // Não falha com fallback ausente ou desconectado
+  expect(restore('g1', [{ id: 'g2' }], body, body, { isConnected: false, focus: () => { focusCount++; } })).toBe(false);
+  expect(restore('g1', [{ id: 'g2' }], body, body, null)).toBe(false);
+  expect(focusCount).toBe(2);
+});
+
+test('Caixinhas fluxo handleDeleteGoal: restaura #savings-create após res.ok + fetchGoals quando foco cai em body/desconectado, sem agir em falha HTTP ou controle conectado', async () => {
+  const otherGoal = { ...goal, id: 'g2', name: 'Meta reserva 2' };
+  const dispatcher = (React as unknown as { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown } }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const { H } = dispatcher;
+  const { success, error } = toast;
+  const originalFetch = globalThis.fetch;
+
+  const states: unknown[] = [];
+  const refs: { current: unknown }[] = [];
+  const callbackSlots: { fn: unknown; deps?: unknown[] }[] = [];
+  const effectSlots: { deps?: unknown[]; cleanup?: () => void }[] = [];
+  let goalsList = [goal, otherGoal];
+  let deleteMode: 'error' | 'hold' = 'error';
+  let deleteDeferred = Promise.withResolvers<Response>();
+  let readDeferred: PromiseWithResolvers<Response> | null = null;
+  let focusCount = 0;
+
+  const body = { isConnected: true };
+  const otherControl = { isConnected: true };
+  const disconnectedTrigger = { isConnected: false };
+  const createTarget = { isConnected: true, focus: () => { focusCount++; } };
+  const mockDoc = {
+    body,
+    activeElement: otherControl as { isConnected: boolean } | null,
+    getElementById: (id: string) => (id === 'savings-create' ? createTarget : null),
+  };
+
+  function render() {
+    let stateIndex = 0;
+    let refIndex = 0;
+    let callbackIndex = 0;
+    let effectIndex = 0;
+    const pendingEffects: (() => void)[] = [];
+    const depsChanged = (prev: unknown[] | undefined, next: unknown[] | undefined) =>
+      !next || !prev || next.length !== prev.length || next.some((dep, idx) => !Object.is(dep, prev[idx]));
+    dispatcher.H = {
+      useState(initial: unknown) {
+        const i = stateIndex++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
+      useCallback: (fn: unknown, deps?: unknown[]) => {
+        const idx = callbackIndex++;
+        const slot = callbackSlots[idx];
+        if (!slot || depsChanged(slot.deps, deps)) {
+          callbackSlots[idx] = { fn, deps: deps ? [...deps] : undefined };
+        }
+        return callbackSlots[idx].fn;
+      },
+      useMemo: (factory: () => unknown) => factory(),
+      useEffect: (effect: () => void | (() => void), deps?: unknown[]) => {
+        const idx = effectIndex++;
+        const slot = (effectSlots[idx] ??= {});
+        if (depsChanged(slot.deps, deps)) {
+          slot.deps = deps ? [...deps] : undefined;
+          pendingEffects.push(() => {
+            slot.cleanup?.();
+            const cleanup = effect();
+            slot.cleanup = typeof cleanup === 'function' ? cleanup : undefined;
+          });
+        }
+      },
+    };
+    try {
+      const view = savings.SavingsView();
+      const createBtn = findElement(view, (e) => e.props.id === 'savings-create');
+      const ref = (createBtn?.props.ref ?? (createBtn as unknown as { ref?: { current: unknown } } | undefined)?.ref) as { current: unknown } | undefined;
+      if (ref) ref.current = createTarget;
+      pendingEffects.forEach((run) => run());
+      return view;
+    } finally {
+      dispatcher.H = H;
+    }
+  }
+
+  try {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      if (url === '/api/savings' && method === 'GET') {
+        if (readDeferred) return readDeferred.promise;
+        return Response.json(goalsList);
+      }
+      if (url === '/api/accounts' && method === 'GET') return Response.json([{ id: 'a1', name: 'Conta sintética' }]);
+      if (url === '/api/savings' && method === 'DELETE') {
+        if (deleteMode === 'error') return Response.json({ error: 'Falha' }, { status: 503 });
+        return deleteDeferred.promise;
+      }
+      throw new Error(`Unexpected fetch: ${method} ${url}`);
+    }) as typeof fetch;
+    toast.success = () => 'success';
+    toast.error = () => 'error';
+
+    await withMockDocument(mockDoc, async () => {
+      render();
+      await settle();
+
+      // 1) Falha HTTP não registra pendingDeletionFocus
+      const row1 = findElement(render(), (e) => e.type === savings.SavingsGoalRow && e.props.goal.id === 'g1')!;
+      row1.props.onDelete(null);
+      await findElement(activeConfirmation(render), (e) => e.type === AlertDialogAction)!.props.onClick({ preventDefault: noop });
+      await settle();
+      mockDoc.activeElement = body;
+      render();
+      expect(focusCount).toBe(0);
+
+      // 2) res.ok registra pendingDeletionFocus; não age enquanto g1 está em goals; restaura após fetchGoals remover g1
+      deleteMode = 'hold';
+      deleteDeferred = Promise.withResolvers<Response>();
+      readDeferred = Promise.withResolvers<Response>();
+      mockDoc.activeElement = otherControl;
+      row1.props.onDelete(null);
+      const pendingDelete = findElement(activeConfirmation(render), (e) => e.type === AlertDialogAction)!.props.onClick({ preventDefault: noop });
+      goalsList = [otherGoal];
+      deleteDeferred.resolve(Response.json({ success: true }, { status: 200 }));
+      await pendingDelete;
+      await settle();
+
+      // GET ainda pendente: g1 segue em goals -> não restaura mesmo se activeElement === body
+      mockDoc.activeElement = body;
+      render();
+      expect(focusCount).toBe(0);
+
+      // GET resolve sem g1 e activeElement ficou desconectado -> restaura #savings-create
+      mockDoc.activeElement = disconnectedTrigger;
+      readDeferred.resolve(Response.json(goalsList));
+      readDeferred = null;
+      await settle();
+      render();
+      expect(focusCount).toBe(1);
+
+      // 3) res.ok + remoção com usuário já em outro controle conectado -> não rouba foco e consome pendência
+      deleteDeferred = Promise.withResolvers<Response>();
+      readDeferred = null;
+      const row2 = findElement(render(), (e) => e.type === savings.SavingsGoalRow && e.props.goal.id === 'g2')!;
+      row2.props.onDelete(null);
+      const pendingDelete2 = findElement(activeConfirmation(render), (e) => e.type === AlertDialogAction)!.props.onClick({ preventDefault: noop });
+      goalsList = [];
+      mockDoc.activeElement = otherControl;
+      deleteDeferred.resolve(Response.json({ success: true }, { status: 200 }));
+      await pendingDelete2;
+      await settle();
+      render();
+      expect(focusCount).toBe(1);
+
+      mockDoc.activeElement = body;
+      render();
+      expect(focusCount).toBe(1);
+    });
+  } finally {
+    effectSlots.forEach((slot) => slot.cleanup?.());
+    globalThis.fetch = originalFetch;
+    toast.success = success;
+    toast.error = error;
+    useAppStore.setState(useAppStore.getInitialState(), true);
+  }
+});

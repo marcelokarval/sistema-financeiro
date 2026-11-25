@@ -31,8 +31,38 @@ import { GoalsDashboard } from '@/components/finance/goals-dashboard';
 import { QuickStatsOverview } from '@/components/finance/quick-stats-overview';
 import { AppHeader } from '@/components/finance/app-header';
 import { AppOverlays } from '@/components/finance/app-overlays';
-import { useAppStore } from '@/lib/store';
+import { useAppStore, type ViewType } from '@/lib/store';
 import { useRealtime } from '@/hooks/use-realtime';
+
+export interface SearchSelectionActions {
+  setCurrentView: (view: ViewType) => void;
+  setSelectedAccountId: (id: string | null) => void;
+  setSelectedCardId: (id: string | null) => void;
+  setSelectedPurchaseId: (id: string | null) => void;
+  setSelectedInvestmentId: (id: string | null) => void;
+  setSelectedInstallmentPlanId: (id: string | null) => void;
+  setSelectedConsortiumId: (id: string | null) => void;
+}
+
+/** Maps a global search selection to its destination view and direct item selector when applicable. */
+export function applySearchSelection(
+  type: SearchResultType | string,
+  id: string,
+  meta?: { accountId?: string },
+  actions: SearchSelectionActions = useAppStore.getState(),
+  resolveDestination: (type: string) => ViewType | undefined = searchDestination,
+) {
+  const destination = resolveDestination(type);
+  if (!destination) return;
+  if (type === 'accounts') actions.setSelectedAccountId(id);
+  else if (type === 'transactions' && meta?.accountId) actions.setSelectedAccountId(meta.accountId);
+  else if (type === 'cards') actions.setSelectedCardId(id);
+  else if (type === 'purchases') actions.setSelectedPurchaseId(id);
+  else if (destination === 'investments') actions.setSelectedInvestmentId(id);
+  else if (destination === 'installments') actions.setSelectedInstallmentPlanId(id);
+  else if (destination === 'consortiums') actions.setSelectedConsortiumId(id);
+  actions.setCurrentView(destination);
+}
 
 function DashboardWithWidgets({ refreshCounter }: { refreshCounter: number }) {
   return (
@@ -162,16 +192,15 @@ export default function Page() {
   };
 
   const handleSearchSelect = (type: SearchResultType, id: string, meta?: { accountId?: string }) => {
-    const destination = searchDestination(type);
-    if (!destination) return;
-    if (type === 'accounts') setSelectedAccountId(id);
-    else if (type === 'transactions' && meta?.accountId) setSelectedAccountId(meta.accountId);
-    else if (type === 'cards') setSelectedCardId(id);
-    else if (type === 'purchases') setSelectedPurchaseId(id);
-    else if (destination === 'investments') setSelectedInvestmentId(id);
-    else if (destination === 'installments') setSelectedInstallmentPlanId(id);
-    else if (destination === 'consortiums') setSelectedConsortiumId(id);
-    setCurrentView(destination);
+    applySearchSelection(type, id, meta, {
+      setCurrentView,
+      setSelectedAccountId,
+      setSelectedCardId,
+      setSelectedPurchaseId,
+      setSelectedInvestmentId,
+      setSelectedInstallmentPlanId,
+      setSelectedConsortiumId,
+    });
   };
 
   const renderView = () => {

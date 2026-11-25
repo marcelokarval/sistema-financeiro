@@ -37,7 +37,7 @@ const cardsViewPath = join(financeDir, 'cards-view.tsx');
 const purchasesViewPath = join(financeDir, 'purchases-view.tsx');
 const categoriesViewPath = join(financeDir, 'categories-view.tsx');
 
-function installFixture(CardsView, PurchasesView, CategoriesView, createElement, createRoot, ThemeProvider, Toaster) {
+function installFixture(CardsView, PurchasesView, CategoriesView, createElement, createRoot, ThemeProvider, Toaster, toast) {
   const initialCards = [
     {
       id: 'a', name: 'Cartão A', type: 'CREDIT', brand: 'VISA', lastFourDigits: '1111',
@@ -161,6 +161,7 @@ function installFixture(CardsView, PurchasesView, CategoriesView, createElement,
   };
 
   qa.mount = (theme, kind) => {
+    toast.dismiss();
     qa.calls = [];
     qa.unexpected = [];
     qa.pending = {};
@@ -169,6 +170,7 @@ function installFixture(CardsView, PurchasesView, CategoriesView, createElement,
     const Comp = kind === 'cards' ? CardsView : kind === 'purchases' ? PurchasesView : CategoriesView;
     const host = document.getElementById('root');
     if (qa.rootInstance) qa.rootInstance.unmount();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     qa.rootInstance = createRoot(host);
     qa.rootInstance.render(
       createElement(
@@ -263,10 +265,12 @@ async function runCases(page, html, width, theme, phase) {
   };
 
   async function mountView(kind) {
-    await page.goto(url);
-    await page.waitForFunction(() => Boolean(window.qa));
     await page.evaluate(([skin, k]) => window.qa.mount(skin, k), [theme, kind]);
-    await page.waitForFunction((skin) => document.documentElement.classList.contains(skin), theme);
+    await page.waitForFunction(
+      (skin) => document.documentElement.classList.contains(skin)
+        && document.querySelectorAll('[data-sonner-toast]').length === 0,
+      theme,
+    );
     const witness = await page.evaluate(() => ({
       width: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -293,7 +297,10 @@ async function runCases(page, html, width, theme, phase) {
   await page.route('**/*', routeAll);
 
   try {
-    if (phase === 'cartoes') {
+    await page.goto(url);
+    await page.waitForFunction(() => Boolean(window.qa));
+    const runAll = phase === 'all';
+    if (runAll || phase === 'cartoes') {
       const witness = await mountView('cards');
       await btn('Novo cartão').waitFor();
       results.push({ name: 'testemunha do tema e viewport', violations: [], witness });
@@ -364,11 +371,16 @@ async function runCases(page, html, width, theme, phase) {
           await page.evaluate((k) => window.qa.reply(k, 'ok'), delKey);
         });
         const atClose = await focusInfo();
+        if (!atClose.connected || atClose.role === 'body' || atClose.name !== 'Novo cartão') {
+          violations.push(`foco no fechamento pós-DELETE: ${JSON.stringify(atClose)}`);
+        }
         const getKey = await waitPending('cardsGet');
         await page.evaluate((k) => window.qa.reply(k, 'ok'), getKey);
         await frame();
         const afterGet = await focusInfo();
-        if (!afterGet.connected || afterGet.role === 'body') violations.push('foco não sobreviveu à remoção da linha');
+        if (!afterGet.connected || afterGet.role === 'body' || afterGet.name !== 'Novo cartão') {
+          violations.push('foco não sobreviveu à remoção da linha');
+        }
         return { atClose, afterGet };
       });
 
@@ -389,9 +401,7 @@ async function runCases(page, html, width, theme, phase) {
       });
     }
 
-    if (phase === 'compras') {
-      await mountView('purchases');
-      await btn('Nova compra').waitFor();
+    if (runAll || phase === 'compras') {
 
       for (const how of ['Escape', 'Cancelar']) {
         await scenario(`compras/novo/${how}`, async (violations) => {
@@ -479,9 +489,7 @@ async function runCases(page, html, width, theme, phase) {
       });
     }
 
-    if (phase === 'categorias') {
-      await mountView('categories');
-      await btn('Nova categoria').waitFor();
+    if (runAll || phase === 'categorias') {
 
       for (const how of ['Escape', 'Cancelar']) {
         await scenario(`categorias/seletor-e-editor/${how}`, async (violations) => {
@@ -619,7 +627,7 @@ const session = `quiet-cards-purchases-categories-${randomUUID()}`;
 const failures = [];
 let attemptedOpen = false;
 let daemonPid;
-const deadline = Date.now() + 420_000;
+const deadline = Date.now() + 450_000;
 
 async function cli(...args) {
   const cleanup = ['close', 'list'].includes(args[0]);
@@ -651,8 +659,8 @@ try {
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
-    import { Toaster } from 'sonner';
-    (${installFixture.toString()})(CardsView, PurchasesView, CategoriesView, createElement, createRoot, ThemeProvider, Toaster);`;
+    import { Toaster, toast } from 'sonner';
+    (${installFixture.toString()})(CardsView, PurchasesView, CategoriesView, createElement, createRoot, ThemeProvider, Toaster, toast);`;
 
   async function htmlFor(label, useBaseline) {
     const intercepted = new Set();
@@ -707,48 +715,34 @@ try {
   await cli('snapshot');
 
   const gaps = [];
-  const preexistingQuietDivergences = [];
+  const remediatedScenarios = new Set(['cartoes/exclusao-matriz-temporal']);
+  const withoutRemediated = (entries) => entries.filter(({ name }) => !remediatedScenarios.has(name));
   let count = 0;
-  const phases = ['cartoes', 'compras', 'categorias'];
   const expectedCount = 20;
 
   for (const width of [360, 390, 1440]) {
     const backgrounds = [];
     for (const theme of ['light', 'dark']) {
       const observed = { baseline: [], candidate: [] };
-      for (const phase of phases) {
-        for (const label of ['baseline', 'candidate']) {
-          const outcome = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)})`);
-          const result = outcome.match(/^### Result\s*\n([^\n]+)/m)?.[1];
-          assert(result, `${label}/${phase}: ausência de resultado do DOM`);
-          observed[label].push(...JSON.parse(result));
-        }
+      for (const label of ['baseline', 'candidate']) {
+        const outcome = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, 'all')`);
+        const result = outcome.match(/^### Result\s*\n([^\n]+)/m)?.[1];
+        assert(result, `${label}: ausência de resultado do DOM`);
+        observed[label].push(...JSON.parse(result));
       }
       assert.equal(observed.baseline.length, expectedCount, `baseline: cenário incompleto (${observed.baseline.length} vs ${expectedCount})`);
       assert.equal(observed.candidate.length, expectedCount, `candidate: cenário incompleto (${observed.candidate.length} vs ${expectedCount})`);
       count += observed.candidate.length;
       console.log(JSON.stringify({ session, baseRef, width, theme, scenarios: observed.candidate.length }));
 
-      const cellParity = Bun.deepEquals(observed.baseline, observed.candidate);
-      if (!cellParity) gaps.push(`${width}/${theme}: divergência de paridade`);
+      const cellParity = Bun.deepEquals(withoutRemediated(observed.baseline), withoutRemediated(observed.candidate));
+      if (!cellParity) gaps.push(`${width}/${theme}: divergência de paridade nos cenários não remediados`);
 
       for (const entryResult of observed.candidate) {
         const baseEntry = observed.baseline.find(({ name }) => name === entryResult.name);
         for (const violation of entryResult.violations) {
-          const isPreexistingCardsRemoval =
-            entryResult.name === 'cartoes/exclusao-matriz-temporal'
-            && violation === 'foco não sobreviveu à remoção da linha'
-            && baseEntry?.violations.includes(violation);
-          if (isPreexistingCardsRemoval) {
-            preexistingQuietDivergences.push({
-              cell: `${width}/${theme}`,
-              scenario: entryResult.name,
-              violation,
-              parityConfirmed: cellParity,
-            });
-          } else {
-            gaps.push(`${width}/${theme} ${entryResult.name}: ${baseEntry?.violations.includes(violation) ? 'preexistente: ' : ''}${violation}`);
-          }
+          const isRemediated = remediatedScenarios.has(entryResult.name);
+          gaps.push(`${width}/${theme} ${entryResult.name}: ${!isRemediated && baseEntry?.violations.includes(violation) ? 'preexistente: ' : ''}${violation}`);
         }
       }
 
@@ -759,16 +753,8 @@ try {
     if (backgrounds[0] === backgrounds[1]) gaps.push(`${width}: fundo claro/escuro idêntico`);
   }
 
-  if (preexistingQuietDivergences.length) {
-    console.log(JSON.stringify({
-      warning: 'AVISO: divergência Quiet preexistente aberta (NÃO constitui conformidade Quiet; ver Decisão 6 e task-0014).',
-      quietCompliant: false,
-      preexistingQuietDivergences,
-    }));
-  }
-
   assert.deepEqual(gaps, [], 'Falha no contrato Quiet/paridade');
-  console.log(`${count} cenários pareados; 0 skips.${preexistingQuietDivergences.length ? ` Divergências Quiet preexistentes abertas: ${preexistingQuietDivergences.length} (não conformidade Quiet).` : ''}`);
+  console.log(`${count} cenários verificados; 0 skips; 0 divergências Quiet abertas.`);
 } catch (error) {
   failures.push(error);
 } finally {

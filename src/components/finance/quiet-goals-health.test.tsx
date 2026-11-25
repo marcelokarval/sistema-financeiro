@@ -598,7 +598,7 @@ test('BudgetGoalsWidget preserva diálogo, rascunho e ausência de GET em POST/P
   }
 });
 
-test('MonthlyBudgetTracker fecha e dispara 1 GET em HTTP não OK JSON, mas retém diálogo e rascunho no catch em POST/PUT', async () => {
+test('MonthlyBudgetTracker retém diálogo e rascunho sem GET em HTTP não OK (JSON ou não-JSON) e erro de transporte em POST/PUT', async () => {
   const sampleBudget = {
     id: 'mb-1',
     categoryId: 'cat-food',
@@ -644,17 +644,19 @@ test('MonthlyBudgetTracker fecha e dispara 1 GET em HTTP não OK JSON, mas reté
 
           const after = findElement(render(), (e) => e.type === MonthlyBudgetEditor)!;
           const budgetGets = requests.filter(([m, u]) => m === 'GET' && u.startsWith('/api/monthly-budgets')).length;
+          const expectedMessage =
+            failureMode === 'http-json'
+              ? 'Limite inválido'
+              : failureMode === 'invalid-json'
+                ? method === 'POST'
+                  ? 'Erro ao criar'
+                  : 'Erro ao atualizar'
+                : 'Erro de conexão';
 
-          if (failureMode === 'http-json') {
-            expect(after.props.open).toBe(false);
-            expect(budgetGets).toBe(initialBudgetGets + 1);
-            expect(feedback).toEqual([{ kind: 'error', message: 'Limite inválido' }]);
-          } else {
-            expect(after.props.open).toBe(true);
-            expect(after.props.form.amount).toBe('750');
-            expect(budgetGets).toBe(initialBudgetGets);
-            expect(feedback).toEqual([{ kind: 'error', message: 'Erro de conexão' }]);
-          }
+          expect(after.props.open).toBe(true);
+          expect(after.props.form.amount).toBe('750');
+          expect(budgetGets).toBe(initialBudgetGets);
+          expect(feedback).toEqual([{ kind: 'error', message: expectedMessage }]);
           expect(requests.filter(([m]) => m === method).length).toBe(1);
         },
       );

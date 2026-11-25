@@ -452,7 +452,10 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao excluir conta'); return; }
       toast.success('Conta excluída!');
-      if (deleteOpening.current === opening) setShowDeleteDialog(null);
+      if (deleteOpening.current === opening) {
+        dialogReturn.current = null;
+        setShowDeleteDialog(null);
+      }
       if (liveDraft.current?.accountId === id) setDraft(null);
       setSelectedAccountId((current) => current === id ? null : current);
       fetchAccounts();

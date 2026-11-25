@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AlertTriangle,
   RefreshCw,
@@ -158,40 +158,63 @@ function MonthSelector({
 }
 
 // ─── Main Component ────────────────────────────────────────────────
-export function BalanceProjection() {
-  const [data, setData] = useState<ProjectionData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedMonths, setSelectedMonths] = useState(6);
+export type BalanceProjectionRequest = { months: number };
+export type BalanceProjectionStatus =
+  | { status: 'ready'; data: ProjectionData }
+  | { status: 'error' };
+export type BalanceProjectionResult = {
+  request: BalanceProjectionRequest;
+  result: BalanceProjectionStatus;
+};
 
-  const fetchData = useCallback(async (months: number) => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/balance-projection?months=${months}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      } else {
-        setData(null);
-      }
-    } catch (e) {
-      console.error('Erro ao buscar projeção:', e);
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export async function requestBalanceProjection(
+  request: BalanceProjectionRequest,
+  signal: AbortSignal,
+  publish: (response: BalanceProjectionResult) => void,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<void> {
+  let result: BalanceProjectionStatus;
+  try {
+    const response = await fetcher(`/api/balance-projection?months=${request.months}`, { signal });
+    result = response.ok ? { status: 'ready', data: await response.json() } : { status: 'error' };
+  } catch {
+    result = { status: 'error' };
+  }
+  if (!signal.aborted) publish({ request, result });
+}
+
+export function currentBalanceProjection(
+  request: BalanceProjectionRequest,
+  settled: BalanceProjectionResult | null,
+): BalanceProjectionStatus | { status: 'loading' } {
+  // A new object identifies a new request even on retry or a return to the same period.
+  return settled?.request === request ? settled.result : { status: 'loading' };
+}
+
+export function BalanceProjection() {
+  const [request, setRequest] = useState<BalanceProjectionRequest>({ months: 6 });
+  const [settled, setSettled] = useState<BalanceProjectionResult | null>(null);
+  const query = currentBalanceProjection(request, settled);
+  const data = query.status === 'ready' ? query.data : null;
+  const loading = query.status === 'loading';
+  const error = query.status === 'error';
 
   useEffect(() => {
-    fetchData(selectedMonths);
-  }, [selectedMonths, fetchData]);
+    const controller = new AbortController();
+    void requestBalanceProjection(request, controller.signal, setSettled);
+    return () => controller.abort();
+  }, [request]);
 
   return (
     <BalanceProjectionContent
       data={data}
       loading={loading}
-      selectedMonths={selectedMonths}
-      onSelectMonths={setSelectedMonths}
-      onRetry={() => fetchData(selectedMonths)}
+      error={error}
+      selectedMonths={request.months}
+      onSelectMonths={(months) => {
+        if (months !== request.months) setRequest({ months });
+      }}
+      onRetry={() => setRequest({ months: request.months })}
     />
   );
 }

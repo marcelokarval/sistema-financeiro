@@ -419,15 +419,14 @@ async function runCases(page, html, width, theme) {
             `${entity}/${order}: DELETE incorreto ${JSON.stringify({ writes, reads })}`,
           );
           const violations = [];
-          if (order === 'late' && entity !== 'tx') {
-            if (!sameFocus(before, point.focus) || !originAtClose.connected || !originAtClose.focused) {
-              violations.push('fechamento com GET retido não restaurou a origem conectada');
-            }
-          } else if (!sameFocus(fallbackAtClose, point.focus)) {
-            violations.push('fechamento sem origem conectada não restaurou o fallback previsto');
+          if (!sameFocus(fallbackAtClose, point.focus)) {
+            violations.push(order === 'late' && entity !== 'tx'
+              ? 'fechamento pós-DELETE não promoveu foco ao controle sobrevivente'
+              : 'fechamento sem origem conectada não restaurou o fallback previsto');
           }
-          // Um acionador conectado durante o GET retido não prova foco sobrevivente após o commit que remove a linha.
-          if (!afterFocus.connected || !afterFocus.focused || afterFocus.role === 'body') {
+          // Foco sobrevivente precisa permanecer conectado fora de body após o commit que remove a linha.
+          if (!afterFocus.connected || !afterFocus.focused || afterFocus.role === 'body'
+            || (order === 'late' && entity !== 'tx' && !sameFocus(fallbackFocus, afterFocus))) {
             violations.push('foco não sobreviveu à remoção da linha');
           }
           results.push({
@@ -600,7 +599,11 @@ try {
   await cli('snapshot');
 
   const gaps = [];
-  const preexistingQuietDivergences = [];
+  const remediatedScenarios = new Set(['account/Excluir/late', 'card/Excluir/late']);
+  const nonRemediated = (report) => ({
+    witness: report.witness,
+    results: report.results.filter(({ name }) => !remediatedScenarios.has(name)),
+  });
   let total = 0;
   for (const width of [360, 390, 1440]) {
     const backgrounds = [];
@@ -616,25 +619,13 @@ try {
       total += observed.candidate.results.length;
       backgrounds.push(observed.candidate.witness.background);
       console.log(JSON.stringify({ width, theme, ...observed }));
-      const parityConfirmed = Bun.deepEquals(observed.baseline, observed.candidate);
-      if (!parityConfirmed) gaps.push(`${width}/${theme}: divergência de paridade`);
+      const parityConfirmed = Bun.deepEquals(nonRemediated(observed.baseline), nonRemediated(observed.candidate));
+      if (!parityConfirmed) gaps.push(`${width}/${theme}: divergência de paridade nos cenários não remediados`);
       for (const result of observed.candidate.results) {
         const base = observed.baseline.results.find(({ name }) => name === result.name);
         for (const violation of result.violations) {
-          const isPreexistingLateFocus =
-            result.name.endsWith('/Excluir/late') &&
-            violation === 'foco não sobreviveu à remoção da linha' &&
-            base?.violations.includes(violation);
-          if (isPreexistingLateFocus) {
-            preexistingQuietDivergences.push({
-              cell: `${width}/${theme}`,
-              scenario: result.name,
-              violation,
-              parityConfirmed,
-            });
-          } else {
-            gaps.push(`${width}/${theme} ${result.name}: ${base?.violations.includes(violation) ? 'preexistente: ' : ''}${violation}`);
-          }
+          const isRemediated = remediatedScenarios.has(result.name);
+          gaps.push(`${width}/${theme} ${result.name}: ${!isRemediated && base?.violations.includes(violation) ? 'preexistente: ' : ''}${violation}`);
         }
       }
       if (observed.candidate.witness.overflow) gaps.push(`${width}/${theme}: rolagem horizontal`);
@@ -642,15 +633,8 @@ try {
     if (backgrounds[0] === backgrounds[1]) gaps.push(`${width}: fundo claro/escuro idêntico`);
   }
 
-  if (preexistingQuietDivergences.length) {
-    console.log(JSON.stringify({
-      warning: 'AVISO: divergência Quiet preexistente aberta (NÃO constitui conformidade Quiet; ver Decisão 6 e task-0006).',
-      quietCompliant: false,
-      preexistingQuietDivergences,
-    }));
-  }
-  assert.deepEqual(gaps, [], 'Falha no contrato Quiet; paridade não isenta divergência preexistente');
-  console.log(`${total} cenários pareados; 0 skips.${preexistingQuietDivergences.length ? ` Divergências Quiet preexistentes abertas: ${preexistingQuietDivergences.length} (não conformidade Quiet).` : ''}`);
+  assert.deepEqual(gaps, [], 'Falha no contrato Quiet; paridade não isenta divergência');
+  console.log(`${total} cenários verificados; 0 skips; 0 divergências Quiet abertas.`);
 } catch (error) {
   errors.push(error);
 } finally {

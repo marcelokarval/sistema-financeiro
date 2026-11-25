@@ -494,7 +494,7 @@ test('concorrência de período em expense-breakdown mantém B quando A resolve 
   }
 });
 
-test('caracterização eb76f7d (divergência aberta, não conformidade Quiet): balance-projection sem guarda em selectedMonths permite A atrasada sobrescrever B', async () => {
+test('balance-projection descarta resposta e erro de selectedMonths anterior sem sobrescrever período vigente e permite retry', async () => {
   const originalFetch = globalThis.fetch;
   const makeProjection = (months: number, totalProjected: number) => Response.json({
     accounts: [],
@@ -511,7 +511,9 @@ test('caracterização eb76f7d (divergência aberta, não conformidade Quiet): b
   {
     const req6 = Promise.withResolvers<Response>();
     const req3 = Promise.withResolvers<Response>();
-    globalThis.fetch = (async (url: string) => {
+    const signals: Array<{ url: string; signal?: AbortSignal | null }> = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      signals.push({ url, signal: init?.signal });
       if (url === '/api/balance-projection?months=6') return req6.promise;
       if (url === '/api/balance-projection?months=3') return req3.promise;
       throw new Error(`URL inesperada: ${url}`);
@@ -523,6 +525,9 @@ test('caracterização eb76f7d (divergência aberta, não conformidade Quiet): b
       findButtonByText(initialTree, '3 meses')!.props.onClick();
       harness.renderTree();
 
+      expect(signals[0]?.signal?.aborted).toBe(true);
+      expect(signals[1]?.signal?.aborted).toBe(false);
+
       req3.resolve(makeProjection(3, 3333));
       await settle();
       expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 3.333,00');
@@ -530,18 +535,17 @@ test('caracterização eb76f7d (divergência aberta, não conformidade Quiet): b
       req6.resolve(makeProjection(6, 9999));
       await settle();
 
-      // Reproduz o comportamento observado em eb76f7d: A sobrescreve B mesmo com 3 meses selecionado
       const afterLateSuccess = renderToStaticMarkup(harness.renderTree());
-      expect(afterLateSuccess).toContain('aria-pressed="true"');
-      expect(afterLateSuccess).toContain('R$ 9.999,00');
-      expect(afterLateSuccess).not.toContain('R$ 3.333,00');
+      expect(afterLateSuccess).toContain('R$ 3.333,00');
+      expect(afterLateSuccess).not.toContain('R$ 9.999,00');
+      expect(afterLateSuccess).toContain('Estimativas por conta · 3 meses');
     } finally {
       harness.cleanupAll();
       globalThis.fetch = originalFetch;
     }
   }
 
-  // Caso 2: A (6 meses) pendente -> troca para B (3 meses) -> B resolve -> A resolve depois com falha
+  // Caso 2: A (6 meses) pendente -> troca para B (3 meses) -> B resolve -> A resolve depois com HTTP 503
   {
     const req6 = Promise.withResolvers<Response>();
     const req3 = Promise.withResolvers<Response>();
@@ -564,10 +568,82 @@ test('caracterização eb76f7d (divergência aberta, não conformidade Quiet): b
       req6.resolve(new Response(null, { status: 503 }));
       await settle();
 
-      // Reproduz o comportamento observado em eb76f7d: erro atrasado de A sobrescreve dados de B
       const afterLateFailure = renderToStaticMarkup(harness.renderTree());
-      expect(afterLateFailure).toContain('Não foi possível carregar a projeção de saldos.');
-      expect(afterLateFailure).not.toContain('R$ 3.333,00');
+      expect(afterLateFailure).toContain('R$ 3.333,00');
+      expect(afterLateFailure).not.toContain('Não foi possível carregar a projeção de saldos.');
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
+  }
+
+  // Caso 3: A (6 meses) pendente -> B (3 meses) resolve -> A rejeita tarde por erro de rede -> B falha depois -> retry reconsulta B
+  {
+    const req6First = Promise.withResolvers<Response>();
+    const req3First = Promise.withResolvers<Response>();
+    const req6Reopen = Promise.withResolvers<Response>();
+    const req3Fail = Promise.withResolvers<Response>();
+    const req3Retry = Promise.withResolvers<Response>();
+    const queue = new Map<string, Array<Promise<Response>>>([
+      ['/api/balance-projection?months=6', [req6First.promise, req6Reopen.promise]],
+      ['/api/balance-projection?months=3', [req3First.promise, req3Fail.promise, req3Retry.promise]],
+    ]);
+    const requestedUrls: string[] = [];
+    globalThis.fetch = (async (url: string) => {
+      requestedUrls.push(url);
+      return queue.get(url)!.shift()!;
+    }) as typeof fetch;
+
+    const harness = runWithReactHarness(() => balanceProj.BalanceProjection());
+    try {
+      let tree = harness.renderTree();
+      findButtonByText(tree, '3 meses')!.props.onClick();
+      harness.renderTree();
+
+      req3First.resolve(makeProjection(3, 3333));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 3.333,00');
+
+      req6First.reject(new Error('network failure'));
+      await settle();
+      const afterLateReject = renderToStaticMarkup(harness.renderTree());
+      expect(afterLateReject).toContain('R$ 3.333,00');
+      expect(afterLateReject).not.toContain('Não foi possível carregar a projeção de saldos.');
+
+      // Reabertura do mesmo horizonte (3 -> 6 -> 3): antiga 6m não vaza e 3m em erro permite retry no período atual
+      findButtonByText(harness.renderTree(), '6 meses')!.props.onClick();
+      tree = harness.renderTree();
+      expect(renderToStaticMarkup(tree)).toContain('Carregando projeção de saldos…');
+      findButtonByText(tree, '3 meses')!.props.onClick();
+      harness.renderTree();
+
+      req6Reopen.resolve(makeProjection(6, 8888));
+      req3Fail.resolve(new Response(null, { status: 503 }));
+      await settle();
+
+      const errorTree = harness.renderTree();
+      const errorHtml = renderToStaticMarkup(errorTree);
+      expect(errorHtml).toContain('Não foi possível carregar a projeção de saldos.');
+      expect(errorHtml).not.toContain('R$ 8.888,00');
+
+      const retryBtn = findButtonByText(errorTree, 'Tentar novamente');
+      expect(retryBtn).toBeDefined();
+      retryBtn!.props.onClick();
+      harness.renderTree();
+
+      req3Retry.resolve(makeProjection(3, 4444));
+      await settle();
+
+      const recoveredHtml = renderToStaticMarkup(harness.renderTree());
+      expect(recoveredHtml).toContain('R$ 4.444,00');
+      expect(recoveredHtml).toContain('Estimativas por conta · 3 meses');
+      expect(requestedUrls).toEqual([
+        '/api/balance-projection?months=6',
+        '/api/balance-projection?months=3',
+        '/api/balance-projection?months=6',
+        '/api/balance-projection?months=3',
+        '/api/balance-projection?months=3',
+      ]);
     } finally {
       harness.cleanupAll();
       globalThis.fetch = originalFetch;

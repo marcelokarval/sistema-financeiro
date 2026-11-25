@@ -11,7 +11,9 @@ import { AppHeader } from './app-header';
 import { AppOverlays } from './app-overlays';
 import { GlobalSearchResult, SearchResults } from './global-search-result';
 import { readFileSync } from 'node:fs';
-import { useAppStore } from '@/lib/store';
+import { useAppStore, type ViewType } from '@/lib/store';
+import { searchDestination, type SearchResultType } from './global-search';
+import * as pageModule from '@/app/page';
 
 const noop = () => {};
 
@@ -183,4 +185,163 @@ test('a solicitação de lançamento navega para Contas sem escolher conta e pod
   } finally {
     useAppStore.setState(initial, true);
   }
+});
+
+describe('contrato alinhado da Busca Global (Alternativa A)', () => {
+  test('applySearchSelection encaminha destino, seleciona registros por domínio e ignora transação sem accountId', () => {
+    const initial = useAppStore.getState();
+    const applySearchSelection = (pageModule as {
+      applySearchSelection?: (
+        type: SearchResultType | string,
+        id: string,
+        meta?: { accountId?: string },
+        actions?: ReturnType<typeof useAppStore.getState>,
+        resolveDestination?: (type: string) => ViewType | undefined,
+      ) => void;
+    }).applySearchSelection;
+
+    expect(typeof applySearchSelection).toBe('function');
+
+    const emptySelections = {
+      selectedAccountId: null,
+      selectedCardId: null,
+      selectedPurchaseId: null,
+      selectedInvestmentId: null,
+      selectedInstallmentPlanId: null,
+      selectedConsortiumId: null,
+    };
+
+    const resetStore = () => {
+      useAppStore.setState({
+        currentView: 'dashboard',
+        ...emptySelections,
+      });
+    };
+
+    try {
+      resetStore();
+      applySearchSelection!('accounts', 'acc-1');
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'accounts',
+        selectedAccountId: 'acc-1',
+      });
+
+      resetStore();
+      applySearchSelection!('transactions', 'tx-1', { accountId: 'acc-9' });
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'accounts',
+        selectedAccountId: 'acc-9',
+      });
+
+      resetStore();
+      applySearchSelection!('transactions', 'tx-2');
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'accounts',
+      });
+
+      resetStore();
+      applySearchSelection!('cards', 'card-1');
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'cards',
+        selectedCardId: 'card-1',
+      });
+
+      resetStore();
+      applySearchSelection!('purchases', 'pur-1');
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'purchases',
+        selectedPurchaseId: 'pur-1',
+      });
+
+      resetStore();
+      applySearchSelection!('categories', 'cat-1');
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'categories',
+      });
+
+      const resolveExtended = (type: string): ViewType | undefined => {
+        if (type === 'investments' || type === 'installments' || type === 'consortiums') {
+          return type;
+        }
+        return searchDestination(type);
+      };
+
+      resetStore();
+      applySearchSelection!('investments', 'inv-1', undefined, useAppStore.getState(), resolveExtended);
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'investments',
+        selectedInvestmentId: 'inv-1',
+      });
+
+      resetStore();
+      applySearchSelection!('installments', 'ins-1', undefined, useAppStore.getState(), resolveExtended);
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'installments',
+        selectedInstallmentPlanId: 'ins-1',
+      });
+
+      resetStore();
+      applySearchSelection!('consortiums', 'con-1', undefined, useAppStore.getState(), resolveExtended);
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'consortiums',
+        selectedConsortiumId: 'con-1',
+      });
+
+      resetStore();
+      applySearchSelection!('desconhecido', 'x-1');
+      expect(useAppStore.getState()).toMatchObject({
+        ...emptySelections,
+        currentView: 'dashboard',
+      });
+    } finally {
+      useAppStore.setState(initial, true);
+    }
+  });
+
+  test('docs/reference/design-system.contract.md ratifica abertura/expansão direta com fallback seguro e retorno de foco no Escape', () => {
+    const contract = readFileSync(new URL('../../../docs/reference/design-system.contract.md', import.meta.url), 'utf8');
+    expect(contract).not.toContain('sem abrir automaticamente o registro');
+    expect(contract).toMatch(/Na busca global,[\s\S]*abertura ou expansão direta[\s\S]*quando o ID existir/);
+    expect(contract).toMatch(/Na busca global,[\s\S]*Categorias apenas navega/);
+    expect(contract).toMatch(/Na busca global,[\s\S]*ID inexistente[\s\S]*sem abrir nem expandir outro registro/);
+    expect(contract).toMatch(/Na busca global,[\s\S]*Escape devolve o foco/);
+  });
+
+  test('quiet-search-parity.qa.mjs remove historicalAutoOpenDeviation mantendo os cenários da busca', () => {
+    const qaScript = readFileSync(new URL('./quiet-search-parity.qa.mjs', import.meta.url), 'utf8');
+    expect(qaScript).not.toContain('historicalAutoOpenDeviation');
+    for (const scenario of [
+      'busca-accounts-existente',
+      'busca-transactions-accountId-valido',
+      'busca-cards-existente',
+      'busca-purchases-existente',
+    ]) {
+      expect(qaScript).toContain(scenario);
+    }
+  });
+
+  test('docs/reference/frontend-componentization-coverage.md (Seção 5.1) ratifica a Busca Global conforme Alternativa A sem historicalAutoOpenDeviation', () => {
+    const coverage = readFileSync(
+      new URL('../../../docs/reference/frontend-componentization-coverage.md', import.meta.url),
+      'utf8',
+    );
+    const sec51Match = coverage.match(/### 5\.1[\s\S]*?(?=### 5\.2)/);
+    expect(sec51Match).not.toBeNull();
+    const sec51 = sec51Match![0];
+    const searchRow = sec51.split('\n').find((line) => line.includes('**Busca Global**'));
+    expect(searchRow).toBeDefined();
+    expect(searchRow).not.toContain('historicalAutoOpenDeviation');
+    expect(searchRow).not.toContain('Não afirma conformidade Quiet');
+    expect(searchRow).toMatch(/Alternativa A/i);
+    expect(searchRow).toMatch(/Conforme Quiet/i);
+  });
 });

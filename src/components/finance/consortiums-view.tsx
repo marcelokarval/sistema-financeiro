@@ -475,6 +475,7 @@ export function ConsortiumsView() {
     deleteInFlight.current = true;
     setDeleting(true);
     const opening = selection?.opening;
+    const originAtConfirm = dialogOrigin.current;
     try {
       const res = await fetch('/api/consortiums', {
         method: 'DELETE',
@@ -486,6 +487,7 @@ export function ConsortiumsView() {
         return;
       }
       toast.success('Consórcio excluído!');
+      if (dialogOrigin.current === originAtConfirm) dialogOrigin.current = null;
       setShowDeleteDialog((current) => current === id ? null : current);
       if (opening?.consortiumId === id && isCurrentConsortiumSelection(currentOpening.current, opening)) closeConsortium();
       void fetchConsortiums();

@@ -284,7 +284,6 @@ async function runCases(page, html, width, theme, phase) {
         name: 'busca-accounts-existente',
         view: await page.evaluate(() => window.qa.store.getState().currentView),
         detailOpened: true,
-        historicalAutoOpenDeviation: true,
         violations: [],
       });
 
@@ -296,7 +295,6 @@ async function runCases(page, html, width, theme, phase) {
         name: 'busca-transactions-accountId-valido',
         view: await page.evaluate(() => window.qa.store.getState().currentView),
         detailOpened: true,
-        historicalAutoOpenDeviation: true,
         violations: [],
       });
 
@@ -308,7 +306,6 @@ async function runCases(page, html, width, theme, phase) {
         name: 'busca-cards-existente',
         view: await page.evaluate(() => window.qa.store.getState().currentView),
         detailOpened: true,
-        historicalAutoOpenDeviation: true,
         violations: [],
       });
 
@@ -322,7 +319,6 @@ async function runCases(page, html, width, theme, phase) {
         name: 'busca-purchases-existente',
         view: await page.evaluate(() => window.qa.store.getState().currentView),
         expanded: true,
-        historicalAutoOpenDeviation: true,
         violations: [],
       });
 
@@ -666,11 +662,7 @@ try {
     assert.notEqual(backgrounds[0], backgrounds[1], `Fundos claro/escuro iguais em ${width}px`);
   }
 
-  console.log(JSON.stringify({
-    note: 'Caracterização histórica de paridade (Decisão 5): autoabertura de detalhe/expansão na Busca Global preservada sem ratificação contratual.',
-    historicalAutoOpenDeviation: true,
-    totalScenarios: count,
-  }));
+  console.log(JSON.stringify({ totalScenarios: count }));
   assert.deepEqual(gaps, [], 'Divergências de paridade na Busca/Shell/Serviços');
   console.log(`${count} cenários pareados; 0 skips.`);
 } catch (error) {

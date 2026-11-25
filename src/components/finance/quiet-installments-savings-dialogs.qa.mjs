@@ -925,10 +925,10 @@ try {
   await cli('snapshot');
 
   const gaps = [];
-  const preexistingQuietDivergences = [];
   let count = 0;
   const phases = ['parcelas', 'caixinhas-dialogs', 'caixinhas-exclusao'];
   const expectedCount = 9;
+  const withoutRemediatedLate = (entries) => entries.filter(({ name }) => name !== 'caixinhas/exclusao/late');
 
   for (const width of [360, 390, 1440]) {
     const backgrounds = [];
@@ -948,27 +948,22 @@ try {
       count += observed.candidate.length;
       console.log(JSON.stringify({ session, baseRef, width, theme, scenarios: observed.candidate.length }));
 
-      const cellParity = Bun.deepEquals(observed.baseline, observed.candidate);
+      const cellParity = Bun.deepEquals(
+        withoutRemediatedLate(observed.baseline),
+        withoutRemediatedLate(observed.candidate),
+      );
       if (!cellParity) gaps.push(`${width}/${theme}: divergência de paridade`);
 
       for (const entryResult of observed.candidate) {
         const baseEntry = observed.baseline.find(({ name }) => name === entryResult.name);
         for (const violation of entryResult.violations) {
-          const isPreexistingSavingsRemoval =
-            entryResult.name.startsWith('caixinhas/exclusao/')
-            && violation === 'foco não sobreviveu à remoção da linha'
-            && baseEntry?.violations.includes(violation);
-          if (isPreexistingSavingsRemoval) {
-            preexistingQuietDivergences.push({
-              cell: `${width}/${theme}`,
-              scenario: entryResult.name,
-              violation,
-              parityConfirmed: cellParity,
-            });
-          } else {
-            gaps.push(`${width}/${theme} ${entryResult.name}: ${baseEntry?.violations.includes(violation) ? 'preexistente: ' : ''}${violation}`);
-          }
+          gaps.push(`${width}/${theme} ${entryResult.name}: ${baseEntry?.violations.includes(violation) ? 'preexistente: ' : ''}${violation}`);
         }
+      }
+
+      const lateEntry = observed.candidate.find(({ name }) => name === 'caixinhas/exclusao/late');
+      if (!lateEntry || lateEntry.violations.length > 0 || lateEntry.afterReadFocus?.id !== 'savings-create') {
+        gaps.push(`${width}/${theme} caixinhas/exclusao/late: foco pós-exclusão não restaurou #savings-create`);
       }
 
       const witness = observed.candidate.find(({ name }) => name === 'testemunha do tema e viewport')?.witness;
@@ -978,16 +973,8 @@ try {
     if (backgrounds[0] === backgrounds[1]) gaps.push(`${width}: fundo claro/escuro idêntico`);
   }
 
-  if (preexistingQuietDivergences.length) {
-    console.log(JSON.stringify({
-      warning: 'AVISO: divergência Quiet preexistente aberta (NÃO constitui conformidade Quiet; ver Decisão 6 e task-0015).',
-      quietCompliant: false,
-      preexistingQuietDivergences,
-    }));
-  }
-
   assert.deepEqual(gaps, [], 'Falha no contrato Quiet/paridade');
-  console.log(`${count} cenários pareados; 0 skips.${preexistingQuietDivergences.length ? ` Divergências Quiet preexistentes abertas: ${preexistingQuietDivergences.length} (não conformidade Quiet).` : ''}`);
+  console.log(`${count} cenários pareados; 0 skips.`);
 } catch (error) {
   failures.push(error);
 } finally {

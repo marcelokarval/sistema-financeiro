@@ -102,6 +102,23 @@ const emptyDepositForm: SavingsContributionDraft = {
   description: '',
 };
 
+type FocusTarget = Pick<HTMLElement, 'isConnected' | 'focus'>;
+
+/** Restaura o foco para o controle sobrevivente quando a meta removida sai da lista e o foco caiu em body ou nó desconectado. */
+export function restoreSavingsFocusAfterDeletion(
+  deletedId: string,
+  goals: readonly Pick<SavingsGoal, 'id'>[],
+  activeElement: Pick<HTMLElement, 'isConnected'> | null,
+  body: object,
+  fallback: FocusTarget | null,
+): boolean {
+  if (goals.some((goal) => goal.id === deletedId)) return false;
+  if (activeElement !== body && activeElement?.isConnected) return false;
+  if (!fallback?.isConnected) return false;
+  fallback.focus();
+  return true;
+}
+
 // ── Component ──────────────────────────────────────────────────────
 
 export function SavingsView() {
@@ -122,6 +139,8 @@ export function SavingsView() {
   const [goalForm, setGoalForm] = useState<SavingsGoalDraft>(emptyGoalForm);
   const [depositForm, setDepositForm] = useState<SavingsContributionDraft>(emptyDepositForm);
   const [submitting, setSubmitting] = useState(false);
+  const createButton = useRef<HTMLButtonElement>(null);
+  const pendingDeletionFocus = useRef(new Set<string>());
 
   const handleGoalFieldChange = (field: keyof SavingsGoalDraft, value: string) => {
     setGoalForm((prev) => ({ ...prev, [field]: value }));
@@ -178,6 +197,21 @@ export function SavingsView() {
     });
     return unsubscribe;
   }, [fetchGoals, fetchAccounts]);
+
+  useEffect(() => {
+    if (pendingDeletionFocus.current.size === 0) return;
+    for (const id of [...pendingDeletionFocus.current]) {
+      if (goals.some((goal) => goal.id === id)) continue;
+      pendingDeletionFocus.current.delete(id);
+      restoreSavingsFocusAfterDeletion(
+        id,
+        goals,
+        document.activeElement,
+        document.body,
+        createButton.current ?? document.getElementById('savings-create'),
+      );
+    }
+  }, [goals]);
 
   // ── Computed Data ────────────────────────────────────────────────
 
@@ -285,6 +319,7 @@ export function SavingsView() {
       });
       if (res.ok) {
         toast.success('Meta excluída com sucesso!');
+        pendingDeletionFocus.current.add(id);
         setShowDeleteDialog(null);
         fetchGoals();
       } else {
@@ -345,7 +380,9 @@ export function SavingsView() {
     dialogOrigin.current = event.currentTarget;
   };
   const restoreDialogFocus = (event: Event) => {
-    const target = dialogOrigin.current?.isConnected ? dialogOrigin.current : document.getElementById("savings-create");
+    const target = dialogOrigin.current?.isConnected
+      ? dialogOrigin.current
+      : createButton.current ?? document.getElementById("savings-create");
     if (target) {
       event.preventDefault();
       target.focus();
@@ -369,7 +406,7 @@ export function SavingsView() {
           <h2 id="savings-title" className="text-2xl font-semibold tracking-tight">Caixinhas</h2>
           <p className="text-sm text-muted-foreground">Acompanhe suas metas de poupança e investimentos.</p>
         </div>
-        <Button id="savings-create" className="min-h-11 self-start sm:self-auto" onClick={(event) => { captureDialogFocus(event); openCreateGoal(); }}>
+        <Button id="savings-create" ref={createButton} className="min-h-11 self-start sm:self-auto" onClick={(event) => { captureDialogFocus(event); openCreateGoal(); }}>
           <Plus aria-hidden="true" /> Nova meta
         </Button>
       </header>

@@ -160,31 +160,25 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
 
     setSubmitting(true);
     try {
-      if (editingBudget) {
-        const res = await fetch('/api/monthly-budgets', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: editingBudget.id, amount }),
-        });
-        if (res.ok) {
-          toast.success('Orçamento atualizado');
-        } else {
-          const data = await res.json();
-          toast.error(data.error || 'Erro ao atualizar');
-        }
-      } else {
-        const res = await fetch('/api/monthly-budgets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ categoryId: formCategoryId, amount, month, year }),
-        });
-        if (res.ok) {
-          toast.success('Orçamento criado');
-        } else {
-          const data = await res.json();
-          toast.error(data.error || 'Erro ao criar');
-        }
+      const res = editingBudget
+        ? await fetch('/api/monthly-budgets', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: editingBudget.id, amount }),
+          })
+        : await fetch('/api/monthly-budgets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryId: formCategoryId, amount, month, year }),
+          });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error || (editingBudget ? 'Erro ao atualizar' : 'Erro ao criar'));
+        return;
       }
+
+      toast.success(editingBudget ? 'Orçamento atualizado' : 'Orçamento criado');
       setDialogOpen(false);
       refreshBudgets();
     } catch {

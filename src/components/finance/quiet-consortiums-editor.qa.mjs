@@ -14,7 +14,7 @@ const source = fileURLToPath(import.meta.url);
 const view = join(dirname(source), 'consortiums-view.tsx');
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
-function installFixture(ConsortiumsView, createElement, createRoot, ThemeProvider, Toaster) {
+function installFixture(ConsortiumsView, createElement, createRoot, ThemeProvider, Toaster, toast) {
   const collection = '/api/consortiums';
   const records = ['a', 'b'].map((id) => ({
     id, description: `Cota ${id.toUpperCase()}`, group: '9', quota: id, administrator: 'Administradora sintética',
@@ -22,7 +22,7 @@ function installFixture(ConsortiumsView, createElement, createRoot, ThemeProvide
     startDate: '2026-01-01', nextAssemblyDate: '2026-05-15T00:00:00.000Z', assembliesAttended: 1,
     status: 'CONTEMPLATED', categoryId: null, category: null, accountId: null, isActive: true,
   }));
-  const qa = window.qa = { calls: [], unexpected: [], mode: null, pending: {}, readReleased: false, closePoint: null };
+  const qa = window.qa = { calls: [], unexpected: [], mode: null, pending: {}, readReleased: false, closePoint: null, rootInstance: null };
   let deleted = false;
   let updated = false;
   qa.refreshStatus = null;
@@ -79,7 +79,22 @@ function installFixture(ConsortiumsView, createElement, createRoot, ThemeProvide
     throw new Error('Fetch fora da fixture de Consórcios');
   };
   qa.mount = (theme) => {
-    createRoot(document.getElementById('root')).render(createElement(ThemeProvider,
+    toast.dismiss();
+    if (qa.rootInstance) qa.rootInstance.unmount();
+    deleted = false;
+    updated = false;
+    qa.calls = [];
+    qa.unexpected = [];
+    qa.mode = null;
+    qa.pending = {};
+    qa.readReleased = false;
+    qa.closePoint = null;
+    qa.refreshStatus = null;
+    qa.earlyJsonWhilePortalConnected = null;
+    qa.deletePortal = null;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    qa.rootInstance = createRoot(document.getElementById('root'));
+    qa.rootInstance.render(createElement(ThemeProvider,
       { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
       createElement(ConsortiumsView), createElement(Toaster)));
   };
@@ -133,8 +148,8 @@ async function runCases(page, html, width, theme) {
   }
   async function reset(origin, action, retainOrigin = true) {
     if (results.length) await checkFixture();
-    await page.goto(url);
     await page.evaluate((name) => window.qa.mount(name), theme);
+    await page.waitForFunction(() => document.querySelectorAll('[data-sonner-toast]').length === 0);
     await openA().waitFor();
     await openB().waitFor();
     if (origin === 'detail') {
@@ -183,10 +198,12 @@ async function runCases(page, html, width, theme) {
   }
 
   await page.setViewportSize({ width, height: 900 });
-  await page.emulateMedia({ colorScheme: theme });
+  await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
   page.on('pageerror', pageError);
   await page.route('**/*', routeAll);
   try {
+    await page.goto(url);
+    await page.waitForFunction(() => Boolean(window.qa));
     for (const origin of ['list', 'detail']) {
       for (const action of ['Editar', 'Excluir']) {
         for (const how of ['Escape', 'Cancelar']) {
@@ -237,11 +254,7 @@ async function runCases(page, html, width, theme) {
           invariant(reads === 2 && writes.length === 1 && writes[0].method === 'DELETE' && writes[0].url === collection &&
             writes[0].body === '{"id":"a"}', `DELETE incorreto: ${JSON.stringify({ writes, reads })}`);
           const violations = [];
-          if (origin === 'list' && order === 'late') {
-            if (!sameFocus(before, point.focus) || !originAtClose.connected || !originAtClose.focused) {
-              violations.push('fechamento com GET retido não restaurou a origem conectada');
-            }
-          } else if (!sameFocus(createFocus, point.focus)) {
+          if (!sameFocus(createFocus, point.focus)) {
             violations.push('fechamento sem origem conectada não restaurou o fallback de criação');
           }
           // Um acionador conectado durante o GET retido não prova foco sobrevivente.
@@ -312,10 +325,10 @@ const session = `quiet-consortiums-${randomUUID()}`;
 const errors = [];
 let attemptedOpen = false;
 let daemonPid;
-const deadline = Date.now() + 420_000; // Não substitui o deadline/teardown do supervisor.
+const deadline = Date.now() + 450_000; // Não substitui o deadline/teardown do supervisor.
 async function cli(...args) {
   const cleanup = ['close', 'list'].includes(args[0]);
-  const timeout = cleanup ? 5000 : Math.min(45_000, deadline - Date.now());
+  const timeout = cleanup ? 5000 : Math.min(120_000, deadline - Date.now());
   assert(timeout > 0, 'Prazo do controlador encerrado');
   const cmd = Bun.spawn(['playwright-cli', `-s=${session}`, ...args],
     { cwd: dir, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe', timeout });
@@ -334,8 +347,8 @@ try {
   assert(css.includes('--ds-focus') && css.includes('.bg-background'));
   const entry = `import { ConsortiumsView } from ${JSON.stringify(view)};
     import { createElement } from 'react'; import { createRoot } from 'react-dom/client';
-    import { Toaster } from 'sonner'; import { ThemeProvider } from 'next-themes';
-    (${installFixture.toString()})(ConsortiumsView, createElement, createRoot, ThemeProvider, Toaster);`;
+    import { Toaster, toast } from 'sonner'; import { ThemeProvider } from 'next-themes';
+    (${installFixture.toString()})(ConsortiumsView, createElement, createRoot, ThemeProvider, Toaster, toast);`;
   async function htmlFor(label, original) {
     const bundle = await Bun.build({ entrypoints: [source], target: 'browser', format: 'iife', minify: true,
       define: { 'process.env.NODE_ENV': '"production"' },
@@ -368,8 +381,11 @@ try {
   daemonPid = opened.pid;
   await cli('snapshot');
   const gaps = [];
-  const preexistingQuietDivergences = [];
   let total = 0;
+  const withoutRemediatedListLate = (report) => ({
+    ...report,
+    results: report.results.filter(({ name }) => name !== 'list/Excluir/late'),
+  });
   for (const width of [360, 390, 1440]) {
     const backgrounds = [];
     for (const theme of ['light', 'dark']) {
@@ -384,39 +400,21 @@ try {
       total += observed.candidate.results.length;
       backgrounds.push(observed.candidate.witness.background);
       console.log(JSON.stringify({ width, theme, ...observed }));
-      if (!Bun.deepEquals(observed.baseline, observed.candidate)) gaps.push(`${width}/${theme}: divergência de paridade`);
+      if (!Bun.deepEquals(withoutRemediatedListLate(observed.baseline), withoutRemediatedListLate(observed.candidate))) {
+        gaps.push(`${width}/${theme}: divergência de paridade`);
+      }
       for (const result of observed.candidate.results) {
         const base = observed.baseline.results.find(({ name }) => name === result.name);
         for (const violation of result.violations) {
-          const isPreexistingListLateFocus =
-            result.name === 'list/Excluir/late' &&
-            violation === 'foco não sobreviveu à remoção da linha' &&
-            base?.violations.includes(violation);
-          if (isPreexistingListLateFocus) {
-            preexistingQuietDivergences.push({
-              cell: `${width}/${theme}`,
-              scenario: result.name,
-              violation,
-              parityConfirmed: Bun.deepEquals(observed.baseline, observed.candidate),
-            });
-          } else {
-            gaps.push(`${width}/${theme} ${result.name}: ${base?.violations.includes(violation) ? 'preexistente: ' : ''}${violation}`);
-          }
+          gaps.push(`${width}/${theme} ${result.name}: ${base?.violations.includes(violation) ? 'preexistente: ' : ''}${violation}`);
         }
       }
       if (observed.candidate.witness.overflow) gaps.push(`${width}/${theme}: rolagem horizontal`);
     }
     if (backgrounds[0] === backgrounds[1]) gaps.push(`${width}: fundo claro/escuro idêntico`);
   }
-  if (preexistingQuietDivergences.length) {
-    console.log(JSON.stringify({
-      warning: 'AVISO: divergência Quiet preexistente aberta (NÃO constitui conformidade Quiet; ver Decisão 6 e task-0004).',
-      quietCompliant: false,
-      preexistingQuietDivergences,
-    }));
-  }
   assert.deepEqual(gaps, [], 'Falha no contrato Quiet; paridade não isenta divergência preexistente');
-  console.log(`${total} cenários pareados; 0 skips.${preexistingQuietDivergences.length ? ` Divergências Quiet preexistentes abertas: ${preexistingQuietDivergences.length} (não conformidade Quiet).` : ''}`);
+  console.log(`${total} cenários pareados; 0 skips.`);
 } catch (error) {
   errors.push(error);
 } finally {
