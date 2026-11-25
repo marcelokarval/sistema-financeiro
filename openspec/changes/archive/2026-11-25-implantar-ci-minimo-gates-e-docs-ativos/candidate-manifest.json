@@ -1,0 +1,44 @@
+{
+  "paths": [
+    {
+      "path": ".zscripts/test-sqlite.sh",
+      "state": "present"
+    },
+    {
+      "path": "next.config.ts",
+      "state": "present"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "state": "present"
+    },
+    {
+      "path": "package.json",
+      "state": "present"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "state": "present"
+    },
+    {
+      "path": "openspec/config.yaml",
+      "state": "present"
+    },
+    {
+      "path": "download/README.md",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/design-system.contract.md",
+      "state": "present"
+    },
+    {
+      "path": "docs/reference/frontend-componentization-coverage.md",
+      "state": "present"
+    },
+    {
+      "path": "AGENTS.md",
+      "state": "present"
+    }
+  ]
+}

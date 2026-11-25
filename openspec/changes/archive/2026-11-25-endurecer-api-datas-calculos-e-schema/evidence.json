@@ -1,0 +1,169 @@
+{
+  "candidate": "ad3e21844706904a8a1c3e6839cd3f2840eb0215aa49b5e993edb0b88849d717",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun --no-env-file test ./src/lib/api-validation.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 por modulo ./api-validation ausente antes da implementacao (0 aprovados, 1 reprovacao)"
+      },
+      "green": {
+        "command": "TZ=America/Bahia bun --no-env-file test ./src/lib/api-validation.test.ts && TZ=UTC bun --no-env-file test ./src/lib/api-validation.test.ts",
+        "outcome": "passed",
+        "details": "28 aprovados e 0 reprovacoes com 114 assercoes em America/Bahia e em UTC"
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "TZ=America/Bahia bun --no-env-file test ./src/app/api/dashboard/route.test.ts ./src/app/api/timeline/route.test.ts ./src/app/api/transactions/route.test.ts ./src/app/api/forecast/route.test.ts ./src/app/api/insights/route.test.ts ./src/app/api/balance-projection/route.test.ts ./src/app/api/upcoming-bills/route.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 na frente 2.1/2.2/2.3 com 8 aprovados e 11 reprovacoes esperadas em datas civis e formulas"
+      },
+      "green": {
+        "command": "TZ=America/Bahia bun --no-env-file test ./src/app/api/dashboard/route.test.ts ./src/app/api/timeline/route.test.ts ./src/app/api/transactions/route.test.ts ./src/app/api/forecast/route.test.ts ./src/app/api/insights/route.test.ts ./src/app/api/balance-projection/route.test.ts ./src/app/api/upcoming-bills/route.test.ts",
+        "outcome": "passed",
+        "details": "19 aprovados e 0 reprovacoes em America/Bahia e em UTC com 94 assercoes nos 7 arquivos preservando atomicidade de transactions"
+      }
+    },
+    {
+      "id": "2.2",
+      "plan": "2.2",
+      "red": {
+        "command": "TZ=America/Bahia bun --no-env-file test ./src/app/api/dashboard/route.test.ts ./src/app/api/timeline/route.test.ts ./src/app/api/transactions/route.test.ts ./src/app/api/forecast/route.test.ts ./src/app/api/insights/route.test.ts ./src/app/api/balance-projection/route.test.ts ./src/app/api/upcoming-bills/route.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 na frente 2.1/2.2/2.3 com 8 aprovados e 11 reprovacoes esperadas em normalizacao mensal e janela de 3 meses"
+      },
+      "green": {
+        "command": "TZ=UTC bun --no-env-file test ./src/app/api/dashboard/route.test.ts ./src/app/api/timeline/route.test.ts ./src/app/api/transactions/route.test.ts ./src/app/api/forecast/route.test.ts ./src/app/api/insights/route.test.ts ./src/app/api/balance-projection/route.test.ts ./src/app/api/upcoming-bills/route.test.ts",
+        "outcome": "passed",
+        "details": "19 aprovados e 0 reprovacoes validando normalizeRecurringToMonthly e janela fechada dos 3 meses anteriores"
+      }
+    },
+    {
+      "id": "2.3",
+      "plan": "2.3",
+      "red": {
+        "command": "TZ=America/Bahia bun --no-env-file test ./src/app/api/dashboard/route.test.ts ./src/app/api/timeline/route.test.ts ./src/app/api/transactions/route.test.ts ./src/app/api/forecast/route.test.ts ./src/app/api/insights/route.test.ts ./src/app/api/balance-projection/route.test.ts ./src/app/api/upcoming-bills/route.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 na frente 2.1/2.2/2.3 com 8 aprovados e 11 reprovacoes esperadas em vencimento de cartao, domingo e fatura zero"
+      },
+      "green": {
+        "command": "TZ=America/Bahia bun --no-env-file test ./src/app/api/upcoming-bills/route.test.ts",
+        "outcome": "passed",
+        "details": "19 aprovados e 0 reprovacoes na suite conjunta da frente 2.1/2.2/2.3 com resolveCardDueDate, computeEndOfWeek e omissao de fatura zero"
+      }
+    },
+    {
+      "id": "3.1",
+      "plan": "3.1",
+      "red": {
+        "command": "bun --no-env-file test ./src/app/api/savings/deposit/route.test.ts ./src/app/api/monthly-budgets/route.test.ts ./src/app/api/accounts/route.test.ts ./src/app/api/cards/route.test.ts ./src/app/api/categories/route.test.ts ./src/app/api/budgets/route.test.ts ./src/app/api/savings/validation.test.ts ./src/app/api/investments/route.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 na frente 3.1/3.2 com 7 aprovados e 19 reprovacoes esperadas por JSON invalido, valores invalidos e P2003"
+      },
+      "green": {
+        "command": "bun --no-env-file test ./src/app/api/savings/deposit/route.test.ts ./src/app/api/monthly-budgets/route.test.ts ./src/app/api/accounts/route.test.ts ./src/app/api/cards/route.test.ts ./src/app/api/categories/route.test.ts ./src/app/api/budgets/route.test.ts ./src/app/api/savings/validation.test.ts ./src/app/api/investments/route.test.ts",
+        "outcome": "passed",
+        "details": "26 aprovados e 0 reprovacoes com 229 assercoes validando deposito atomico em savings/deposit e validacao estrita em monthly-budgets"
+      }
+    },
+    {
+      "id": "3.2",
+      "plan": "3.2",
+      "red": {
+        "command": "bun --no-env-file test ./src/app/api/savings/deposit/route.test.ts ./src/app/api/monthly-budgets/route.test.ts ./src/app/api/accounts/route.test.ts ./src/app/api/cards/route.test.ts ./src/app/api/categories/route.test.ts ./src/app/api/budgets/route.test.ts ./src/app/api/savings/validation.test.ts ./src/app/api/investments/route.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 na frente 3.1/3.2 com 7 aprovados e 19 reprovacoes esperadas em JSON malformado, PUT sem validacao e P2003"
+      },
+      "green": {
+        "command": "bun --no-env-file test ./src/app/api/savings/deposit/route.test.ts ./src/app/api/monthly-budgets/route.test.ts ./src/app/api/accounts/route.test.ts ./src/app/api/cards/route.test.ts ./src/app/api/categories/route.test.ts ./src/app/api/budgets/route.test.ts ./src/app/api/savings/validation.test.ts ./src/app/api/investments/route.test.ts",
+        "outcome": "passed",
+        "details": "26 aprovados e 0 reprovacoes com validacao uniforme em POST/PUT e preservacao do contrato de nulos em savings"
+      }
+    },
+    {
+      "id": "3.3",
+      "plan": "3.3",
+      "red": {
+        "command": "bun --no-env-file test ./src/app/api/purchases/validation.test.ts ./src/app/api/installments/validation.test.ts ./src/app/api/consortiums/validation.test.ts ./src/app/api/recurring/route.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 com 12 aprovados e 29 reprovacoes esperadas em JSON invalido, PUT e FKs ausentes"
+      },
+      "green": {
+        "command": "bun --no-env-file test ./src/app/api/purchases/validation.test.ts ./src/app/api/purchases/route.test.ts ./src/app/api/installments/validation.test.ts ./src/app/api/consortiums/validation.test.ts ./src/app/api/recurring/route.test.ts",
+        "outcome": "passed",
+        "details": "43 aprovados e 0 reprovacoes com 156 assercoes em 5 arquivos preservando HTTP 500 para trigger de integridade em purchases"
+      }
+    },
+    {
+      "id": "4.1",
+      "plan": "4.1",
+      "red": {
+        "command": "TZ=America/Bahia bun --no-env-file test ./src/app/api/export/route.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 com 0 aprovados e 3 reprovacoes esperadas por ausencia de neutralizacao CSV e filtro de data civil"
+      },
+      "green": {
+        "command": "TZ=America/Bahia bun --no-env-file test ./src/app/api/export/route.test.ts",
+        "outcome": "passed",
+        "details": "3 aprovados e 0 reprovacoes com 24 assercoes neutralizando formula injection CSV e aplicando parseCivilDateStart/parseCivilDateEnd"
+      }
+    },
+    {
+      "id": "4.2",
+      "plan": "4.2",
+      "red": {
+        "command": "bun --no-env-file test ./src/app/api/advisor/route.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 com 3 aprovados e 3 reprovacoes esperadas por presenca de lastFourDigits, ausencia de limite e delimitacao de context"
+      },
+      "green": {
+        "command": "bun --no-env-file test ./src/app/api/advisor/route.test.ts",
+        "outcome": "passed",
+        "details": "6 aprovados e 0 reprovacoes com 29 assercoes omitindo lastFourDigits, delimitando user_context e preservando superavit/deficit sem emojis"
+      }
+    },
+    {
+      "id": "4.3",
+      "plan": "4.3",
+      "red": {
+        "command": "bun --no-env-file test ./mini-services/finance-ws/config.test.ts",
+        "outcome": "expected_failure",
+        "details": "Saida 1 por modulo ./config ausente antes da implementacao (0 aprovados, 1 reprovacao)"
+      },
+      "green": {
+        "command": "bun --no-env-file test ./mini-services/finance-ws/config.test.ts",
+        "outcome": "passed",
+        "details": "3 aprovados e 0 reprovacoes com 11 assercoes validando host 127.0.0.1 e corsOrigin local configuravel sem curinga"
+      }
+    },
+    {
+      "id": "5.1",
+      "plan": "5.1",
+      "red": {
+        "command": "bunx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
+        "outcome": "expected_failure",
+        "details": "DDL inicial continha 0 indices *_idx e 0 FKs ON DELETE SET NULL em Purchase, InstallmentPlan e Consortium"
+      },
+      "green": {
+        "command": "bunx prisma validate && bun run db:generate && bun --no-env-file run check && bun --no-env-file run test:sqlite",
+        "outcome": "passed",
+        "details": "Schema valido com 20 indices e 3 FKs ON DELETE SET NULL confirmados em SQLite descartavel em /tmp, 533 aprovados no check padrao, 54 aprovados em test:sqlite e build 41/41 aprovado"
+      }
+    }
+  ],
+  "structural": {
+    "command": "bunx prisma validate && bun --no-env-file run check",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-apply-6 (revisao independente Fase 1 #260 e Fase 2 #277)",
+    "status": "pass",
+    "candidate": "ad3e21844706904a8a1c3e6839cd3f2840eb0215aa49b5e993edb0b88849d717"
+  },
+  "unresolved": []
+}
