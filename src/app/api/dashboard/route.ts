@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { parseCivilDateEnd, parseCivilDateStart } from "@/lib/api-validation";
 
 // GET /api/dashboard - Aggregated dashboard data with optional date range filter
 export async function GET(request: NextRequest) {
@@ -17,18 +18,34 @@ export async function GET(request: NextRequest) {
     let rangeEnd: Date;
     let isCustomRange = false;
 
-    if (fromParam && toParam) {
-      rangeStart = new Date(fromParam);
-      rangeEnd = new Date(toParam);
-      rangeEnd.setHours(23, 59, 59, 999);
-      isCustomRange = true;
-      // Validate dates
-      if (isNaN(rangeStart.getTime()) || isNaN(rangeEnd.getTime())) {
+    if (fromParam !== null || toParam !== null) {
+      const parsedStart = fromParam !== null ? parseCivilDateStart(fromParam) : null;
+      const parsedEnd = toParam !== null ? parseCivilDateEnd(toParam) : null;
+
+      if ((fromParam !== null && !parsedStart) || (toParam !== null && !parsedEnd)) {
         return NextResponse.json(
           { error: "Datas inválidas. Use o formato YYYY-MM-DD." },
           { status: 400 }
         );
       }
+
+      if (parsedStart && parsedEnd) {
+        if (parsedStart > parsedEnd) {
+          return NextResponse.json(
+            { error: "Intervalo de datas inválido: 'from' deve ser anterior ou igual a 'to'." },
+            { status: 400 }
+          );
+        }
+        rangeStart = parsedStart;
+        rangeEnd = parsedEnd;
+      } else if (parsedStart) {
+        rangeStart = parsedStart;
+        rangeEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+      } else {
+        rangeStart = new Date(currentYear, currentMonth, 1);
+        rangeEnd = parsedEnd!;
+      }
+      isCustomRange = true;
     } else {
       // Default: current month
       rangeStart = new Date(currentYear, currentMonth, 1);

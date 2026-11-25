@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, mock, setSystemTime, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,10 +32,18 @@ describe("GET /api/insights - progresso de meta de orçamento", () => {
   });
 
   beforeEach(async () => {
+    setSystemTime();
     await localDb.budgetGoal.deleteMany();
+    await localDb.recurringTransaction.deleteMany();
+    await localDb.purchase.deleteMany();
+    await localDb.transaction.deleteMany();
+    await localDb.category.deleteMany();
+    await localDb.card.deleteMany();
+    await localDb.account.deleteMany();
   });
 
   afterAll(async () => {
+    setSystemTime();
     await localDb?.$disconnect();
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
@@ -90,5 +98,79 @@ describe("GET /api/insights - progresso de meta de orçamento", () => {
     expect(goalInsight).toBeDefined();
     expect(goalInsight?.type).toBe("info");
     expect(goalInsight?.metric).toBe("69%");
+  });
+
+  test("normaliza recorrências WEEKLY e YEARLY para equivalente mensal no insight recurring-summary", async () => {
+    setSystemTime(new Date("2026-11-15T12:00:00Z"));
+
+    await localDb.recurringTransaction.createMany({
+      data: [
+        {
+          id: "rec-w",
+          description: "Academia",
+          amount: 100,
+          type: "EXPENSE",
+          frequency: "WEEKLY",
+          nextDate: new Date("2026-11-20T12:00:00Z"),
+          isActive: true,
+        },
+        {
+          id: "rec-y",
+          description: "IPTU",
+          amount: 1200,
+          type: "EXPENSE",
+          frequency: "YEARLY",
+          nextDate: new Date("2026-12-20T12:00:00Z"),
+          isActive: true,
+        },
+      ],
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const insights = (await response.json()) as Array<{
+      id: string;
+      metric?: string;
+      description: string;
+    }>;
+
+    const recurring = insights.find((item) => item.id === "recurring-summary");
+    expect(recurring).toBeDefined();
+    // 100 * (52/12) + 1200 / 12 = 533.333... -> "R$ 533,33"
+    expect(recurring?.metric).toContain("533,33");
+    expect(recurring?.description).toContain("533,33/mês");
+  });
+
+  test("usa janela fechada dos 3 meses anteriores (ago-out) em emergency-fund e category-overspend, ignorando novembro", async () => {
+    setSystemTime(new Date("2026-11-15T12:00:00Z"));
+
+    await localDb.account.create({
+      data: { id: "acc-res", name: "Reserva", balance: 9000 },
+    });
+    await localDb.category.create({
+      data: { id: "cat-food", name: "Alimentação", type: "EXPENSE", color: "#ef4444" },
+    });
+    await localDb.transaction.createMany({
+      data: [
+        { id: "exp-aug", type: "EXPENSE", amount: 1000, description: "Mercado Ago", date: new Date(2026, 7, 15, 12, 0), categoryId: "cat-food" },
+        { id: "exp-sep", type: "EXPENSE", amount: 1000, description: "Mercado Set", date: new Date(2026, 8, 15, 12, 0), categoryId: "cat-food" },
+        { id: "exp-oct", type: "EXPENSE", amount: 1000, description: "Mercado Out", date: new Date(2026, 9, 15, 12, 0), categoryId: "cat-food" },
+        // Gasto parcial do mês atual não deve inflar a média dos 3 meses anteriores
+        { id: "exp-nov", type: "EXPENSE", amount: 3000, description: "Mercado Nov", date: new Date(2026, 10, 5, 12, 0), categoryId: "cat-food" },
+      ],
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const insights = (await response.json()) as Array<{
+      id: string;
+      metric?: string;
+    }>;
+
+    const emergency = insights.find((item) => item.id === "emergency-fund");
+    expect(emergency?.metric).toBe("9.0 meses");
+
+    const overspend = insights.find((item) => item.id === "category-overspend");
+    expect(overspend?.metric).toBe("+200%");
   });
 });

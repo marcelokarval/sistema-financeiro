@@ -126,29 +126,55 @@ function DebtLoadingSkeleton() {
   );
 }
 
-export function DebtOverview() {
-  const [data, setData] = useState<DebtsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [expandedType, setExpandedType] = useState<string | null>(null);
+export type DebtOverviewRequest = Record<string, never>;
+export type DebtOverviewStatus =
+  | { status: 'ready'; data: DebtsData }
+  | { status: 'error' };
+export type DebtOverviewResult = {
+  request: DebtOverviewRequest;
+  result: DebtOverviewStatus;
+};
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/debts');
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      }
-    } catch (e) {
-      console.error('Erro ao buscar dívidas:', e);
-    } finally {
-      setLoading(false);
-    }
+export async function requestDebtOverview(
+  request: DebtOverviewRequest,
+  signal: AbortSignal,
+  publish: (response: DebtOverviewResult) => void,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<void> {
+  let result: DebtOverviewStatus;
+  try {
+    const res = await fetcher('/api/debts', { signal });
+    result = res.ok ? { status: 'ready', data: await res.json() } : { status: 'error' };
+  } catch {
+    result = { status: 'error' };
+  }
+  if (!signal.aborted) publish({ request, result });
+}
+
+export function currentDebtOverview(
+  request: DebtOverviewRequest,
+  settled: DebtOverviewResult | null,
+): DebtOverviewStatus | { status: 'loading' } {
+  return settled?.request === request ? settled.result : { status: 'loading' };
+}
+
+export function DebtOverview() {
+  const [request, setRequest] = useState<DebtOverviewRequest>(() => ({}));
+  const [settled, setSettled] = useState<DebtOverviewResult | null>(null);
+  const [expandedType, setExpandedType] = useState<string | null>(null);
+  const query = currentDebtOverview(request, settled);
+  const data = query.status === 'ready' ? query.data : null;
+  const loading = query.status === 'loading';
+
+  const fetchData = useCallback(() => {
+    setRequest({});
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const controller = new AbortController();
+    void requestDebtOverview(request, controller.signal, setSettled);
+    return () => controller.abort();
+  }, [request]);
 
   return (
     <DebtOverviewContent

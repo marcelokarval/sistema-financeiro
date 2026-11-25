@@ -8,11 +8,13 @@
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "arch:check": "bun --no-env-file .zscripts/check-frontend-architecture.ts --baseline-ref 25b44535c5068b99044afa03f7ecf318e7a9726f",
     "test": "bun test",
+    "test:scripts": "bun --no-env-file test ./.zscripts/tests/packaging.test.ts ./.zscripts/check-frontend-architecture.test.ts",
+    "test:sqlite": "bash .zscripts/test-sqlite.sh",
+    "check": "bun --no-env-file run typecheck && bun --no-env-file run lint && bun --no-env-file run arch:check && bun --no-env-file test && bun --no-env-file run test:scripts",
     "db:push": "prisma db push",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:generate": "prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

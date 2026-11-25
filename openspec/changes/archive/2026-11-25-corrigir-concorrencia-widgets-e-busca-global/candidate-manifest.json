@@ -1,0 +1,72 @@
+{
+  "paths": [
+    {
+      "path": "src/components/finance/networth-evolution.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/financial-calendar.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/transaction-analytics.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/spending-timeline.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-analysis-calendar.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/global-search.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/global-search-result.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-navigation.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-search-parity.qa.mjs",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/monthly-budget-tracker.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-goals-health.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/accounts-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-accounts-cards.test.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/debt-overview.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/financial-reports.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/investments-view.tsx",
+      "state": "present"
+    },
+    {
+      "path": "src/components/finance/quiet-investments-installments.test.tsx",
+      "state": "present"
+    }
+  ]
+}

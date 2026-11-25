@@ -1,0 +1,14 @@
+{
+  "paths": [
+    { "path": "Caddyfile", "state": "present" },
+    { "path": ".zscripts/start.sh", "state": "present" },
+    { "path": ".zscripts/mini-services-start.sh", "state": "present" },
+    { "path": ".zscripts/tests/packaging.test.ts", "state": "present" },
+    { "path": ".zscripts/mini-services-build.sh", "state": "absent" },
+    { "path": ".zscripts/mini-services-install.sh", "state": "absent" },
+    { "path": ".zscripts/dev.pid", "state": "absent" },
+    { "path": ".gitignore", "state": "present" },
+    { "path": ".env.example", "state": "present" },
+    { "path": "docs/operacao-empacotamento.md", "state": "present" }
+  ]
+}

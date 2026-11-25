@@ -41,44 +41,74 @@ esac
 export DATABASE_URL="file:$resolved"
 unset db_path resolved
 
+command -v caddy >/dev/null 2>&1 || { echo "Erro: caddy não encontrado no PATH." >&2; exit 1; }
+
 # 存储所有子进程的 PID
 pids=""
+cleaned_up=0
 
 # 清理函数：优雅关闭所有服务
 cleanup() {
-    echo ""
-    echo "🛑 正在关闭所有服务..."
-    
-    # 发送 SIGTERM 信号给所有子进程
+    rc=${1:-$?}
+    if [ "$cleaned_up" -eq 1 ]; then
+        return "$rc"
+    fi
+    cleaned_up=1
+    trap - EXIT INT TERM
+
+    set +e
+    any_alive=0
     for pid in $pids; do
         if kill -0 "$pid" 2>/dev/null; then
-            service_name=$(ps -p "$pid" -o comm= 2>/dev/null || echo "unknown")
-            echo "   关闭进程 $pid ($service_name)..."
-            kill -TERM "$pid" 2>/dev/null
+            any_alive=1
+            break
         fi
     done
-    
-    # 等待所有进程退出（最多等待 5 秒）
-    sleep 1
-    for pid in $pids; do
-        if kill -0 "$pid" 2>/dev/null; then
-            # 如果还在运行，等待最多 4 秒
-            timeout=4
-            while [ $timeout -gt 0 ] && kill -0 "$pid" 2>/dev/null; do
-                sleep 1
-                timeout=$((timeout - 1))
-            done
-            # 如果仍然在运行，强制关闭
+
+    if [ "$any_alive" -eq 1 ]; then
+        echo ""
+        echo "🛑 正在关闭所有服务..."
+
+        # 发送 SIGTERM 信号给所有子进程
+        for pid in $pids; do
             if kill -0 "$pid" 2>/dev/null; then
-                echo "   强制关闭进程 $pid..."
-                kill -KILL "$pid" 2>/dev/null
+                service_name=$(ps -p "$pid" -o comm= 2>/dev/null || echo "unknown")
+                echo "   关闭进程 $pid ($service_name)..."
+                kill -TERM "$pid" 2>/dev/null || true
             fi
-        fi
-    done
-    
-    echo "✅ 所有服务已关闭"
-    exit 0
+        done
+
+        # 等待所有进程退出（最多等待 5 秒）
+        sleep 1
+        for pid in $pids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                # 如果还在运行，等待最多 4 秒
+                timeout=4
+                while [ $timeout -gt 0 ] && kill -0 "$pid" 2>/dev/null; do
+                    sleep 1
+                    timeout=$((timeout - 1))
+                done
+                # 如果仍然在运行，强制关闭
+                if kill -0 "$pid" 2>/dev/null; then
+                    echo "   强制关闭进程 $pid..."
+                    kill -KILL "$pid" 2>/dev/null || true
+                fi
+            fi
+        done
+
+        for pid in $pids; do
+            wait "$pid" 2>/dev/null || true
+        done
+
+        echo "✅ 所有服务已关闭"
+    fi
+
+    return "$rc"
 }
+
+trap 'rc=$?; cleanup "$rc"; exit "$rc"' EXIT
+trap 'cleanup 130; exit 130' INT
+trap 'cleanup 143; exit 143' TERM
 
 echo "🚀 开始启动所有服务..."
 echo ""
@@ -148,4 +178,9 @@ echo "💡 按 Ctrl+C 停止所有服务"
 echo ""
 
 # Caddy 作为主进程运行
-exec caddy run --config Caddyfile --adapter caddyfile
+caddy run --config Caddyfile --adapter caddyfile &
+CADDY_PID=$!
+pids="$pids $CADDY_PID"
+caddy_rc=0
+wait "$CADDY_PID" || caddy_rc=$?
+exit "$caddy_rc"

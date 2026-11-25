@@ -1,0 +1,26 @@
+{
+  "paths": [
+    {"path": "src/app/api/transfer/route.ts", "state": "present"},
+    {"path": "src/app/api/transfer/route.test.ts", "state": "present"},
+    {"path": "src/app/api/financial-calendar/route.ts", "state": "present"},
+    {"path": "src/app/api/financial-calendar/route.test.ts", "state": "present"},
+    {"path": "src/app/api/timeline/route.ts", "state": "present"},
+    {"path": "src/app/api/timeline/route.test.ts", "state": "present"},
+    {"path": "src/app/api/advisor/route.ts", "state": "present"},
+    {"path": "src/app/api/advisor/route.test.ts", "state": "present"},
+    {"path": "src/app/api/transactions/route.ts", "state": "present"},
+    {"path": "src/app/api/transactions/route.test.ts", "state": "present"},
+    {"path": "src/app/api/consortiums/installments/route.ts", "state": "present"},
+    {"path": "src/app/api/consortiums/installments/route.test.ts", "state": "present"},
+    {"path": "src/app/api/recurring/process/route.ts", "state": "present"},
+    {"path": "src/app/api/recurring/process/route.test.ts", "state": "present"},
+    {"path": "src/app/api/installments/pay/route.ts", "state": "present"},
+    {"path": "src/app/api/installments/pay/route.test.ts", "state": "present"},
+    {"path": "src/app/api/investments/transactions/route.ts", "state": "present"},
+    {"path": "src/app/api/investments/transactions/route.test.ts", "state": "present"},
+    {"path": "src/app/api/quick-stats/route.ts", "state": "present"},
+    {"path": "src/app/api/quick-stats/route.test.ts", "state": "present"},
+    {"path": "src/app/api/networth/route.ts", "state": "present"},
+    {"path": "src/app/api/networth/route.test.ts", "state": "present"}
+  ]
+}

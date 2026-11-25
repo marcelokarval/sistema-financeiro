@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,46 +20,65 @@ const FILTER_OPTIONS = [
   { label: '30 dias', days: 30 },
 ] as const;
 
-export function SpendingTimeline() {
-  const [data, setData] = useState<TimelineDay[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [activeDays, setActiveDays] = useState(30);
-  const [expandedDay, setExpandedDay] = useState<string | null>(null);
+export type SpendingTimelineRequest = { days: number };
+export type SpendingTimelineStatus =
+  | { status: 'ready'; data: TimelineDay[] }
+  | { status: 'error' };
+export type SpendingTimelineResult = {
+  request: SpendingTimelineRequest;
+  result: SpendingTimelineStatus;
+};
 
-  const fetchTimeline = useCallback(async (days: number) => {
-    try {
-      setLoading(true);
-      setError(false);
-      const res = await fetch(`/api/timeline?days=${days}`);
-      if (!res.ok) {
-        setError(true);
-        return;
-      }
-      const json = await res.json();
-      setData(json);
-    } catch (e) {
-      console.error('Erro ao buscar linha do tempo:', e);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export async function requestSpendingTimeline(
+  request: SpendingTimelineRequest,
+  signal: AbortSignal,
+  publish: (response: SpendingTimelineResult) => void,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<void> {
+  let result: SpendingTimelineStatus;
+  try {
+    const res = await fetcher(`/api/timeline?days=${request.days}`, { signal });
+    result = res.ok ? { status: 'ready', data: await res.json() } : { status: 'error' };
+  } catch {
+    result = { status: 'error' };
+  }
+  if (!signal.aborted) publish({ request, result });
+}
+
+export function currentSpendingTimeline(
+  request: SpendingTimelineRequest,
+  settled: SpendingTimelineResult | null,
+): SpendingTimelineStatus | { status: 'loading' } {
+  return settled?.request === request ? settled.result : { status: 'loading' };
+}
+
+export function SpendingTimeline() {
+  const [request, setRequest] = useState<SpendingTimelineRequest>({ days: 30 });
+  const [settled, setSettled] = useState<SpendingTimelineResult | null>(null);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const query = currentSpendingTimeline(request, settled);
+  const data = query.status === 'ready' ? query.data : [];
+  const loading = query.status === 'loading';
+  const error = query.status === 'error';
 
   useEffect(() => {
-    fetchTimeline(activeDays);
-  }, [activeDays, fetchTimeline]);
+    const controller = new AbortController();
+    void requestSpendingTimeline(request, controller.signal, setSettled);
+    return () => controller.abort();
+  }, [request]);
 
   return (
     <SpendingTimelineContent
       data={data}
       loading={loading}
       error={error}
-      activeDays={activeDays}
+      activeDays={request.days}
       expandedDay={expandedDay}
-      onSelectDays={setActiveDays}
+      onSelectDays={(days) => {
+        if (days !== request.days) setRequest({ days });
+      }}
       onToggleDay={(date) => setExpandedDay((prev) => (prev === date ? null : date))}
-      onRetry={() => fetchTimeline(activeDays)}
+      onRetry={() => setRequest({ days: request.days })}
     />
   );
 }

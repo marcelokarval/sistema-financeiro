@@ -466,3 +466,101 @@ test('InvestmentEntryEditor adota FinanceFormDialogShell com closeLabel, modos c
   expect(editSubmit?.props.disabled).toBe(true);
   expect(editSubmit?.props.children).toBe('Salvando…');
 });
+
+async function exerciseInvestments(
+  respondDividends: () => Promise<Response>,
+  run: (render: () => ViewElement) => Promise<void>,
+) {
+  const dispatcher = (React as unknown as { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown } }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const { H } = dispatcher;
+  const originalFetch = globalThis.fetch;
+  const states: unknown[] = [], refs: { current: unknown }[] = [];
+  const cleanups: (() => void)[] = [];
+  let mounted = false;
+
+  function render() {
+    let stateIndex = 0, refIndex = 0;
+    const effects: (() => void)[] = [];
+    dispatcher.H = {
+      useState(initial: unknown) {
+        const i = stateIndex++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
+      useCallback: (fn: unknown) => fn,
+      useMemo: (factory: () => unknown) => factory(),
+      useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
+      useLayoutEffect: () => {},
+    };
+    try {
+      const view = investments.InvestmentsView();
+      mounted = true;
+      effects.forEach((effect) => {
+        const cleanup = effect();
+        if (typeof cleanup === 'function') cleanups.push(cleanup);
+      });
+      return view;
+    } finally {
+      dispatcher.H = H;
+    }
+  }
+
+  try {
+    globalThis.fetch = (async (url: string) => {
+      if (url === '/api/investments') return Response.json([investment]);
+      if (url === '/api/investments/transactions') return respondDividends();
+      if (url === '/api/accounts' || url === '/api/categories') return Response.json([]);
+      throw new Error(`Unexpected GET: ${url}`);
+    }) as typeof fetch;
+    render();
+    await settle();
+    await run(render);
+  } finally {
+    cleanups.forEach((cleanup) => cleanup());
+    globalThis.fetch = originalFetch;
+  }
+}
+
+test('Task 1.5: fetchDividends trata 503 e falha de rede evitando zero silencioso e recuperando no retry', async () => {
+  for (const mode of ['http-503', 'network-error'] as const) {
+    let divOutcome: 'fail' | 'div50' | 'empty' = 'fail';
+    await exerciseInvestments(
+      async () => {
+        if (divOutcome === 'fail') {
+          if (mode === 'network-error') throw new Error('Falha de rede');
+          return new Response(null, { status: 503 });
+        }
+        if (divOutcome === 'div50') return Response.json([{ id: 'd1', type: 'DIVIDENDO', amount: 50 }]);
+        return Response.json([]);
+      },
+      async (render) => {
+        const errTree = render();
+        const errHtml = renderToStaticMarkup(errTree);
+        expect(errHtml).toContain('CDB sintético');
+        expect(errHtml).toContain('role="alert"');
+        expect(errHtml).toContain('Não foi possível carregar os dividendos');
+        expect(errHtml).toContain('Tentar novamente');
+        expect(errHtml).toContain('>—</dd>');
+        expect(errHtml).not.toContain('R$ 0,00');
+
+        const portfolio = findElement(errTree, (e) => e.type === investments.InvestmentPortfolio)!;
+        expect(typeof portfolio.props.onRetryDividends).toBe('function');
+
+        divOutcome = 'div50';
+        await portfolio.props.onRetryDividends();
+        await settle();
+        const recoveredHtml = renderToStaticMarkup(render());
+        expect(recoveredHtml).not.toContain('role="alert"');
+        expect(recoveredHtml).toContain('R$ 50,00');
+
+        divOutcome = 'empty';
+        await portfolio.props.onRetryDividends();
+        await settle();
+        const realZeroHtml = renderToStaticMarkup(render());
+        expect(realZeroHtml).not.toContain('role="alert"');
+        expect(realZeroHtml).toContain('R$ 0,00');
+      },
+    );
+  }
+});

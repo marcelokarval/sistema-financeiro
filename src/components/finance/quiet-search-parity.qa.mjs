@@ -144,6 +144,9 @@ function installFixture(Page, ThemeProvider, createElement, createRoot, useAppSt
       if (url === '/api/categories') {
         return Response.json(categories);
       }
+      if (url === '/api/investments' || url === '/api/installments' || url === '/api/consortiums') {
+        return Response.json([]);
+      }
     }
 
     if (method === 'POST' && url === '/api/advisor') {

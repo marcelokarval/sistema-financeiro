@@ -39,26 +39,55 @@ function ReportsLoadingSkeleton() {
   );
 }
 
-export function FinancialReportsWidget() {
-  const [data, setData] = useState<ReportsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('monthly');
+export type FinancialReportsRequest = Record<string, never>;
+export type FinancialReportsStatus =
+  | { status: 'ready'; data: ReportsData }
+  | { status: 'error' };
+export type FinancialReportsResult = {
+  request: FinancialReportsRequest;
+  result: FinancialReportsStatus;
+};
 
-  const fetchReports = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/reports?months=6');
-      if (res.ok) setData(await res.json());
-    } catch (e) {
-      console.error('Failed to fetch reports', e);
-    } finally {
-      setLoading(false);
-    }
+export async function requestFinancialReports(
+  request: FinancialReportsRequest,
+  signal: AbortSignal,
+  publish: (response: FinancialReportsResult) => void,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<void> {
+  let result: FinancialReportsStatus;
+  try {
+    const res = await fetcher('/api/reports?months=6', { signal });
+    result = res.ok ? { status: 'ready', data: await res.json() } : { status: 'error' };
+  } catch {
+    result = { status: 'error' };
+  }
+  if (!signal.aborted) publish({ request, result });
+}
+
+export function currentFinancialReports(
+  request: FinancialReportsRequest,
+  settled: FinancialReportsResult | null,
+): FinancialReportsStatus | { status: 'loading' } {
+  return settled?.request === request ? settled.result : { status: 'loading' };
+}
+
+export function FinancialReportsWidget() {
+  const [request, setRequest] = useState<FinancialReportsRequest>(() => ({}));
+  const [settled, setSettled] = useState<FinancialReportsResult | null>(null);
+  const [activeTab, setActiveTab] = useState('monthly');
+  const query = currentFinancialReports(request, settled);
+  const data = query.status === 'ready' ? query.data : null;
+  const loading = query.status === 'loading';
+
+  const fetchReports = useCallback(() => {
+    setRequest({});
   }, []);
 
   useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+    const controller = new AbortController();
+    void requestFinancialReports(request, controller.signal, setSettled);
+    return () => controller.abort();
+  }, [request]);
 
   return (
     <FinancialReportsContent

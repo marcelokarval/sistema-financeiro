@@ -1125,3 +1125,26 @@ test('Cartões: DELETE 2xx limpa dialogReturn e foca Novo cartão mesmo com bot�
     expect(focused).toEqual(['Excluir cartão Cartão A', 'Excluir cartão Cartão A', 'Novo cartão']);
   });
 });
+
+test('Task 1.3: AccountsView saveTransfer trata resposta 503 não-JSON com Erro na transferência mantendo diálogo aberto sem releitura', async () => {
+  await exerciseAccounts(async ({ render, calls, feedback, answerWrite }) => {
+    const initialGets = calls.filter(({ method }) => method === 'GET').length;
+    required(render(), buttonNamed('Transferir')).props.onClick({ currentTarget: null });
+    const transferDialog = () => required(render(), dialogTitleIs('Transferir entre Contas'));
+    const transferSelect = (selectId: string) =>
+      find(transferDialog(), (node) => node.props.onValueChange && !!find(node.props.children, byId(selectId)))!;
+
+    transferSelect('transfer-from').props.onValueChange('a');
+    transferSelect('transfer-to').props.onValueChange('b');
+    required(transferDialog(), byId('transfer-amount')).props.onChange({ target: { value: '25' } });
+
+    answerWrite(async () => new Response('não JSON', { status: 503 }));
+    required(transferDialog(), buttonNamed('Transferir')).props.onClick();
+    await settle();
+
+    expect(feedback).toEqual(['erro: Erro na transferência']);
+    expect(find(render(), dialogTitleIs('Transferir entre Contas'))).toBeDefined();
+    expect(writes(calls)).toHaveLength(1);
+    expect(calls.filter(({ method }) => method === 'GET').length).toBe(initialGets);
+  });
+});

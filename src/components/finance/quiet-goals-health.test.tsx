@@ -714,3 +714,46 @@ test('GoalsDashboard, SavingsChallenge e AchievementBadges adotam FinanceProgres
   expect(savingsZeroHtml).toContain('Nenhum gasto ainda');
   expect(hasProgressBar(savingsZeroHtml, '0', 'Uso da meta diária')).toBe(true);
 });
+
+test('Task 1.3: MonthlyBudgetTracker handleDelete trata resposta 503 não-JSON com fallback seguro sem releitura', async () => {
+  const sampleBudget = {
+    id: 'mb-1',
+    categoryId: 'cat-food',
+    categoryName: 'Alimentação',
+    categoryColor: '#22c55e',
+    categoryIcon: 'utensils',
+    amount: 500,
+    spent: 100,
+    remaining: 400,
+    percentage: 20,
+    isOverBudget: false,
+  };
+
+  await exerciseWidget(
+    () => MonthlyBudgetUI.MonthlyBudgetTracker({ showValues: true, refreshCounter: 0 }),
+    async (url, init) => {
+      if (!init?.method || init.method === 'GET') {
+        if (url.startsWith('/api/monthly-budgets')) return Response.json({ budgets: [sampleBudget] });
+        if (url === '/api/categories') return Response.json([{ id: 'cat-food', name: 'Alimentação', color: '#22c55e', icon: 'utensils', type: 'EXPENSE' }]);
+        return Response.json([]);
+      }
+      return new Response('não JSON', { status: 503 });
+    },
+    async (render, requests, feedback) => {
+      const initialGets = requests.filter(([m, u]) => m === 'GET' && u.startsWith('/api/monthly-budgets')).length;
+      findElement(render(), (e) => e.props.onDelete && e.props.budget?.id === 'mb-1')!.props.onDelete();
+
+      const deleteDialog = findElement(render(), (e) => e.type === AlertDialog)!;
+      expect(deleteDialog.props.open).toBe(true);
+
+      await findElement(render(), (e) => e.type === AlertDialogAction)!.props.onClick({ preventDefault() {} });
+      await settle();
+
+      const afterFailDialog = findElement(render(), (e) => e.type === AlertDialog)!;
+      expect(afterFailDialog.props.open).toBe(true);
+      expect(feedback).toEqual([{ kind: 'error', message: 'Erro ao excluir' }]);
+      expect(requests.filter(([m]) => m === 'DELETE')).toHaveLength(1);
+      expect(requests.filter(([m, u]) => m === 'GET' && u.startsWith('/api/monthly-budgets')).length).toBe(initialGets);
+    },
+  );
+});

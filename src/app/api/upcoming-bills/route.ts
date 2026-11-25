@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { computeEndOfWeek, resolveCardDueDate } from '@/lib/api-validation';
 
 export async function GET() {
   try {
@@ -8,10 +9,7 @@ export async function GET() {
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     // End of this week (Sunday)
-    const dayOfWeek = now.getDay();
-    const endOfWeek = new Date(todayStart);
-    endOfWeek.setDate(endOfWeek.getDate() + (7 - dayOfWeek));
-    endOfWeek.setHours(23, 59, 59, 999);
+    const endOfWeek = computeEndOfWeek(now);
 
     // End of this month
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -126,12 +124,14 @@ export async function GET() {
     // 3. Credit cards - closing date = when statement closes, due day = when payment is due
     // We show the payment due date as the "bill"
     for (const card of activeCards) {
-      // Calculate this month's due date
-      let dueDateThisMonth = new Date(now.getFullYear(), now.getMonth(), card.dueDay);
-      // If due day already passed this month, show next month's
-      if (dueDateThisMonth < todayStart) {
-        dueDateThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, card.dueDay);
-      }
+      if (card.currentBalance <= 0) continue;
+
+      const dueDateThisMonth = resolveCardDueDate(
+        now.getFullYear(),
+        now.getMonth(),
+        card.dueDay,
+        todayStart
+      );
 
       const diffMs = dueDateThisMonth.getTime() - now.getTime();
       const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));

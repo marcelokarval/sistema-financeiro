@@ -1,0 +1,71 @@
+{
+  "candidate": "64e8e5c70f5e454705d9fd080a2cc9a9da9e5a8337bda525ec3503766c4b29a7",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "test -x .zscripts/test-sqlite.sh && bun --no-env-file test",
+        "outcome": "expected_failure",
+        "details": "Script .zscripts/test-sqlite.sh ausente antes da criacao e 41 cenarios opt-in SQLite pulados na execucao padrao"
+      },
+      "green": {
+        "command": "bash .zscripts/test-sqlite.sh",
+        "outcome": "passed",
+        "details": "54 aprovados e 0 reprovacoes em 6 execucoes isoladas com bwrap cobrindo as 5 suites opt-in SQLite sem tocar db/custom.db"
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "rg -n \"ignoreBuildErrors|no-debugger|db:migrate|db:reset\" next.config.ts eslint.config.mjs package.json",
+        "outcome": "expected_failure",
+        "details": "Inspecao pre-edicao confirmou ignoreBuildErrors ativo em next.config.ts, regras criticas desativadas em eslint.config.mjs e scripts ausentes em package.json"
+      },
+      "green": {
+        "command": "bun --no-env-file run check && git diff --exit-code HEAD -- bun.lock",
+        "outcome": "passed",
+        "details": "Gates estaticos aprovados com typecheck, eslint sem erros, arch:check com 34 avisos, 533 aprovados nos testes, 66 em test:scripts e bun.lock intacto"
+      }
+    },
+    {
+      "id": "1.3",
+      "plan": "1.3",
+      "red": {
+        "command": "test -f .github/workflows/ci.yml",
+        "outcome": "expected_failure",
+        "details": "Arquivo .github/workflows/ci.yml inexistente antes da implementacao"
+      },
+      "green": {
+        "command": "python3 -c \"import yaml; data = yaml.safe_load(open('.github/workflows/ci.yml'))\"",
+        "outcome": "passed",
+        "details": "YAML valido com job unico ubuntu-latest, Bun 1.4.2, permissoes somente leitura, fetch-depth 0, bubblewrap e alinhamento completo aos scripts do package.json"
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "rg -n \"spec-driven|framer-motion|33 avisos\" openspec/config.yaml AGENTS.md docs/reference/frontend-componentization-coverage.md",
+        "outcome": "expected_failure",
+        "details": "Inspecao pre-edicao encontrou schema spec-driven, 3 links quebrados, contagem AST desatualizada e import framer-motion em AGENTS.md"
+      },
+      "green": {
+        "command": "ls openspec/changes/archive/2026-11-23-recriar-interface-quiet-financial-os/plan.md openspec/changes/archive/2026-11-23-recriar-interface-quiet-financial-os/design.md openspec/changes/archive/2026-11-23-recriar-interface-quiet-financial-os/tasks.md && bun --no-env-file run arch:check",
+        "outcome": "passed",
+        "details": "Links verificados no disco, openspec/config.yaml atualizado para superpowers-bridge, contagem reconciliada para 34 avisos e AGENTS.md alinhado"
+      }
+    }
+  ],
+  "structural": {
+    "command": "bun --no-env-file run check",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-apply-6 (revisao independente Fase 1 #260 e Fase 2 #277)",
+    "status": "pass",
+    "candidate": "64e8e5c70f5e454705d9fd080a2cc9a9da9e5a8337bda525ec3503766c4b29a7"
+  },
+  "unresolved": []
+}

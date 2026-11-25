@@ -18,6 +18,7 @@ export async function GET(request: Request) {
       investments,
       savingsGoals,
       installmentPlans,
+      consortiums,
       allTransactions,
       allPurchases,
     ] = await Promise.all([
@@ -40,20 +41,26 @@ export async function GET(request: Request) {
       db.savingsGoal.findMany({
         select: { id: true, currentAmount: true, targetAmount: true },
       }),
-      // InstallmentPlans: remaining = totalAmount - (paidInstallments * monthlyValue) (liability)
+      // InstallmentPlans: sum of PENDING and OVERDUE installments
       db.installmentPlan.findMany({
-        where: { isActive: true },
+        where: { isActive: true, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
         select: {
           id: true,
-          totalAmount: true,
-          paidInstallments: true,
-          monthlyValue: true,
-          status: true,
+          installments: {
+            where: { status: { in: ['PENDING', 'OVERDUE'] } },
+            select: { amount: true },
+          },
         },
       }),
-      // Transactions for historical flow estimation
+      // Consortiums: remaining = totalAmount - fundedAmount
+      db.consortium.findMany({
+        where: { isActive: true, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+        select: { id: true, totalAmount: true, fundedAmount: true },
+      }),
+      // Transactions for historical flow estimation (exclude TRANSFER)
       db.transaction.findMany({
         where: {
+          type: { in: ['INCOME', 'EXPENSE'] },
           date: {
             gte: new Date(currentYear, currentMonth - (months - 1), 1),
             lte: new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999),
@@ -81,16 +88,18 @@ export async function GET(request: Request) {
     const investmentValues = investments.reduce((sum, inv) => sum + inv.currentBalance, 0);
     const savingsValues = savingsGoals.reduce((sum, sg) => sum + sg.currentAmount, 0);
 
-    // Installment remaining = totalAmount - (paidInstallments * monthlyValue)
-    const installmentDebt = installmentPlans
-      .filter((ip) => ip.status !== 'COMPLETED' && ip.status !== 'CANCELLED')
-      .reduce((sum, ip) => {
-        const paidAmount = ip.paidInstallments * ip.monthlyValue;
-        return sum + Math.max(0, ip.totalAmount - paidAmount);
-      }, 0);
+    const installmentDebt = installmentPlans.reduce(
+      (sum, ip) => sum + ip.installments.reduce((s, inst) => s + inst.amount, 0),
+      0
+    );
+
+    const consortiumDebt = consortiums.reduce(
+      (sum, c) => sum + Math.max(0, c.totalAmount - c.fundedAmount),
+      0
+    );
 
     const currentAssets = accountBalances + investmentValues + savingsValues;
-    const currentLiabilities = cardDebt + installmentDebt;
+    const currentLiabilities = cardDebt + installmentDebt + consortiumDebt;
     const currentNetWorth = currentAssets - currentLiabilities;
 
     // ─── Monthly transaction flows ──────────────────────────────────
@@ -136,12 +145,11 @@ export async function GET(request: Request) {
         netWorth -= monthlyFlows[j];
       }
 
-      // Scale assets and liabilities proportionally for past months
-      const ratio = currentAssets + currentLiabilities !== 0
-        ? (netWorth + currentLiabilities) / (currentAssets + currentLiabilities)
-        : 1;
-      const assets = currentAssets * Math.max(0, ratio);
-      const liabilities = currentLiabilities * Math.max(0, ratio);
+      // Preserve coherent positive liabilities even when historical netWorth <= -currentLiabilities
+      const liabilities = netWorth < -currentLiabilities
+        ? Math.abs(netWorth)
+        : currentLiabilities;
+      const assets = Math.max(0, netWorth + liabilities);
 
       // Change from previous month
       const prevNetWorth = i > 0

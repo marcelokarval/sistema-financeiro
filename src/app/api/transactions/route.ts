@@ -1,6 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
+import {
+  parseCivilDateEnd,
+  parseCivilDateStart,
+  parseJsonBody,
+  parsePositiveFiniteNumber,
+} from "@/lib/api-validation";
+
+class TransactionDomainError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+  }
+}
+
+async function validateTransactionRefs(
+  tx: Prisma.TransactionClient,
+  refs: { accountId?: unknown; categoryId?: unknown; cardId?: unknown },
+  accountMissingStatus: number
+): Promise<void> {
+  if (typeof refs.accountId === "string" && refs.accountId) {
+    const account = await tx.account.findUnique({ where: { id: refs.accountId } });
+    if (!account) {
+      throw new TransactionDomainError(
+        accountMissingStatus === 404 ? "Account not found" : "Conta inválida.",
+        accountMissingStatus
+      );
+    }
+  }
+  if (typeof refs.categoryId === "string" && refs.categoryId) {
+    const category = await tx.category.findUnique({ where: { id: refs.categoryId } });
+    if (!category) {
+      throw new TransactionDomainError("Categoria inválida.", 400);
+    }
+  }
+  if (typeof refs.cardId === "string" && refs.cardId) {
+    const card = await tx.card.findUnique({ where: { id: refs.cardId } });
+    if (!card) {
+      throw new TransactionDomainError("Cartão inválido.", 400);
+    }
+  }
+}
+
+function isValidOptionalId(value: unknown): value is string | null | undefined {
+  return value === undefined || value === null || typeof value === "string";
+}
 
 // GET /api/transactions - List transactions with optional filters
 export async function GET(request: NextRequest) {
@@ -20,16 +67,33 @@ export async function GET(request: NextRequest) {
     if (cardId) where.cardId = cardId;
     if (type) where.type = type;
     if (categoryId) where.categoryId = categoryId;
-    if (from || to) {
+    if (from !== null || to !== null) {
       where.date = {};
-      if (from) {
-        where.date.gte = new Date(from);
+      if (from !== null) {
+        const fromDate = parseCivilDateStart(from);
+        if (!fromDate) {
+          return NextResponse.json(
+            { error: "Data inicial inválida. Use o formato YYYY-MM-DD." },
+            { status: 400 }
+          );
+        }
+        where.date.gte = fromDate;
       }
-      if (to) {
-        // Include the entire end day
-        const toDate = new Date(to);
-        toDate.setHours(23, 59, 59, 999);
+      if (to !== null) {
+        const toDate = parseCivilDateEnd(to);
+        if (!toDate) {
+          return NextResponse.json(
+            { error: "Data final inválida. Use o formato YYYY-MM-DD." },
+            { status: 400 }
+          );
+        }
         where.date.lte = toDate;
+      }
+      if (where.date.gte && where.date.lte && where.date.gte > where.date.lte) {
+        return NextResponse.json(
+          { error: "Intervalo de datas inválido: 'from' deve ser anterior ou igual a 'to'." },
+          { status: 400 }
+        );
       }
     }
 
@@ -56,65 +120,104 @@ export async function GET(request: NextRequest) {
 // POST /api/transactions - Create transaction
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { type, amount, description, date, notes, categoryId, accountId, cardId } = body;
+    const parsedBody = await parseJsonBody(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
 
-    if (!type) {
+    const { type, amount, description, date, notes, categoryId, accountId, cardId } = parsedBody.data;
+
+    if (typeof type !== "string" || !["INCOME", "EXPENSE", "TRANSFER"].includes(type)) {
       return NextResponse.json(
         { error: "Transaction type is required (INCOME, EXPENSE, TRANSFER)" },
         { status: 400 }
       );
     }
 
-    if (!amount || amount <= 0) {
+    const parsedAmount = parsePositiveFiniteNumber(amount);
+    if (parsedAmount === null) {
       return NextResponse.json(
         { error: "Valid amount is required" },
         { status: 400 }
       );
     }
 
-    if (!description || description.trim() === "") {
+    if (typeof description !== "string" || description.trim() === "") {
       return NextResponse.json(
         { error: "Description is required" },
         { status: 400 }
       );
     }
 
-    const transaction = await db.transaction.create({
-      data: {
-        type,
-        amount: Number(amount),
-        description: description.trim(),
-        date: date ? new Date(date) : new Date(),
-        notes: notes || "",
-        categoryId: categoryId || null,
-        accountId: accountId || null,
-        cardId: cardId || null,
-      },
-      include: {
-        category: true,
-        account: true,
-        card: true,
-      },
-    });
-
-    // Update account balance if account is specified
-    if (accountId) {
-      if (type === "INCOME") {
-        await db.account.update({
-          where: { id: accountId },
-          data: { balance: { increment: Number(amount) } },
-        });
-      } else if (type === "EXPENSE") {
-        await db.account.update({
-          where: { id: accountId },
-          data: { balance: { decrement: Number(amount) } },
-        });
-      }
+    if (!isValidOptionalId(categoryId) || !isValidOptionalId(accountId) || !isValidOptionalId(cardId)) {
+      return NextResponse.json(
+        { error: "Referência de categoria, conta ou cartão inválida." },
+        { status: 400 }
+      );
     }
+
+    let resolvedDate = new Date();
+    if (date !== undefined && date !== null) {
+      if (typeof date !== "string") {
+        return NextResponse.json(
+          { error: "Invalid transaction date" },
+          { status: 400 }
+        );
+      }
+      const parsedDate = parseCivilDateStart(date);
+      if (!parsedDate) {
+        return NextResponse.json(
+          { error: "Invalid transaction date" },
+          { status: 400 }
+        );
+      }
+      resolvedDate = parsedDate;
+    }
+
+    const transaction = await db.$transaction(async (tx) => {
+      await validateTransactionRefs(tx, { accountId, categoryId, cardId }, 404);
+
+      const created = await tx.transaction.create({
+        data: {
+          type,
+          amount: parsedAmount,
+          description: description.trim(),
+          date: resolvedDate,
+          notes: typeof notes === "string" ? notes : "",
+          categoryId: categoryId || null,
+          accountId: accountId || null,
+          cardId: cardId || null,
+        },
+        include: {
+          category: true,
+          account: true,
+          card: true,
+        },
+      });
+
+      // Update account balance if account is specified
+      if (accountId) {
+        if (type === "INCOME") {
+          await tx.account.update({
+            where: { id: accountId },
+            data: { balance: { increment: parsedAmount } },
+          });
+        } else if (type === "EXPENSE") {
+          await tx.account.update({
+            where: { id: accountId },
+            data: { balance: { decrement: parsedAmount } },
+          });
+        }
+      }
+
+      return created;
+    });
 
     return NextResponse.json(transaction, { status: 201 });
   } catch (error) {
+    if (error instanceof TransactionDomainError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error creating transaction:", error);
     return NextResponse.json(
       { error: "Failed to create transaction" },
@@ -126,28 +229,37 @@ export async function POST(request: NextRequest) {
 // PUT /api/transactions - Update transaction
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id, type, amount, description, date, notes, categoryId, accountId, cardId } = body;
+    const parsedBody = await parseJsonBody(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
 
-    if (!id) {
+    const { id, type, amount, description, date, notes, categoryId, accountId, cardId } = parsedBody.data;
+
+    if (typeof id !== "string" || !id.trim()) {
       return NextResponse.json(
         { error: "Transaction id is required" },
         { status: 400 }
       );
     }
 
-    if (type !== undefined && !["INCOME", "EXPENSE", "TRANSFER"].includes(type)) {
+    if (type !== undefined && (typeof type !== "string" || !["INCOME", "EXPENSE", "TRANSFER"].includes(type))) {
       return NextResponse.json(
         { error: "Transaction type is required (INCOME, EXPENSE, TRANSFER)" },
         { status: 400 }
       );
     }
 
-    if (amount !== undefined && (!Number.isFinite(Number(amount)) || Number(amount) <= 0)) {
-      return NextResponse.json(
-        { error: "Valid amount is required" },
-        { status: 400 }
-      );
+    let parsedPutAmount: number | undefined;
+    if (amount !== undefined) {
+      const parsed = parsePositiveFiniteNumber(amount);
+      if (parsed === null) {
+        return NextResponse.json(
+          { error: "Valid amount is required" },
+          { status: 400 }
+        );
+      }
+      parsedPutAmount = parsed;
     }
 
     if (description !== undefined && (typeof description !== "string" || description.trim() === "")) {
@@ -157,26 +269,46 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (date !== undefined && date !== null && isNaN(new Date(date).getTime())) {
+    if (!isValidOptionalId(categoryId) || !isValidOptionalId(accountId) || !isValidOptionalId(cardId)) {
       return NextResponse.json(
-        { error: "Invalid transaction date" },
+        { error: "Referência de categoria, conta ou cartão inválida." },
         { status: 400 }
       );
     }
 
-    const existing = await db.transaction.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Transaction not found" },
-        { status: 404 }
-      );
+    let parsedPutDate: Date | undefined;
+    if (date !== undefined) {
+      if (date === null) {
+        parsedPutDate = new Date();
+      } else if (typeof date !== "string") {
+        return NextResponse.json(
+          { error: "Invalid transaction date" },
+          { status: 400 }
+        );
+      } else {
+        const parsed = parseCivilDateStart(date);
+        if (!parsed) {
+          return NextResponse.json(
+            { error: "Invalid transaction date" },
+            { status: 400 }
+          );
+        }
+        parsedPutDate = parsed;
+      }
     }
 
-    const newAmount = amount !== undefined ? Number(amount) : existing.amount;
-    const newType = type || existing.type;
-    const newAccountId = accountId !== undefined ? accountId || null : existing.accountId;
-
     const transaction = await db.$transaction(async (tx) => {
+      const existing = await tx.transaction.findUnique({ where: { id } });
+      if (!existing) {
+        throw new TransactionDomainError("Transaction not found", 404);
+      }
+
+      await validateTransactionRefs(tx, { accountId, categoryId, cardId }, 400);
+
+      const newAmount = parsedPutAmount !== undefined ? parsedPutAmount : existing.amount;
+      const newType = type || existing.type;
+      const newAccountId = accountId !== undefined ? accountId || null : existing.accountId;
+
       // Revert the old balance change if account is involved
       if (existing.accountId && existing.amount) {
         if (existing.type === "INCOME") {
@@ -196,10 +328,10 @@ export async function PUT(request: NextRequest) {
         where: { id },
         data: {
           ...(type !== undefined && { type }),
-          ...(amount !== undefined && { amount: newAmount }),
+          ...(parsedPutAmount !== undefined && { amount: parsedPutAmount }),
           ...(description !== undefined && { description: description.trim() }),
-          ...(date !== undefined && { date: date ? new Date(date) : new Date() }),
-          ...(notes !== undefined && { notes }),
+          ...(parsedPutDate !== undefined && { date: parsedPutDate }),
+          ...(notes !== undefined && typeof notes === "string" && { notes }),
           ...(categoryId !== undefined && { categoryId: categoryId || null }),
           ...(accountId !== undefined && { accountId: accountId || null }),
           ...(cardId !== undefined && { cardId: cardId || null }),
@@ -231,6 +363,9 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(transaction);
   } catch (error) {
+    if (error instanceof TransactionDomainError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error updating transaction:", error);
     return NextResponse.json(
       { error: "Failed to update transaction" },
@@ -247,8 +382,15 @@ export async function DELETE(request: NextRequest) {
       const rawBody = await request.text();
       if (rawBody.trim()) {
         try {
-          const parsed = JSON.parse(rawBody) as { id?: string };
-          id = parsed.id ?? null;
+          const parsed: unknown = JSON.parse(rawBody);
+          if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+            return NextResponse.json(
+              { error: "Invalid JSON body" },
+              { status: 400 }
+            );
+          }
+          const rawId = (parsed as { id?: unknown }).id;
+          id = typeof rawId === "string" ? rawId : null;
         } catch {
           return NextResponse.json(
             { error: "Invalid JSON body" },

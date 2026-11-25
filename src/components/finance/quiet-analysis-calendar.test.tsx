@@ -223,6 +223,7 @@ import { Tooltip as RechartsTooltip } from 'recharts';
 import * as balanceProj from './balance-projection';
 import * as cashFlow from './cash-flow-forecast';
 import * as expenseBk from './expense-breakdown';
+import * as timeline from './spending-timeline';
 import { currencyFmt } from '@/lib/helpers';
 
 function findButtonByText(node: unknown, label: string): { props: Record<string, any> } | undefined {
@@ -248,7 +249,7 @@ function findButtonByText(node: unknown, label: string): { props: Record<string,
   return undefined;
 }
 
-function runWithReactHarness(renderComponent: () => React.ReactElement) {
+function runWithReactHarness(renderComponent: () => React.ReactElement<Record<string, any>>) {
   const reactInternals = (React as unknown as {
     __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
   }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
@@ -299,7 +300,7 @@ function runWithReactHarness(renderComponent: () => React.ReactElement) {
         }
         effects[item.idx] = { deps: item.deps, cleanup: item.fn() };
       }
-      return tree;
+      return tree as React.ReactElement<Record<string, any>>;
     } finally {
       reactInternals.H = previousDispatcher;
     }
@@ -1017,5 +1018,460 @@ test('Task 0018: seções extraídas de dívidas, calendário, relatórios e an�
     expect(monthState.getMonth()).toBe(10);
   } finally {
     harness.cleanupAll();
+  }
+});
+
+test('Task 1.1: request*/current* em networth, financial-calendar, transaction-analytics e spending-timeline descartam abortados e limpam dado em erro', async () => {
+  const nwReqA = { months: 6 };
+  const nwReqB = { months: 12 };
+  const nwReqASame = { months: 6 };
+  const nwCtrlA = new AbortController();
+  const nwPublished: Array<Record<string, any>> = [];
+
+  expect((networth as Record<string, any>).currentNetworthEvolution(nwReqA, null)).toEqual({ status: 'loading' });
+  nwCtrlA.abort();
+  await (networth as Record<string, any>).requestNetworthEvolution(
+    nwReqA,
+    nwCtrlA.signal,
+    (res: Record<string, any>) => nwPublished.push(res),
+    async () => Response.json({ monthlyData: [{ month: 'jan', netWorth: 999, assets: 999, liabilities: 0, changePercent: 0, changeAmount: 0 }] }),
+  );
+  await (networth as Record<string, any>).requestNetworthEvolution(
+    nwReqA,
+    nwCtrlA.signal,
+    (res: Record<string, any>) => nwPublished.push(res),
+    async () => {
+      throw new Error('late network error');
+    },
+  );
+  expect(nwPublished).toEqual([]);
+
+  const nwCtrlB = new AbortController();
+  await (networth as Record<string, any>).requestNetworthEvolution(
+    nwReqB,
+    nwCtrlB.signal,
+    (res: Record<string, any>) => nwPublished.push(res),
+    async () => new Response(null, { status: 503 }),
+  );
+  expect(nwPublished).toHaveLength(1);
+  expect((networth as Record<string, any>).currentNetworthEvolution(nwReqB, nwPublished[0])).toEqual({ status: 'error' });
+  expect((networth as Record<string, any>).currentNetworthEvolution(nwReqASame, nwPublished[0])).toEqual({ status: 'loading' });
+
+  const calReqA = { days: 30 };
+  const calReqB = { days: 7 };
+  const calCtrlA = new AbortController();
+  const calPublished: Array<Record<string, any>> = [];
+  calCtrlA.abort();
+  await (calendar as Record<string, any>).requestFinancialCalendar(
+    calReqA,
+    calCtrlA.signal,
+    (res: Record<string, any>) => calPublished.push(res),
+    async () => new Response(null, { status: 503 }),
+  );
+  expect(calPublished).toEqual([]);
+  expect((calendar as Record<string, any>).currentFinancialCalendar(calReqB, {
+    request: calReqA,
+    result: { status: 'ready', data: { days: [], summary: { totalUpcoming: 0, totalBills: 0, totalIncome: 0, totalExpense: 0, upcomingBiggestExpense: null, nextPaymentDate: null } } },
+  })).toEqual({ status: 'loading' });
+
+  const taReqA = { typeFilter: 'ALL' as const };
+  const taReqB = { typeFilter: 'EXPENSE' as const };
+  const taCtrlA = new AbortController();
+  const taPublished: Array<Record<string, any>> = [];
+  taCtrlA.abort();
+  await (analytics as Record<string, any>).requestTransactionAnalytics(
+    taReqA,
+    taCtrlA.signal,
+    (res: Record<string, any>) => taPublished.push(res),
+    async () => Response.json({ overview: {}, monthlyComparison: [], topMerchants: [], amountDistribution: [], dailyPattern: [] }),
+  );
+  expect(taPublished).toEqual([]);
+  expect((analytics as Record<string, any>).currentTransactionAnalytics(taReqB, {
+    request: taReqA,
+    result: { status: 'error' },
+  })).toEqual({ status: 'loading' });
+
+  const stReqA = { days: 30 };
+  const stReqB = { days: 15 };
+  const stCtrlA = new AbortController();
+  const stPublished: Array<Record<string, any>> = [];
+  stCtrlA.abort();
+  await (timeline as Record<string, any>).requestSpendingTimeline(
+    stReqA,
+    stCtrlA.signal,
+    (res: Record<string, any>) => stPublished.push(res),
+    async () => {
+      throw new Error('aborted');
+    },
+  );
+  expect(stPublished).toEqual([]);
+  expect((timeline as Record<string, any>).currentSpendingTimeline(stReqB, {
+    request: stReqA,
+    result: { status: 'ready', data: [] },
+  })).toEqual({ status: 'loading' });
+});
+
+test('Task 1.1: NetworthEvolution, FinancialCalendar, TransactionAnalytics e SpendingTimeline descartam respostas tardias e limpam dado antigo em falha subsequente', async () => {
+  const originalFetch = globalThis.fetch;
+
+  // 1. NetworthEvolution: A (6m) pendente -> B (12m) resolve -> A (6m) resolve atrasada (503) -> B falha no refresh -> limpa dado e recupera
+  {
+    const req6 = Promise.withResolvers<Response>();
+    const req12First = Promise.withResolvers<Response>();
+    const req12Fail = Promise.withResolvers<Response>();
+    const req12Retry = Promise.withResolvers<Response>();
+    const signals: Array<AbortSignal | null | undefined> = [];
+    const queue = new Map<string, Array<Promise<Response>>>([
+      ['/api/networth?months=6', [req6.promise]],
+      ['/api/networth?months=12', [req12First.promise, req12Fail.promise, req12Retry.promise]],
+    ]);
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      signals.push(init?.signal);
+      return queue.get(url)!.shift()!;
+    }) as typeof fetch;
+
+    const makeNw = (value: number) => Response.json({
+      monthlyData: [{ month: 'fev', netWorth: value, assets: value + 1000, liabilities: 1000, changePercent: 10, changeAmount: 500 }],
+    });
+
+    const harness = runWithReactHarness(() => networth.NetworthEvolution());
+    try {
+      let tree = harness.renderTree();
+      tree.props.onSelectMonths(12);
+      tree = harness.renderTree();
+      expect(signals[0]?.aborted).toBe(true);
+      expect(signals[1]?.aborted).toBe(false);
+
+      req12First.resolve(makeNw(42000));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 42.000,00');
+
+      req6.resolve(new Response(null, { status: 503 }));
+      await settle();
+      const afterLate = renderToStaticMarkup(harness.renderTree());
+      expect(afterLate).toContain('R$ 42.000,00');
+      expect(afterLate).not.toContain('Não foi possível carregar a evolução patrimonial.');
+
+      // Nova tentativa falha com 503 -> deve limpar R$ 42.000,00 e exibir erro
+      harness.renderTree().props.fetchData(12);
+      harness.renderTree();
+      req12Fail.resolve(new Response(null, { status: 503 }));
+      await settle();
+      const failedHtml = renderToStaticMarkup(harness.renderTree());
+      expect(failedHtml).toContain('Não foi possível carregar a evolução patrimonial.');
+      expect(failedHtml).not.toContain('R$ 42.000,00');
+
+      harness.renderTree().props.onRetry();
+      harness.renderTree();
+      req12Retry.resolve(makeNw(55000));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 55.000,00');
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
+  }
+
+  // 2. FinancialCalendar: A (30d) pendente -> B (7d) resolve -> A (30d) resolve atrasada (200 OK) -> B falha -> limpa dado antigo e recupera
+  {
+    const req30 = Promise.withResolvers<Response>();
+    const req7First = Promise.withResolvers<Response>();
+    const req7Fail = Promise.withResolvers<Response>();
+    const req7Retry = Promise.withResolvers<Response>();
+    const signals: Array<AbortSignal | null | undefined> = [];
+    const queue = new Map<string, Array<Promise<Response>>>([
+      ['/api/financial-calendar?days=30', [req30.promise]],
+      ['/api/financial-calendar?days=7', [req7First.promise, req7Fail.promise, req7Retry.promise]],
+    ]);
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      signals.push(init?.signal);
+      return queue.get(url)!.shift()!;
+    }) as typeof fetch;
+
+    const makeCal = (expense: number) => Response.json({
+      days: [],
+      summary: {
+        totalUpcoming: expense,
+        totalBills: 1,
+        totalIncome: 0,
+        totalExpense: expense,
+        upcomingBiggestExpense: null,
+        nextPaymentDate: null,
+      },
+    });
+
+    const harness = runWithReactHarness(() => calendar.FinancialCalendar());
+    try {
+      let tree = harness.renderTree();
+      tree.props.onSelectDays(7);
+      tree = harness.renderTree();
+      expect(signals[0]?.aborted).toBe(true);
+
+      req7First.resolve(makeCal(777));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 777,00');
+
+      req30.resolve(makeCal(999));
+      await settle();
+      const afterLate = renderToStaticMarkup(harness.renderTree());
+      expect(afterLate).toContain('R$ 777,00');
+      expect(afterLate).not.toContain('R$ 999,00');
+
+      harness.renderTree().props.fetchData(7);
+      harness.renderTree();
+      req7Fail.reject(new Error('offline'));
+      await settle();
+      const failedHtml = renderToStaticMarkup(harness.renderTree());
+      expect(failedHtml).toContain('Não foi possível carregar o calendário financeiro.');
+      expect(failedHtml).not.toContain('R$ 777,00');
+
+      harness.renderTree().props.fetchData(7);
+      harness.renderTree();
+      req7Retry.resolve(makeCal(888));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 888,00');
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
+  }
+
+  // 3. TransactionAnalytics: A (ALL) pendente -> B (EXPENSE) resolve -> A rejeita atrasada -> B falha -> limpa dado antigo e recupera
+  {
+    const reqAll = Promise.withResolvers<Response>();
+    const reqExpFirst = Promise.withResolvers<Response>();
+    const reqExpFail = Promise.withResolvers<Response>();
+    const reqExpRetry = Promise.withResolvers<Response>();
+    const signals: Array<AbortSignal | null | undefined> = [];
+    const queue = new Map<string, Array<Promise<Response>>>([
+      ['/api/transaction-analytics?months=6', [reqAll.promise]],
+      ['/api/transaction-analytics?months=6&type=EXPENSE', [reqExpFirst.promise, reqExpFail.promise, reqExpRetry.promise]],
+    ]);
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      signals.push(init?.signal);
+      return queue.get(url)!.shift()!;
+    }) as typeof fetch;
+
+    const makeAnalytics = (totalExpense: number) => Response.json({
+      overview: {
+        totalTransactions: 1,
+        totalIncome: 0,
+        totalExpense,
+        averagePerTransaction: totalExpense,
+        highestTransaction: null,
+        lowestTransaction: null,
+        mostFrequentCategory: null,
+        weekdayBreakdown: [],
+      },
+      monthlyComparison: [],
+      topMerchants: [],
+      amountDistribution: [],
+      dailyPattern: [],
+    });
+
+    const harness = runWithReactHarness(() => analytics.TransactionAnalytics());
+    try {
+      let tree = harness.renderTree();
+      tree.props.onTypeFilterChange('EXPENSE');
+      tree = harness.renderTree();
+      expect(signals[0]?.aborted).toBe(true);
+
+      reqExpFirst.resolve(makeAnalytics(321));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 321,00');
+
+      reqAll.reject(new Error('late reject'));
+      await settle();
+      const afterLate = renderToStaticMarkup(harness.renderTree());
+      expect(afterLate).toContain('R$ 321,00');
+      expect(afterLate).not.toContain('Não foi possível carregar a análise de transações.');
+
+      harness.renderTree().props.fetchData();
+      harness.renderTree();
+      reqExpFail.resolve(new Response(null, { status: 503 }));
+      await settle();
+      const failedHtml = renderToStaticMarkup(harness.renderTree());
+      expect(failedHtml).toContain('Não foi possível carregar a análise de transações.');
+      expect(failedHtml).not.toContain('R$ 321,00');
+
+      harness.renderTree().props.onRetry();
+      harness.renderTree();
+      reqExpRetry.resolve(makeAnalytics(654));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 654,00');
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
+  }
+
+  // 4. SpendingTimeline: A (30d) pendente -> B (7d) resolve -> A (30d) falha atrasada -> B falha -> limpa dado antigo e recupera
+  {
+    const req30 = Promise.withResolvers<Response>();
+    const req7First = Promise.withResolvers<Response>();
+    const req7Fail = Promise.withResolvers<Response>();
+    const req7Retry = Promise.withResolvers<Response>();
+    const signals: Array<AbortSignal | null | undefined> = [];
+    const queue = new Map<string, Array<Promise<Response>>>([
+      ['/api/timeline?days=30', [req30.promise]],
+      ['/api/timeline?days=7', [req7First.promise, req7Fail.promise, req7Retry.promise]],
+    ]);
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      signals.push(init?.signal);
+      return queue.get(url)!.shift()!;
+    }) as typeof fetch;
+
+    const makeTimeline = (income: number) => Response.json([
+      { date: '2026-11-19', dayLabel: '19 nov', income, expense: 100, net: income - 100, runningBalance: income - 100, count: 1, items: [] },
+    ]);
+
+    const harness = runWithReactHarness(() => timeline.SpendingTimeline());
+    try {
+      let tree = harness.renderTree();
+      tree.props.onSelectDays(7);
+      tree = harness.renderTree();
+      expect(signals[0]?.aborted).toBe(true);
+
+      req7First.resolve(makeTimeline(1200));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 1.200,00');
+
+      req30.resolve(new Response(null, { status: 503 }));
+      await settle();
+      const afterLate = renderToStaticMarkup(harness.renderTree());
+      expect(afterLate).toContain('R$ 1.200,00');
+      expect(afterLate).not.toContain('Não foi possível carregar a linha do tempo.');
+
+      harness.renderTree().props.onRetry();
+      harness.renderTree();
+      req7Fail.resolve(new Response(null, { status: 503 }));
+      await settle();
+      const failedHtml = renderToStaticMarkup(harness.renderTree());
+      expect(failedHtml).toContain('Não foi possível carregar a linha do tempo.');
+      expect(failedHtml).not.toContain('R$ 1.200,00');
+
+      harness.renderTree().props.onRetry();
+      harness.renderTree();
+      req7Retry.resolve(makeTimeline(2400));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 2.400,00');
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
+  }
+});
+
+test('Task 1.4: DebtOverview e FinancialReportsWidget limpam dado antigo em falha subsequente e recuperam no retry', async () => {
+  const originalFetch = globalThis.fetch;
+
+  // 1. DebtOverview: 200 OK -> refresh 503 limpa R$ 1.500,00 e exibe role="alert" -> retry 200 OK recupera
+  {
+    const req1 = Promise.withResolvers<Response>();
+    const req2Fail = Promise.withResolvers<Response>();
+    const req3Retry = Promise.withResolvers<Response>();
+    const queue = [req1.promise, req2Fail.promise, req3Retry.promise];
+    const signals: Array<AbortSignal | null | undefined> = [];
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      signals.push(init?.signal);
+      return queue.shift()!;
+    }) as typeof fetch;
+
+    const makeDebts = (totalDebt: number) => Response.json({
+      totalDebt,
+      cardDebt: totalDebt,
+      installmentDebt: 0,
+      consortiumDebt: 0,
+      debtToIncomeRatio: 20,
+      monthlyIncome: 7500,
+      cards: [],
+      installments: [],
+      consortiums: [],
+    });
+
+    const harness = runWithReactHarness(() => debt.DebtOverview());
+    try {
+      harness.renderTree();
+      req1.resolve(makeDebts(1500));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 1.500,00');
+
+      // Refresh falha com 503 -> deve limpar R$ 1.500,00 e exibir erro
+      harness.renderTree().props.fetchData();
+      harness.renderTree();
+      req2Fail.resolve(new Response(null, { status: 503 }));
+      await settle();
+      const failedTree = harness.renderTree();
+      expect(failedTree.props.data).toBeNull();
+      const failedHtml = renderToStaticMarkup(failedTree);
+      expect(failedHtml).toContain('role="alert"');
+      expect(failedHtml).toContain('Não foi possível carregar o painel de dívidas.');
+      expect(failedHtml).toContain('Tentar novamente');
+      expect(failedHtml).not.toContain('R$ 1.500,00');
+
+      failedTree.props.onRetry();
+      harness.renderTree();
+      req3Retry.resolve(makeDebts(2200));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 2.200,00');
+      expect(signals.every((s) => s instanceof AbortSignal)).toBe(true);
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
+  }
+
+  // 2. FinancialReportsWidget: 200 OK -> refresh rejeita -> limpa dado antigo e exibe role="alert" -> retry recupera
+  {
+    const req1 = Promise.withResolvers<Response>();
+    const req2Reject = Promise.withResolvers<Response>();
+    const req3Retry = Promise.withResolvers<Response>();
+    const queue = [req1.promise, req2Reject.promise, req3Retry.promise];
+    const signals: Array<AbortSignal | null | undefined> = [];
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      signals.push(init?.signal);
+      return queue.shift()!;
+    }) as typeof fetch;
+
+    const makeReports = (expense: number) => Response.json({
+      monthlyData: [{ month: 'jan', income: 2000, expense, net: 2000 - expense, transactionCount: 2, purchaseCount: 0, avgDailySpend: 10, savingsRate: 50 }],
+      topExpenseCategory: null,
+      topCategories: [],
+      avgDailySpend: 10,
+      highestExpense: null,
+      lowestIncome: null,
+      savingsRateTrend: [{ month: 'jan', rate: 50 }],
+      ticketMedio: 100,
+    });
+
+    const harness = runWithReactHarness(() => reports.FinancialReportsWidget());
+    try {
+      harness.renderTree();
+      req1.resolve(makeReports(450));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 450,00');
+
+      harness.renderTree().props.fetchReports();
+      harness.renderTree();
+      req2Reject.reject(new Error('network error'));
+      await settle();
+      const failedTree = harness.renderTree();
+      expect(failedTree.props.data).toBeNull();
+      const failedHtml = renderToStaticMarkup(failedTree);
+      expect(failedHtml).toContain('role="alert"');
+      expect(failedHtml).toContain('Não foi possível carregar os relatórios financeiros.');
+      expect(failedHtml).toContain('Tentar novamente');
+      expect(failedHtml).not.toContain('R$ 450,00');
+
+      failedTree.props.onRetry();
+      harness.renderTree();
+      req3Retry.resolve(makeReports(780));
+      await settle();
+      expect(renderToStaticMarkup(harness.renderTree())).toContain('R$ 780,00');
+      expect(signals.every((s) => s instanceof AbortSignal)).toBe(true);
+    } finally {
+      harness.cleanupAll();
+      globalThis.fetch = originalFetch;
+    }
   }
 });

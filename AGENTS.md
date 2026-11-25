@@ -90,7 +90,7 @@ sistema-financeiro/
 ```typescript
 // Ordem: react → next → third-party → @/ components → @/ lib → @/ hooks
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { currencyFmt } from '@/lib/helpers';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -128,14 +128,18 @@ import { useRealtime } from '@/hooks/use-realtime';
 ## 5. Comandos
 
 ```bash
-bun install          # Instalar dependências
-bun run dev          # Dev server (porta 3000)
-bun run build        # Compilar Next; não equivale a empacotar uma release
-bun run db:push      # Sync schema com banco local
-bun run db:generate  # Gerar Prisma client
+bun install                  # Instalar dependências
+bun run dev                  # Dev server (porta 3000)
+bun run build                # Compilar Next; não equivale a empacotar uma release
+bun run db:push              # Sync schema com banco local
+bun run db:generate          # Gerar Prisma client
+bun --no-env-file run check        # typecheck + lint + arch:check + test + test:scripts
+bun --no-env-file run arch:check   # Gate AST com baseline em 25b44535c5068b99044afa03f7ecf318e7a9726f
+bun --no-env-file run test:scripts # Suítes de empacotamento e arquitetura em .zscripts/
+bun --no-env-file run test:sqlite  # 5 suítes opt-in SQLite em sandbox isolado (bwrap + tmpfs)
 ```
 
-Para produzir e verificar o `tar.gz` de release ou iniciar o pacote, siga o [guia de operação do pacote](<docs/operacao-empacotamento.md>). Não execute o empacotador a partir de um checkout com segredos ou dados reais.
+Para produzir e verificar o `tar.gz` de release ou iniciar o pacote, siga o [guia de operação do pacote](<docs/operacao-empacotamento.md>). Não execute o empacotador a partir de um checkout com segredos ou dados reais. A proteção da branch `main` no GitHub via ruleset leve exigindo o status check do CI (`.github/workflows/ci.yml`) será aplicada como operação externa no repositório após o primeiro CI verde.
 
 ---
 

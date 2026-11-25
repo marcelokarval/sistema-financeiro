@@ -4,17 +4,28 @@ import type { ElementType } from 'react';
 import {
   ArrowLeftRight,
   ArrowRight,
+  Building2,
+  CalendarClock,
   CreditCard,
   FileX,
   Loader2,
   Search,
   ShoppingBag,
   Tag,
+  TrendingUp,
   Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type SearchResultType = 'transactions' | 'purchases' | 'accounts' | 'cards' | 'categories';
+export type SearchResultType =
+  | 'transactions'
+  | 'purchases'
+  | 'accounts'
+  | 'cards'
+  | 'categories'
+  | 'investments'
+  | 'installments'
+  | 'consortiums';
 
 export interface SearchResult {
   id: string;
@@ -38,6 +49,9 @@ export const searchGroupMeta: Record<string, { title: string; icon: ElementType 
   accounts: { title: 'Contas', icon: Wallet },
   cards: { title: 'Cartões', icon: CreditCard },
   categories: { title: 'Categorias', icon: Tag },
+  investments: { title: 'Investimentos', icon: TrendingUp },
+  installments: { title: 'Parcelas', icon: CalendarClock },
+  consortiums: { title: 'Consórcios', icon: Building2 },
 };
 
 export interface GlobalSearchResultProps {

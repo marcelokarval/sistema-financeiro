@@ -67,31 +67,56 @@ function LoadingSkeleton() {
   );
 }
 
+export type FinancialCalendarRequest = { days: number };
+export type FinancialCalendarStatus =
+  | { status: 'ready'; data: CalendarData }
+  | { status: 'error' };
+export type FinancialCalendarResult = {
+  request: FinancialCalendarRequest;
+  result: FinancialCalendarStatus;
+};
+
+export async function requestFinancialCalendar(
+  request: FinancialCalendarRequest,
+  signal: AbortSignal,
+  publish: (response: FinancialCalendarResult) => void,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<void> {
+  let result: FinancialCalendarStatus;
+  try {
+    const res = await fetcher(`/api/financial-calendar?days=${request.days}`, { signal });
+    result = res.ok ? { status: 'ready', data: await res.json() } : { status: 'error' };
+  } catch {
+    result = { status: 'error' };
+  }
+  if (!signal.aborted) publish({ request, result });
+}
+
+export function currentFinancialCalendar(
+  request: FinancialCalendarRequest,
+  settled: FinancialCalendarResult | null,
+): FinancialCalendarStatus | { status: 'loading' } {
+  return settled?.request === request ? settled.result : { status: 'loading' };
+}
+
 export function FinancialCalendar() {
-  const [data, setData] = useState<CalendarData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeDays, setActiveDays] = useState(30);
+  const [request, setRequest] = useState<FinancialCalendarRequest>({ days: 30 });
+  const [settled, setSettled] = useState<FinancialCalendarResult | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const query = currentFinancialCalendar(request, settled);
+  const data = query.status === 'ready' ? query.data : null;
+  const loading = query.status === 'loading';
 
-  const fetchData = useCallback(async (days: number) => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/financial-calendar?days=${days}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      }
-    } catch (e) {
-      console.error('Erro ao buscar calendário financeiro:', e);
-    } finally {
-      setLoading(false);
-    }
+  const fetchData = useCallback((days: number) => {
+    setRequest({ days });
   }, []);
 
   useEffect(() => {
-    fetchData(activeDays);
-  }, [activeDays, fetchData]);
+    const controller = new AbortController();
+    void requestFinancialCalendar(request, controller.signal, setSettled);
+    return () => controller.abort();
+  }, [request]);
 
   const handleToday = () => {
     setSelectedDate(null);
@@ -102,11 +127,11 @@ export function FinancialCalendar() {
     <FinancialCalendarContent
       data={data}
       loading={loading}
-      activeDays={activeDays}
+      activeDays={request.days}
       selectedDate={selectedDate}
       currentMonth={currentMonth}
       onSelectDays={(days) => {
-        setActiveDays(days);
+        if (days !== request.days) setRequest({ days });
         setSelectedDate(null);
       }}
       onSelectDate={setSelectedDate}

@@ -1,13 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import {
+  mapPrismaError,
+  parseFiniteNumber,
+  parseJsonBody,
+  parsePositiveFiniteNumber,
+} from '@/lib/api-validation';
+
+function parseMonthValue(value: unknown): number | null {
+  const parsed = parseFiniteNumber(value);
+  if (parsed === null || !Number.isInteger(parsed) || parsed < 1 || parsed > 12) {
+    return null;
+  }
+  return parsed;
+}
+
+function parseYearValue(value: unknown, minYear: number): number | null {
+  const parsed = parseFiniteNumber(value);
+  if (parsed === null || !Number.isInteger(parsed) || parsed < minYear || parsed > 2100) {
+    return null;
+  }
+  return parsed;
+}
 
 // GET /api/monthly-budgets?month=7&year=2026
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const now = new Date();
-    const month = parseInt(searchParams.get('month') || String(now.getMonth() + 1));
-    const year = parseInt(searchParams.get('year') || String(now.getFullYear()));
+    const monthParam = searchParams.get('month');
+    const yearParam = searchParams.get('year');
+
+    const month = monthParam !== null ? parseMonthValue(monthParam) : now.getMonth() + 1;
+    if (month === null) {
+      return NextResponse.json({ error: 'Mês deve ser um inteiro entre 1 e 12' }, { status: 400 });
+    }
+
+    const year = yearParam !== null ? parseYearValue(yearParam, 2000) : now.getFullYear();
+    if (year === null) {
+      return NextResponse.json({ error: 'Ano inválido' }, { status: 400 });
+    }
 
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
@@ -80,31 +112,59 @@ export async function GET(req: NextRequest) {
 // POST /api/monthly-budgets
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { categoryId, amount, month, year } = body;
+    const parsedBody = await parseJsonBody(req);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
 
-    if (!categoryId) {
+    const { categoryId, amount, month, year } = parsedBody.data;
+
+    const validCategoryId = typeof categoryId === 'string' ? categoryId.trim() : '';
+    if (!validCategoryId) {
       return NextResponse.json({ error: 'Categoria é obrigatória' }, { status: 400 });
     }
-    if (!amount || amount <= 0) {
+
+    const parsedAmount = parsePositiveFiniteNumber(amount);
+    if (parsedAmount === null) {
       return NextResponse.json({ error: 'Valor deve ser maior que zero' }, { status: 400 });
     }
-    if (!month || month < 1 || month > 12) {
+
+    const parsedMonth = parseMonthValue(month);
+    if (parsedMonth === null) {
       return NextResponse.json({ error: 'Mês deve ser entre 1 e 12' }, { status: 400 });
     }
-    if (!year || year <= 2020) {
+
+    const parsedYear = parseYearValue(year, 2021);
+    if (parsedYear === null) {
       return NextResponse.json({ error: 'Ano deve ser maior que 2020' }, { status: 400 });
     }
 
     const budget = await db.monthlyBudget.create({
-      data: { categoryId, amount, month, year },
+      data: {
+        categoryId: validCategoryId,
+        amount: parsedAmount,
+        month: parsedMonth,
+        year: parsedYear,
+      },
       include: { category: true },
     });
 
     return NextResponse.json(budget, { status: 201 });
-  } catch (error: any) {
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'Já existe um orçamento para esta categoria neste mês/ano' }, { status: 409 });
+  } catch (error: unknown) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: unknown }).code === 'P2002'
+    ) {
+      return NextResponse.json(
+        { error: 'Já existe um orçamento para esta categoria neste mês/ano' },
+        { status: 409 }
+      );
+    }
+    const prismaResponse = mapPrismaError(error, { fk: 'Categoria não encontrada' });
+    if (prismaResponse) {
+      return prismaResponse;
     }
     console.error('Erro ao criar orçamento mensal:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
@@ -114,29 +174,40 @@ export async function POST(req: NextRequest) {
 // PUT /api/monthly-budgets
 export async function PUT(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { id, amount } = body;
+    const parsedBody = await parseJsonBody(req);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
 
-    if (!id) {
+    const { id, amount } = parsedBody.data;
+    const budgetId = typeof id === 'string' ? id.trim() : '';
+
+    if (!budgetId) {
       return NextResponse.json({ error: 'ID é obrigatório' }, { status: 400 });
     }
-    if (!amount || amount <= 0) {
+
+    const parsedAmount = parsePositiveFiniteNumber(amount);
+    if (parsedAmount === null) {
       return NextResponse.json({ error: 'Valor deve ser maior que zero' }, { status: 400 });
     }
 
-    const existing = await db.monthlyBudget.findUnique({ where: { id } });
+    const existing = await db.monthlyBudget.findUnique({ where: { id: budgetId } });
     if (!existing) {
       return NextResponse.json({ error: 'Orçamento não encontrado' }, { status: 404 });
     }
 
     const budget = await db.monthlyBudget.update({
-      where: { id },
-      data: { amount },
+      where: { id: budgetId },
+      data: { amount: parsedAmount },
       include: { category: true },
     });
 
     return NextResponse.json(budget);
   } catch (error) {
+    const prismaResponse = mapPrismaError(error, { notFound: 'Orçamento não encontrado' });
+    if (prismaResponse) {
+      return prismaResponse;
+    }
     console.error('Erro ao atualizar orçamento mensal:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
@@ -146,7 +217,7 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const id = searchParams.get('id')?.trim() ?? '';
 
     if (!id) {
       return NextResponse.json({ error: 'ID é obrigatório' }, { status: 400 });
@@ -161,6 +232,10 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const prismaResponse = mapPrismaError(error, { notFound: 'Orçamento não encontrado' });
+    if (prismaResponse) {
+      return prismaResponse;
+    }
     console.error('Erro ao excluir orçamento mensal:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }

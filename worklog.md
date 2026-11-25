@@ -1255,3 +1255,28 @@ Work Log:
 Stage Summary:
 - Commit 1 (`842223348705d087b2e6d9e3031a04a3d33237f4`) e validação isolada nas 6 células concluídos com zero divergências Quiet residuais
 - `openspec/specs/interface-quiet-financial-os/spec.md` sincronizada e ambas as changes validadas e arquivadas (`4 passed, 0 failed`, `0` changes ativas)
+
+---
+Task ID: ONDAS-1-2-HARDENING-CI-CLOSURE
+Agent: Execution Coordinator (PR & OpenSpec Closure)
+Task: Fechamento das Ondas 1 e 2, sincronização das 6 specs principais, arquivamento das 5 changes e abertura de PR para `main`
+
+Work Log:
+- **Commit 1 na branch `release/ondas-1-2-hardening-ci-integridade` (`d7b634b5fcc7e3d13d2a8a8c4e8e330be1fccabf`, base `418e6f0396f2fd0973a170dac8c5f2dd243c3f16`):**
+  - **Onda 1 — Segurança do Proxy, Higiene & Lifecycle (`proteger-proxy-higiene-e-lifecycle`, `6/6`):** restrição de `Caddyfile` para `XTransformPort=3004`, pré-checagem de `caddy` e `trap` com encerramento coordenado em `.zscripts/start.sh` e `.zscripts/mini-services-start.sh`, remoção de scripts legados/PID e destracking de `skills/` preservando arquivos locais no disco, sanitização de `.env.example` e atualização de `docs/operacao-empacotamento.md`.
+  - **Onda 1 — Atomicidade Transacional & Cálculos Críticos API (`corrigir-transacoes-calculos-criticos-api`, `8/8`):** `db.$transaction` e isolamento `TRANSFER` em `/api/transfer` e `/api/transactions`, pagamento atômico condicional em `/api/consortiums/installments` e `/api/installments/pay`, reivindicação idempotente em `/api/recurring/process`, validação estrita em `/api/investments/transactions`, reconstrução retroativa de `balanceSparkline` em `/api/quick-stats` e inclusão de dívidas de consórcios/parcelas em `/api/networth`.
+  - **Onda 1 — Concorrência UI & Busca Global (`corrigir-concorrencia-widgets-e-busca-global`, `6/6`):** `AbortController` + identidade de requisição + limpeza de estado em falha nos widgets de análise/calendário/timeline, indexação dos 8 domínios da Alternativa A e neutralidade `TRANSFER` na Busca Global, e resiliência HTTP em orçamento mensal, transferências e dividendos.
+  - **Onda 1 — CI Mínimo, Gates & Documentação Ativa (`implantar-ci-minimo-gates-e-docs-ativos`, `4/4`):** workflow `.github/workflows/ci.yml`, runner isolado `.zscripts/test-sqlite.sh` (`bwrap` + `tmpfs`), remoção de `ignoreBuildErrors` em `next.config.ts`, `eslint.config.mjs` estrito, `openspec/config.yaml` (`superpowers-bridge`) e reconciliação de `AGENTS.md`, `download/README.md` e `docs/reference/*`.
+  - **Onda 2 — Robustez API, Datas Civis, CSV, Advisor, WS & Schema (`endurecer-api-datas-calculos-e-schema`, `11/11`):** helpers em `src/lib/api-validation.ts`, datas civis locais, recorrências normalizadas e janela fechada de 3 meses, clamping em `upcoming-bills`, `increment` atômico em `savings/deposit`, validação uniforme `POST`/`PUT`/JSON/`P2003`/`P2025`, mitigação CSV formula injection e `advisor`, bind `127.0.0.1`/CORS local em `mini-services/finance-ws` e índices/`onDelete: SetNull` em `prisma/schema.prisma`.
+- **Verificações e revisão independente:**
+  - `bun --no-env-file run check` (`exit 0`: `typecheck` 0 erros, `eslint` 0 erros / 18 warnings, `arch:check` 0 erros, `bun --no-env-file test` `533 pass, 41 skip, 0 fail`, `test:scripts` `66 pass, 0 fail`).
+  - Suíte `TZ=America/Bahia` datas civis/CSV (`42 pass, 0 fail`), `bun --no-env-file run test:sqlite` em `bwrap + tmpfs` (`54 pass, 0 skip, 0 fail`), `next build` isolado (`41/41` páginas estáticas) e 4 runners Playwright `.qa.mjs` nas 6 células (`264` verificações totais, `exit 0`, `0` skips).
+  - Revisão independente (`verifier-apply-6`, `#260` e `#277`) e `bridge_guard.py verify` pós-Commit 1 (`5/5` `{"status": "ok"}` sobre `base = 418e6f0396f2fd0973a170dac8c5f2dd243c3f16`, `head = d7b634b5fcc7e3d13d2a8a8c4e8e330be1fccabf`).
+- **Sincronização e arquivamento OpenSpec:**
+  - Sincronizadas `openspec/specs/{empacotamento-sem-dados,integridade-fluxos-financeiros,interface-quiet-financial-os,automacao-ci-e-governanca,robustez-api-datas-e-schema}/spec.md` (`6 passed, 0 failed` em `openspec validate --all --strict --no-interactive`).
+  - Arquivadas as 5 changes em `openspec/changes/archive/2026-11-25-{proteger-proxy-higiene-e-lifecycle,corrigir-transacoes-calculos-criticos-api,corrigir-concorrencia-widgets-e-busca-global,implantar-ci-minimo-gates-e-docs-ativos,endurecer-api-datas-calculos-e-schema}/` (`0` changes ativas em `openspec list --json`).
+- **Escopo preservado:** `db/custom.db` e `bun.lock` mantidos intocados; wizard de instalação (dados de exemplo vs banco vazio) separado para rodada futura dedicada.
+
+Stage Summary:
+- Ondas 1 e 2 commitadas (`d7b634b5fcc7e3d13d2a8a8c4e8e330be1fccabf`), 6 main specs sincronizadas/validadas e 5 changes arquivadas em `2026-11-25-*`
+- PR enviada para `main` a partir de `release/ondas-1-2-hardening-ci-integridade` (merge e ruleset aguardam autorização explícita pós-CI verde)
