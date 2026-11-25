@@ -89,7 +89,7 @@ timeZoneTest('Dashboard mantém o dia civil de Compras recentes sem mudar a data
   const local = bahia ? '18/11/2026' : '19/11/2026';
   expect(markup).toMatch(new RegExp("Compra civil<span[^>]*>19/11/2026 · 0 itens"));
   expect(markup).toContain(`>${local} · 0 itens</span>`);
-  expect(markup).toMatch(new RegExp(`Transação controle</p><p[^>]*>${local}`));
+  expect(markup).toMatch(new RegExp(`Transação controle</p><(?:p|div)[^>]*>${local}`));
 });
 
 // Opt-in: provisione uma base nova em bwrap com /tmp privado, sem .env e sem rede.

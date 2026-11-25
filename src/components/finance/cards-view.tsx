@@ -1,48 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react';
 import { Plus, Pencil, Trash2, ArrowLeft, ChevronDown, ChevronUp, ChevronRight, Copy, Check, CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
+import { AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
+import { FinanceConfirmationDialogShell } from '@/components/shared/finance-dialog-shell';
 import { FinanceMetric } from '@/components/shared/finance-metric';
+import { QueryPanel } from '@/components/shared/query-panel';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
+import { cn } from '@/lib/utils';
 import { useKeyedMutationLock } from '@/hooks/use-keyed-mutation-lock';
+import { CardEditor, emptyCardForm, type CardFormDraft } from './card-editor';
 
-const cardColors = [
-  ['#8b5cf6', 'Roxo'], ['#f97316', 'Laranja'], ['#ef4444', 'Vermelho'], ['#3b82f6', 'Azul'],
-  ['#06b6d4', 'Ciano'], ['#22c55e', 'Verde'], ['#ec4899', 'Rosa'],
-];
 const cardPanel = 'min-w-0 rounded-xl border border-border bg-card';
 const dialogSurface = 'max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none';
 
@@ -53,7 +27,11 @@ function CardUsage({ value, high }: { value: number; high: boolean }) {
         <span>{high ? 'Uso elevado do limite' : 'Uso do limite'}</span>
         <span className="font-mono tabular-nums">{value.toFixed(0)}%</span>
       </p>
-      <Progress aria-label="Uso do limite" value={value} className={`h-1.5 [&>div]:motion-reduce:transition-none ${high ? '[&>div]:bg-[var(--ds-accent-warning)]' : ''}`} />
+      <Progress
+        aria-label="Uso do limite"
+        value={value}
+        className={cn('h-1.5 [&>div]:motion-reduce:transition-none', high && '[&>div]:bg-[var(--ds-accent-warning)]')}
+      />
     </div>
   );
 }
@@ -81,6 +59,96 @@ interface Purchase {
   items: { id: string; name: string; quantity: number; unitPrice: number; totalPrice: number }[];
 }
 
+const usagePercent = (card: CardData) => (card.creditLimit > 0 ? (card.currentBalance / card.creditLimit) * 100 : 0);
+const isOverLimit = (card: CardData) => usagePercent(card) > 80;
+
+function CardPurchaseRow({ purchase, expanded, onToggle }: { purchase: Purchase; expanded: boolean; onToggle: () => void }) {
+  return (
+    <li>
+      <button
+        type="button"
+        className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-accent/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        aria-expanded={expanded}
+        aria-controls={`card-purchase-${purchase.id}`}
+        onClick={onToggle}
+      >
+        <span className="min-w-0 flex-1 basis-28">
+          <span className="block wrap-anywhere text-sm font-medium">{purchase.merchant}</span>
+          <span className="block wrap-anywhere text-xs text-muted-foreground">
+            {formatPurchaseDate(purchase.date)}{purchase.category && ` · ${purchase.category.name}`}
+          </span>
+        </span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="wrap-anywhere font-mono text-sm font-semibold tabular-nums">{currencyFmt(purchase.totalAmount)}</span>
+          {expanded ? <ChevronUp aria-hidden="true" className="size-4 shrink-0" /> : <ChevronDown aria-hidden="true" className="size-4 shrink-0" />}
+        </span>
+      </button>
+      <div id={`card-purchase-${purchase.id}`} hidden={!expanded} className="border-t border-border bg-muted/30 px-4 py-3">
+        {expanded && (purchase.items?.length ? (
+          <>
+            <p className="text-xs font-medium text-muted-foreground">Itens da compra ({purchase.items.length})</p>
+            <ul className="mt-2 divide-y divide-border">
+              {purchase.items.map((item) => (
+                <li key={item.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 text-sm">
+                  <span className="min-w-0 flex-1 basis-28 wrap-anywhere">{item.quantity}× {item.name}</span>
+                  <span className="wrap-anywhere font-mono text-xs tabular-nums">{currencyFmt(item.unitPrice)} un. · <strong>{currencyFmt(item.totalPrice)}</strong></span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap justify-between gap-1 border-t border-border pt-2 text-sm font-semibold">
+              <span>Total</span><span className="wrap-anywhere font-mono tabular-nums">{currencyFmt(purchase.totalAmount)}</span>
+            </div>
+          </>
+        ) : <p className="text-sm text-muted-foreground">Nenhum item detalhado nesta compra.</p>)}
+      </div>
+    </li>
+  );
+}
+
+function CardRow({ card, copied, onOpen, onCopy, onEdit, onDelete }: {
+  card: CardData;
+  copied: boolean;
+  onOpen: () => void;
+  onCopy: () => void;
+  onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
+  onDelete: (event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:gap-x-4">
+      <Button type="button" variant="ghost" aria-label={`Abrir cartão ${card.name}`} onClick={onOpen} data-card-detail={card.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left md:col-span-1">
+        <CreditCard aria-hidden="true" className="size-5 text-muted-foreground" />
+        <span className="min-w-0 wrap-anywhere">
+          <span className="block font-semibold">{card.name}</span>
+          <span className="block text-xs text-muted-foreground">{card.brand}{card.flag && ` · ${card.flag}`} · <span className="font-mono">•••• •••• •••• {card.lastFourDigits}</span></span>
+          <span className="block text-xs text-muted-foreground">Fecha dia {card.closingDay} · Vence dia {card.dueDay}</span>
+        </span>
+        <ChevronRight aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
+      </Button>
+      <div className="col-span-2 grid min-w-0 gap-1 md:col-span-1">
+        <dl className="grid grid-cols-2 gap-2 text-xs">
+          <FinanceMetric variant="compact" label="Fatura atual" value={currencyFmt(card.currentBalance)} />
+          <FinanceMetric variant="compact" label="Disponível" value={currencyFmt(card.creditLimit - card.currentBalance)} />
+        </dl>
+        <CardUsage value={usagePercent(card)} high={isOverLimit(card)} />
+      </div>
+      <div className="col-span-2 flex flex-wrap items-center justify-between gap-1 md:col-span-1">
+        <span role="status" className="text-xs text-muted-foreground">{copied ? 'Copiado' : ''}</span>
+        <div className="ml-auto flex gap-1">
+          <Button variant="ghost" size="icon" aria-label={`Copiar número mascarado de ${card.name}`} onClick={onCopy}>
+            {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+          </Button>
+          <Button variant="ghost" size="icon" aria-label={`Editar cartão ${card.name}`} onClick={onEdit}>
+            <Pencil aria-hidden="true" />
+          </Button>
+          <Button variant="ghost" size="icon" aria-label={`Excluir cartão ${card.name}`} onClick={onDelete} className="text-destructive hover:text-destructive">
+            <Trash2 aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export function CardsView() {
   const storeSelectedCardId = useAppStore((state) => state.selectedCardId);
   const setStoreSelectedCardId = useAppStore((state) => state.setSelectedCardId);
@@ -101,38 +169,22 @@ export function CardsView() {
   const { pending, tryAcquire, release } = useKeyedMutationLock();
   const [showCardDialog, setCardDialogOpen] = useState(false);
   const cardOpening = useRef(0);
-  const setShowCardDialog = (open: boolean) => {
-    ++cardOpening.current;
-    setCardDialogOpen(open);
-  };
+  const setShowCardDialog = (open: boolean) => { ++cardOpening.current; setCardDialogOpen(open); };
   const [showDeleteDialog, setDeleteTarget] = useState<string | null>(null);
   const deleteOpening = useRef(0);
-  const setShowDeleteDialog = (id: string | null) => {
-    ++deleteOpening.current;
-    setDeleteTarget(id);
-  };
+  const setShowDeleteDialog = (id: string | null) => { ++deleteOpening.current; setDeleteTarget(id); };
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
   const [expandedPurchase, setExpandedPurchase] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    name: '', type: 'CREDIT', brand: 'VISA', lastFourDigits: '', creditLimit: '0',
-    closingDay: '1', dueDay: '10', color: '#8b5cf6', flag: '',
-  });
+  const [form, setForm] = useState<CardFormDraft>(emptyCardForm);
 
   const fetchCards = useCallback(async () => {
     setCardsError(false);
     try {
       const res = await fetch('/api/cards');
-      if (!res.ok) {
-        setCardsError(true);
-        return;
-      }
+      if (!res.ok) { setCardsError(true); return; }
       setCards(await res.json());
-    } catch (e) {
-      setCardsError(true);
-      console.error(e);
-    } finally { setLoading(false); }
+    } catch (e) { setCardsError(true); console.error(e); } finally { setLoading(false); }
   }, []);
 
   const fetchPurchases = useCallback(async (cardId: string) => {
@@ -142,13 +194,10 @@ export function CardsView() {
     try {
       const res = await fetch(`/api/purchases?cardId=${cardId}`);
       if (query !== latestPurchaseQuery.current) return;
-      if (!res.ok) {
-        setPurchasesError(true);
-        return;
-      }
-      const purchases: Purchase[] = await res.json();
+      if (!res.ok) { setPurchasesError(true); return; }
+      const nextPurchases: Purchase[] = await res.json();
       if (query === latestPurchaseQuery.current) {
-        setPurchaseResult({ cardId, purchases });
+        setPurchaseResult({ cardId, purchases: nextPurchases });
         setPurchasesError(false);
       }
     } catch (e) {
@@ -175,17 +224,8 @@ export function CardsView() {
     setStoreSelectedCardId(null);
   }, [cards, loading, openCard, setStoreSelectedCardId, storeSelectedCardId]);
 
-  const closeCard = () => {
-    ++latestPurchaseQuery.current;
-    setSelectedCard(null);
-  };
-
-  const openNewCard = () => {
-    setEditingCard(null);
-    setForm({ name: '', type: 'CREDIT', brand: 'VISA', lastFourDigits: '', creditLimit: '0', closingDay: '1', dueDay: '10', color: '#8b5cf6', flag: '' });
-    setShowCardDialog(true);
-  };
-
+  const closeCard = () => { ++latestPurchaseQuery.current; setSelectedCard(null); };
+  const openNewCard = () => { setEditingCard(null); setForm(emptyCardForm); setShowCardDialog(true); };
   const openEditCard = (card: CardData) => {
     setEditingCard(card);
     setForm({
@@ -195,37 +235,25 @@ export function CardsView() {
     });
     setShowCardDialog(true);
   };
+  const changeCardField = (field: keyof CardFormDraft, value: string) => setForm((current) => ({ ...current, [field]: value }));
 
   const saveKey = editingCard ? `edit:${editingCard.id}` : 'create';
   const saveCard = async () => {
-    if (!form.name.trim()) {
-      toast.error('Nome do cartão é obrigatório');
-      return;
-    }
+    if (!form.name.trim()) { toast.error('Nome do cartão é obrigatório'); return; }
     if (!tryAcquire(saveKey)) return;
     const opening = cardOpening.current;
     try {
-      const body = {
-        ...form,
-        creditLimit: parseFloat(form.creditLimit) || 0,
-        closingDay: parseInt(form.closingDay) || 1,
-        dueDay: parseInt(form.dueDay) || 10,
-      };
+      const body = { ...form, creditLimit: parseFloat(form.creditLimit) || 0, closingDay: parseInt(form.closingDay) || 1, dueDay: parseInt(form.dueDay) || 10 };
       const res = await fetch('/api/cards', {
         method: editingCard ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingCard ? { id: editingCard.id, ...body } : body),
       });
-      if (!res.ok) {
-        toast.error('Erro ao salvar cartão');
-        return;
-      }
+      if (!res.ok) { toast.error('Erro ao salvar cartão'); return; }
       toast.success(editingCard ? 'Cartão atualizado!' : 'Cartão adicionado!');
       if (cardOpening.current === opening) setShowCardDialog(false);
       fetchCards();
-    } catch { toast.error('Erro ao salvar cartão'); } finally {
-      release(saveKey);
-    }
+    } catch { toast.error('Erro ao salvar cartão'); } finally { release(saveKey); }
   };
 
   const deleteCard = async (id: string) => {
@@ -234,23 +262,12 @@ export function CardsView() {
     const opening = deleteOpening.current;
     try {
       const res = await fetch('/api/cards', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-      if (!res.ok) {
-        toast.error('Erro ao excluir cartão');
-        return;
-      }
+      if (!res.ok) { toast.error('Erro ao excluir cartão'); return; }
       toast.success('Cartão excluído!');
       if (deleteOpening.current === opening) setShowDeleteDialog(null);
       fetchCards();
-    } catch {
-      toast.error('Erro ao excluir cartão');
-    } finally {
-      release(key);
-    }
+    } catch { toast.error('Erro ao excluir cartão'); } finally { release(key); }
   };
-
-  const usagePercent = (card: CardData) =>
-    card.creditLimit > 0 ? (card.currentBalance / card.creditLimit) * 100 : 0;
-  const isOverLimit = (card: CardData) => usagePercent(card) > 80;
 
   const copyNumber = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -286,6 +303,7 @@ export function CardsView() {
   }
 
   if (selectedCard) {
+    const purchaseStatus = purchasesLoading ? 'loading' : purchasesError ? 'error' : purchases.length === 0 ? 'empty' : 'success';
     return (
       <div className="min-w-0 space-y-5">
         <header className="space-y-3">
@@ -297,12 +315,12 @@ export function CardsView() {
             <h2 className="wrap-anywhere text-2xl font-semibold tracking-tight">{selectedCard.name}</h2>
           </div>
         </header>
-        <dl aria-label="Posição do cartão" className={`${cardPanel} grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0`}>
+        <dl aria-label="Posição do cartão" className={cn(cardPanel, 'grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0')}>
           <FinanceMetric variant="cell" label="Fatura atual" value={currencyFmt(selectedCard.currentBalance)} />
           <FinanceMetric variant="cell" label="Limite" value={currencyFmt(selectedCard.creditLimit)} />
           <FinanceMetric variant="cell" label="Disponível" value={currencyFmt(selectedCard.creditLimit - selectedCard.currentBalance)} />
         </dl>
-        <section aria-label="Dados do cartão" className={`${cardPanel} space-y-3 p-4`}>
+        <section aria-label="Dados do cartão" className={cn(cardPanel, 'space-y-3 p-4')}>
           <dl className="flex flex-wrap justify-between gap-x-6 gap-y-2 text-sm">
             <div><dt className="text-muted-foreground">Número mascarado</dt><dd className="font-mono">•••• •••• •••• {selectedCard.lastFourDigits}</dd></div>
             <div><dt className="text-muted-foreground">Fechamento</dt><dd>Dia {String(selectedCard.closingDay).padStart(2, '0')}</dd></div>
@@ -310,63 +328,24 @@ export function CardsView() {
           </dl>
           <CardUsage value={usagePercent(selectedCard)} high={isOverLimit(selectedCard)} />
         </section>
-        <section aria-labelledby="card-purchases" className={cardPanel}>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <h3 id="card-purchases" className="font-semibold">Compras no cartão</h3>
-            <span className="text-xs text-muted-foreground">{purchases.length} {purchases.length === 1 ? 'compra' : 'compras'}</span>
-          </div>
-          {purchasesLoading ? (
-            <p role="status" className="px-4 py-6 text-sm text-muted-foreground">Carregando compras do cartão…</p>
-          ) : purchasesError ? (
-            <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm">
-              <p className="text-destructive">Não foi possível carregar as compras do cartão.</p>
-              <Button variant="outline" size="sm" onClick={() => void fetchPurchases(selectedCard.id)}>Tentar novamente</Button>
-            </div>
-          ) : purchases.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground">Nenhuma compra registrada neste cartão.</p>
-          ) : (
-            <ul aria-labelledby="card-purchases" className="divide-y divide-border">
-              {purchases.map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-accent/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-                    aria-expanded={expandedPurchase === p.id}
-                    aria-controls={`card-purchase-${p.id}`}
-                    onClick={() => setExpandedPurchase(expandedPurchase === p.id ? null : p.id)}
-                  >
-                    <span className="min-w-0 flex-1 basis-28">
-                      <span className="block wrap-anywhere text-sm font-medium">{p.merchant}</span>
-                      <span className="block wrap-anywhere text-xs text-muted-foreground">{formatPurchaseDate(p.date)}{p.category && ` · ${p.category.name}`}</span>
-                    </span>
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="wrap-anywhere font-mono text-sm font-semibold tabular-nums">{currencyFmt(p.totalAmount)}</span>
-                      {expandedPurchase === p.id ? <ChevronUp aria-hidden="true" className="size-4 shrink-0" /> : <ChevronDown aria-hidden="true" className="size-4 shrink-0" />}
-                    </span>
-                  </button>
-                  <div id={`card-purchase-${p.id}`} hidden={expandedPurchase !== p.id} className="border-t border-border bg-muted/30 px-4 py-3">
-                    {expandedPurchase === p.id && (p.items?.length ? (
-                      <>
-                        <p className="text-xs font-medium text-muted-foreground">Itens da compra ({p.items.length})</p>
-                        <ul className="mt-2 divide-y divide-border">
-                          {p.items.map((item) => (
-                            <li key={item.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 text-sm">
-                              <span className="min-w-0 flex-1 basis-28 wrap-anywhere">{item.quantity}× {item.name}</span>
-                              <span className="wrap-anywhere font-mono text-xs tabular-nums">{currencyFmt(item.unitPrice)} un. · <strong>{currencyFmt(item.totalPrice)}</strong></span>
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="flex flex-wrap justify-between gap-1 border-t border-border pt-2 text-sm font-semibold">
-                          <span>Total</span><span className="wrap-anywhere font-mono tabular-nums">{currencyFmt(p.totalAmount)}</span>
-                        </div>
-                      </>
-                    ) : <p className="text-sm text-muted-foreground">Nenhum item detalhado nesta compra.</p>)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <QueryPanel
+          titleId="card-purchases"
+          title="Compras no cartão"
+          controls={<span className="text-xs text-muted-foreground">{purchases.length} {purchases.length === 1 ? 'compra' : 'compras'}</span>}
+          status={purchaseStatus}
+          loadingMessage="Carregando compras do cartão…"
+          errorMessage="Não foi possível carregar as compras do cartão."
+          emptyMessage="Nenhuma compra registrada neste cartão."
+          onRetry={() => void fetchPurchases(selectedCard.id)}
+          className="rounded-xl"
+          contentClassName="space-y-0 p-0 sm:p-0"
+        >
+          <ul aria-labelledby="card-purchases" className="divide-y divide-border">
+            {purchases.map((p) => (
+              <CardPurchaseRow key={p.id} purchase={p} expanded={expandedPurchase === p.id} onToggle={() => setExpandedPurchase(expandedPurchase === p.id ? null : p.id)} />
+            ))}
+          </ul>
+        </QueryPanel>
       </div>
     );
   }
@@ -383,12 +362,12 @@ export function CardsView() {
         </Button>
       </header>
       {cardsError && (
-        <div role="alert" className={`${cardPanel} flex flex-wrap items-center justify-between gap-2 p-4 text-sm`}>
+        <div role="alert" className={cn(cardPanel, 'flex flex-wrap items-center justify-between gap-2 p-4 text-sm')}>
           <p className="text-destructive">Não foi possível carregar os cartões.</p>
           <Button variant="outline" size="sm" onClick={() => void fetchCards()}>Tentar novamente</Button>
         </div>
       )}
-      <dl aria-label="Posição dos cartões" className={`${cardPanel} grid grid-cols-2 divide-x divide-border`}>
+      <dl aria-label="Posição dos cartões" className={cn(cardPanel, 'grid grid-cols-2 divide-x divide-border')}>
         <FinanceMetric variant="cell" label="Total em faturas" value={currencyFmt(cards.reduce((s, c) => s + c.currentBalance, 0))} />
         <FinanceMetric variant="cell" label="Limite total" value={currencyFmt(cards.reduce((s, c) => s + c.creditLimit, 0))} />
       </dl>
@@ -399,154 +378,51 @@ export function CardsView() {
         ) : (
           <ul ref={cardList} aria-label="Cartões cadastrados" className="divide-y divide-border">
             {cards.map((card) => (
-              <li key={card.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:gap-x-4">
-                <Button type="button" variant="ghost" aria-label={`Abrir cartão ${card.name}`} onClick={() => { detailReturn.current = card.id; openCard(card); }} data-card-detail={card.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left md:col-span-1">
-                  <CreditCard aria-hidden="true" className="size-5 text-muted-foreground" />
-                  <span className="min-w-0 wrap-anywhere">
-                    <span className="block font-semibold">{card.name}</span>
-                    <span className="block text-xs text-muted-foreground">{card.brand}{card.flag && ` · ${card.flag}`} · <span className="font-mono">•••• •••• •••• {card.lastFourDigits}</span></span>
-                    <span className="block text-xs text-muted-foreground">Fecha dia {card.closingDay} · Vence dia {card.dueDay}</span>
-                  </span>
-                  <ChevronRight aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
-                </Button>
-                <div className="col-span-2 grid min-w-0 gap-1 md:col-span-1">
-                  <dl className="grid grid-cols-2 gap-2 text-xs">
-                    <FinanceMetric variant="compact" label="Fatura atual" value={currencyFmt(card.currentBalance)} />
-                    <FinanceMetric variant="compact" label="Disponível" value={currencyFmt(card.creditLimit - card.currentBalance)} />
-                  </dl>
-                  <CardUsage value={usagePercent(card)} high={isOverLimit(card)} />
-                </div>
-                <div className="col-span-2 flex flex-wrap items-center justify-between gap-1 md:col-span-1">
-                  <span role="status" className="text-xs text-muted-foreground">{copiedId === card.id ? 'Copiado' : ''}</span>
-                  <div className="ml-auto flex gap-1">
-                    <Button variant="ghost" size="icon" aria-label={`Copiar número mascarado de ${card.name}`} onClick={() => copyNumber(card.id, `•••• •••• •••• ${card.lastFourDigits}`)}>
-                      {copiedId === card.id ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                    </Button>
-                    <Button variant="ghost" size="icon" aria-label={`Editar cartão ${card.name}`} onClick={(event) => { dialogReturn.current = event.currentTarget; openEditCard(card); }}>
-                      <Pencil aria-hidden="true" />
-                    </Button>
-                    <Button variant="ghost" size="icon" aria-label={`Excluir cartão ${card.name}`} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowDeleteDialog(card.id); }} className="text-destructive hover:text-destructive">
-                      <Trash2 aria-hidden="true" />
-                    </Button>
-                  </div>
-                </div>
-              </li>
+              <CardRow
+                key={card.id}
+                card={card}
+                copied={copiedId === card.id}
+                onOpen={() => { detailReturn.current = card.id; openCard(card); }}
+                onCopy={() => copyNumber(card.id, `•••• •••• •••• ${card.lastFourDigits}`)}
+                onEdit={(event) => { dialogReturn.current = event.currentTarget; openEditCard(card); }}
+                onDelete={(event) => { dialogReturn.current = event.currentTarget; setShowDeleteDialog(card.id); }}
+              />
             ))}
           </ul>
         )}
       </section>
 
-      {/* Card Form Dialog */}
-      <Dialog open={showCardDialog} onOpenChange={setShowCardDialog}>
-        <DialogContent className={dialogSurface} onCloseAutoFocus={restoreDialogFocus}>
-          <DialogHeader>
-            <DialogTitle>{editingCard ? 'Editar Cartão' : 'Novo Cartão'}</DialogTitle>
-            <DialogDescription>{editingCard ? 'Atualize os dados do cartão' : 'Adicione um novo cartão'}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="card-name">Nome do Cartão</Label>
-              <Input id="card-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Nubank Platinum" />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="card-type">Tipo</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger id="card-type"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CREDIT">Crédito</SelectItem>
-                    <SelectItem value="DEBIT">Débito</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="card-brand">Bandeira</Label>
-                <Select value={form.brand} onValueChange={(v) => setForm({ ...form, brand: v })}>
-                  <SelectTrigger id="card-brand"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="VISA">Visa</SelectItem>
-                    <SelectItem value="MASTERCARD">Mastercard</SelectItem>
-                    <SelectItem value="ELO">Elo</SelectItem>
-                    <SelectItem value="AMEX">American Express</SelectItem>
-                    <SelectItem value="HIPER">Hiper</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="card-digits">Últimos 4 dígitos</Label>
-                <Input id="card-digits" value={form.lastFourDigits} onChange={(e) => setForm({ ...form, lastFourDigits: e.target.value.slice(0, 4) })} placeholder="0000" maxLength={4} />
-              </div>
-              <div>
-                <Label htmlFor="card-flag">Bandeira/Banco (opcional)</Label>
-                <Input id="card-flag" value={form.flag} onChange={(e) => setForm({ ...form, flag: e.target.value })} placeholder="Ex: Nubank, Inter" />
-              </div>
-            </div>
-            {form.type === 'CREDIT' && (
-              <>
-                <div>
-                  <Label htmlFor="card-limit">Limite de Crédito (R$)</Label>
-                  <Input id="card-limit" type="number" step="0.01" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="card-close-day">Dia de Fechamento</Label>
-                    <Input id="card-close-day" type="number" min="1" max="31" value={form.closingDay} onChange={(e) => setForm({ ...form, closingDay: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="card-due-day">Dia de Vencimento</Label>
-                    <Input id="card-due-day" type="number" min="1" max="31" value={form.dueDay} onChange={(e) => setForm({ ...form, dueDay: e.target.value })} />
-                  </div>
-                </div>
-              </>
-            )}
-            <div>
-              <p id="card-color" className="text-sm font-medium">Cor</p>
-              <div role="group" aria-labelledby="card-color" className="mt-2 flex flex-wrap gap-2">
-                {cardColors.map(([c, name]) => (
-                  <button
-                    key={c}
-                    type="button"
-                    aria-label={name}
-                    aria-pressed={form.color === c}
-                    className="size-8 rounded-full border border-border aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-foreground focus-visible:outline-ring"
-                    style={{ backgroundColor: c }}
-                    onClick={() => setForm({ ...form, color: c })}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCardDialog(false)}>Cancelar</Button>
-            <Button aria-disabled={pending.has(saveKey)} onClick={saveCard}>{editingCard ? 'Atualizar' : 'Adicionar'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CardEditor
+        mode={editingCard ? 'edit' : 'create'}
+        open={showCardDialog}
+        pending={pending.has(saveKey)}
+        form={form}
+        onFieldChange={changeCardField}
+        onOpenChange={setShowCardDialog}
+        onCloseAutoFocus={restoreDialogFocus}
+        onSubmit={saveCard}
+      />
 
-      {/* Delete Dialog */}
-      <AlertDialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
-        <AlertDialogContent className={dialogSurface} onCloseAutoFocus={restoreDialogFocus}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cartão?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita. O histórico de compras será preservado.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
+      <FinanceConfirmationDialogShell
+        open={!!showDeleteDialog}
+        onOpenChange={() => setShowDeleteDialog(null)}
+        onCloseAutoFocus={restoreDialogFocus}
+        contentClassName={dialogSurface}
+        title="Excluir cartão?"
+        description="Esta ação não pode ser desfeita. O histórico de compras será preservado."
+        footer={
+          <>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               aria-disabled={pending.has(`delete:${showDeleteDialog}`)}
-              onClick={(event) => {
-                event.preventDefault();
-                if (showDeleteDialog) void deleteCard(showDeleteDialog);
-              }}
+              onClick={(event) => { event.preventDefault(); if (showDeleteDialog) void deleteCard(showDeleteDialog); }}
               className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
             >
               Excluir
             </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </>
+        }
+      />
     </div>
   );
 }

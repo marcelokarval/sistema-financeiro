@@ -11,10 +11,12 @@ import { AccountsView, reconcileTransactionDraft, transactionDraftForAccount } f
 import { AccountPicker } from './account-picker';
 import { AccountTransferDialog } from './account-transfer-dialog';
 import { CardsView } from './cards-view';
-import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { CardEditor } from './card-editor';
+import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceRow } from '@/components/shared/finance-row';
+import { QueryPanel } from '@/components/shared/query-panel';
 
 function markup(file: string) {
   const source = ts.createSourceFile(file, new TextDecoder().decode(readFile(file)), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -61,18 +63,26 @@ test('Contas: detalhe e ações de cada conta têm botão e nome', () => {
   expect(namedAction(accountView, 'setShowTransferDialog(true)', 'Transferir')).toBe(true);
 });
 
-test('Cartões: detalhe, cópia, edição e exclusão são botões nomeados', () => {
-  expect(namedAction(cardView, 'openCard(card)', 'Abrir cartão')).toBe(true);
-  expect(namedAction(cardView, 'copyNumber(card.id', 'Copiar número mascarado')).toBe(true);
-  expect(namedAction(cardView, 'openEditCard(card)', 'Editar cartão')).toBe(true);
-  expect(namedAction(cardView, 'setShowDeleteDialog(card.id)', 'Excluir cartão')).toBe(true);
-});
+test('Cartões: detalhe, cópia, edição, exclusão e expansor de compra têm controles acessíveis', async () => {
+  await exerciseCards(async ({ render }) => {
+    const listTree = render();
+    expect(required(listTree, nameIs('Abrir cartão Cartão A'))).toBeDefined();
+    expect(required(listTree, nameIs('Copiar número mascarado de Cartão A'))).toBeDefined();
+    expect(required(listTree, nameIs('Editar cartão Cartão A'))).toBeDefined();
+    expect(required(listTree, nameIs('Excluir cartão Cartão A'))).toBeDefined();
 
-test('Cartões: acionador de compra expõe o estado e o painel que controla', () => {
-  const trigger = cardView.find((node) => attribute(node, 'onClick')?.getText().includes('setExpandedPurchase('));
-  expect(trigger?.tagName.getText()).toBe('button');
-  expect(attribute(trigger!, 'aria-expanded')).toBeDefined();
-  expect(attribute(trigger!, 'aria-controls')).toBeDefined();
+    required(listTree, nameIs('Abrir cartão Cartão A')).props.onClick();
+    render();
+    await settle();
+
+    const detailTree = render();
+    const trigger = required(detailTree, (node) => node.type === 'button' && Boolean(node.props['aria-controls']) && node.props['aria-expanded'] !== undefined);
+    expect(trigger.props['aria-expanded']).toBe(false);
+    expect(trigger.props['aria-controls']).toBe('card-purchase-p-/api/purchases?cardId=a');
+    trigger.props.onClick();
+    const expandedTrigger = required(render(), (node) => node.type === 'button' && node.props['aria-controls'] === 'card-purchase-p-/api/purchases?cardId=a');
+    expect(expandedTrigger.props['aria-expanded']).toBe(true);
+  });
 });
 
 test('Contas: rascunho sintético não migra para outra conta nem sobrevive a remoção confirmada', () => {
@@ -152,7 +162,17 @@ function find(node: ReactNode, match: (element: Element) => boolean): Element | 
     // Só expande as folhas próprias, sem simular componentes Radix ou DOM.
     let expanded = child.props.children;
     if (typeof child.type === 'function') {
-      if (child.type.name === 'AccountTransactionFields' || child.type === AccountPicker || child.type === AccountTransferDialog || child.type === FinanceFormDialogShell) {
+      if (
+        child.type.name === 'AccountTransactionFields'
+        || child.type.name === 'CardRow'
+        || child.type.name === 'CardPurchaseRow'
+        || child.type === AccountPicker
+        || child.type === AccountTransferDialog
+        || child.type === CardEditor
+        || child.type === FinanceFormDialogShell
+        || child.type === FinanceConfirmationDialogShell
+        || child.type === QueryPanel
+      ) {
         expanded = (child.type as (props: Element['props']) => ReactNode)(child.props);
       }
     }
@@ -828,6 +848,97 @@ test('Contas e Cartões adotam FinanceMetric e FinanceRow com variantes, semânt
     expect(row).toBeDefined();
     expect(required(tree, nameIs('Editar transação Transação sintética'))).toBeDefined();
     expect(required(tree, nameIs('Excluir transação Transação sintética'))).toBeDefined();
+  });
+});
+
+test('CardEditor adota FinanceFormDialogShell, alterna variantes criar/editar e oculta crédito no débito', () => {
+  const onOpenChange = () => {};
+  const onCloseAutoFocus = () => {};
+  const onSubmit = async () => {};
+  const changes: [string, string][] = [];
+  const baseForm = {
+    name: 'Cartão Teste',
+    type: 'CREDIT',
+    brand: 'VISA',
+    lastFourDigits: '4321',
+    creditLimit: '2500',
+    closingDay: '5',
+    dueDay: '15',
+    color: '#8b5cf6',
+    flag: 'Banco X',
+  };
+
+  const createTree = CardEditor({
+    mode: 'create',
+    open: true,
+    pending: false,
+    form: baseForm,
+    onFieldChange: (field, value) => changes.push([field, value]),
+    onOpenChange,
+    onCloseAutoFocus,
+    onSubmit,
+  });
+  expect(createTree.type).toBe(FinanceFormDialogShell);
+  expect(createTree.props.title).toBe('Novo Cartão');
+  expect(find(createTree, byId('card-limit'))).toBeDefined();
+  expect(find(createTree, buttonNamed('Adicionar'))?.props['aria-disabled']).toBe(false);
+
+  const editDebitTree = CardEditor({
+    mode: 'edit',
+    open: true,
+    pending: true,
+    form: { ...baseForm, type: 'DEBIT' },
+    onFieldChange: (field, value) => changes.push([field, value]),
+    onOpenChange,
+    onCloseAutoFocus,
+    onSubmit,
+  });
+  expect(editDebitTree.type).toBe(FinanceFormDialogShell);
+  expect(editDebitTree.props.title).toBe('Editar Cartão');
+  expect(find(editDebitTree, byId('card-limit'))).toBeUndefined();
+  expect(find(editDebitTree, buttonNamed('Atualizar'))?.props['aria-disabled']).toBe(true);
+  required(editDebitTree, byId('card-name')).props.onChange({ target: { value: 'Novo Nome' } });
+  expect(changes).toEqual([['name', 'Novo Nome']]);
+});
+
+test('Cartões adota QueryPanel e FinanceConfirmationDialogShell, e isola falha/carregamento ao trocar de cartão em voo', async () => {
+  const cardsSrc = await Bun.file(new URL('cards-view.tsx', import.meta.url)).text();
+  expect(cardsSrc).toContain("from '@/components/shared/query-panel'");
+  expect(cardsSrc).toContain("from '@/components/shared/finance-dialog-shell'");
+  expect(cardsSrc).toContain("from './card-editor'");
+
+  await exerciseCards(async ({ render, answerPurchases }) => {
+    const purA = heldResponse();
+    const purB = heldResponse();
+    answerPurchases((url) => (url.endsWith('=a') ? purA.promise : purB.promise));
+
+    required(render(), nameIs('Abrir cartão Cartão A')).props.onClick();
+    let tree = render();
+    expect(find(tree, (node) => node.type === QueryPanel && node.props.status === 'loading')).toBeDefined();
+    expect(required(tree, (node) => node.props.role === 'status' && node.props.children === 'Carregando compras do cartão…')).toBeDefined();
+
+    // Troca para Cartão B enquanto Cartão A ainda carrega.
+    required(tree, (node) => node.props.onClick && React.Children.toArray(node.props.children).includes(' Voltar para cartões')).props.onClick();
+    required(render(), nameIs('Abrir cartão Cartão B')).props.onClick();
+    tree = render();
+    expect(find(tree, (node) => node.type === QueryPanel && node.props.status === 'loading')).toBeDefined();
+
+    // Erro tardio de Cartão A (503/rejeição) não encerra o loading nem exibe erro em Cartão B.
+    purA.reject(new Error('Falha tardia de A'));
+    await settle();
+    tree = render();
+    expect(find(tree, (node) => node.type === QueryPanel && node.props.status === 'loading')).toBeDefined();
+    expect(find(tree, (node) => node.props.role === 'alert')).toBeUndefined();
+
+    // Erro no cartão vigente B exibe estado de erro e permite retry só de leitura.
+    purB.resolve(new Response(null, { status: 503 }));
+    await settle();
+    tree = render();
+    expect(find(tree, (node) => node.type === QueryPanel && node.props.status === 'error')).toBeDefined();
+    answerPurchases(async () => Response.json([{ id: 'pb-ok', merchant: 'Compra B Retry', totalAmount: 30, date: '2026-01-15', items: [] }]));
+    required(tree, buttonNamed('Tentar novamente')).props.onClick();
+    await settle();
+    expect(find(render(), (node) => node.props.children === 'Compra B Retry')).toBeDefined();
   });
 });
 
