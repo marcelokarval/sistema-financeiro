@@ -40,6 +40,9 @@ jobs:
       - name: Instalar dependências
         run: bun install --frozen-lockfile
 
+      - name: Gerar Prisma Client
+        run: bun --no-env-file run db:generate
+
       - name: Typecheck
         run: bun --no-env-file run typecheck
 

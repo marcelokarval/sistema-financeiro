@@ -7,11 +7,11 @@ Garantir automação mínima de Integração Contínua via GitHub Actions, execu
 ## Requirements
 
 ### Requirement: Minimal GitHub Actions CI Workflow
-The repository SHALL provide a single-job GitHub Actions CI workflow in `.github/workflows/ci.yml` targeting `ubuntu-latest` with Bun `1.4.2` that executes `bun install --frozen-lockfile`, `bun --no-env-file run typecheck`, `bun --no-env-file run lint`, `bun --no-env-file run arch:check`, `bun --no-env-file test`, `bun --no-env-file run test:scripts`, `bun --no-env-file run test:sqlite`, and `bun --no-env-file run build` without invoking Playwright `.qa.mjs` suites or relying on `db/custom.db`.
+The repository SHALL provide a single-job GitHub Actions CI workflow in `.github/workflows/ci.yml` targeting `ubuntu-latest` with Bun `1.4.2` that installs dependencies, generates the Prisma Client, and runs all static, unit, script, isolated SQLite, and Next.js build checks without Playwright `.qa.mjs` suites or `db/custom.db`.
 
 #### Scenario: CI workflow validates code, scripts, isolated SQLite suites, and production build
 - **WHEN** a push to `main` or a pull request triggers `.github/workflows/ci.yml`
-- **THEN** the single `ubuntu-latest` job installs dependencies with `--frozen-lockfile`, runs typecheck, lint, AST architecture gate, unit tests, `.zscripts` script tests, isolated SQLite opt-in tests under `$RUNNER_TEMP`, and Next.js production build with an inert `DATABASE_URL`, failing on any non-zero exit code without running `.qa.mjs` browser suites
+- **THEN** the single `ubuntu-latest` job installs dependencies with `bun install --frozen-lockfile`, runs `bun --no-env-file run db:generate`, `typecheck`, `lint`, `arch:check`, `bun --no-env-file test`, `test:scripts`, `test:sqlite` under `$RUNNER_TEMP`, and Next.js production `build` with an inert `DATABASE_URL`, failing on any non-zero exit code without running `.qa.mjs` browser suites
 
 ### Requirement: Isolated Opt-In SQLite Test Runner
 The project SHALL provide an executable `.zscripts/test-sqlite.sh` runner that provisions disposable temporary SQLite fixtures inside a `mktemp -d` staging environment and `bwrap` `tmpfs` isolation (without `.env`, `prisma/.env`, or `db/custom.db`), initializes the Prisma schema via `prisma db push --force-reset --skip-generate` where pre-provisioning is required, and runs all 5 opt-in SQLite test suites with zero skipped cases.
