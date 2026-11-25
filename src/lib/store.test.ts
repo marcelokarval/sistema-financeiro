@@ -59,8 +59,10 @@ describe('shell Quiet Financial OS', () => {
 
   test('ancora Ações rápidas no cabeçalho sem reintroduzir o botão flutuante', async () => {
     const page = await Bun.file(new URL('../app/page.tsx', import.meta.url)).text();
+    const header = await Bun.file(new URL('../components/finance/app-header.tsx', import.meta.url)).text();
     const actions = await Bun.file(new URL('../components/finance/quick-actions.tsx', import.meta.url)).text();
-    expect(page).toMatch(/<header\b[\s\S]*<QuickActions\b[\s\S]*<\/header>/);
+    expect(page).toContain('<AppHeader');
+    expect(header).toMatch(/<header\b[\s\S]*<QuickActions\b[\s\S]*<\/header>/);
     expect(actions).toContain('aria-label="Ações rápidas"');
     expect(actions).toMatch(/<DropdownMenuTrigger\b/);
     expect(actions).not.toMatch(/\bfixed\b|bg-gradient|backdrop-blur/);
@@ -76,12 +78,14 @@ describe('shell Quiet Financial OS', () => {
     expect(actions).toContain('onNewGoal?.()');
     expect(actions).toContain('onExport?.()');
     expect(page).toContain('/api/export?type=transactions&format=csv');
-    expect(page).toMatch(/view === "accounts"[\s\S]{0,100}startLaunch\(/);
+    expect(page).toMatch(/view === ["']accounts["'][\s\S]{0,100}startLaunch\(/);
   });
 
   test('mantém a instância do assistente no diálogo oculto e inerte ao fechar', async () => {
     const page = await Bun.file(new URL('../app/page.tsx', import.meta.url)).text();
-    const nativeDialog = page.match(/<dialog\b[\s\S]*?<\/dialog>/)?.[0] ?? '';
+    const overlays = await Bun.file(new URL('../components/finance/app-overlays.tsx', import.meta.url)).text();
+    const nativeDialog = overlays.match(/<dialog\b[\s\S]*?<\/dialog>/)?.[0] ?? '';
+    expect(page).toContain('<AppOverlays');
     expect(nativeDialog).toContain('inert={!aiAssistantVisible}');
     expect(nativeDialog).toContain('<AIAdvisor />');
     expect(page).toContain('.showModal()');

@@ -1,5 +1,6 @@
 /// <reference types="bun-types" />
 
+import { readFileSync } from 'node:fs';
 import { expect, test } from 'bun:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -237,6 +238,6 @@ test('FinanceRow e FinanceMetric suportam variantes, semântica, ações opciona
 
   const dashHtml = renderDashboard('ready');
   expect(dashHtml).toMatch(/<dt[^>]*>Saldo em contas<\/dt><dd[^>]*text-4xl sm:text-5xl[^>]*>/);
-  const dashSrc = require('node:fs').readFileSync(new URL('./dashboard-view.tsx', import.meta.url), 'utf8');
+  const dashSrc = readFileSync(new URL('./dashboard-view.tsx', import.meta.url), 'utf8');
   expect(dashSrc).toContain("from '@/components/shared/finance-row'");
 });

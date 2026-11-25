@@ -21,6 +21,10 @@ function mountLockHook() {
   const sameDeps = (left: readonly unknown[] | undefined, right: readonly unknown[] | undefined) =>
     left !== undefined && right !== undefined && left.length === right.length && left.every((dep, i) => Object.is(dep, right[i]));
 
+  function useLockHarness(): LockApi {
+    return useKeyedMutationLock();
+  }
+
   function render(): LockApi {
     let s = 0;
     let r = 0;
@@ -42,8 +46,9 @@ function mountLockHook() {
       useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
       useEffect: () => {},
     };
+    const invoke = useLockHarness;
     try {
-      return useKeyedMutationLock();
+      return invoke();
     } finally {
       react.H = dispatcher;
     }

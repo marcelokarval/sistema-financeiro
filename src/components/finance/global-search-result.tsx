@@ -108,13 +108,16 @@ export function SearchResults({ groups, query, loading, activeIndex, onActivate,
     );
   }
 
-  let globalIdx = 0;
+  const offsets = groups.reduce<number[]>((acc, _group, idx) => {
+    acc.push(idx === 0 ? 0 : acc[idx - 1] + groups[idx - 1].results.length);
+    return acc;
+  }, []);
+
   return (
     <div className="divide-y divide-border">
-      {groups.map((group) => {
+      {groups.map((group, groupIdx) => {
         const GroupIcon = searchGroupMeta[group.key].icon;
-        const startIdx = globalIdx;
-        globalIdx += group.results.length;
+        const startIdx = offsets[groupIdx];
         return (
           <section key={group.key} className="px-2 pb-2 sm:px-3">
             <div className="flex items-center gap-2 px-2 pb-1 pt-2.5 text-muted-foreground">
