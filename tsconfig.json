@@ -39,8 +39,6 @@
   ],
   "exclude": [
     "node_modules",
-    "examples",
-    "skills",
     "mini-services",
     ".tmp"
   ]

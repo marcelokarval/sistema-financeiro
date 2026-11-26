@@ -1,0 +1,43 @@
+{
+  "candidate": "8636e1ce9c93a3afdbcfb9c6d161c4e228991a1f3ce5d01c0bdd421335d358a3",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun --no-env-file test ./.zscripts/tests/packaging.test.ts",
+        "outcome": "expected_failure",
+        "details": "48 aprovados e 3 reprovacoes esperadas antes das edicoes em .env.example, .env.local, .gitignore, tsconfig.json e eslint.config.mjs"
+      },
+      "green": {
+        "command": "bun --no-env-file test ./.zscripts/tests/packaging.test.ts",
+        "outcome": "passed",
+        "details": "51 aprovados e 347 assercoes com .env.example em file:../db/custom.db, .env.local ausente, .env preservado, .gitignore e configs higienizados"
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bun --no-env-file test ./.zscripts/tests/packaging.test.ts",
+        "outcome": "expected_failure",
+        "details": "51 aprovados e 3 reprovacoes esperadas antes da criacao de README.md, reescrita de AGENTS.md e ajuste em docs/reference/design-system.contract.md"
+      },
+      "green": {
+        "command": "bun --no-env-file test ./.zscripts/tests/packaging.test.ts && bun --no-env-file test ./src/components/finance/quiet-navigation.test.tsx",
+        "outcome": "passed",
+        "details": "54 aprovados e 365 assercoes em packaging.test.ts, 14 aprovados e 115 assercoes em quiet-navigation.test.tsx, links relativos validos e openspec strict aprovado"
+      }
+    }
+  ],
+  "structural": {
+    "command": "/home/marcelo-karval/.local/bin/openspec validate --all --strict --no-interactive && bun --no-env-file run check",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-pub-8 (#301) / verifier-pub-8-r2 (#305) / Commit 1 09006f49806ac3c1a4268feced17a08d5070723d",
+    "status": "pass",
+    "candidate": "8636e1ce9c93a3afdbcfb9c6d161c4e228991a1f3ce5d01c0bdd421335d358a3"
+  },
+  "unresolved": []
+}
