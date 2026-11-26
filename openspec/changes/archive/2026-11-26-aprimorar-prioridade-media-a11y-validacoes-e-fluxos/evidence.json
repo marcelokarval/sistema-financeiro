@@ -1,0 +1,71 @@
+{
+  "candidate": "543425150f5e5797761a3afe41f0327236bf08dbc3018553e7e42fc5c2e510fe",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun --no-env-file test ./src/app/api/dashboard/route.test.ts && inspection(app-header.tsx, app-overlays.tsx, finance-dialog-shell.tsx, monthly-budget-tracker.tsx)",
+        "outcome": "expected_failure",
+        "details": "from=2000-01-01&to=2026-11-30 retornou 323 meses sem apara de trendMonths > 12 (#12), e faltavam dialogCloseLabel em shared.json, dismiss externo em notificacoes/overlays e onCloseAutoFocus em MonthlyBudgetTracker (#462)."
+      },
+      "green": {
+        "command": "bun --no-env-file run typecheck && bun --no-env-file run lint && bun --no-env-file run arch:check && bun --no-env-file test ./src/app/api/dashboard/route.test.ts ./src/components/finance/dashboard-query.test.ts ./src/components/finance/quiet-recurring-receipts.test.tsx ./src/components/finance/quiet-navigation.test.tsx ./src/components/finance/quiet-transversal.test.tsx ./src/components/finance/quiet-analysis-calendar.test.tsx",
+        "outcome": "passed",
+        "details": "typecheck limpo, eslint 0 erros, arch:check limpo em 79 arquivos com 6 identidades baseline, 104 aprovados e 0 falhas nas suites direcionadas, app-header.tsx com 171 linhas e monthly-budget-tracker.tsx com 364 linhas (#462)."
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bun --no-env-file test ./src/components/finance/quiet-accounts-cards.test.tsx ./src/components/finance/quiet-purchases-categories.test.tsx && inspection(search-normalize.ts, global-search.tsx, accounts-view.tsx)",
+        "outcome": "expected_failure",
+        "details": "Ausencia de src/lib/search-normalize.ts, ausencia de closeLabel e showCloseButton=false em Busca Global/Contas/Cartoes, TRANSFER tratado como despesa sem notes em Contas e validacoes client-side ausentes em Cartoes, Compras e Categorias (#460)."
+      },
+      "green": {
+        "command": "bun --no-env-file run typecheck && bunx eslint src/lib/search-normalize.ts src/components/finance/global-search.tsx src/components/finance/accounts-view.tsx src/components/finance/account-transaction-fields.tsx src/components/finance/account-transfer-dialog.tsx src/components/finance/cards-view.tsx src/components/finance/card-editor.tsx src/components/finance/purchases-view.tsx src/components/finance/categories-view.tsx && bun --no-env-file run arch:check && bun --no-env-file test ./src/lib/purchase-date.test.ts",
+        "outcome": "passed",
+        "details": "typecheck limpo, eslint 0 erros nos 9 arquivos da frente 1.2, arch:check limpo em 79 arquivos com 6 identidades baseline, purchase-date.test.ts com 13 aprovados e 1 opt-in SQLite, paridade JSON em accounts/cards/purchases/categories e todos os arquivos abaixo de 500 linhas (global-search 490, cards-view 477, purchases-view 438, categories-view 460) (#460)."
+      }
+    },
+    {
+      "id": "1.3",
+      "plan": "1.3",
+      "red": {
+        "command": "inspection(consortiums-view.tsx, savings-view.tsx, investments-view.tsx, installments-view.tsx)",
+        "outcome": "expected_failure",
+        "details": "Ausencia de closeLabel nos 5 dialogos de Consorcios/Caixinhas, Depositar exibido com isComplete=true em savings-view.tsx:571, falta de validacao client-side em createConsortium/createPlan, botoes abaixo de 44px e ausencia de filtro/salto de parcelas (#461)."
+      },
+      "green": {
+        "command": "bun --no-env-file run typecheck && bun --no-env-file run lint && bun --no-env-file run arch:check",
+        "outcome": "passed",
+        "details": "typecheck limpo, eslint 0 erros, arch:check limpo em 79 arquivos com 6 identidades baseline (InstallmentMetrics e InvestmentMetrics preservados) e paridade pt/es/en em consortiums (133), installments (107) e savings (118) (#461)."
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "bun --no-env-file test",
+        "outcome": "expected_failure",
+        "details": "Suite pre-Task 2.1 teve 610 aprovados, 41 opt-in SQLite e 13 divergencias esperadas por #8/#16 (quiet-goals-health.test.tsx:503,509,542,544, quiet-consortiums-savings.test.tsx:462-515,670,770,825,1023, quiet-accounts-cards.test.tsx:753, quiet-purchases-categories.test.tsx:524) e quiet-investment-mutations.test.tsx:542 (useState ausente em withPtIntlDispatcher apos hooks de #18, reportado em #464)."
+      },
+      "green": {
+        "command": "bun --no-env-file run check && bun --no-env-file run test:sqlite && DATABASE_URL=\"file:/tmp/ci-build-p2.db\" bwrap next build && bwrap Playwright QA suite (15 .qa.mjs runners + live GET check)",
+        "outcome": "passed",
+        "details": "check aprovado (tsc limpo, eslint 0 erros, arch:check limpo em 79 arquivos com 6 identidades baseline, bun test 642 aprovados com 41 opt-in SQLite e 0 falhas em 65 arquivos, test:scripts 72 aprovados e 0 falhas em 2 arquivos), test:sqlite 60 aprovados nas 6 execucoes bwrap, next build em bwrap compilado com 41 paginas, todos os 15 .qa.mjs aprovados em bwrap (0 opt-out) e auditoria ao vivo PASS em :3000 (#467-#475, #477)."
+      }
+    }
+  ],
+  "structural": {
+    "command": "bun --no-env-file run check && bun --no-env-file run test:sqlite",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-p2-13 (#477 PASS) — auditoria independente zero-write sobre candidato pre-commit 96278df64c966ef312dab62cc8c718923810805b552011cc8d421c95b5d52744 com os 72 arquivos commitados intactos em 1cb61a4a946b66e9febc1207df5deb85569397ca",
+    "status": "pass",
+    "candidate": "543425150f5e5797761a3afe41f0327236bf08dbc3018553e7e42fc5c2e510fe"
+  },
+  "unresolved": []
+}
