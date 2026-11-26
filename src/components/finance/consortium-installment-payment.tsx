@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import type { ConsortiumInstallment } from '@/lib/consortium-selection';
 
@@ -37,6 +38,9 @@ export function ConsortiumInstallmentPayment({
   onConfirm,
   onCloseAutoFocus,
 }: ConsortiumInstallmentPaymentProps) {
+  const t = useSafeTranslations('consortiums');
+  const locale = useSafeLocale();
+
   return (
     <FinanceFormDialogShell
       open={open}
@@ -45,26 +49,26 @@ export function ConsortiumInstallmentPayment({
       }}
       onCloseAutoFocus={onCloseAutoFocus}
       contentClassName="max-h-[85dvh] overflow-y-auto"
-      title="Marcar Parcela como Paga"
+      title={t('payment.title')}
       description={
         installment
-          ? `Parcela ${installment.number} — ${currencyFmt(installment.amount)}`
+          ? t('payment.description', { number: installment.number, amount: currencyFmt(installment.amount, locale) })
           : undefined
       }
       footer={
         <>
           <Button variant="outline" onClick={onCancel}>
-            Cancelar
+            {t('payment.cancel')}
           </Button>
           <Button onClick={onConfirm} disabled={submitting}>
-            Confirmar Pagamento
+            {t('payment.confirm')}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
         <div>
-          <Label htmlFor="consortium-paid-date">Data do Pagamento</Label>
+          <Label htmlFor="consortium-paid-date">{t('payment.paidDateLabel')}</Label>
           <Input
             id="consortium-paid-date"
             type="date"
@@ -73,20 +77,20 @@ export function ConsortiumInstallmentPayment({
           />
         </div>
         <div>
-          <Label htmlFor="consortium-payment-notes">Observações</Label>
+          <Label htmlFor="consortium-payment-notes">{t('payment.notesLabel')}</Label>
           <Input
             id="consortium-payment-notes"
             value={form.notes}
             onChange={(e) => onFieldChange('notes', e.target.value)}
-            placeholder="Nota opcional..."
+            placeholder={t('payment.notesPlaceholder')}
           />
         </div>
         <Separator />
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Informações da Assembleia (opcional)
+          {t('payment.assemblySection')}
         </div>
         <div>
-          <Label htmlFor="consortium-assembly-date">Data da Assembleia</Label>
+          <Label htmlFor="consortium-assembly-date">{t('payment.assemblyDateLabel')}</Label>
           <Input
             id="consortium-assembly-date"
             type="date"
@@ -95,12 +99,12 @@ export function ConsortiumInstallmentPayment({
           />
         </div>
         <div>
-          <Label htmlFor="consortium-assembly-result">Resultado da Assembleia</Label>
+          <Label htmlFor="consortium-assembly-result">{t('payment.assemblyResultLabel')}</Label>
           <Input
             id="consortium-assembly-result"
             value={form.assemblyResult}
             onChange={(e) => onFieldChange('assemblyResult', e.target.value)}
-            placeholder="Ex: Contemplado na assembleia..."
+            placeholder={t('payment.assemblyResultPlaceholder')}
           />
         </div>
       </div>

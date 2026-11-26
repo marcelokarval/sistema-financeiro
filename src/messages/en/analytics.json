@@ -1,0 +1,349 @@
+{
+  "common": {
+    "retry": "Try again"
+  },
+  "projection": {
+    "title": "Balance projection",
+    "subtitle": "Estimates per account · {count, plural, one {# month} other {# months}}",
+    "loading": "Loading balance projection…",
+    "error": "Could not load balance projection.",
+    "empty": "No balance projection available.",
+    "emptyAccounts": "No accounts to project.",
+    "horizonAria": "Projection horizon",
+    "monthsOption": "{count, plural, one {# month} other {# months}}",
+    "refreshAria": "Refresh balance projection",
+    "metrics": {
+      "currentTotal": "Current total balance",
+      "projectedIn": "Projected in {count, plural, one {# month} other {# months}}",
+      "variation": "Change: {value}",
+      "avgMonthlySavings": "Avg monthly savings",
+      "rate": "Rate: {rate}%",
+      "riskLevel": "Risk level"
+    },
+    "chartCaption": "Projected balances by account",
+    "risk": {
+      "lowBadge": "Low",
+      "mediumBadge": "Medium",
+      "highBadge": "High",
+      "lowHeading": "Low Risk — Healthy Finances",
+      "mediumHeading": "Medium Risk — Attention Recommended",
+      "highHeading": "High Risk — Action Needed",
+      "lowMessage": "Your finances are healthy! You maintain a strong savings rate above 20%.",
+      "mediumMessage": "Attention: your savings rate is between 0% and 20%. Consider cutting expenses to grow your savings.",
+      "highMessage": "Red alert! Your expenses exceed your income. Review your spending urgently to avoid debt.",
+      "savingsRateLabel": "Savings rate"
+    },
+    "accountDetails": "Details by account · {count}",
+    "trends": {
+      "up": "Rising",
+      "down": "Falling",
+      "stable": "Stable"
+    },
+    "accountMetrics": {
+      "current": "Current balance",
+      "projected": "Projected balance",
+      "incomePerMonth": "Income/mo",
+      "expensePerMonth": "Expense/mo",
+      "netPerMonth": "Net/mo"
+    }
+  },
+  "forecast": {
+    "title": "Cash flow forecast",
+    "subtitle": "Estimates for the next 3 months, based on history",
+    "loading": "Loading forecast…",
+    "error": "Could not load cash flow forecast.",
+    "empty": "No cash flow forecast available.",
+    "emptyMonths": "No months available for the forecast.",
+    "refreshAria": "Refresh forecast",
+    "confidence": "{value}% confidence",
+    "trend": {
+      "positive": "Positive trend",
+      "negative": "Negative trend",
+      "stable": "Stable trend"
+    },
+    "series": {
+      "income": "Income",
+      "expense": "Expenses",
+      "net": "Balance"
+    },
+    "card": {
+      "projectedIncome": "Projected income",
+      "projectedExpense": "Projected expenses",
+      "projectedNet": "Projected balance"
+    },
+    "chartCaption": "Projected income, expenses, and balance by month",
+    "topCategoriesTitle": "Top expense categories · monthly average",
+    "riskAlertsTitle": "Risk Alerts",
+    "noRiskAlerts": "No risk alerts identified in this forecast."
+  },
+  "debts": {
+    "title": "Debt Overview",
+    "subtitle": "Track all your financial obligations",
+    "loadingAria": "Loading debt overview",
+    "error": "Could not load debt overview.",
+    "refreshAria": "Refresh debts",
+    "compositionAria": "Debt composition",
+    "totalInDebts": "Total Debt",
+    "noDebts": "No debt",
+    "pie": {
+      "cards": "Cards",
+      "installments": "Installments",
+      "consortiums": "Consortiums"
+    },
+    "categories": {
+      "cards": "Credit Cards",
+      "installments": "Installment Plans",
+      "consortiums": "Consortiums"
+    },
+    "counts": {
+      "cards": "{count, plural, one {# card} other {# cards}}",
+      "plans": "{count, plural, one {# plan} other {# plans}}",
+      "consortiums": "{count, plural, one {# consortium} other {# consortiums}}"
+    },
+    "types": {
+      "financing": "Financing",
+      "cardInstallment": "Card Installment",
+      "loan": "Loan",
+      "personal": "Personal Loan",
+      "rental": "Rental"
+    },
+    "status": {
+      "active": "Active",
+      "overdue": "Overdue",
+      "completed": "Completed",
+      "contemplated": "Awarded"
+    },
+    "ratio": {
+      "title": "Debt-to-Income Ratio",
+      "subtitle": "Debt / Monthly income",
+      "ariaLabel": "Debt-to-income ratio",
+      "monthlyIncome": "Monthly income:",
+      "criticalLabel": "Critical",
+      "criticalRecommendation": "Your debt commits more than 30% of your income. Consider renegotiating rates, prioritizing card payoff, and avoiding new debt.",
+      "warningLabel": "Attention",
+      "warningRecommendation": "Your debt is between 15% and 30% of your income. Stay in control, avoid new obligations, and prioritize early payoff.",
+      "healthyLabel": "Healthy",
+      "healthyRecommendation": "Great! Your debt is below 15% of your income. Keep up this financial control and stay balanced."
+    },
+    "cardRow": {
+      "limit": "Limit: {amount}",
+      "dueDay": "Due: day {day}",
+      "limitUsageAria": "Credit limit usage for card {name}",
+      "usedPct": "{pct}% used"
+    },
+    "planRow": {
+      "remaining": "Remaining: {amount}",
+      "installmentsCount": "{paid}/{total} installments",
+      "perMonth": "{amount}/mo",
+      "interestRate": "Interest: {rate}%/mo",
+      "administrator": "Admin: {name}",
+      "installmentProgressAria": "Installment plan progress for {description}",
+      "consortiumProgressAria": "Consortium progress for {description}",
+      "paidPct": "{pct}% paid"
+    }
+  },
+  "expenses": {
+    "title": "Expense breakdown",
+    "subtitle": "Breakdown by category · {period}",
+    "periodCurrent": "current month",
+    "periodSixMonths": "last 6 months",
+    "periodAria": "Expense period",
+    "currentMonth": "Current month",
+    "sixMonths": "6 months",
+    "refreshAria": "Refresh expenses by category",
+    "loading": "Loading expenses by category…",
+    "error": "Could not load expenses for the selected period.",
+    "empty": "No expenses recorded in the selected period.",
+    "totalExpenses": "Total expenses",
+    "chartCaption": "Share of total expenses",
+    "emptyCategories": "No categories with expenses to display.",
+    "top3Title": "Top spending categories",
+    "others": "Other",
+    "othersCount": "Other ({count, plural, one {# category} other {# categories}})",
+    "monthlyEstimate": "Monthly estimate by category share"
+  },
+  "calendar": {
+    "title": "Financial Calendar",
+    "subtitle": "Upcoming payments and income",
+    "loadingAria": "Loading financial calendar",
+    "error": "Could not load financial calendar.",
+    "rangeAria": "Calendar range",
+    "filterDays": "{count, plural, one {# day} other {# days}}",
+    "refreshAria": "Refresh calendar",
+    "summaryAria": "Interval summary",
+    "metrics": {
+      "billsToPay": "Bills to pay",
+      "intervalExpense": "Interval expenses",
+      "intervalIncome": "Interval income",
+      "nextPayment": "Next payment",
+      "biggestExpense": "Largest upcoming expense"
+    },
+    "prevMonthAria": "Previous month",
+    "nextMonthAria": "Next month",
+    "legend": "+ Income · − Expense · +/− Both",
+    "activity": {
+      "both": ", income and expenses",
+      "income": ", income",
+      "expense": ", expenses"
+    },
+    "weekdays": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    },
+    "allUpcoming": "All upcoming events",
+    "eventsCount": "{count, plural, one {# event} other {# events}}",
+    "today": "Today",
+    "emptyDayTitle": "No events on this day",
+    "emptyUpcomingTitle": "No events in the coming days",
+    "emptyDaySubtitle": "This day has no financial commitments",
+    "emptyUpcomingSubtitle": "New events will appear here automatically"
+  },
+  "reports": {
+    "title": "Financial Reports",
+    "subtitle": "Comparative analysis of the last {count, plural, one {# month} other {# months}}",
+    "loadingAria": "Loading financial reports",
+    "error": "Could not load financial reports.",
+    "refreshAria": "Refresh reports",
+    "tabs": {
+      "monthly": "Monthly View",
+      "analysis": "Analysis"
+    },
+    "series": {
+      "income": "Income",
+      "expense": "Expenses"
+    },
+    "monthlyEmpty": "No months available in the report.",
+    "monthlyBreakdownAria": "Monthly breakdown",
+    "movementsShort": "{count} entries",
+    "incomeLabel": "Income",
+    "expenseLabel": "Expenses",
+    "netLabel": "Net",
+    "indicatorsAria": "Report indicators",
+    "metrics": {
+      "avgTicket": "Average ticket",
+      "avgDailySpend": "Avg daily spend",
+      "highestExpense": "Highest expense",
+      "lowestIncome": "Lowest income",
+      "noData": "No data"
+    },
+    "topCategoriesTitle": "Top Expense Categories",
+    "topCategoriesEmpty": "No categories with expenses",
+    "savingsRateTitle": "Savings Rate",
+    "monthsBadge": "{count, plural, one {# month} other {# months}}"
+  },
+  "networth": {
+    "title": "Net Worth Evolution",
+    "subtitle": "Track your net worth over time",
+    "loadingAria": "Loading net worth evolution",
+    "indicatorsAria": "Net worth indicators",
+    "error": "Could not load net worth evolution.",
+    "empty": "No months available for this interval.",
+    "periodAria": "Net worth evolution period",
+    "monthsAria": "{count, plural, one {# month} other {# months}}",
+    "monthsShort": "{count}m",
+    "refreshAria": "Refresh net worth",
+    "current": "Current Net Worth",
+    "vsPreviousMonth": "vs previous month",
+    "highest": "Highest Net Worth",
+    "lowest": "Lowest Net Worth",
+    "series": {
+      "netWorth": "Net Worth"
+    },
+    "tooltip": {
+      "netWorth": "Net worth"
+    },
+    "milestone": {
+      "title": "Goal: {target}",
+      "remaining": "{amount} remaining to reach goal",
+      "progressAria": "Progress toward {target} goal"
+    }
+  },
+  "timeline": {
+    "title": "Spending timeline",
+    "subtitle": "Daily cash flow · {count, plural, one {# day with activity} other {# days with activity}}",
+    "loading": "Loading activity…",
+    "error": "Could not load timeline.",
+    "empty": "No activity data to display.",
+    "periodAria": "Timeline period",
+    "filterDays": "{count, plural, one {# day} other {# days}}",
+    "refreshAria": "Refresh timeline",
+    "metrics": {
+      "runningBalance": "Running balance",
+      "income": "Income",
+      "expense": "Expenses"
+    },
+    "chartTitle": "Net balance per day",
+    "noActivitySuffix": " · No activity",
+    "legend": {
+      "positive": "Positive",
+      "negative": "Negative",
+      "noActivity": "No activity"
+    },
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "currentBadge": "Current",
+    "movementsCount": "{count, plural, one {# entry} other {# entries}}",
+    "noMovements": "No activity"
+  },
+  "transactions": {
+    "title": "Transaction Analytics",
+    "subtitle": "Detailed patterns and trends",
+    "loadingAria": "Loading transaction analytics",
+    "error": "Could not load transaction analytics.",
+    "typeFilterAria": "Transaction type",
+    "types": {
+      "ALL": "All",
+      "INCOME": "Income",
+      "EXPENSE": "Expenses"
+    },
+    "refreshAria": "Refresh analytics",
+    "tabs": {
+      "overview": "Overview",
+      "distribution": "Distribution",
+      "patterns": "Patterns"
+    },
+    "series": {
+      "income": "Income",
+      "expense": "Expenses"
+    },
+    "tooltip": {
+      "transactions": "Transactions",
+      "maskedCount": "•••"
+    },
+    "overview": {
+      "indicatorsAria": "Transaction indicators",
+      "totalTransactions": "Total Transactions",
+      "totalIncome": "Total income",
+      "avgTicket": "Average Ticket",
+      "highestTransaction": "Largest Transaction",
+      "lowestTransaction": "Smallest Transaction",
+      "noneFound": "No transactions found",
+      "mostFrequentCategory": "Most Frequent Category"
+    },
+    "distribution": {
+      "byAmountTitle": "Distribution by Amount",
+      "byWeekdayTitle": "Spending by Day of Week"
+    },
+    "patterns": {
+      "dailyTitle": "Daily Pattern (by hour)",
+      "topMerchantsTitle": "Top 5 Merchants",
+      "merchantShareAria": "Share of {name}",
+      "monthlyComparisonTitle": "Monthly Comparison",
+      "monthlyComparisonAria": "Monthly transaction comparison",
+      "columns": {
+        "month": "Month",
+        "income": "Income",
+        "expense": "Expenses",
+        "net": "Net",
+        "count": "Qty",
+        "ticket": "Avg",
+        "change": "Change"
+      }
+    }
+  }
+}

@@ -1,0 +1,349 @@
+{
+  "common": {
+    "retry": "Intentar de nuevo"
+  },
+  "projection": {
+    "title": "Proyección de saldos",
+    "subtitle": "Estimaciones por cuenta · {count, plural, one {# mes} other {# meses}}",
+    "loading": "Cargando proyección de saldos…",
+    "error": "No se pudo cargar la proyección de saldos.",
+    "empty": "No hay proyección de saldos disponible.",
+    "emptyAccounts": "Ninguna cuenta para proyectar.",
+    "horizonAria": "Horizonte de la proyección",
+    "monthsOption": "{count, plural, one {# mes} other {# meses}}",
+    "refreshAria": "Actualizar proyección de saldos",
+    "metrics": {
+      "currentTotal": "Saldo total actual",
+      "projectedIn": "Proyección en {count, plural, one {# mes} other {# meses}}",
+      "variation": "Variación: {value}",
+      "avgMonthlySavings": "Ahorro mensual promedio",
+      "rate": "Tasa: {rate}%",
+      "riskLevel": "Nivel de riesgo"
+    },
+    "chartCaption": "Saldos proyectados por cuenta",
+    "risk": {
+      "lowBadge": "Bajo",
+      "mediumBadge": "Medio",
+      "highBadge": "Alto",
+      "lowHeading": "Riesgo Bajo — Finanzas Saludables",
+      "mediumHeading": "Riesgo Medio — Atención Recomendada",
+      "highHeading": "Riesgo Alto — Acción Necesaria",
+      "lowMessage": "¡Tus finanzas están saludables! Mantienes una buena tasa de ahorro superior al 20%.",
+      "mediumMessage": "Atención: tu tasa de ahorro está entre 0% y 20%. Considera reducir gastos para aumentar tus ahorros.",
+      "highMessage": "¡Alerta roja! Tus gastos superan tus ingresos. Revisa urgentemente tus gastos para evitar endeudamiento.",
+      "savingsRateLabel": "Tasa de ahorro"
+    },
+    "accountDetails": "Detalles por cuenta · {count}",
+    "trends": {
+      "up": "En alza",
+      "down": "En baja",
+      "stable": "Estable"
+    },
+    "accountMetrics": {
+      "current": "Saldo actual",
+      "projected": "Saldo proyectado",
+      "incomePerMonth": "Ingresos/mes",
+      "expensePerMonth": "Gastos/mes",
+      "netPerMonth": "Neto/mes"
+    }
+  },
+  "forecast": {
+    "title": "Previsión de flujo de caja",
+    "subtitle": "Estimaciones para los próximos 3 meses, según el historial",
+    "loading": "Cargando previsión…",
+    "error": "No se pudo cargar la previsión de flujo de caja.",
+    "empty": "No hay previsión de flujo de caja disponible.",
+    "emptyMonths": "No hay meses disponibles para la previsión.",
+    "refreshAria": "Actualizar previsión",
+    "confidence": "{value}% confianza",
+    "trend": {
+      "positive": "Tendencia positiva",
+      "negative": "Tendencia negativa",
+      "stable": "Tendencia estable"
+    },
+    "series": {
+      "income": "Ingresos",
+      "expense": "Gastos",
+      "net": "Saldo"
+    },
+    "card": {
+      "projectedIncome": "Ingresos proyectados",
+      "projectedExpense": "Gastos proyectados",
+      "projectedNet": "Saldo proyectado"
+    },
+    "chartCaption": "Ingresos, gastos y saldo proyectados por mes",
+    "topCategoriesTitle": "Principales categorías de gasto · promedio mensual",
+    "riskAlertsTitle": "Alertas de Riesgo",
+    "noRiskAlerts": "No se identificaron alertas de riesgo en esta previsión."
+  },
+  "debts": {
+    "title": "Panel de Deudas",
+    "subtitle": "Sigue todas tus obligaciones financieras",
+    "loadingAria": "Cargando panel de deudas",
+    "error": "No se pudo cargar el panel de deudas.",
+    "refreshAria": "Actualizar deudas",
+    "compositionAria": "Composición de las deudas",
+    "totalInDebts": "Total en Deudas",
+    "noDebts": "Sin deudas",
+    "pie": {
+      "cards": "Tarjetas",
+      "installments": "Cuotas",
+      "consortiums": "Consorcios"
+    },
+    "categories": {
+      "cards": "Tarjetas de Crédito",
+      "installments": "Planes en Cuotas",
+      "consortiums": "Consorcios"
+    },
+    "counts": {
+      "cards": "{count, plural, one {# tarjeta} other {# tarjetas}}",
+      "plans": "{count, plural, one {# plan} other {# planes}}",
+      "consortiums": "{count, plural, one {# consorcio} other {# consorcios}}"
+    },
+    "types": {
+      "financing": "Financiamiento",
+      "cardInstallment": "Cuotas de Tarjeta",
+      "loan": "Préstamo",
+      "personal": "Préstamo Personal",
+      "rental": "Alquiler"
+    },
+    "status": {
+      "active": "Activo",
+      "overdue": "Atrasado",
+      "completed": "Completado",
+      "contemplated": "Adjudicado"
+    },
+    "ratio": {
+      "title": "Compromiso de Ingresos",
+      "subtitle": "Endeudamiento / Ingresos mensuales",
+      "ariaLabel": "Compromiso de ingresos con deudas",
+      "monthlyIncome": "Ingresos mensuales:",
+      "criticalLabel": "Crítico",
+      "criticalRecommendation": "Tus deudas comprometen más del 30% de tus ingresos. Considera renegociar tasas, priorizar el pago de tarjetas y evitar nuevas deudas.",
+      "warningLabel": "Atención",
+      "warningRecommendation": "Tus deudas están entre el 15% y el 30% de tus ingresos. Mantén el control, evita nuevas compras y prioriza el pago anticipado.",
+      "healthyLabel": "Saludable",
+      "healthyRecommendation": "¡Excelente! Tus deudas están por debajo del 15% de tus ingresos. Sigue con este control financiero y mantén el equilibrio."
+    },
+    "cardRow": {
+      "limit": "Límite: {amount}",
+      "dueDay": "Vencimiento: día {day}",
+      "limitUsageAria": "Uso del límite de la tarjeta {name}",
+      "usedPct": "{pct}% usado"
+    },
+    "planRow": {
+      "remaining": "Restante: {amount}",
+      "installmentsCount": "{paid}/{total} cuotas",
+      "perMonth": "{amount}/mes",
+      "interestRate": "Interés: {rate}% mensual",
+      "administrator": "Adm: {name}",
+      "installmentProgressAria": "Progreso del plan {description}",
+      "consortiumProgressAria": "Progreso del consorcio {description}",
+      "paidPct": "{pct}% pagado"
+    }
+  },
+  "expenses": {
+    "title": "Detalle de gastos",
+    "subtitle": "Distribución por categoría · {period}",
+    "periodCurrent": "mes actual",
+    "periodSixMonths": "últimos 6 meses",
+    "periodAria": "Período de gastos",
+    "currentMonth": "Mes actual",
+    "sixMonths": "6 meses",
+    "refreshAria": "Actualizar gastos por categoría",
+    "loading": "Cargando gastos por categoría…",
+    "error": "No se pudieron cargar los gastos del período seleccionado.",
+    "empty": "Ningún gasto registrado en el período seleccionado.",
+    "totalExpenses": "Total de gastos",
+    "chartCaption": "Participación en el total de gastos",
+    "emptyCategories": "Ninguna categoría con gastos para mostrar.",
+    "top3Title": "Categorías con mayor gasto",
+    "others": "Otros",
+    "othersCount": "Otros ({count, plural, one {# categoría} other {# categorías}})",
+    "monthlyEstimate": "Estimación mensual por participación de la categoría"
+  },
+  "calendar": {
+    "title": "Calendario Financiero",
+    "subtitle": "Próximos pagos e ingresos",
+    "loadingAria": "Cargando calendario financiero",
+    "error": "No se pudo cargar el calendario financiero.",
+    "rangeAria": "Intervalo del calendario",
+    "filterDays": "{count, plural, one {# día} other {# días}}",
+    "refreshAria": "Actualizar calendario",
+    "summaryAria": "Resumen del intervalo",
+    "metrics": {
+      "billsToPay": "Cuentas por pagar",
+      "intervalExpense": "Gastos del intervalo",
+      "intervalIncome": "Ingresos del intervalo",
+      "nextPayment": "Próximo pago",
+      "biggestExpense": "Mayor gasto previsto"
+    },
+    "prevMonthAria": "Mes anterior",
+    "nextMonthAria": "Próximo mes",
+    "legend": "+ Ingreso · − Gasto · +/− Ambos",
+    "activity": {
+      "both": ", ingresos y gastos",
+      "income": ", ingresos",
+      "expense": ", gastos"
+    },
+    "weekdays": {
+      "sun": "Dom",
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb"
+    },
+    "allUpcoming": "Todos los próximos eventos",
+    "eventsCount": "{count, plural, one {# evento} other {# eventos}}",
+    "today": "Hoy",
+    "emptyDayTitle": "Sin eventos en este día",
+    "emptyUpcomingTitle": "Sin eventos en los próximos días",
+    "emptyDaySubtitle": "Este día está libre de compromisos financieros",
+    "emptyUpcomingSubtitle": "Los nuevos eventos aparecerán aquí automáticamente"
+  },
+  "reports": {
+    "title": "Informes Financieros",
+    "subtitle": "Análisis comparativo de los últimos {count, plural, one {# mes} other {# meses}}",
+    "loadingAria": "Cargando informes financieros",
+    "error": "No se pudieron cargar los informes financieros.",
+    "refreshAria": "Actualizar informes",
+    "tabs": {
+      "monthly": "Vista Mensual",
+      "analysis": "Análisis"
+    },
+    "series": {
+      "income": "Ingresos",
+      "expense": "Gastos"
+    },
+    "monthlyEmpty": "No hay meses disponibles en el informe.",
+    "monthlyBreakdownAria": "Detalle mensual",
+    "movementsShort": "{count} mov.",
+    "incomeLabel": "Ingresos",
+    "expenseLabel": "Gastos",
+    "netLabel": "Neto",
+    "indicatorsAria": "Indicadores del informe",
+    "metrics": {
+      "avgTicket": "Ticket promedio",
+      "avgDailySpend": "Gasto promedio diario",
+      "highestExpense": "Mayor gasto",
+      "lowestIncome": "Menor ingreso",
+      "noData": "Sin datos"
+    },
+    "topCategoriesTitle": "Top Categorías de Gasto",
+    "topCategoriesEmpty": "Ninguna categoría con gastos",
+    "savingsRateTitle": "Tasa de Ahorro",
+    "monthsBadge": "{count, plural, one {# mes} other {# meses}}"
+  },
+  "networth": {
+    "title": "Evolución Patrimonial",
+    "subtitle": "Sigue tu patrimonio neto a lo largo del tiempo",
+    "loadingAria": "Cargando evolución patrimonial",
+    "indicatorsAria": "Indicadores patrimoniales",
+    "error": "No se pudo cargar la evolución patrimonial.",
+    "empty": "Ningún mes disponible para este intervalo.",
+    "periodAria": "Período de evolución patrimonial",
+    "monthsAria": "{count, plural, one {# mes} other {# meses}}",
+    "monthsShort": "{count}m",
+    "refreshAria": "Actualizar patrimonio",
+    "current": "Patrimonio Actual",
+    "vsPreviousMonth": "vs mes anterior",
+    "highest": "Mayor Patrimonio",
+    "lowest": "Menor Patrimonio",
+    "series": {
+      "netWorth": "Patrimonio Neto"
+    },
+    "tooltip": {
+      "netWorth": "Patrimonio"
+    },
+    "milestone": {
+      "title": "Meta: {target}",
+      "remaining": "Faltan {amount} para alcanzar la meta",
+      "progressAria": "Progreso hacia la meta de {target}"
+    }
+  },
+  "timeline": {
+    "title": "Línea de tiempo",
+    "subtitle": "Flujo de caja diario · {count, plural, one {# día con actividad} other {# días con actividad}}",
+    "loading": "Cargando movimientos…",
+    "error": "No se pudo cargar la línea de tiempo.",
+    "empty": "Sin datos de movimientos para mostrar.",
+    "periodAria": "Período de la línea de tiempo",
+    "filterDays": "{count, plural, one {# día} other {# días}}",
+    "refreshAria": "Actualizar línea de tiempo",
+    "metrics": {
+      "runningBalance": "Saldo acumulado",
+      "income": "Ingresos",
+      "expense": "Gastos"
+    },
+    "chartTitle": "Saldo neto por día",
+    "noActivitySuffix": " · Sin actividad",
+    "legend": {
+      "positive": "Positivo",
+      "negative": "Negativo",
+      "noActivity": "Sin actividad"
+    },
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "currentBadge": "Actual",
+    "movementsCount": "{count, plural, one {# movimiento} other {# movimientos}}",
+    "noMovements": "Sin movimientos"
+  },
+  "transactions": {
+    "title": "Análisis de Transacciones",
+    "subtitle": "Patrones y tendencias detalladas",
+    "loadingAria": "Cargando análisis de transacciones",
+    "error": "No se pudo cargar el análisis de transacciones.",
+    "typeFilterAria": "Tipo de transacción",
+    "types": {
+      "ALL": "Todos",
+      "INCOME": "Ingresos",
+      "EXPENSE": "Gastos"
+    },
+    "refreshAria": "Actualizar análisis",
+    "tabs": {
+      "overview": "Resumen General",
+      "distribution": "Distribución",
+      "patterns": "Patrones"
+    },
+    "series": {
+      "income": "Ingresos",
+      "expense": "Gastos"
+    },
+    "tooltip": {
+      "transactions": "Transacciones",
+      "maskedCount": "•••"
+    },
+    "overview": {
+      "indicatorsAria": "Indicadores de transacciones",
+      "totalTransactions": "Total de Transacciones",
+      "totalIncome": "Total de ingresos",
+      "avgTicket": "Ticket Promedio",
+      "highestTransaction": "Mayor Transacción",
+      "lowestTransaction": "Menor Transacción",
+      "noneFound": "Ninguna transacción encontrada",
+      "mostFrequentCategory": "Categoría Más Frecuente"
+    },
+    "distribution": {
+      "byAmountTitle": "Distribución por Monto",
+      "byWeekdayTitle": "Gastos por Día de la Semana"
+    },
+    "patterns": {
+      "dailyTitle": "Patrón Diario (por horario)",
+      "topMerchantsTitle": "Top 5 Establecimientos",
+      "merchantShareAria": "Participación de {name}",
+      "monthlyComparisonTitle": "Comparación Mensual",
+      "monthlyComparisonAria": "Comparación mensual de transacciones",
+      "columns": {
+        "month": "Mes",
+        "income": "Ingresos",
+        "expense": "Gastos",
+        "net": "Neto",
+        "count": "Cant.",
+        "ticket": "Ticket",
+        "change": "Variación"
+      }
+    }
+  }
+}

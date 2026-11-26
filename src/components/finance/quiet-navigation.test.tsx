@@ -9,6 +9,7 @@ import { MobileNav } from './mobile-nav';
 import { QuickStatsOverview } from './quick-stats-overview';
 import { AppHeader } from './app-header';
 import { AppOverlays } from './app-overlays';
+import { NotificationPanel } from './notification-panel';
 import { GlobalSearchResult, SearchResults, searchGroupMeta } from './global-search-result';
 import { readFileSync } from 'node:fs';
 import { useAppStore, type ViewType } from '@/lib/store';
@@ -51,9 +52,11 @@ describe('navegação e shell transversal Quiet Financial OS', () => {
   test('QuickStatsOverview aceita refreshCounter e oferece retry no estado de erro', () => {
     const quickStatsSrc = readFileSync(new URL('./quick-stats-overview.tsx', import.meta.url), 'utf8');
     expect(quickStatsSrc).toContain('refreshCounter');
-    expect(quickStatsSrc).toContain('Tentar novamente');
-    const html = renderToStaticMarkup(<QuickStatsOverview refreshCounter={1} />);
+    expect(quickStatsSrc).toContain("t('retry')");
+    const html = renderWithIntl(<QuickStatsOverview refreshCounter={1} />, 'pt');
     expect(html).toContain('Resumo rápido');
+    expect(renderWithIntl(<QuickStatsOverview refreshCounter={1} />, 'es')).toContain('Resumen rápido');
+    expect(renderWithIntl(<QuickStatsOverview refreshCounter={1} />, 'en')).toContain('Quick stats');
   });
 
   test('GlobalSearch e NotificationPanel possuem tratamento de erro com retry e persistência/data civil', () => {
@@ -61,9 +64,11 @@ describe('navegação e shell transversal Quiet Financial OS', () => {
     const notifSrc = readFileSync(new URL('./notification-panel.tsx', import.meta.url), 'utf8');
     expect(searchSrc).toContain("t('retry')");
     expect(searchSrc).toContain("formatPurchaseDate(tx.date, 'date', locale)");
-    expect(notifSrc).toContain('Tentar novamente');
+    expect(notifSrc).toContain("t('retry')");
     expect(notifSrc).toContain('localStorage');
     expect(notifSrc).toContain('QueryPanel');
+    expect(renderWithIntl(<NotificationPanel isOpen onClose={noop} />, 'es')).toContain('Notificaciones');
+    expect(renderWithIntl(<NotificationPanel isOpen onClose={noop} />, 'en')).toContain('Notifications');
   });
 
   test('AppHeader separa o cabeçalho com ações globais, notificação sem papel de dialog e indicador offline', () => {

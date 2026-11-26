@@ -8,9 +8,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { FinanceConfirmationDialogShell } from '@/components/shared/finance-dialog-shell';
 import { FinanceMetric } from '@/components/shared/finance-metric';
+import { useSafeTranslations } from '@/i18n/provider';
 import { cn } from '@/lib/utils';
 import { CategoryEditor, type CategoryFormDraft } from './category-editor';
 import { iconOptions } from './category-icon-color-picker';
+import {
+  CATEGORY_FILTER_KEYS,
+  createFallbackTranslator,
+  PT_OPERATIONS_MESSAGES,
+} from './operations-i18n';
 
 interface DialogOpening {
   origin: HTMLButtonElement | null;
@@ -40,6 +46,7 @@ function CategoryRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const t = createFallbackTranslator(useSafeTranslations('categories'), PT_OPERATIONS_MESSAGES.categories);
   const txCount = category._count?.transactions || 0;
   const puCount = category._count?.purchases || 0;
   const totalUsage = txCount + puCount;
@@ -63,22 +70,22 @@ function CategoryRow({
               className="size-2.5 shrink-0 rounded-full border border-border"
               style={{ backgroundColor: category.color }}
             />
-            {category.type === 'INCOME' ? 'Receita' : 'Despesa'}
+            {category.type === 'INCOME' ? t('types.INCOME') : t('types.EXPENSE')}
           </p>
         </div>
         <div className="min-w-0 text-xs text-muted-foreground">
           <p className="flex flex-wrap gap-x-3 gap-y-1">
             <span>
               <b className="font-mono font-medium tabular-nums text-foreground">{txCount}</b>{' '}
-              {txCount === 1 ? 'transação' : 'transações'}
+              {t('list.txCount', { count: txCount })}
             </span>
             <span>
               <b className="font-mono font-medium tabular-nums text-foreground">{puCount}</b>{' '}
-              {puCount === 1 ? 'compra' : 'compras'}
+              {t('list.purchaseCount', { count: puCount })}
             </span>
           </p>
           <p className="mt-1">
-            {totalUsage} {totalUsage === 1 ? 'registro' : 'registros'} no total
+            {t('list.totalRecords', { count: totalUsage })}
           </p>
           <div aria-hidden="true" className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
             <div className="h-full bg-muted-foreground/60" style={{ width: `${usagePct}%` }} />
@@ -88,7 +95,7 @@ function CategoryRow({
       <Button
         variant="ghost"
         size="icon"
-        aria-label={`Editar categoria: ${category.name}`}
+        aria-label={t('list.editAria', { name: category.name })}
         className={cn('size-11 shrink-0', focusStyle)}
         onClickCapture={(event) => onCaptureOrigin(event.currentTarget)}
         onClick={onEdit}
@@ -98,7 +105,7 @@ function CategoryRow({
       <Button
         variant="ghost"
         size="icon"
-        aria-label={`Excluir categoria: ${category.name}`}
+        aria-label={t('list.deleteAria', { name: category.name })}
         className={cn('size-11 shrink-0 text-destructive hover:text-destructive', focusStyle)}
         onClickCapture={(event) => onCaptureOrigin(event.currentTarget)}
         onClick={onDelete}
@@ -110,6 +117,7 @@ function CategoryRow({
 }
 
 export function CategoriesView() {
+  const t = createFallbackTranslator(useSafeTranslations('categories'), PT_OPERATIONS_MESSAGES.categories);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshFailed, setRefreshFailed] = useState(false);
@@ -188,7 +196,7 @@ export function CategoriesView() {
 
   const save = async () => {
     if (!form.name) {
-      toast.error('Informe o nome da categoria');
+      toast.error(t('errors.nameRequired'));
       return;
     }
     const submittedOpening = activeOpening.current;
@@ -203,9 +211,9 @@ export function CategoriesView() {
         });
         if (!res.ok) {
           const data = await res.json().catch(() => null);
-          throw new Error(data?.error || 'Erro ao salvar categoria');
+          throw new Error(data?.error || t('errors.save'));
         }
-        toast.success('Categoria atualizada!');
+        toast.success(t('toasts.updated'));
       } else {
         const res = await fetch('/api/categories', {
           method: 'POST',
@@ -214,14 +222,14 @@ export function CategoriesView() {
         });
         if (!res.ok) {
           const data = await res.json().catch(() => null);
-          throw new Error(data?.error || 'Erro ao salvar categoria');
+          throw new Error(data?.error || t('errors.save'));
         }
-        toast.success('Categoria criada!');
+        toast.success(t('toasts.created'));
       }
       await fetchCategories();
       if (activeOpening.current === submittedOpening) closeDialog('form');
     } catch (error) {
-      toast.error(error instanceof Error && error.message ? error.message : 'Erro ao salvar categoria');
+      toast.error(error instanceof Error && error.message ? error.message : t('errors.save'));
     } finally {
       mutationPending.current = false;
     }
@@ -239,16 +247,16 @@ export function CategoriesView() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || 'Erro ao excluir categoria');
+        throw new Error(data?.error || t('errors.delete'));
       }
-      toast.success('Categoria excluída!');
+      toast.success(t('toasts.deleted'));
       await fetchCategories();
       if (activeOpening.current === submittedOpening) {
         submittedOpening.origin = newButton.current;
         closeDialog('delete');
       }
     } catch (error) {
-      toast.error(error instanceof Error && error.message ? error.message : 'Erro ao excluir categoria');
+      toast.error(error instanceof Error && error.message ? error.message : t('errors.delete'));
     } finally {
       mutationPending.current = false;
     }
@@ -273,11 +281,11 @@ export function CategoriesView() {
     <section aria-labelledby="categories-heading" className="min-w-0 space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Movimentação</p>
+          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{t('eyebrow')}</p>
           <h2 id="categories-heading" className="text-2xl font-semibold tracking-tight">
-            Categorias
+            {t('title')}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">Organize suas receitas e despesas.</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         {!loading && (
           <Button
@@ -286,21 +294,21 @@ export function CategoriesView() {
             onClick={openNew}
             className={cn('min-h-11', focusStyle)}
           >
-            <Plus aria-hidden="true" /> Nova categoria
+            <Plus aria-hidden="true" /> {t('actions.newCategory')}
           </Button>
         )}
       </header>
       {refreshFailed && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <p role="status">Não foi possível atualizar a lista de categorias.</p>
+          <p role="status">{t('errors.refresh')}</p>
           <Button type="button" variant="outline" className={focusStyle} onClick={() => void fetchCategories()}>
-            Tentar atualizar lista
+            {t('actions.retryList')}
           </Button>
         </div>
       )}
       {loading ? (
         <div role="status" className="space-y-3 text-sm text-muted-foreground">
-          <p>Carregando categorias…</p>
+          <p>{t('loading')}</p>
           <Skeleton className="h-20 rounded-lg" />
           <Skeleton className="h-32 rounded-lg" />
         </div>
@@ -308,14 +316,14 @@ export function CategoriesView() {
         <>
           {categories.length > 0 && (
             <dl
-              aria-label="Totais de categorias"
+              aria-label={t('summary.ariaLabel')}
               className="grid grid-cols-2 gap-px border-y border-border bg-border lg:grid-cols-[1.2fr_1fr_1fr_1.3fr]"
             >
               {(
                 [
-                  ['Total de categorias', categories.length],
-                  ['Receitas', incomeCount],
-                  ['Despesas', expenseCount],
+                  [t('summary.total'), categories.length],
+                  [t('summary.incomes'), incomeCount],
+                  [t('summary.expenses'), expenseCount],
                 ] as const
               ).map(([label, count], i) => (
                 <FinanceMetric
@@ -329,11 +337,11 @@ export function CategoriesView() {
               ))}
               <FinanceMetric
                 variant="cell"
-                label="Mais usada"
-                value={mostUsed?.name || '—'}
+                label={t('summary.mostUsed')}
+                value={mostUsed?.name || t('summary.emptyFallback')}
                 caption={
                   mostUsed
-                    ? `${(mostUsed._count?.transactions || 0) + (mostUsed._count?.purchases || 0)} registros`
+                    ? t('summary.recordsCaption', { count: (mostUsed._count?.transactions || 0) + (mostUsed._count?.purchases || 0) })
                     : undefined
                 }
                 className="border-0 bg-background px-3 py-4 sm:px-4"
@@ -348,27 +356,23 @@ export function CategoriesView() {
           >
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-3 py-4 sm:px-4">
               <h3 id="category-records-heading" className="text-sm font-semibold">
-                Categorias cadastradas
+                {t('list.title')}
               </h3>
               <div
                 role="group"
-                aria-label="Filtrar por tipo"
+                aria-label={t('list.filterAria')}
                 className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/30 p-1"
               >
-                {(
-                  [
-                    { key: 'all', label: 'Todas', count: categories.length },
-                    { key: 'INCOME', label: 'Receitas', count: incomeCount },
-                    { key: 'EXPENSE', label: 'Despesas', count: expenseCount },
-                  ] as const
-                ).map((f) => {
-                  const active = filter === f.key;
+                {CATEGORY_FILTER_KEYS.map((key) => {
+                  const active = filter === key;
+                  const count = key === 'all' ? categories.length : key === 'INCOME' ? incomeCount : expenseCount;
+                  const label = key === 'all' ? t('list.filterAll') : key === 'INCOME' ? t('list.filterIncome') : t('list.filterExpense');
                   return (
                     <button
-                      key={f.key}
+                      key={key}
                       type="button"
                       aria-pressed={active}
-                      onClick={() => setFilter(f.key)}
+                      onClick={() => setFilter(key)}
                       className={cn(
                         'min-h-11 rounded-md border px-2 text-xs font-semibold',
                         focusStyle,
@@ -377,7 +381,7 @@ export function CategoriesView() {
                           : 'border-transparent text-muted-foreground hover:text-foreground',
                       )}
                     >
-                      {f.label} <span className="font-mono tabular-nums">{f.count}</span>
+                      {label} <span className="font-mono tabular-nums">{count}</span>
                     </button>
                   );
                 })}
@@ -386,10 +390,10 @@ export function CategoriesView() {
             {filtered.length === 0 ? (
               <p role="status" className="px-4 py-8 text-sm text-muted-foreground">
                 {filter === 'all'
-                  ? 'Nenhuma categoria cadastrada. Crie a primeira para começar.'
+                  ? t('list.emptyAll')
                   : filter === 'INCOME'
-                    ? 'Nenhuma categoria de receita cadastrada.'
-                    : 'Nenhuma categoria de despesa cadastrada.'}
+                    ? t('list.emptyIncome')
+                    : t('list.emptyExpense')}
               </p>
             ) : (
               <ul role="list" className="divide-y divide-border">
@@ -429,11 +433,11 @@ export function CategoriesView() {
         }}
         onCloseAutoFocus={restoreFocus}
         contentClassName="motion-reduce:animate-none border-border bg-card shadow-none"
-        title="Excluir categoria?"
-        description="Esta ação não pode ser desfeita. Transações e compras vinculadas perderão a categoria."
+        title={t('deleteDialog.title')}
+        description={t('deleteDialog.description')}
         footer={
           <>
-            <AlertDialogCancel className={focusStyle}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className={focusStyle}>{t('actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
@@ -444,7 +448,7 @@ export function CategoriesView() {
                 focusStyle,
               )}
             >
-              Excluir
+              {t('actions.delete')}
             </AlertDialogAction>
           </>
         }

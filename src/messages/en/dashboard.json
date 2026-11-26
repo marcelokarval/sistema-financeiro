@@ -1,0 +1,168 @@
+{
+  "eyebrow": "Financial position",
+  "title": "Financial overview",
+  "hideValues": "Hide values",
+  "showValues": "Show values",
+  "refreshAriaLabel": "Refresh overview",
+  "periodGroupAriaLabel": "Overview period",
+  "filters": {
+    "month": "This month",
+    "quarter": "Last 3 months",
+    "halfyear": "Last 6 months",
+    "year": "This year",
+    "all": "All"
+  },
+  "periodRange": "Period: {from} to {to}",
+  "customPeriod": {
+    "summary": "Custom period",
+    "from": "From",
+    "to": "To",
+    "apply": "Filter",
+    "invalidRange": "End date cannot be earlier than start date."
+  },
+  "loading": "Loading overview…",
+  "error": "Could not load overview.",
+  "retry": "Try again",
+  "unavailable": "Overview data unavailable.",
+  "moreDetails": "More financial details",
+  "metrics": {
+    "sectionAriaLabel": "Key metrics",
+    "totalBalance": {
+      "label": "Account balance",
+      "caption": "Current position · active accounts"
+    },
+    "periodBalance": {
+      "label": "Period balance",
+      "caption": "Income minus expenses in range"
+    },
+    "periodExpense": {
+      "label": "Period expenses",
+      "caption": "Outgoing transactions and purchases"
+    }
+  },
+  "flow": {
+    "title": "Income and expenses",
+    "caption": "Monthly API aggregation, from the start of the first month to the period end date.",
+    "empty": "No data for the monthly series.",
+    "hidden": "Series hidden while values are hidden.",
+    "income": "Income",
+    "expense": "Expenses",
+    "zeroedNote": "Zero totals may indicate no entries or values that netted to zero.",
+    "tableSummary": "Monthly values",
+    "monthColumn": "Month"
+  },
+  "recentTransactions": {
+    "title": "Recent activity",
+    "caption": "Latest transactions in the selected period.",
+    "empty": "No transactions in this period."
+  },
+  "details": {
+    "otherMetrics": {
+      "title": "Other overview metrics",
+      "caption": "Current position of accounts and cards; totals and activity for the selected period.",
+      "cardBill": "Card bills",
+      "cardUsage": "Limit used: {usage} · Available: {available}",
+      "accountsMinusBills": "Accounts minus bills",
+      "periodIncome": "Period income",
+      "surplus": "Surplus",
+      "deficit": "Deficit",
+      "savingsLabel": "Savings",
+      "recentPurchasesCount": "Recent period purchases",
+      "recentTransactionsCount": "Recent period transactions",
+      "dailyAverage": "Daily average spend",
+      "dailyAverageCaption": "Period total divided by the current day of the month."
+    },
+    "variations": {
+      "net": "Monthly balance change",
+      "expense": "Monthly spending change",
+      "volume": "Monthly financial volume change",
+      "daily": "Daily average spending change"
+    },
+    "monthlyComparison": {
+      "summary": "Monthly comparison",
+      "income": "Income: {value}",
+      "expense": "Expenses: {value}",
+      "balance": "Balance: {value}"
+    },
+    "expenseByCategory": {
+      "title": "Expenses by category",
+      "caption": "Selected period · outgoing transactions and categorized purchases.",
+      "empty": "No categorized expenses in this period."
+    },
+    "accountBalances": {
+      "title": "Balance by account",
+      "caption": "Current position · active accounts.",
+      "empty": "No active accounts."
+    },
+    "recentPurchases": {
+      "title": "Recent purchases",
+      "caption": "Selected period. Open a purchase to view its items.",
+      "itemCount": "{count, plural, =0 {# items} one {# item} other {# items}}",
+      "noItems": "No items recorded.",
+      "empty": "No purchases in this period."
+    }
+  },
+  "quickStats": {
+    "title": "Quick stats",
+    "subtitle": "Current position and monthly metrics · changes vs. previous month",
+    "loading": "Loading metrics…",
+    "error": "Could not load metrics.",
+    "vsLastMonth": "vs. previous month",
+    "metrics": {
+      "netWorth": "Net Worth",
+      "monthlyIncome": "Monthly Income",
+      "monthlyExpense": "Monthly Expense",
+      "monthlySavings": "Monthly Savings",
+      "investments": "Investments",
+      "cardDebt": "Card Debt"
+    },
+    "badges": {
+      "currentPosition": "Current position",
+      "savingsRate": "Savings rate: {rate}%",
+      "investmentPct": "{pct}% of net worth (absolute value)"
+    },
+    "sparklines": {
+      "balance": "Balance history",
+      "income": "Income history",
+      "expense": "Expense history",
+      "savingsHistory": "Monthly savings history",
+      "savingsEstimate": "Balance change (estimate)",
+      "investmentsHistory": "Investments history",
+      "investmentsEstimate": "Estimate without investment history",
+      "cardDebtHistory": "Card debt history",
+      "cardDebtEstimate": "Expense ratio (debt estimate)"
+    },
+    "health": {
+      "title": "Financial Health",
+      "trendUp": "Positive trend",
+      "trendDown": "Negative trend",
+      "trendStable": "Stable",
+      "recommendedTarget": "Monthly savings rate — recommended target: 20%+"
+    }
+  },
+  "upcomingBills": {
+    "title": "Upcoming bills",
+    "subtitle": "Overdue and next 30 days · independent of overview period.",
+    "refreshAriaLabel": "Refresh bills",
+    "loading": "Loading bills…",
+    "error": "Could not load upcoming payments.",
+    "empty": "No pending payments in this window.",
+    "groups": {
+      "overdue": "Overdue",
+      "urgent": "Upcoming (urgent)",
+      "thisMonth": "This month"
+    },
+    "totals": {
+      "summary": "Bill totals",
+      "thisWeek": "Through end of week, including overdue",
+      "thisMonth": "Through end of month, including overdue",
+      "next30Days": "Overdue and next 30 days"
+    },
+    "days": {
+      "overdue": "{count, plural, one {# day overdue} other {# days overdue}}",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "inDays": "{count, plural, one {In # day} other {In # days}}"
+    }
+  }
+}

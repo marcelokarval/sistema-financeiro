@@ -13,109 +13,27 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
-
-import { buildReceiptFields, type ReceiptData } from './receipt-fields';
+import { createFallbackTranslator, PT_OPERATIONS_MESSAGES } from './operations-i18n';
+import {
+  buildReceiptFields,
+  buildReceiptPrintHtml,
+  resolveReceiptFieldLabels,
+  type BuildReceiptPrintOptions,
+  type ReceiptData,
+  type ReceiptPrintTexts,
+} from './receipt-fields';
 import { ReceiptPreview } from './receipt-preview';
+
+export { buildReceiptPrintHtml, type BuildReceiptPrintOptions, type ReceiptPrintTexts };
 
 const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)] motion-reduce:transition-none';
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-export function buildReceiptPrintHtml(receipt: ReceiptData): string {
-  const { rows, items, notes, receiptNumber, issuedDate, total } = buildReceiptFields(receipt);
-  const rowsHtml = rows
-    .map(({ label, value }) => `<div class="receipt-row"><span class="receipt-label">${escapeHtml(label)}</span><span class="receipt-value">${escapeHtml(value ?? '—')}</span></div>`)
-    .join('');
-
-  const itemsHtml = items
-    ? `<div class="receipt-divider"></div>
-       <p class="receipt-section-title">Itens (${items.count ?? items.entries.length})</p>
-       ${items.entries
-         .map(
-           (item) => `<div class="receipt-row">
-             <span class="receipt-label">${escapeHtml(item.name)} (${escapeHtml(item.units)})</span>
-             <span class="receipt-value">${escapeHtml(item.total.display)}</span>
-           </div>`,
-         )
-         .join('')}`
-    : '';
-
-  const notesHtml = notes
-    ? `<div class="receipt-divider"></div>
-       <p class="receipt-label">Observações</p>
-       <p class="receipt-notes">${escapeHtml(notes)}</p>`
-    : '';
-
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <title>Recibo - FinanceApp</title>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        padding: 32px;
-        max-width: 420px;
-        margin: 0 auto;
-        color: #111111;
-        background: #ffffff;
-        line-height: 1.5;
-        font-size: 13px;
-      }
-      .receipt-header { text-align: center; margin-bottom: 16px; }
-      .receipt-brand { font-size: 16px; font-weight: 700; }
-      .receipt-subtitle, .receipt-meta { font-size: 12px; color: #555555; }
-      .receipt-title { font-size: 15px; font-weight: 700; margin-top: 10px; letter-spacing: 0.06em; }
-      .receipt-divider { border-top: 1px solid #d4d4d8; margin: 12px 0; }
-      .receipt-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #555555; margin-bottom: 6px; }
-      .receipt-row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
-      .receipt-label { color: #555555; }
-      .receipt-value { font-weight: 600; text-align: right; }
-      .receipt-notes { font-size: 12px; font-style: italic; margin-top: 4px; }
-      .receipt-total { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; font-weight: 700; padding: 4px 0; }
-      .receipt-footer { text-align: center; font-size: 12px; color: #555555; margin-top: 8px; }
-      @media print {
-        body { padding: 16px; }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="receipt-header">
-      <p class="receipt-brand">FinanceApp</p>
-      <p class="receipt-subtitle">Gestão Financeira Inteligente</p>
-      <p class="receipt-title">RECIBO</p>
-      <p class="receipt-meta">${escapeHtml(receiptNumber)} · ${escapeHtml(issuedDate)}</p>
-    </div>
-    <div class="receipt-divider"></div>
-    ${rowsHtml}
-    ${itemsHtml}
-    ${notesHtml}
-    <div class="receipt-divider"></div>
-    <div class="receipt-total">
-      <span>VALOR TOTAL</span>
-      <span>${escapeHtml(total.display)}</span>
-    </div>
-    <div class="receipt-divider"></div>
-    <div class="receipt-footer">
-      <p>Obrigado pela preferência!</p>
-      <p>Documento gerado automaticamente pelo FinanceApp</p>
-      <p>${escapeHtml(receiptNumber)}</p>
-    </div>
-  </body>
-</html>`;
-}
-
 // --- Main Component ---
 export function ReceiptGenerator() {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('receipts'), PT_OPERATIONS_MESSAGES.receipts);
   const [receiptType, setReceiptType] = useState<string>('transaction');
   const [receiptId, setReceiptId] = useState('');
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
@@ -126,7 +44,7 @@ export function ReceiptGenerator() {
 
   const generateReceipt = useCallback(async () => {
     if (!receiptId.trim()) {
-      setError('Informe o ID para gerar o recibo.');
+      setError(t('errors.idRequired'));
       return;
     }
 
@@ -143,7 +61,7 @@ export function ReceiptGenerator() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
         throw new Error(
-          errorData?.error || 'Erro ao gerar recibo. Tente novamente.'
+          errorData?.error || t('errors.generateFailed')
         );
       }
 
@@ -153,32 +71,52 @@ export function ReceiptGenerator() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Ocorreu um erro inesperado. Tente novamente.'
+          : t('errors.unexpected')
       );
     } finally {
       setIsLoading(false);
     }
-  }, [receiptType, receiptId]);
+  }, [receiptType, receiptId, t]);
 
   const handlePrint = useCallback(() => {
     if (!receiptData) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      toast.error('Não foi possível abrir a janela de impressão.');
+      toast.error(t('errors.printBlocked'));
       return;
     }
-    printWindow.document.write(buildReceiptPrintHtml(receiptData));
+    const labels = resolveReceiptFieldLabels(t);
+    printWindow.document.write(buildReceiptPrintHtml(receiptData, {
+      locale,
+      labels,
+      unavailableAmount: t('document.unavailableAmount'),
+      texts: {
+        brandName: t('document.brandName'),
+        brandSubtitle: t('document.brandSubtitle'),
+        printWindowTitle: t('document.printWindowTitle'),
+        receiptHeading: t('document.receiptHeading'),
+        itemsHeading: (count) => t('document.itemsHeading', { count }),
+        notes: t('document.notes'),
+        totalUpper: t('document.totalUpper'),
+        thankYou: t('document.thankYou'),
+        autoGeneratedPrint: t('document.autoGeneratedPrint'),
+      },
+    }));
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
     }, 500);
-  }, [receiptData]);
+  }, [receiptData, locale, t]);
 
   const buildPlainText = useCallback((): string => {
     if (!receiptData) return '';
-    const { receiptNumber, issuedDate, rows, receiptType, items, notes, total } = buildReceiptFields(receiptData);
+    const { receiptNumber, issuedDate, rows, receiptType, items, notes, total } = buildReceiptFields(receiptData, {
+      locale,
+      labels: resolveReceiptFieldLabels(t),
+      unavailableAmount: t('document.unavailableAmount'),
+    });
 
     const divider = '─'.repeat(36);
     const dividerDashed = '-'.repeat(36);
@@ -186,22 +124,22 @@ export function ReceiptGenerator() {
     let text = '';
     text += `${divider}\n`;
     text += `          F I N A N C E A P P\n`;
-    text += `     Gestão Financeira Inteligente\n`;
+    text += `     ${t('document.brandSubtitle')}\n`;
     text += `${divider}\n\n`;
-    text += `             R E C I B O\n\n`;
-    text += `  Nº: ${receiptNumber}\n`;
-    text += `  Emissão: ${issuedDate}\n\n`;
+    text += `             ${t('document.plainTextHeading')}\n\n`;
+    text += `  ${t('document.numberPrefix')} ${receiptNumber}\n`;
+    text += `  ${t('document.issuedPrefix')} ${issuedDate}\n\n`;
     text += `${dividerDashed}\n\n`;
 
     // Larguras das duas colunas do TXT legado, incluindo os dois-pontos.
-    const labelWidth = receiptType === 'purchase' ? 17 : 12;
+    const labelWidth = Math.max(receiptType === 'purchase' ? 17 : 12, ...rows.map((row) => row.label.length + 2));
     for (const { label, value } of rows) {
       text += `  ${(label + ':').padEnd(labelWidth)}${value}\n`;
     }
 
     if (items) {
       text += `\n${dividerDashed}\n`;
-      text += `  ITENS (${items.count})\n`;
+      text += `  ${t('document.itemsUpper', { count: items.count ?? items.entries.length })}\n`;
       text += `${dividerDashed}\n`;
       items.entries.forEach((item, idx) => {
         text += `  ${idx + 1}. ${item.name}\n`;
@@ -211,18 +149,18 @@ export function ReceiptGenerator() {
 
     if (notes) {
       text += `\n${dividerDashed}\n`;
-      text += `  Observações: ${notes}\n`;
+      text += `  ${t('document.notes')}: ${notes}\n`;
     }
 
     text += `\n${divider}\n`;
-    text += `  VALOR TOTAL:  ${total.text}\n`;
+    text += `  ${t('document.totalUpper')}:  ${total.text}\n`;
     text += `${divider}\n\n`;
-    text += `    Obrigado pela preferência!\n\n`;
-    text += `  Documento gerado pelo FinanceApp\n`;
+    text += `    ${t('document.thankYou')}\n\n`;
+    text += `  ${t('document.autoGeneratedTxt')}\n`;
     text += `  ${receiptNumber}\n`;
 
     return text;
-  }, [receiptData]);
+  }, [receiptData, locale, t]);
 
   const handleDownload = useCallback(() => {
     if (!receiptData) return;
@@ -231,13 +169,13 @@ export function ReceiptGenerator() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `recibo-${receiptData.receiptNumber}.txt`;
+    a.download = `${t('document.filePrefix')}-${receiptData.receiptNumber}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Recibo baixado com sucesso!');
-  }, [receiptData, buildPlainText]);
+    toast.success(t('toasts.downloaded'));
+  }, [receiptData, buildPlainText, t]);
 
   const handleCopy = useCallback(async () => {
     if (!receiptData) return;
@@ -245,12 +183,12 @@ export function ReceiptGenerator() {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      toast.success('Recibo copiado para a área de transferência!');
+      toast.success(t('toasts.copied'));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Erro ao copiar recibo.');
+      toast.error(t('errors.copyFailed'));
     }
-  }, [receiptData, buildPlainText]);
+  }, [receiptData, buildPlainText, t]);
 
   return (
     <ReceiptWorkspace
@@ -298,6 +236,8 @@ export function ReceiptWorkspace({
   records, receiptRef, generateReceipt, handlePrint, handleDownload, handleCopy,
 }: ReceiptWorkspaceProps) {
   const id = useId();
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('receipts'), PT_OPERATIONS_MESSAGES.receipts);
   const [fetchedRecords, setFetchedRecords] = useState<ReceiptRecordOption[]>([]);
   useEffect(() => {
     if (records !== undefined) return;
@@ -314,7 +254,7 @@ export function ReceiptWorkspace({
             ? (typeof row.merchant === 'string' ? row.merchant : itemId)
             : (typeof row.description === 'string' ? row.description : itemId);
           const rawAmount = receiptType === 'purchase' ? row.totalAmount : row.amount;
-          const amountLabel = typeof rawAmount === 'number' ? ` · ${currencyFmt(rawAmount)}` : '';
+          const amountLabel = typeof rawAmount === 'number' ? ` · ${currencyFmt(rawAmount, locale)}` : '';
           return [{ id: itemId, label: `${labelBase}${amountLabel}` }];
         });
         setFetchedRecords(mapped);
@@ -323,44 +263,51 @@ export function ReceiptWorkspace({
         if (active) setFetchedRecords([]);
       });
     return () => { active = false; };
-  }, [receiptType, records]);
+  }, [locale, receiptType, records]);
 
   const availableRecords = records ?? fetchedRecords;
+  const previewFields = receiptData
+    ? buildReceiptFields(receiptData, {
+        locale,
+        labels: resolveReceiptFieldLabels(t),
+        unavailableAmount: t('document.unavailableAmount'),
+      })
+    : null;
   return (
     <section aria-labelledby={`${id}-heading`} className="min-w-0 space-y-4" data-testid="quiet-receipts">
       <header>
-        <h3 id={`${id}-heading`} className="text-lg font-semibold tracking-tight">Gerador de recibos</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Gere comprovantes de transações e compras cadastradas.</p>
+        <h3 id={`${id}-heading`} className="text-lg font-semibold tracking-tight">{t('title')}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
       </header>
 
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section aria-labelledby={`${id}-source`} className="min-w-0 rounded-lg border border-border bg-card p-4">
-          <h4 id={`${id}-source`} className="text-sm font-semibold">Origem do recibo</h4>
+          <h4 id={`${id}-source`} className="text-sm font-semibold">{t('sourceTitle')}</h4>
           <div className="mt-4 grid gap-4">
             <div className="space-y-2">
-              <Label htmlFor={`${id}-receipt-type`}>Tipo de registro</Label>
+              <Label htmlFor={`${id}-receipt-type`}>{t('typeLabel')}</Label>
               <Select value={receiptType} onValueChange={setReceiptType}>
                 <SelectTrigger id={`${id}-receipt-type`} className={`w-full ${focusClass}`}>
-                  <SelectValue placeholder="Selecione o tipo" />
+                  <SelectValue placeholder={t('typePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="transaction">Transação</SelectItem>
-                  <SelectItem value="purchase">Compra</SelectItem>
+                  <SelectItem value="transaction">{t('types.transaction')}</SelectItem>
+                  <SelectItem value="purchase">{t('types.purchase')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`${id}-receipt-picker`}>Selecionar registro recente</Label>
+              <Label htmlFor={`${id}-receipt-picker`}>{t('recentLabel')}</Label>
               <Select
                 value={availableRecords.some((r) => r.id === receiptId) ? receiptId : ''}
                 onValueChange={setReceiptId}
               >
                 <SelectTrigger id={`${id}-receipt-picker`} className={`w-full ${focusClass}`}>
-                  <SelectValue placeholder="Escolha um registro recente (opcional)" />
+                  <SelectValue placeholder={t('recentPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableRecords.length === 0 ? (
-                    <SelectItem value="__empty__" disabled>Nenhum registro encontrado</SelectItem>
+                    <SelectItem value="__empty__" disabled>{t('noRecords')}</SelectItem>
                   ) : (
                     availableRecords.map((rec) => (
                       <SelectItem key={rec.id} value={rec.id}>{rec.label}</SelectItem>
@@ -370,26 +317,26 @@ export function ReceiptWorkspace({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`${id}-receipt-id`}>ID do registro</Label>
+              <Label htmlFor={`${id}-receipt-id`}>{t('idLabel')}</Label>
               <Input
                 id={`${id}-receipt-id`}
                 type="text"
                 value={receiptId}
                 onChange={(event) => setReceiptId(event.target.value)}
-                placeholder="ID da transação ou compra"
+                placeholder={t('idPlaceholder')}
                 className={focusClass}
                 onKeyDown={(event) => { if (event.key === 'Enter') generateReceipt(); }}
               />
             </div>
             <Button onClick={generateReceipt} disabled={isLoading || !receiptId.trim()} className={`justify-self-start ${focusClass}`}>
-              <FileText aria-hidden="true" /> Gerar recibo
+              <FileText aria-hidden="true" /> {t('generate')}
             </Button>
           </div>
         </section>
 
         <section aria-labelledby={`${id}-preview`} className="min-w-0 rounded-xl border border-border bg-card">
           <header className="border-b border-border px-4 py-3">
-            <h4 id={`${id}-preview`} className="text-sm font-semibold">Prévia do recibo</h4>
+            <h4 id={`${id}-preview`} className="text-sm font-semibold">{t('previewTitle')}</h4>
           </header>
           <div className="min-w-0 space-y-4 p-4">
             {error && (
@@ -399,27 +346,27 @@ export function ReceiptWorkspace({
               </div>
             )}
             {isLoading ? (
-              <p role="status" className="py-4 text-sm text-muted-foreground">Gerando recibo…</p>
-            ) : receiptData ? (
+              <p role="status" className="py-4 text-sm text-muted-foreground">{t('loading')}</p>
+            ) : previewFields ? (
               <>
                 <div ref={receiptRef} className="min-w-0 rounded-lg border border-border bg-background p-3 sm:p-4">
-                  <ReceiptPreview fields={buildReceiptFields(receiptData)} />
+                  <ReceiptPreview fields={previewFields} />
                 </div>
-                <div role="group" aria-label="Ações do recibo" className="flex flex-wrap gap-2">
+                <div role="group" aria-label={t('actionsAria')} className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={handlePrint} className={focusClass}>
-                    <Printer aria-hidden="true" /> Imprimir
+                    <Printer aria-hidden="true" /> {t('print')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleDownload} className={focusClass}>
-                    <Download aria-hidden="true" /> Baixar .txt
+                    <Download aria-hidden="true" /> {t('downloadTxt')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleCopy} className={focusClass}>
                     {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                    {copied ? 'Copiado!' : 'Copiar'}
+                    {copied ? t('copied') : t('copy')}
                   </Button>
                 </div>
               </>
             ) : !error && (
-              <p className="py-4 text-sm text-muted-foreground">Selecione o tipo e informe o ID do registro para ver o recibo aqui.</p>
+              <p className="py-4 text-sm text-muted-foreground">{t('emptyPreview')}</p>
             )}
           </div>
         </section>

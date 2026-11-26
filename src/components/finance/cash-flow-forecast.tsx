@@ -20,19 +20,13 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { currencyFmt } from '@/lib/helpers';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
+import { currencyFmt, shortCurrency } from '@/lib/helpers';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
 import {
   FinanceChartTooltip,
   type FinanceChartTooltipRow,
 } from '@/components/shared/finance-chart-tooltip';
-
-// ─── Helpers ───────────────────────────────────────────────────────
-
-const shortCurrency = (v: number) => {
-  if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return v.toFixed(0);
-};
 
 // ─── Types ─────────────────────────────────────────────────────────
 interface ForecastMonth {
@@ -58,34 +52,36 @@ interface ForecastData {
 
 // ─── Confidence Badge ──────────────────────────────────────────────
 function ConfidenceBadge({ confidence }: { confidence: number }) {
+  const t = useSafeTranslations('analytics');
   if (confidence >= 80) {
     return (
       <Badge className="bg-[var(--ds-accent-positive)]/10 text-[var(--ds-accent-positive)] border-[var(--ds-accent-positive)]/20 font-mono text-xs tabular-nums px-2 py-0.5 hover:bg-[var(--ds-accent-positive)]/15">
-        {confidence}% confiança
+        {t('forecast.confidence', { value: confidence })}
       </Badge>
     );
   }
   if (confidence >= 50) {
     return (
       <Badge className="bg-[var(--ds-accent-warning)]/10 text-[var(--ds-accent-warning)] border-[var(--ds-accent-warning)]/20 font-mono text-xs tabular-nums px-2 py-0.5 hover:bg-[var(--ds-accent-warning)]/15">
-        {confidence}% confiança
+        {t('forecast.confidence', { value: confidence })}
       </Badge>
     );
   }
   return (
     <Badge className="bg-[var(--ds-accent-danger)]/10 text-[var(--ds-accent-danger)] border-[var(--ds-accent-danger)]/20 font-mono text-xs tabular-nums px-2 py-0.5 hover:bg-[var(--ds-accent-danger)]/15">
-      {confidence}% confiança
+      {t('forecast.confidence', { value: confidence })}
     </Badge>
   );
 }
 
 // ─── Trend Indicator ───────────────────────────────────────────────
 function TrendIndicator({ direction }: { direction: string }) {
+  const t = useSafeTranslations('analytics');
   if (direction === 'improving') {
     return (
       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--ds-accent-positive)]/10 border border-[var(--ds-accent-positive)]/20">
         <TrendingUp className="w-3.5 h-3.5 text-[var(--ds-accent-positive)]" />
-        <span className="text-xs font-medium text-[var(--ds-accent-positive)]">Tendência positiva</span>
+        <span className="text-xs font-medium text-[var(--ds-accent-positive)]">{t('forecast.trend.positive')}</span>
       </div>
     );
   }
@@ -93,17 +89,28 @@ function TrendIndicator({ direction }: { direction: string }) {
     return (
       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--ds-accent-danger)]/10 border border-[var(--ds-accent-danger)]/20">
         <TrendingDown className="w-3.5 h-3.5 text-[var(--ds-accent-danger)]" />
-        <span className="text-xs font-medium text-[var(--ds-accent-danger)]">Tendência negativa</span>
+        <span className="text-xs font-medium text-[var(--ds-accent-danger)]">{t('forecast.trend.negative')}</span>
       </div>
     );
   }
   return (
     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--ds-accent-warning)]/10 border border-[var(--ds-accent-warning)]/20">
       <Minus className="w-3.5 h-3.5 text-[var(--ds-accent-warning)]" />
-      <span className="text-xs font-medium text-[var(--ds-accent-warning)]">Tendência estável</span>
+      <span className="text-xs font-medium text-[var(--ds-accent-warning)]">{t('forecast.trend.stable')}</span>
     </div>
   );
 }
+
+type ForecastSeriesKey = 'income' | 'expense' | 'net';
+
+const SERIES_KEY_TO_I18N: Record<string, ForecastSeriesKey> = {
+  Receita: 'income',
+  income: 'income',
+  Despesa: 'expense',
+  expense: 'expense',
+  Saldo: 'net',
+  net: 'net',
+};
 
 // ─── Custom Tooltip ────────────────────────────────────────────────
 export function CashFlowForecastTooltip({
@@ -117,16 +124,21 @@ export function CashFlowForecastTooltip({
   label?: string;
   showValues?: boolean;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   if (!active || !Array.isArray(payload) || payload.length === 0) return null;
 
   const rows: FinanceChartTooltipRow[] = payload.flatMap((entry, index) => {
     if (typeof entry?.value !== 'number' || !Number.isFinite(entry.value) || !entry.name) {
       return [];
     }
+    const rawKey = String(entry.dataKey ?? entry.name);
+    const seriesKey = SERIES_KEY_TO_I18N[rawKey];
+    const rowLabel = seriesKey ? t(`forecast.series.${seriesKey}`) : entry.name;
     return [{
       key: String(entry.dataKey ?? entry.name ?? index),
-      label: entry.name,
-      value: currencyFmt(entry.value),
+      label: rowLabel,
+      value: currencyFmt(entry.value, locale),
       color: entry.color,
     }];
   });
@@ -187,6 +199,8 @@ export function CashFlowForecastContent({
   onRetry: () => void;
   showValues?: boolean;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const status: QueryPanelStatus = loading
     ? 'loading'
     : error || (error === undefined && !data)
@@ -202,7 +216,7 @@ export function CashFlowForecastContent({
         variant="outline"
         size="icon"
         className="size-9"
-        aria-label="Atualizar previsão"
+        aria-label={t('forecast.refreshAria')}
         onClick={onRetry}
       >
         <RefreshCw className="w-4 h-4" />
@@ -214,18 +228,18 @@ export function CashFlowForecastContent({
     return (
       <QueryPanel
         titleId="quiet-forecast"
-        title="Previsão de fluxo de caixa"
+        title={t('forecast.title')}
         controls={controls}
         status={status}
-        loadingMessage="Carregando previsão…"
-        errorMessage="Não foi possível carregar a previsão de fluxo de caixa."
-        emptyMessage="Nenhuma previsão de fluxo de caixa disponível."
+        loadingMessage={t('forecast.loading')}
+        errorMessage={t('forecast.error')}
+        emptyMessage={t('forecast.empty')}
+        retryLabel={t('common.retry')}
         onRetry={onRetry}
       />
     );
   }
 
-  // ─── Chart data ───────────────────────────────────────────────────
   const chartData = data.forecastMonths.map((m) => ({
     month: m.month,
     Receita: Math.round(m.projectedIncome),
@@ -233,17 +247,17 @@ export function CashFlowForecastContent({
     Saldo: Math.round(m.projectedNet),
   }));
 
-  // ─── Render ───────────────────────────────────────────────────────
   return (
     <QueryPanel
       titleId="quiet-forecast"
-      title="Previsão de fluxo de caixa"
-      subtitle="Estimativas para os próximos 3 meses, com base no histórico"
+      title={t('forecast.title')}
+      subtitle={t('forecast.subtitle')}
       controls={controls}
       status="success"
-      loadingMessage="Carregando previsão…"
-      errorMessage="Não foi possível carregar a previsão de fluxo de caixa."
-      emptyMessage="Nenhuma previsão de fluxo de caixa disponível."
+      loadingMessage={t('forecast.loading')}
+      errorMessage={t('forecast.error')}
+      emptyMessage={t('forecast.empty')}
+      retryLabel={t('common.retry')}
       onRetry={onRetry}
     >
       {data.forecastMonths.length > 0 ? (
@@ -256,15 +270,15 @@ export function CashFlowForecastContent({
                   <ConfidenceBadge confidence={m.confidence} />
                 </div>
                 <dl className="space-y-1.5 text-xs">
-                  <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-muted-foreground">Receita projetada</dt><dd className="font-mono tabular-nums">{currencyFmt(m.projectedIncome)}</dd></div>
-                  <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-muted-foreground">Despesa projetada</dt><dd className="font-mono tabular-nums">{currencyFmt(m.projectedExpense)}</dd></div>
-                  <div className="flex flex-wrap justify-between gap-x-2 border-t border-border pt-1.5"><dt className="font-medium">Saldo projetado</dt><dd className="font-mono font-semibold tabular-nums">{m.projectedNet >= 0 ? '+' : ''}{currencyFmt(m.projectedNet)}</dd></div>
+                  <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-muted-foreground">{t('forecast.card.projectedIncome')}</dt><dd className="font-mono tabular-nums">{currencyFmt(m.projectedIncome, locale)}</dd></div>
+                  <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-muted-foreground">{t('forecast.card.projectedExpense')}</dt><dd className="font-mono tabular-nums">{currencyFmt(m.projectedExpense, locale)}</dd></div>
+                  <div className="flex flex-wrap justify-between gap-x-2 border-t border-border pt-1.5"><dt className="font-medium">{t('forecast.card.projectedNet')}</dt><dd className="font-mono font-semibold tabular-nums">{m.projectedNet >= 0 ? '+' : ''}{currencyFmt(m.projectedNet, locale)}</dd></div>
                 </dl>
               </article>
             ))}
           </div>
           <figure className="min-w-0 border-t border-border pt-3">
-            <figcaption className="text-xs font-medium">Receita, despesa e saldo projetados por mês</figcaption>
+            <figcaption className="text-xs font-medium">{t('forecast.chartCaption')}</figcaption>
             <div className="h-56 min-w-0 sm:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
@@ -283,18 +297,14 @@ export function CashFlowForecastContent({
                     tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={shortCurrency}
+                    tickFormatter={(v) => shortCurrency(v, locale)}
                   />
                   <RechartsTooltip content={<CashFlowForecastTooltip showValues={showValues} />} />
-                  <Legend
-                    iconType="line"
-                    iconSize={12}
-                    wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
-                  />
-                  {/* Income — green dashed */}
+                  <Legend iconType="line" iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
                   <Area
                     type="monotone"
                     dataKey="Receita"
+                    name={t('forecast.series.income')}
                     stroke="var(--ds-accent-positive)"
                     strokeWidth={2}
                     strokeDasharray="6 3"
@@ -303,10 +313,10 @@ export function CashFlowForecastContent({
                     dot={{ r: 4, fill: 'var(--ds-accent-positive)', strokeWidth: 2, stroke: 'var(--background)' }}
                     activeDot={{ r: 6, fill: 'var(--ds-accent-positive)', strokeWidth: 2, stroke: 'var(--background)' }}
                   />
-                  {/* Expense — orange dashed */}
                   <Area
                     type="monotone"
                     dataKey="Despesa"
+                    name={t('forecast.series.expense')}
                     stroke="var(--ds-accent-warning)"
                     strokeWidth={2}
                     strokeDasharray="2 3"
@@ -315,10 +325,10 @@ export function CashFlowForecastContent({
                     dot={{ r: 4, fill: 'var(--ds-accent-warning)', strokeWidth: 2, stroke: 'var(--background)' }}
                     activeDot={{ r: 6, fill: 'var(--ds-accent-warning)', strokeWidth: 2, stroke: 'var(--background)' }}
                   />
-                  {/* Net — cyan solid */}
                   <Area
                     type="monotone"
                     dataKey="Saldo"
+                    name={t('forecast.series.net')}
                     stroke="var(--primary)"
                     strokeWidth={2.5}
                     fill="none"
@@ -331,34 +341,24 @@ export function CashFlowForecastContent({
             </div>
           </figure>
         </>
-      ) : <p role="status" className="text-sm text-muted-foreground">Nenhum mês disponível para a previsão.</p>}
+      ) : <p role="status" className="text-sm text-muted-foreground">{t('forecast.emptyMonths')}</p>}
       {data.topExpenseCategories.length > 0 && (
         <div className="border-t border-border pt-3">
           <p className="text-xs font-semibold mb-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[var(--ds-accent-warning)]" />
-            Principais categorias de despesa · média mensal
+            {t('forecast.topCategoriesTitle')}
           </p>
           <div className="space-y-2.5">
             {data.topExpenseCategories.map((cat) => (
-              <div
-                key={cat.name}
-                className="flex items-center gap-3"
-              >
-                <div
-                  className="w-2.5 h-2.5 rounded-sm shrink-0"
-                  style={{ backgroundColor: cat.color }}
-                />
-                <span className="min-w-0 flex-1 break-words text-xs text-muted-foreground">
-                  {cat.name}
-                </span>
+              <div key={cat.name} className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: cat.color }} />
+                <span className="min-w-0 flex-1 break-words text-xs text-muted-foreground">{cat.name}</span>
                 <div className="hidden h-1.5 w-20 overflow-hidden rounded-full bg-muted sm:block">
                   <div
                     style={{
                       width: `${Math.min(
                         100,
-                        (cat.averageMonthly /
-                          (data.topExpenseCategories[0]?.averageMonthly || 1)) *
-                          100
+                        (cat.averageMonthly / (data.topExpenseCategories[0]?.averageMonthly || 1)) * 100,
                       )}%`,
                       backgroundColor: cat.color,
                     }}
@@ -366,7 +366,7 @@ export function CashFlowForecastContent({
                   />
                 </div>
                 <span className="shrink-0 text-right font-mono text-xs font-semibold tabular-nums">
-                  {currencyFmt(cat.averageMonthly)}
+                  {currencyFmt(cat.averageMonthly, locale)}
                 </span>
               </div>
             ))}
@@ -381,7 +381,7 @@ export function CashFlowForecastContent({
               <AlertTriangle className="w-4 h-4 text-[var(--ds-accent-warning)]" />
             </div>
             <p className="text-xs font-semibold text-[var(--ds-accent-warning)]">
-              Alertas de Risco
+              {t('forecast.riskAlertsTitle')}
             </p>
             <Badge variant="secondary" className="font-mono text-xs tabular-nums px-1.5 py-0 bg-[var(--ds-accent-warning)]/10 text-[var(--ds-accent-warning)] border-[var(--ds-accent-warning)]/20">
               {data.riskAlerts.length}
@@ -389,26 +389,20 @@ export function CashFlowForecastContent({
           </div>
           <div className="space-y-2">
             {data.riskAlerts.map((alert, idx) => (
-              <div
-                key={idx}
-                className="flex items-start gap-2.5 py-1.5"
-              >
+              <div key={idx} className="flex items-start gap-2.5 py-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-[var(--ds-accent-warning)] mt-1.5 shrink-0" />
-                <p className="text-xs text-[var(--ds-accent-warning)] leading-relaxed">
-                  {alert}
-                </p>
+                <p className="text-xs text-[var(--ds-accent-warning)] leading-relaxed">{alert}</p>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Empty alerts — positive message */}
       {data.riskAlerts.length === 0 && (
         <div className="rounded-lg border border-[var(--ds-accent-positive)]/30 bg-[var(--ds-accent-positive)]/5 p-4 flex items-center gap-3">
           <TrendingUp className="w-5 h-5 text-[var(--ds-accent-positive)] shrink-0" />
           <p className="text-xs text-[var(--ds-accent-positive)]">
-            Nenhum alerta de risco identificado nesta previsão.
+            {t('forecast.noRiskAlerts')}
           </p>
         </div>
       )}

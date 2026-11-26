@@ -2,6 +2,7 @@
 
 import { AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { FinanceConfirmationDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeTranslations } from '@/i18n/provider';
 import { cn } from '@/lib/utils';
 
 const focusClass =
@@ -21,17 +22,19 @@ export function RecurringDeleteConfirmation({
   onCloseAutoFocus,
   onConfirm,
 }: RecurringDeleteConfirmationProps) {
+  const t = useSafeTranslations('recurring');
+
   return (
     <FinanceConfirmationDialogShell
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
       contentClassName="motion-reduce:animate-none"
-      title="Excluir Transação Recorrente"
-      description="Tem certeza que deseja excluir esta transação recorrente? Esta ação não pode ser desfeita."
+      title={t('delete.title')}
+      description={t('delete.description')}
       footer={
         <>
-          <AlertDialogCancel className={focusClass}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel className={focusClass}>{t('delete.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(event) => {
               event.preventDefault();
@@ -42,7 +45,7 @@ export function RecurringDeleteConfirmation({
               focusClass,
             )}
           >
-            Excluir
+            {t('delete.confirm')}
           </AlertDialogAction>
         </>
       }

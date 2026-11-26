@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useSafeTranslations } from '@/i18n/provider';
 import { cn } from '@/lib/utils';
 
 export type FinanceMetricVariant = 'cell' | 'strip' | 'compact';
@@ -55,14 +56,16 @@ export function FinanceMetric({
   variant = 'cell',
   tone = 'default',
   showValues = true,
-  maskedValue = 'R$ ••••••',
+  maskedValue,
   ariaLabel,
   className,
   valueClassName,
 }: FinanceMetricProps) {
-  const displayValue = showValues ? value : maskedValue;
+  const t = useSafeTranslations('shared');
+  const resolvedMaskedValue = maskedValue ?? (t.has('maskedValue') ? t('maskedValue') : 'R$ ••••••');
+  const displayValue = showValues ? value : resolvedMaskedValue;
   const displayCaption = !showValues && typeof caption === 'string' && /\d/.test(caption)
-    ? maskedValue
+    ? resolvedMaskedValue
     : caption;
   const resolvedAriaLabel = ariaLabel ? (showValues ? ariaLabel : sanitizeMaskedLabel(ariaLabel)) : undefined;
 

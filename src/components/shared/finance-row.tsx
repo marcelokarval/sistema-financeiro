@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 
@@ -74,14 +75,17 @@ export function FinanceRow({
   actions,
   children,
   showValues = true,
-  maskedValue = 'R$ ••••••',
+  maskedValue,
   showSign = true,
   ariaLabel,
   className,
 }: FinanceRowProps) {
+  const locale = useSafeLocale();
+  const t = useSafeTranslations('shared');
+  const resolvedMaskedValue = maskedValue ?? (t.has('maskedValue') ? t('maskedValue') : 'R$ ••••••');
   const resolvedTone: FinanceRowTone = tone ?? (amount >= 0 ? 'positive' : 'negative');
   const sign = !showSign || resolvedTone === 'neutral' ? '' : resolvedTone === 'positive' ? '+' : '−';
-  const displayAmount = showValues ? `${sign}${currencyFmt(Math.abs(amount))}` : maskedValue;
+  const displayAmount = showValues ? `${sign}${currencyFmt(Math.abs(amount), locale)}` : resolvedMaskedValue;
   const resolvedAriaLabel = ariaLabel ? (showValues ? ariaLabel : sanitizeMaskedLabel(ariaLabel)) : undefined;
   const hasActions = Boolean(actions) || Boolean(children);
 

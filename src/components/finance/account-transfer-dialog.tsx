@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
+import { createFallbackTranslator, PT_OPERATIONS_MESSAGES } from './operations-i18n';
 
 export interface AccountTransferDraft {
   fromAccountId: string;
@@ -43,6 +45,8 @@ interface AccountTransferDialogProps {
 function renderTransferAccountSelect({
   id,
   label,
+  placeholder,
+  locale,
   value,
   excludedAccountId,
   accounts,
@@ -50,6 +54,8 @@ function renderTransferAccountSelect({
 }: {
   id: string;
   label: string;
+  placeholder: string;
+  locale: string;
   value: string;
   excludedAccountId: string;
   accounts: readonly TransferAccountOption[];
@@ -60,7 +66,7 @@ function renderTransferAccountSelect({
       <Label htmlFor={id}>{label}</Label>
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger id={id}>
-          <SelectValue placeholder="Selecione a conta..." />
+          <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
           {accounts
@@ -74,7 +80,7 @@ function renderTransferAccountSelect({
                   />
                   <span>{acc.name}</span>
                   <span className="text-muted-foreground text-xs ml-1">
-                    {currencyFmt(acc.balance)}
+                    {currencyFmt(acc.balance, locale)}
                   </span>
                 </div>
               </SelectItem>
@@ -96,6 +102,9 @@ export function AccountTransferDialog({
   onCloseAutoFocus,
   onSubmit,
 }: AccountTransferDialogProps) {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('accounts'), PT_OPERATIONS_MESSAGES.accounts);
+
   return (
     <FinanceFormDialogShell
       open={open}
@@ -105,14 +114,14 @@ export function AccountTransferDialog({
       title={
         <span className="flex items-center gap-2">
           <ArrowLeftRight aria-hidden="true" className="w-5 h-5" />
-          Transferir entre Contas
+          {t('transfer.title')}
         </span>
       }
-      description="Mova dinheiro de uma conta para outra"
+      description={t('transfer.description')}
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t('transfer.cancel')}
           </Button>
           <Button
             aria-disabled={pending}
@@ -124,7 +133,7 @@ export function AccountTransferDialog({
               parseFloat(form.amount) <= 0
             }
           >
-            Transferir
+            {t('transfer.submit')}
           </Button>
         </>
       }
@@ -132,7 +141,9 @@ export function AccountTransferDialog({
       <div className="space-y-4">
         {renderTransferAccountSelect({
           id: 'transfer-from',
-          label: 'De (Origem)',
+          label: t('transfer.fromLabel'),
+          placeholder: t('transfer.selectAccountPlaceholder'),
+          locale,
           value: form.fromAccountId,
           excludedAccountId: form.toAccountId,
           accounts,
@@ -140,25 +151,27 @@ export function AccountTransferDialog({
         })}
         {renderTransferAccountSelect({
           id: 'transfer-to',
-          label: 'Para (Destino)',
+          label: t('transfer.toLabel'),
+          placeholder: t('transfer.selectAccountPlaceholder'),
+          locale,
           value: form.toAccountId,
           excludedAccountId: form.fromAccountId,
           accounts,
           onValueChange: (v) => onFieldChange('toAccountId', v),
         })}
         <div>
-          <Label htmlFor="transfer-amount">Valor (R$)</Label>
+          <Label htmlFor="transfer-amount">{t('transfer.amountLabel')}</Label>
           <Input
             id="transfer-amount"
             type="number"
             step="0.01"
             value={form.amount}
             onChange={(e) => onFieldChange('amount', e.target.value)}
-            placeholder="0,00"
+            placeholder={t('transfer.amountPlaceholder')}
           />
         </div>
         <div>
-          <Label htmlFor="transfer-date">Data</Label>
+          <Label htmlFor="transfer-date">{t('transfer.dateLabel')}</Label>
           <Input
             id="transfer-date"
             type="date"
@@ -167,12 +180,12 @@ export function AccountTransferDialog({
           />
         </div>
         <div>
-          <Label htmlFor="transfer-description">Descrição (opcional)</Label>
+          <Label htmlFor="transfer-description">{t('transfer.descriptionLabel')}</Label>
           <Input
             id="transfer-description"
             value={form.description}
             onChange={(e) => onFieldChange('description', e.target.value)}
-            placeholder="Ex: Transferência para investimento"
+            placeholder={t('transfer.descriptionPlaceholder')}
           />
         </div>
       </div>

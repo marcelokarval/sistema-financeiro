@@ -12,6 +12,34 @@ import { InvestmentEntryEditor } from './investment-entry-editor';
 import { InstallmentEntries, InstallmentPortfolio, InstallmentsView } from './installments-view';
 import { InstallmentPlanEditor } from './installment-plan-editor';
 import { InstallmentDeleteConfirmation } from './installment-delete-confirmation';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function ptUseContext(ctx: React.Context<unknown>, locale: CanonicalLocale = 'pt') {
+  return ctx === AppIntlBridgeContext
+    ? { locale, messages: getMessagesForLocale(locale) }
+    : (ctx as unknown as { _currentValue?: unknown })._currentValue;
+}
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 const a = { id: 'a', name: 'Investimento A', type: 'CDB', investedAmount: 1200, currentBalance: 1350, yieldRate: 0 };
 const b = { ...a, id: 'b', name: 'Investimento B' };
@@ -25,28 +53,30 @@ function find(node: ReactNode, matches: (element: Element) => boolean): Element 
     if (!React.isValidElement<Record<string, any>>(child)) continue;
     if (matches(child)) return child;
     // Evaluate only the leaf components we own; do not emulate Radix portals or focus.
-    const expanded = child.type === InvestmentEditor
-      ? InvestmentEditor(child.props as Parameters<typeof InvestmentEditor>[0])
-      : child.type === InvestmentEntryEditor
-        ? InvestmentEntryEditor(child.props as Parameters<typeof InvestmentEntryEditor>[0])
-        : child.type === InvestmentDeleteConfirmation
-          ? InvestmentDeleteConfirmation(child.props as Parameters<typeof InvestmentDeleteConfirmation>[0])
-          : child.type === InstallmentPlanEditor
-            ? InstallmentPlanEditor(child.props as Parameters<typeof InstallmentPlanEditor>[0])
-            : child.type === InstallmentDeleteConfirmation
-              ? InstallmentDeleteConfirmation(child.props as Parameters<typeof InstallmentDeleteConfirmation>[0])
-              : child.type === FinanceFormDialogShell
-                ? FinanceFormDialogShell(child.props as Parameters<typeof FinanceFormDialogShell>[0])
-                : child.type === FinanceConfirmationDialogShell
-                  ? FinanceConfirmationDialogShell(child.props as Parameters<typeof FinanceConfirmationDialogShell>[0])
-                  : child.props.children;
+    const expanded = withPtIntlDispatcher(() =>
+      child.type === InvestmentEditor
+        ? InvestmentEditor(child.props as Parameters<typeof InvestmentEditor>[0])
+        : child.type === InvestmentEntryEditor
+          ? InvestmentEntryEditor(child.props as Parameters<typeof InvestmentEntryEditor>[0])
+          : child.type === InvestmentDeleteConfirmation
+            ? InvestmentDeleteConfirmation(child.props as Parameters<typeof InvestmentDeleteConfirmation>[0])
+            : child.type === InstallmentPlanEditor
+              ? InstallmentPlanEditor(child.props as Parameters<typeof InstallmentPlanEditor>[0])
+              : child.type === InstallmentDeleteConfirmation
+                ? InstallmentDeleteConfirmation(child.props as Parameters<typeof InstallmentDeleteConfirmation>[0])
+                : child.type === FinanceFormDialogShell
+                  ? FinanceFormDialogShell(child.props as Parameters<typeof FinanceFormDialogShell>[0])
+                  : child.type === FinanceConfirmationDialogShell
+                    ? FinanceConfirmationDialogShell(child.props as Parameters<typeof FinanceConfirmationDialogShell>[0])
+                    : child.props.children,
+    );
     const nested = find(expanded, matches);
     if (nested) return nested;
   }
 }
 
 const byType = (type: Element["type"]) => (element: Element) => element.type === type;
-const withText = (label: string) => (element: Element) => React.Children.toArray(element.props.children).includes(label);
+const withText = (label: string) => (element: Element) => React.Children.toArray(element.props.children).some((child) => typeof child === 'string' && child.trim() === label.trim());
 const formField = (placeholder: string) => (element: Element) => element.props.placeholder === placeholder && element.props.onChange;
 const isOpen = (element: Element) => element.props.open === true && element.props.onOpenChange;
 const openDialog = (element: Element) =>
@@ -89,6 +119,8 @@ async function exercise(
       useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
       useCallback: (fn: unknown) => fn,
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void) => { if (!mounted) effects.push(effect); },
       useLayoutEffect: () => {},
     };
@@ -523,7 +555,7 @@ for (const hadFocus of [true, false]) {
       find(render(), byType(InstallmentPortfolio))!.props.onOpen(plan);
       await settle();
       const entries = find(render(), byType(InstallmentEntries))!;
-      const buttonElement = find(InstallmentEntries(entries.props as Parameters<typeof InstallmentEntries>[0]), (element) => element.props["aria-label"] === "Pagar parcela 1 de 2")!;
+      const buttonElement = find(withPtIntlDispatcher(() => InstallmentEntries(entries.props as Parameters<typeof InstallmentEntries>[0])), (element) => element.props["aria-label"] === "Pagar parcela 1 de 2")!;
       const payment = buttonElement.props.onClick({ currentTarget: button });
       expect(ownerDocument.activeElement).toBe(hadFocus ? fallback : deliberateFocus);
       ownerDocument.activeElement = deliberateFocus;
@@ -671,21 +703,23 @@ test('InvestmentEditor adota FinanceFormDialogShell com papel dialog, closeLabel
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
   const onSave = async () => {};
-  const element = InvestmentEditor({
-    mode: 'create',
-    open: true,
-    saving: true,
-    form: {
-      name: '', type: 'STOCK', description: '', investedAmount: '', yieldRate: '0',
-      brokerage: '', ticker: '', accountId: '', categoryId: '',
-    },
-    accounts: [],
-    categories: [],
-    onFieldChange: () => {},
-    onOpenChange,
-    onCloseAutoFocus,
-    onSave,
-  });
+  const element = withPtIntlDispatcher(() =>
+    InvestmentEditor({
+      mode: 'create',
+      open: true,
+      saving: true,
+      form: {
+        name: '', type: 'STOCK', description: '', investedAmount: '', yieldRate: '0',
+        brokerage: '', ticker: '', accountId: '', categoryId: '',
+      },
+      accounts: [],
+      categories: [],
+      onFieldChange: () => {},
+      onOpenChange,
+      onCloseAutoFocus,
+      onSave,
+    }),
+  );
 
   expect(element.type).toBe(FinanceFormDialogShell);
   expect(element.props.closeLabel).toBe('Fechar formulário');
@@ -711,14 +745,16 @@ test('InvestmentDeleteConfirmation adota FinanceConfirmationDialogShell com pape
   let confirmed = 0;
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
-  const element = InvestmentDeleteConfirmation({
-    open: true,
-    deleting: true,
-    investmentName: 'Tesouro QA',
-    onOpenChange,
-    onCloseAutoFocus,
-    onConfirm: async () => { confirmed++; },
-  });
+  const element = withPtIntlDispatcher(() =>
+    InvestmentDeleteConfirmation({
+      open: true,
+      deleting: true,
+      investmentName: 'Tesouro QA',
+      onOpenChange,
+      onCloseAutoFocus,
+      onConfirm: async () => { confirmed++; },
+    }),
+  );
 
   expect(element.type).toBe(FinanceConfirmationDialogShell);
   expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
@@ -743,4 +779,45 @@ test('InvestmentDeleteConfirmation adota FinanceConfirmationDialogShell com pape
   void action?.props.onClick(event);
   expect(event.defaultPrevented).toBe(true);
   expect(confirmed).toBe(1);
+});
+
+test('renderiza InvestmentPortfolio e InstallmentPortfolio em pt, es e en sem chaves cruas', () => {
+  const expected = {
+    pt: { invest: 'Investimentos', installment: 'Parcelas e financiamentos' },
+    es: { invest: 'Inversiones', installment: 'Cuotas y financiamientos' },
+    en: { invest: 'Investments', installment: 'Installments &amp; financing' },
+  } as const;
+  for (const locale of CANONICAL_LOCALES) {
+    const invHtml = renderWithIntl(
+      <InvestmentPortfolio
+        summary={{ totalInvested: 1200, currentTotal: 1350, rentabilidade: 12.5, dividendsReceived: 12.34 }}
+        count={1}
+        records={[a]}
+        filter="all"
+        onFilter={() => {}}
+        onNew={() => {}}
+        onOpen={() => {}}
+        onEdit={() => {}}
+        onDelete={() => {}}
+      />,
+      locale,
+    );
+    expect(invHtml).toContain(expected[locale].invest);
+    expect(invHtml).not.toContain('MISSING_MESSAGE');
+
+    const instHtml = renderWithIntl(
+      <InstallmentPortfolio
+        count={1}
+        records={[plan]}
+        summary={{ totalFinanced: 900, totalPaid: 0, remaining: 900, overdueCount: 0 }}
+        filter="all"
+        onFilter={() => {}}
+        onNew={() => {}}
+        onOpen={() => {}}
+      />,
+      locale,
+    );
+    expect(instHtml).toContain(expected[locale].installment);
+    expect(instHtml).not.toContain('MISSING_MESSAGE');
+  }
 });

@@ -24,7 +24,7 @@ const editorPath = join(financeDir, 'recurring-transaction-editor.tsx');
 const deletePath = join(financeDir, 'recurring-delete-confirmation.tsx');
 const shellPath = join(root, 'src/components/shared/finance-dialog-shell.tsx');
 
-function installFixture(RecurringTransactionsWidget, createElement, createRoot, ThemeProvider, Toaster) {
+function installFixture(RecurringTransactionsWidget, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster) {
   const initialEntries = [
     {
       id: 'a',
@@ -149,10 +149,14 @@ function installFixture(RecurringTransactionsWidget, createElement, createRoot, 
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
         createElement(
-          'main',
-          { className: 'min-h-screen bg-background p-3', id: 'fixture' },
-          createElement(RecurringTransactionsWidget),
-          createElement(Toaster, { theme }),
+          AppIntlProvider,
+          { locale: 'pt', messages: getMessagesForLocale('pt') },
+          createElement(
+            'main',
+            { className: 'min-h-screen bg-background p-3', id: 'fixture' },
+            createElement(RecurringTransactionsWidget),
+            createElement(Toaster, { theme }),
+          ),
         ),
       ),
     );
@@ -535,11 +539,13 @@ try {
   assert(css.includes('--ds-focus') && css.includes('.bg-background'), 'CSS compilado sem tokens/utilitários');
 
   const entry = `import { RecurringTransactionsWidget } from ${JSON.stringify(recurringPath)};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
     import { Toaster } from 'sonner';
-    (${installFixture.toString()})(RecurringTransactionsWidget, createElement, createRoot, ThemeProvider, Toaster);`;
+    (${installFixture.toString()})(RecurringTransactionsWidget, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster);`;
 
   async function htmlFor(label, useBaseline) {
     let intercepted = false;

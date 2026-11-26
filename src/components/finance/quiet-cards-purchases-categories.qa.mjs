@@ -37,7 +37,7 @@ const cardsViewPath = join(financeDir, 'cards-view.tsx');
 const purchasesViewPath = join(financeDir, 'purchases-view.tsx');
 const categoriesViewPath = join(financeDir, 'categories-view.tsx');
 
-function installFixture(CardsView, PurchasesView, CategoriesView, createElement, createRoot, ThemeProvider, Toaster, toast) {
+function installFixture(CardsView, PurchasesView, CategoriesView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster, toast) {
   const initialCards = [
     {
       id: 'a', name: 'Cartão A', type: 'CREDIT', brand: 'VISA', lastFourDigits: '1111',
@@ -176,8 +176,12 @@ function installFixture(CardsView, PurchasesView, CategoriesView, createElement,
       createElement(
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
-        createElement('main', { className: 'p-4' }, createElement(Comp)),
-        createElement(Toaster, { theme }),
+        createElement(
+          AppIntlProvider,
+          { locale: 'pt', messages: getMessagesForLocale('pt') },
+          createElement('main', { className: 'p-4' }, createElement(Comp)),
+          createElement(Toaster, { theme }),
+        ),
       ),
     );
   };
@@ -656,11 +660,13 @@ try {
   const entry = `import { CardsView } from ${JSON.stringify(cardsViewPath)};
     import { PurchasesView } from ${JSON.stringify(purchasesViewPath)};
     import { CategoriesView } from ${JSON.stringify(categoriesViewPath)};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
     import { Toaster, toast } from 'sonner';
-    (${installFixture.toString()})(CardsView, PurchasesView, CategoriesView, createElement, createRoot, ThemeProvider, Toaster, toast);`;
+    (${installFixture.toString()})(CardsView, PurchasesView, CategoriesView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster, toast);`;
 
   async function htmlFor(label, useBaseline) {
     const intercepted = new Set();

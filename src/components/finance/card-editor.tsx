@@ -11,16 +11,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
-
-const cardColors = [
-  ['#8b5cf6', 'Roxo'],
-  ['#f97316', 'Laranja'],
-  ['#ef4444', 'Vermelho'],
-  ['#3b82f6', 'Azul'],
-  ['#06b6d4', 'Ciano'],
-  ['#22c55e', 'Verde'],
-  ['#ec4899', 'Rosa'],
-] as const;
+import { useSafeTranslations } from '@/i18n/provider';
+import {
+  CARD_BRAND_KEYS,
+  CARD_COLORS,
+  CARD_TYPE_KEYS,
+  createFallbackTranslator,
+  PT_OPERATIONS_MESSAGES,
+} from './operations-i18n';
 
 export interface CardFormDraft {
   name: string;
@@ -68,6 +66,7 @@ export function CardEditor({
   onCloseAutoFocus,
   onSubmit,
 }: CardEditorProps) {
+  const t = createFallbackTranslator(useSafeTranslations('cards'), PT_OPERATIONS_MESSAGES.cards);
   const isEditing = mode === 'edit';
 
   return (
@@ -76,83 +75,82 @@ export function CardEditor({
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
       contentClassName="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
-      title={isEditing ? 'Editar Cartão' : 'Novo Cartão'}
-      description={isEditing ? 'Atualize os dados do cartão' : 'Adicione um novo cartão'}
+      title={isEditing ? t('editor.editTitle') : t('editor.createTitle')}
+      description={isEditing ? t('editor.editDescription') : t('editor.createDescription')}
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t('editor.cancel')}
           </Button>
           <Button aria-disabled={pending} onClick={onSubmit}>
-            {isEditing ? 'Atualizar' : 'Adicionar'}
+            {isEditing ? t('editor.update') : t('editor.add')}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
         <div>
-          <Label htmlFor="card-name">Nome do Cartão</Label>
+          <Label htmlFor="card-name">{t('editor.nameLabel')}</Label>
           <Input
             id="card-name"
             value={form.name}
             onChange={(e) => onFieldChange('name', e.target.value)}
-            placeholder="Ex: Nubank Platinum"
+            placeholder={t('editor.namePlaceholder')}
           />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="card-type">Tipo</Label>
+            <Label htmlFor="card-type">{t('editor.typeLabel')}</Label>
             <Select value={form.type} onValueChange={(v) => onFieldChange('type', v)}>
               <SelectTrigger id="card-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="CREDIT">Crédito</SelectItem>
-                <SelectItem value="DEBIT">Débito</SelectItem>
+                {CARD_TYPE_KEYS.map((key) => (
+                  <SelectItem key={key} value={key}>{t(`types.${key}`)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label htmlFor="card-brand">Bandeira</Label>
+            <Label htmlFor="card-brand">{t('editor.brandLabel')}</Label>
             <Select value={form.brand} onValueChange={(v) => onFieldChange('brand', v)}>
               <SelectTrigger id="card-brand">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="VISA">Visa</SelectItem>
-                <SelectItem value="MASTERCARD">Mastercard</SelectItem>
-                <SelectItem value="ELO">Elo</SelectItem>
-                <SelectItem value="AMEX">American Express</SelectItem>
-                <SelectItem value="HIPER">Hiper</SelectItem>
+                {CARD_BRAND_KEYS.map((key) => (
+                  <SelectItem key={key} value={key}>{t(`brands.${key}`)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="card-digits">Últimos 4 dígitos</Label>
+            <Label htmlFor="card-digits">{t('editor.digitsLabel')}</Label>
             <Input
               id="card-digits"
               value={form.lastFourDigits}
               onChange={(e) => onFieldChange('lastFourDigits', e.target.value.slice(0, 4))}
-              placeholder="0000"
+              placeholder={t('editor.digitsPlaceholder')}
               maxLength={4}
             />
           </div>
           <div>
-            <Label htmlFor="card-flag">Bandeira/Banco (opcional)</Label>
+            <Label htmlFor="card-flag">{t('editor.flagLabel')}</Label>
             <Input
               id="card-flag"
               value={form.flag}
               onChange={(e) => onFieldChange('flag', e.target.value)}
-              placeholder="Ex: Nubank, Inter"
+              placeholder={t('editor.flagPlaceholder')}
             />
           </div>
         </div>
         {form.type === 'CREDIT' && (
           <>
             <div>
-              <Label htmlFor="card-limit">Limite de Crédito (R$)</Label>
+              <Label htmlFor="card-limit">{t('editor.limitLabel')}</Label>
               <Input
                 id="card-limit"
                 type="number"
@@ -163,7 +161,7 @@ export function CardEditor({
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label htmlFor="card-close-day">Dia de Fechamento</Label>
+                <Label htmlFor="card-close-day">{t('editor.closingDayLabel')}</Label>
                 <Input
                   id="card-close-day"
                   type="number"
@@ -174,7 +172,7 @@ export function CardEditor({
                 />
               </div>
               <div>
-                <Label htmlFor="card-due-day">Dia de Vencimento</Label>
+                <Label htmlFor="card-due-day">{t('editor.dueDayLabel')}</Label>
                 <Input
                   id="card-due-day"
                   type="number"
@@ -189,18 +187,18 @@ export function CardEditor({
         )}
         <div>
           <p id="card-color" className="text-sm font-medium">
-            Cor
+            {t('editor.colorLabel')}
           </p>
           <div role="group" aria-labelledby="card-color" className="mt-2 flex flex-wrap gap-2">
-            {cardColors.map(([c, name]) => (
+            {CARD_COLORS.map(({ value, key }) => (
               <button
-                key={c}
+                key={value}
                 type="button"
-                aria-label={name}
-                aria-pressed={form.color === c}
+                aria-label={t(`editor.colors.${key}`)}
+                aria-pressed={form.color === value}
                 className="size-8 rounded-full border border-border aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-foreground focus-visible:outline-ring"
-                style={{ backgroundColor: c }}
-                onClick={() => onFieldChange('color', c)}
+                style={{ backgroundColor: value }}
+                onClick={() => onFieldChange('color', value)}
               />
             ))}
           </div>

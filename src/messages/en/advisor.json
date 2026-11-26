@@ -1,0 +1,28 @@
+{
+  "title": "AI Financial Advisor",
+  "conversationAriaLabel": "Conversation",
+  "typing": "Preparing response…",
+  "welcomeMessage": "Hello! I'm your smart financial advisor. I can help you with:\n\n• Expense analysis\n• Saving tips\n• Goal planning\n• Investment strategies\n\nType your question or choose one of the suggestions below!",
+  "roles": {
+    "user": "You",
+    "assistant": "Advisor"
+  },
+  "suggestions": {
+    "saveMore": "How can I save more?",
+    "analyzeExpenses": "Analyze my expenses",
+    "investmentGoal": "Investment goal",
+    "reduceExpenses": "Tips to reduce expenses"
+  },
+  "errors": {
+    "connectFailed": "Failed to connect to the advisor.",
+    "unprocessed": "Could not process your message. Please try again.",
+    "prefix": "Error: {message}",
+    "unexpected": "Error: An unexpected error occurred. Please try again shortly."
+  },
+  "composer": {
+    "suggestionsTitle": "Suggested questions",
+    "inputAriaLabel": "Your financial question",
+    "inputPlaceholder": "Type your financial question...",
+    "sendAriaLabel": "Send message"
+  }
+}

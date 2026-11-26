@@ -1,0 +1,371 @@
+{
+  "common": {
+    "retry": "Intentar de nuevo"
+  },
+  "maskedValue": "R$ ••••••",
+  "months": {
+    "1": "Enero",
+    "2": "Febrero",
+    "3": "Marzo",
+    "4": "Abril",
+    "5": "Mayo",
+    "6": "Junio",
+    "7": "Julio",
+    "8": "Agosto",
+    "9": "Septiembre",
+    "10": "Octubre",
+    "11": "Noviembre",
+    "12": "Diciembre"
+  },
+  "achievements": {
+    "title": "Logros",
+    "subtitle": "Medallas y progreso por categoría",
+    "refresh": "Actualizar logros",
+    "loading": "Cargando logros…",
+    "error": "No se pudieron cargar los logros.",
+    "empty": "No hay logros disponibles en este momento.",
+    "emptyCategory": "No hay logros en esta categoría.",
+    "unlockedLabel": "Desbloqueados",
+    "completionLabel": "Completitud",
+    "filterAriaLabel": "Filtrar logros por categoría",
+    "unlocked": "Desbloqueado",
+    "locked": "Bloqueado",
+    "unlockedAt": "Desbloqueado el {date}",
+    "progressAriaLabel": "Progreso de {title}",
+    "categories": {
+      "todas": "Todos",
+      "poupanca": "Ahorro",
+      "controle": "Control",
+      "investimento": "Inversión",
+      "exploracao": "Exploración"
+    }
+  },
+  "budgetGoals": {
+    "title": "Metas de presupuesto",
+    "loading": "Cargando metas…",
+    "error": "No se pudieron cargar las metas de presupuesto.",
+    "summary": "{activeCount, plural, one {# activa} other {# activas}} · {completedCount, plural, one {# completada} other {# completadas}}",
+    "newGoal": "Nueva Meta",
+    "emptyTitle": "Ninguna meta registrada",
+    "emptyDescription": "Crea tu primera meta de presupuesto para seguir tus objetivos.",
+    "createGoal": "Crear Meta",
+    "status": {
+      "completed": "Completada",
+      "active": "Activa"
+    },
+    "progressLabel": "Progreso",
+    "progressAriaLabel": "Progreso de la meta {name}",
+    "metrics": {
+      "current": "Actual",
+      "target": "Objetivo",
+      "remaining": "Restante"
+    },
+    "actions": {
+      "more": "Más acciones de {name}",
+      "edit": "Editar",
+      "markCompleted": "Marcar como completada",
+      "reopen": "Reabrir meta",
+      "delete": "Eliminar"
+    },
+    "toasts": {
+      "nameRequired": "El nombre de la meta es obligatorio",
+      "targetPositive": "El valor objetivo debe ser mayor que cero",
+      "saveError": "Error al guardar la meta",
+      "updated": "¡Meta actualizada con éxito!",
+      "created": "¡Meta creada con éxito!",
+      "connectionError": "Error de conexión",
+      "deleted": "Meta eliminada",
+      "deleteError": "Error al eliminar la meta",
+      "reopened": "Meta reabierta",
+      "completed": "¡Meta completada!",
+      "updateError": "Error al actualizar la meta"
+    },
+    "editor": {
+      "editTitle": "Editar Meta",
+      "createTitle": "Nueva Meta de Presupuesto",
+      "editDescription": "Actualiza los datos de tu meta de presupuesto.",
+      "createDescription": "Define un objetivo financiero para seguir tu progreso.",
+      "cancel": "Cancelar",
+      "saving": "Guardando...",
+      "saveChanges": "Guardar Cambios",
+      "createSubmit": "Crear Meta",
+      "fields": {
+        "name": "Nombre de la meta *",
+        "namePlaceholder": "Ej: Fondo de emergencia",
+        "description": "Descripción",
+        "descriptionPlaceholder": "Describe tu meta (opcional)",
+        "targetAmount": "Valor objetivo (R$) *",
+        "currentAmount": "Valor actual (R$)",
+        "amountPlaceholder": "0,00",
+        "category": "Categoría",
+        "categoryPlaceholder": "Seleccionar...",
+        "categoryNone": "Ninguna",
+        "endDate": "Fecha límite"
+      }
+    }
+  },
+  "health": {
+    "title": "Salud financiera",
+    "subtitle": "Evaluación basada en tus datos financieros",
+    "loading": "Cargando evaluación…",
+    "error": "Error al cargar los datos de salud financiera.",
+    "scoreTitle": "Puntuación",
+    "scoreMaxUnit": "/100 puntos",
+    "scoreProgressLabel": "Puntuación de salud financiera",
+    "pointsUnit": "puntos",
+    "scoreValueText": "{score} de 100 puntos · {label}",
+    "monthlySummaryAria": "Resumen mensual",
+    "monthlyIncome": "Ingresos del mes",
+    "monthlyExpense": "Gastos del mes",
+    "monthlyBalance": "Saldo del mes",
+    "monthlyDeficit": "Déficit del mes",
+    "criteriaTitle": "Criterios de puntuación",
+    "pointsFraction": "{points}/{maxPoints} puntos",
+    "scoreLabels": {
+      "excellent": "Excelente",
+      "good": "Bueno",
+      "regular": "Regular",
+      "attention": "Atención",
+      "critical": "Crítico"
+    },
+    "criteria": {
+      "savings": "Tasa de ahorro",
+      "credit": "Uso del crédito",
+      "diversification": "Diversificación",
+      "netWorth": "Patrimonio neto",
+      "trend": "Tendencia"
+    },
+    "details": {
+      "savingsRate": "{rate}% de ahorro",
+      "noIncome": "Sin ingresos registrados",
+      "creditUsed": "{rate}% utilizado",
+      "noCards": "Sin tarjetas de crédito",
+      "accountsCount": "{count, plural, one {# cuenta} other {# cuentas}}",
+      "expensesLower": "Gastos {pct}% menores",
+      "expensesStable": "Gastos estables",
+      "expensesHigher": "Gastos {pct}% mayores",
+      "insufficientData": "Datos insuficientes"
+    }
+  },
+  "dashboard": {
+    "title": "Central de metas",
+    "subtitle": "Sigue tus objetivos financieros",
+    "loading": "Cargando metas…",
+    "error": "No se pudo cargar la central de metas.",
+    "tabsAria": "Áreas de la central de metas",
+    "tabs": {
+      "overview": "Resumen General",
+      "goals": "Metas y Ahorros",
+      "investments": "Inversiones"
+    },
+    "metrics": {
+      "totalGoals": "Total de metas",
+      "inProgress": "En progreso",
+      "completed": "Completadas",
+      "totalAccumulated": "Total acumulado"
+    },
+    "progress": {
+      "title": "Progreso general",
+      "ariaLabel": "Progreso general de las metas",
+      "accumulated": "Acumulado",
+      "targetTotal": "Total objetivo",
+      "remaining": "Restante",
+      "estimatedCompletion": "Finalización estimada: {date}",
+      "levels": {
+        "excellent": "Excelente",
+        "good": "Bueno",
+        "inProgress": "En progreso",
+        "start": "Inicio"
+      }
+    },
+    "groupsAria": "Acumulado por grupo",
+    "groups": {
+      "budgetGoals": "Metas de presupuesto",
+      "savings": "Ahorros",
+      "investments": "Inversiones",
+      "investmentResult": "Resultado de inversiones",
+      "goalsCount": "{count, plural, one {# meta} other {# metas}}",
+      "investmentsCount": "{count, plural, one {# inversión} other {# inversiones}}"
+    },
+    "recentTitle": "Metas recientes",
+    "recentEmpty": "Ninguna meta registrada.",
+    "budgetGoalLabel": "Meta de presupuesto",
+    "savingsGoalLabel": "Meta de ahorro",
+    "budgetTag": "Presupuesto",
+    "combined": {
+      "empty": "No se encontraron metas. Crea metas de presupuesto o ahorro para seguirlas aquí.",
+      "completed": "Completada",
+      "inProgress": "En progreso",
+      "progressAria": "Progreso de la meta {name}",
+      "currentAndTarget": "Actual: {current} · Objetivo: {target}",
+      "remaining": "Faltan",
+      "monthlyContribution": "Aporte mensual",
+      "perMonth": "{value}/mes",
+      "approxMonths": "{count, plural, one {~# mes} other {~# meses}}",
+      "startDate": "Inicio",
+      "deadline": "Plazo"
+    },
+    "investmentsList": {
+      "empty": "Ninguna inversión. Empieza a invertir para seguir tu cartera aquí.",
+      "currentValue": "Valor actual",
+      "invested": "Invertido",
+      "result": "Resultado",
+      "returnRate": "Retorno"
+    },
+    "investmentTypes": {
+      "stock": "Acciones",
+      "bond": "Renta Fija",
+      "fii": "FIIs",
+      "cdb": "CDB",
+      "lci": "LCI",
+      "lca": "LCA",
+      "tesouro": "Tesoro",
+      "crypto": "Cripto",
+      "etf": "ETF",
+      "other": "Otro"
+    },
+    "savingsTypes": {
+      "savings": "Ahorro",
+      "piggyBank": "Alcancía",
+      "cdi": "Cuenta CDI",
+      "investment": "Inversión",
+      "emergencyFund": "Reserva"
+    }
+  },
+  "monthlyBudget": {
+    "title": "Presupuesto mensual",
+    "currentMonth": "Mes actual · {month}.",
+    "newLimit": "Nuevo límite",
+    "loading": "Cargando presupuesto…",
+    "error": "No se pudo cargar el presupuesto.",
+    "emptyTitle": "Ningún presupuesto definido.",
+    "emptyDescription": "Define límites de gasto por categoría para seguir el mes.",
+    "summary": {
+      "totalBudget": "Presupuesto total",
+      "totalSpent": "Gasto total",
+      "available": "Disponible"
+    },
+    "overBudgetPrefix": "Atención:",
+    "overBudgetMessage": "presupuesto total del mes superado en {amount}.",
+    "row": {
+      "spentOfAmount": "{spent} de {amount}",
+      "actionsAria": "Acciones del límite de {category}",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "usedPct": " · {pct}% utilizado",
+      "exceededBy": "Excedido en {amount}",
+      "remaining": "Queda {amount}",
+      "status": {
+        "exceeded": "Excedido",
+        "critical": "Crítico",
+        "warning": "Atención",
+        "good": "Bueno"
+      }
+    },
+    "deleteDialog": {
+      "title": "¿Eliminar presupuesto?",
+      "descriptionWithCategory": "¿Seguro que deseas eliminar el límite de la categoría \"{category}\"?",
+      "descriptionFallback": "Esta acción no se puede deshacer.",
+      "cancel": "Cancelar",
+      "confirm": "Eliminar"
+    },
+    "toasts": {
+      "invalidFields": "Completa todos los campos correctamente",
+      "invalidPeriod": "Mes o año inválido",
+      "updateError": "Error al actualizar",
+      "createError": "Error al crear",
+      "updated": "Presupuesto actualizado",
+      "created": "Presupuesto creado",
+      "connectionError": "Error de conexión",
+      "deleted": "Presupuesto eliminado",
+      "deleteError": "Error al eliminar"
+    },
+    "editor": {
+      "editTitle": "Editar Presupuesto",
+      "createTitle": "Nuevo Presupuesto",
+      "description": "Indica la categoría, el monto y el período del límite.",
+      "cancel": "Cancelar",
+      "saving": "Guardando...",
+      "update": "Actualizar",
+      "create": "Crear",
+      "category": "Categoría",
+      "categoryPlaceholder": "Selecciona una categoría",
+      "limitAmount": "Valor del Límite (R$)",
+      "amountPlaceholder": "0,00",
+      "month": "Mes",
+      "year": "Año"
+    }
+  },
+  "challenges": {
+    "title": "Desafíos de ahorro",
+    "loading": "Cargando desafíos…",
+    "error": "No se pudieron cargar los datos del desafío de ahorro.",
+    "summaryAria": "Ahorro en el mes",
+    "metrics": {
+      "savingsRate": "Tasa de ahorro",
+      "monthSavings": "Ahorro en el mes",
+      "dailyAverage": "Promedio diario de gastos",
+      "projectedSavings": "Ahorro proyectado",
+      "daysRemaining": "Días restantes"
+    },
+    "rateLabels": {
+      "excellent": "Excelente",
+      "good": "Bueno",
+      "attention": "Atención",
+      "low": "Bajo",
+      "negative": "Negativo"
+    },
+    "today": {
+      "title": "Gastos de hoy",
+      "overTarget": "Meta superada",
+      "withinTarget": "Dentro de la meta",
+      "usagePrefix": "de {target} disponibles · {pct}% de la meta diaria utilizada",
+      "progressLabel": "Uso de la meta diaria",
+      "noSpending": "Sin gastos aún"
+    },
+    "targetsTitle": "Metas de los desafíos",
+    "row": {
+      "onTrack": "En buen camino",
+      "almostThere": "Casi listo",
+      "needsWork": "Necesita mejorar",
+      "progressAria": "Progreso de {title}",
+      "currentAndTarget": "Actual: {current} · Meta: {target}",
+      "accepted": "¡Desafío aceptado!",
+      "start": "Iniciar Desafío"
+    },
+    "motivation": {
+      "high": "¡Increíble! Estás ahorrando el {rate}% de tus ingresos. ¡Sigue así!",
+      "good": "¡Muy bien! Tu tasa de ahorro es saludable. Faltan {days, plural, one {# día} other {# días}} — ¡mantén el enfoque!",
+      "medium": "Vas por buen camino. Intenta reducir pequeños gastos para alcanzar un 20% de ahorro.",
+      "low": "Tu tasa de ahorro es baja. ¿Qué tal recortar gastos innecesarios estos {days, plural, one {# día} other {# días}}?",
+      "negative": "Tus gastos superaron los ingresos. Revisa tus gastos y busca formas de ahorrar."
+    },
+    "footerSummary": "Ingresos: {income} · Gastos: {expenses} · {elapsed} de {total} días"
+  },
+  "insights": {
+    "title": "Insights inteligentes",
+    "subtitle": "Análisis automático de tus finanzas",
+    "loading": "Cargando análisis…",
+    "error": "No se pudieron cargar los insights financieros.",
+    "empty": "Ningún análisis disponible. Agrega transacciones y cuentas para recibir análisis automáticos.",
+    "emptyFiltered": "Ningún análisis en este filtro.",
+    "filterAria": "Filtrar análisis",
+    "tabs": {
+      "all": "Todos",
+      "positive": "Positivos",
+      "alerts": "Alertas",
+      "info": "Información"
+    },
+    "types": {
+      "success": "Positivo",
+      "warning": "Atención",
+      "danger": "Riesgo",
+      "info": "Información"
+    },
+    "trends": {
+      "up": "En alza",
+      "down": "En baja",
+      "stable": "Estable"
+    }
+  }
+}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { QueryPanel } from '@/components/shared/query-panel';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 
@@ -53,10 +54,11 @@ function MiniSparkline({ data, strokeColor, label }: { data: number[]; strokeCol
 }
 
 function ChangeIndicator({ change }: { change: number }) {
+  const t = useSafeTranslations('dashboard');
   if (change === 0) return null;
   return (
     <span className="text-xs text-muted-foreground">
-      <span className="font-mono tabular-nums">{change > 0 ? '+' : '−'}{Math.abs(change).toFixed(1)}%</span> em relação ao mês anterior
+      <span className="font-mono tabular-nums">{change > 0 ? '+' : '−'}{Math.abs(change).toFixed(1)}%</span> {t('quickStats.vsLastMonth')}
     </span>
   );
 }
@@ -79,6 +81,7 @@ function StatCard({ label, value, badge, sparklineData, sparklineStroke, sparkli
 
 // --- Health Bar ---
 function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balanceTrend: 'up' | 'down' | 'stable' }) {
+  const t = useSafeTranslations('dashboard');
   // Color logic: <0% red, 0-15% amber, 15-30% cyan, >30% emerald
   const barColor =
     savingsRate < 0
@@ -95,10 +98,10 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
 
   const trendLabel =
     balanceTrend === 'up'
-      ? 'Tendência positiva'
+      ? t('quickStats.health.trendUp')
       : balanceTrend === 'down'
-        ? 'Tendência negativa'
-        : 'Estável';
+        ? t('quickStats.health.trendDown')
+        : t('quickStats.health.trendStable');
 
   const TrendIcon =
     balanceTrend === 'up'
@@ -118,7 +121,7 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
     <div className="border-t border-border px-3 py-3 sm:px-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-          Saúde Financeira
+          {t('quickStats.health.title')}
         </span>
         <div className="flex items-center gap-1.5">
           <TrendIcon className={cn('w-3.5 h-3.5', trendColor)} />
@@ -134,7 +137,7 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
         </span>
       </div>
       <p className="text-[10px] text-muted-foreground mt-1.5">
-        Taxa de economia mensal — meta recomendada: 20%+
+        {t('quickStats.health.recommendedTarget')}
       </p>
     </div>
   );
@@ -142,6 +145,7 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
 
 // --- Main Component ---
 export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: number }) {
+  const t = useSafeTranslations('dashboard');
   const [data, setData] = useState<QuickStatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -157,7 +161,7 @@ export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: nu
       }
     } catch (e) {
       setData(null);
-      console.error('Erro ao carregar resumo rápido:', e);
+      console.error('Failed to load quick stats:', e);
     } finally {
       setLoading(false);
     }
@@ -171,11 +175,11 @@ export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: nu
     return (
       <QueryPanel
         titleId="quiet-quick-stats"
-        title="Resumo rápido"
+        title={t('quickStats.title')}
         status={loading ? 'loading' : 'error'}
-        loadingMessage="Carregando indicadores…"
-        errorMessage="Não foi possível carregar os indicadores."
-        retryLabel="Tentar novamente"
+        loadingMessage={t('quickStats.loading')}
+        errorMessage={t('quickStats.error')}
+        retryLabel={t('retry')}
         onRetry={() => void fetchStats()}
       />
     );
@@ -185,6 +189,8 @@ export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: nu
 }
 
 export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
+  const t = useSafeTranslations('dashboard');
+  const locale = useSafeLocale();
   const { current, sparklines, changes } = data;
   const hasSavingsHistory = Array.isArray(data.monthlySavingsHistory) && data.monthlySavingsHistory.length > 0;
   const hasInvestmentsHistory = Array.isArray(data.investmentsHistory) && data.investmentsHistory.length > 0;
@@ -208,34 +214,38 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
 
   const statsConfig = [
     {
-      label: 'Patrimônio Líquido',
-      value: currencyFmt(current.netWorth),
-      badge: 'Posição atual',
+      key: 'netWorth',
+      label: t('quickStats.metrics.netWorth'),
+      value: currencyFmt(current.netWorth, locale),
+      badge: t('quickStats.badges.currentPosition'),
       sparklineData: sparklines.balance,
       sparklineStroke: 'var(--primary)',
-      sparklineLabel: 'Histórico do saldo',
+      sparklineLabel: t('quickStats.sparklines.balance'),
       change: undefined,
     },
     {
-      label: 'Receita Mensal',
-      value: currencyFmt(current.monthlyIncome),
+      key: 'monthlyIncome',
+      label: t('quickStats.metrics.monthlyIncome'),
+      value: currencyFmt(current.monthlyIncome, locale),
       sparklineData: sparklines.income,
       sparklineStroke: 'var(--ds-accent-positive)',
-      sparklineLabel: 'Histórico de receitas',
+      sparklineLabel: t('quickStats.sparklines.income'),
       change: changes.incomeVsLastMonth,
     },
     {
-      label: 'Despesa Mensal',
-      value: currencyFmt(current.monthlyExpense),
+      key: 'monthlyExpense',
+      label: t('quickStats.metrics.monthlyExpense'),
+      value: currencyFmt(current.monthlyExpense, locale),
       sparklineData: sparklines.expense,
       sparklineStroke: 'var(--ds-accent-danger)',
-      sparklineLabel: 'Histórico de despesas',
+      sparklineLabel: t('quickStats.sparklines.expense'),
       change: changes.expenseVsLastMonth,
     },
     {
-      label: 'Economia Mensal',
-      value: currencyFmt(current.monthlySavings),
-      badge: `Taxa de economia: ${current.savingsRate.toFixed(1)}%`,
+      key: 'monthlySavings',
+      label: t('quickStats.metrics.monthlySavings'),
+      value: currencyFmt(current.monthlySavings, locale),
+      badge: t('quickStats.badges.savingsRate', { rate: current.savingsRate.toFixed(1) }),
       sparklineData: hasSavingsHistory
         ? data.monthlySavingsHistory!
         : sparklines.balance.map((_, i, arr) => {
@@ -243,28 +253,30 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
             return arr[i] - arr[i - 1];
           }),
       sparklineStroke: 'var(--primary)',
-      sparklineLabel: hasSavingsHistory ? 'Histórico de economia mensal' : 'Variação do saldo (estimativa)',
+      sparklineLabel: hasSavingsHistory ? t('quickStats.sparklines.savingsHistory') : t('quickStats.sparklines.savingsEstimate'),
       change: changes.savingsVsLastMonth,
     },
     {
-      label: 'Investimentos',
-      value: currencyFmt(current.investments),
-      badge: current.netWorth !== 0 ? `${investmentPct}% do patrimônio (valor absoluto)` : undefined,
+      key: 'investments',
+      label: t('quickStats.metrics.investments'),
+      value: currencyFmt(current.investments, locale),
+      badge: current.netWorth !== 0 ? t('quickStats.badges.investmentPct', { pct: investmentPct }) : undefined,
       sparklineData: hasInvestmentsHistory
         ? data.investmentsHistory!
         : sparklines.balance.map((_, i) => Math.round((current.investments / 6) * (i + 1))),
       sparklineStroke: 'var(--primary)',
-      sparklineLabel: hasInvestmentsHistory ? 'Histórico de investimentos' : 'Estimativa sem histórico de investimentos',
+      sparklineLabel: hasInvestmentsHistory ? t('quickStats.sparklines.investmentsHistory') : t('quickStats.sparklines.investmentsEstimate'),
       change: undefined,
     },
     {
-      label: 'Dívida em Cartões',
-      value: currencyFmt(current.cardDebt),
+      key: 'cardDebt',
+      label: t('quickStats.metrics.cardDebt'),
+      value: currencyFmt(current.cardDebt, locale),
       sparklineData: hasCardDebtHistory
         ? data.cardDebtHistory!
         : sparklines.expense.map((v) => Math.round(v * 0.6 * 100) / 100),
       sparklineStroke: 'var(--ds-accent-warning)',
-      sparklineLabel: hasCardDebtHistory ? 'Histórico da dívida em cartões' : 'Proporção das despesas (estimativa da dívida)',
+      sparklineLabel: hasCardDebtHistory ? t('quickStats.sparklines.cardDebtHistory') : t('quickStats.sparklines.cardDebtEstimate'),
       change: undefined,
     },
   ];
@@ -272,13 +284,13 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
   return (
     <QueryPanel
       titleId="quiet-quick-stats"
-      title="Resumo rápido"
-      subtitle="Posição atual e indicadores do mês · variações ante o mês anterior"
+      title={t('quickStats.title')}
+      subtitle={t('quickStats.subtitle')}
       status="success"
       contentClassName="space-y-0 p-0 sm:p-0"
     >
       <dl className="grid grid-cols-2 sm:grid-cols-3 sm:[&>div:not(:nth-child(3n+1))]:border-l max-sm:[&>div:nth-child(even)]:border-l">
-        {statsConfig.map((stat) => <StatCard key={stat.label} {...stat} />)}
+        {statsConfig.map(({ key, ...stat }) => <StatCard key={key} {...stat} />)}
       </dl>
       <HealthBar savingsRate={current.savingsRate} balanceTrend={balanceTrend} />
     </QueryPanel>

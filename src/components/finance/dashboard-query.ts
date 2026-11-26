@@ -29,11 +29,11 @@ export type SettledQuery<T> = { status: 'ready'; data: T } | { status: 'error' }
 export type QueryResult<T> = SettledQuery<T> | { status: 'loading' };
 
 export const QUICK_FILTERS = [
-  { label: 'Este mês', key: 'month' },
-  { label: 'Últimos 3 meses', key: 'quarter' },
-  { label: 'Últimos 6 meses', key: 'halfyear' },
-  { label: 'Este ano', key: 'year' },
-  { label: 'Tudo', key: 'all' },
+  { key: 'month' },
+  { key: 'quarter' },
+  { key: 'halfyear' },
+  { key: 'year' },
+  { key: 'all' },
 ] as const;
 export type QuickFilterKey = typeof QUICK_FILTERS[number]['key'];
 
@@ -52,7 +52,7 @@ export function quickRange(key: QuickFilterKey, now = new Date()): DashboardRang
 export async function fetchDashboard(range: DashboardRange, signal: AbortSignal, fetcher = fetch): Promise<DashboardData> {
   const params = new URLSearchParams(range);
   const response = await fetcher(`/api/dashboard?${params}`, { signal });
-  if (!response.ok) throw new Error(`Resumo indisponível (${response.status})`);
+  if (!response.ok) throw new Error(`Dashboard unavailable (${response.status})`);
   return dashboardSchema.parse(await response.json());
 }
 

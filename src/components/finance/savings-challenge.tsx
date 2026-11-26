@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import { getDateFnsLocale } from './analytics-i18n';
 
-// --- Types ---
 interface ChallengeTarget {
   id: string;
   title: string;
@@ -36,23 +36,6 @@ interface SavingsData {
   challengeTargets: ChallengeTarget[];
 }
 
-function getMotivationalMessage(data: SavingsData): string {
-  const { savingsRate, daysRemaining } = data;
-  if (savingsRate >= 30) {
-    return `Incrível! Você está economizando ${savingsRate.toFixed(0)}% da sua renda. Continue assim!`;
-  }
-  if (savingsRate >= 20) {
-    return `Muito bem! Sua taxa de poupança está saudável. Faltam ${daysRemaining} dias — mantenha o foco!`;
-  }
-  if (savingsRate >= 10) {
-    return `Você está no caminho certo. Tente reduzir pequenos gastos para atingir 20% de economia.`;
-  }
-  if (savingsRate >= 0) {
-    return `Sua taxa de poupança está baixa. Que tal cortar gastos desnecessários estes ${daysRemaining} dias?`;
-  }
-  return `Suas despesas ultrapassaram a renda. Revise seus gastos e busque formas de economizar.`;
-}
-
 const STARTED_STORAGE_KEY = 'quiet-savings-challenges-started';
 
 export function readStartedChallenges(): Set<string> {
@@ -77,21 +60,26 @@ export function acceptChallengeInStorage(id: string): Set<string> {
   return next;
 }
 
-function getSavingsLabel(rate: number) {
-  if (rate >= 30) return 'Excelente';
-  if (rate >= 20) return 'Bom';
-  if (rate >= 10) return 'Atenção';
-  if (rate >= 0) return 'Baixo';
-  return 'Negativo';
+type SavingsRateLabelKey = 'excellent' | 'good' | 'attention' | 'low' | 'negative';
+
+function getSavingsLabelKey(rate: number): SavingsRateLabelKey {
+  if (rate >= 30) return 'excellent';
+  if (rate >= 20) return 'good';
+  if (rate >= 10) return 'attention';
+  if (rate >= 0) return 'low';
+  return 'negative';
 }
 
 const panel = 'min-w-0 space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5';
 const amount = 'break-words font-mono text-sm font-semibold tabular-nums';
 
 export function ChallengeRow({ challenge }: { challenge: ChallengeTarget }) {
+  const t = useSafeTranslations('goals');
+  const locale = useSafeLocale();
   const [started, setStarted] = useState(() => readStartedChallenges().has(challenge.id));
-  const label = challenge.progress >= 80 ? 'No caminho' : challenge.progress >= 50 ? 'Quase lá' : 'Precisa melhorar';
-  const formatValue = (v: number, unit: string) => unit === 'currency' ? currencyFmt(v) : `${v.toFixed(1)}%`;
+  const statusKey = challenge.progress >= 80 ? 'onTrack' : challenge.progress >= 50 ? 'almostThere' : 'needsWork';
+  const label = t(`challenges.row.${statusKey}`);
+  const formatValue = (v: number, unit: string) => unit === 'currency' ? currencyFmt(v, locale) : `${v.toFixed(1)}%`;
   const width = Math.min(100, Math.max(challenge.progress, 0));
 
   return (
@@ -103,7 +91,7 @@ export function ChallengeRow({ challenge }: { challenge: ChallengeTarget }) {
       <div className="min-w-0 space-y-1.5 text-xs">
         <p className="flex flex-wrap justify-between gap-x-2"><span>{label}</span><span className="font-mono tabular-nums">{challenge.progress.toFixed(0)}%</span></p>
         <FinanceProgress
-          label={`Progresso de ${challenge.title}`}
+          label={t('challenges.row.progressAria', { title: challenge.title })}
           value={width}
           min={0}
           max={100}
@@ -111,7 +99,12 @@ export function ChallengeRow({ challenge }: { challenge: ChallengeTarget }) {
           valueText={`${challenge.progress.toFixed(0)}%`}
           showHeader={false}
         />
-        <p className="break-words text-muted-foreground">Atual: {formatValue(challenge.current, challenge.unit)} · Meta: {formatValue(challenge.target, challenge.unit)}</p>
+        <p className="break-words text-muted-foreground">
+          {t('challenges.row.currentAndTarget', {
+            current: formatValue(challenge.current, challenge.unit),
+            target: formatValue(challenge.target, challenge.unit),
+          })}
+        </p>
       </div>
       <Button
         type="button"
@@ -124,7 +117,7 @@ export function ChallengeRow({ challenge }: { challenge: ChallengeTarget }) {
         }}
         disabled={started}
       >
-        {started ? 'Desafio aceito!' : 'Iniciar Desafio'}
+        {started ? t('challenges.row.accepted') : t('challenges.row.start')}
       </Button>
     </li>
   );
@@ -162,42 +155,64 @@ export function SavingsChallengeContent({
   loading: boolean;
   onRetry: () => void;
 }) {
-  if (loading) return <section data-qa="quiet-savings-challenge" aria-label="Desafios de economia" aria-busy="true" className={panel}><h2 className="font-semibold">Desafios de economia</h2><p role="status" className="text-sm text-muted-foreground">Carregando desafios…</p></section>;
+  const t = useSafeTranslations('goals');
+  const locale = useSafeLocale();
+
+  if (loading) {
+    return (
+      <section data-qa="quiet-savings-challenge" aria-label={t('challenges.title')} aria-busy="true" className={panel}>
+        <h2 className="font-semibold">{t('challenges.title')}</h2>
+        <p role="status" className="text-sm text-muted-foreground">{t('challenges.loading')}</p>
+      </section>
+    );
+  }
   if (!data) {
     return (
-      <section data-qa="quiet-savings-challenge" aria-label="Desafios de economia" className={panel}>
-        <h2 className="font-semibold">Desafios de economia</h2>
+      <section data-qa="quiet-savings-challenge" aria-label={t('challenges.title')} className={panel}>
+        <h2 className="font-semibold">{t('challenges.title')}</h2>
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-          <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar os dados do desafio de economia.</p>
-          <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={onRetry}>Tentar novamente</Button>
+          <p role="alert" className="text-sm text-muted-foreground">{t('challenges.error')}</p>
+          <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={onRetry}>{t('common.retry')}</Button>
         </div>
       </section>
     );
   }
 
-  const motivation = getMotivationalMessage(data);
+  const motivation = data.savingsRate >= 30
+    ? t('challenges.motivation.high', { rate: data.savingsRate.toFixed(0) })
+    : data.savingsRate >= 20
+      ? t('challenges.motivation.good', { days: data.daysRemaining })
+      : data.savingsRate >= 10
+        ? t('challenges.motivation.medium')
+        : data.savingsRate >= 0
+          ? t('challenges.motivation.low', { days: data.daysRemaining })
+          : t('challenges.motivation.negative');
+
   const todayProgress = data.dailyTarget > 0 ? Math.min((data.todaySpending / data.dailyTarget) * 100, 100) : 0;
   return (
-    <section data-qa="quiet-savings-challenge" aria-label="Desafios de economia" className={panel}>
+    <section data-qa="quiet-savings-challenge" aria-label={t('challenges.title')} className={panel}>
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="font-semibold">Desafios de economia</h2>
-        <p className="text-xs capitalize text-muted-foreground">{format(new Date(), 'MMMM yyyy', { locale: ptBR })}</p>
+        <h2 className="font-semibold">{t('challenges.title')}</h2>
+        <p className="text-xs capitalize text-muted-foreground">{format(new Date(), 'MMMM yyyy', { locale: getDateFnsLocale(locale) })}</p>
       </header>
-      <dl aria-label="Economia no mês" className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs sm:grid-cols-3 xl:grid-cols-5">
-        <FinanceMetric variant="compact" label="Taxa de poupança" value={`${Math.round(data.savingsRate)}%`} caption={getSavingsLabel(data.savingsRate)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label="Economia no mês" value={currencyFmt(data.currentMonthSavings)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label="Média diária de gastos" value={currencyFmt(data.dailyAverageExpense)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label="Economia projetada" value={currencyFmt(data.projectedSavings)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label="Dias restantes" value={data.daysRemaining} valueClassName="text-sm" />
+      <dl aria-label={t('challenges.summaryAria')} className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs sm:grid-cols-3 xl:grid-cols-5">
+        <FinanceMetric variant="compact" label={t('challenges.metrics.savingsRate')} value={`${Math.round(data.savingsRate)}%`} caption={t(`challenges.rateLabels.${getSavingsLabelKey(data.savingsRate)}`)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.monthSavings')} value={currencyFmt(data.currentMonthSavings, locale)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.dailyAverage')} value={currencyFmt(data.dailyAverageExpense, locale)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.projectedSavings')} value={currencyFmt(data.projectedSavings, locale)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.daysRemaining')} value={data.daysRemaining} valueClassName="text-sm" />
       </dl>
       <div className="space-y-2 rounded-md border border-border px-3 py-2.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h3 className="text-sm font-medium">Gastos de hoje</h3>
-          <p className="text-xs">{data.todaySpending > data.dailyTarget ? 'Meta ultrapassada' : 'Dentro da meta'}</p>
+          <h3 className="text-sm font-medium">{t('challenges.today.title')}</h3>
+          <p className="text-xs">{data.todaySpending > data.dailyTarget ? t('challenges.today.overTarget') : t('challenges.today.withinTarget')}</p>
         </div>
-        <p className="break-words text-xs text-muted-foreground"><strong className={cn(amount, 'text-foreground')}>{currencyFmt(data.todaySpending)}</strong> de {currencyFmt(data.dailyTarget)} disponíveis · {todayProgress.toFixed(0)}% da meta diária utilizada</p>
+        <p className="break-words text-xs text-muted-foreground">
+          <strong className={cn(amount, 'text-foreground')}>{currencyFmt(data.todaySpending, locale)}</strong>{' '}
+          {t('challenges.today.usagePrefix', { target: currencyFmt(data.dailyTarget, locale), pct: todayProgress.toFixed(0) })}
+        </p>
         <FinanceProgress
-          label="Uso da meta diária"
+          label={t('challenges.today.progressLabel')}
           value={Math.min(100, Math.max(todayProgress, 0))}
           min={0}
           max={100}
@@ -205,15 +220,22 @@ export function SavingsChallengeContent({
           valueText={`${todayProgress.toFixed(0)}%`}
           showHeader={false}
         />
-        {data.todaySpending === 0 && <p className="text-xs text-muted-foreground">Nenhum gasto ainda</p>}
+        {data.todaySpending === 0 && <p className="text-xs text-muted-foreground">{t('challenges.today.noSpending')}</p>}
       </div>
       <div>
-        <h3 className="text-sm font-medium">Metas dos desafios</h3>
+        <h3 className="text-sm font-medium">{t('challenges.targetsTitle')}</h3>
         <ul className="divide-y divide-border">{data.challengeTargets.map((challenge) => <ChallengeRow key={challenge.id} challenge={challenge} />)}</ul>
       </div>
       <footer className="space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
         <p>{motivation}</p>
-        <p>Receita: {currencyFmt(data.income)} · Despesas: {currencyFmt(data.totalExpenses)} · {data.daysElapsed} de {data.daysInMonth} dias</p>
+        <p>
+          {t('challenges.footerSummary', {
+            income: currencyFmt(data.income, locale),
+            expenses: currencyFmt(data.totalExpenses, locale),
+            elapsed: data.daysElapsed,
+            total: data.daysInMonth,
+          })}
+        </p>
       </footer>
     </section>
   );

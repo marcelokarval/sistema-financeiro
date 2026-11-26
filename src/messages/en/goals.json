@@ -1,0 +1,371 @@
+{
+  "common": {
+    "retry": "Try again"
+  },
+  "maskedValue": "R$ ••••••",
+  "months": {
+    "1": "January",
+    "2": "February",
+    "3": "March",
+    "4": "April",
+    "5": "May",
+    "6": "June",
+    "7": "July",
+    "8": "August",
+    "9": "September",
+    "10": "October",
+    "11": "November",
+    "12": "December"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "subtitle": "Badges and progress by category",
+    "refresh": "Refresh achievements",
+    "loading": "Loading achievements…",
+    "error": "Could not load achievements.",
+    "empty": "No achievements available right now.",
+    "emptyCategory": "No achievements in this category.",
+    "unlockedLabel": "Unlocked",
+    "completionLabel": "Completion",
+    "filterAriaLabel": "Filter achievements by category",
+    "unlocked": "Unlocked",
+    "locked": "Locked",
+    "unlockedAt": "Unlocked on {date}",
+    "progressAriaLabel": "Progress for {title}",
+    "categories": {
+      "todas": "All",
+      "poupanca": "Savings",
+      "controle": "Control",
+      "investimento": "Investing",
+      "exploracao": "Exploration"
+    }
+  },
+  "budgetGoals": {
+    "title": "Budget goals",
+    "loading": "Loading goals…",
+    "error": "Could not load budget goals.",
+    "summary": "{activeCount, plural, one {# active} other {# active}} · {completedCount, plural, one {# completed} other {# completed}}",
+    "newGoal": "New Goal",
+    "emptyTitle": "No goals registered",
+    "emptyDescription": "Create your first budget goal to track your objectives.",
+    "createGoal": "Create Goal",
+    "status": {
+      "completed": "Completed",
+      "active": "Active"
+    },
+    "progressLabel": "Progress",
+    "progressAriaLabel": "Goal progress for {name}",
+    "metrics": {
+      "current": "Current",
+      "target": "Target",
+      "remaining": "Remaining"
+    },
+    "actions": {
+      "more": "More actions for {name}",
+      "edit": "Edit",
+      "markCompleted": "Mark as completed",
+      "reopen": "Reopen goal",
+      "delete": "Delete"
+    },
+    "toasts": {
+      "nameRequired": "Goal name is required",
+      "targetPositive": "Target amount must be greater than zero",
+      "saveError": "Error saving goal",
+      "updated": "Goal updated successfully!",
+      "created": "Goal created successfully!",
+      "connectionError": "Connection error",
+      "deleted": "Goal deleted",
+      "deleteError": "Error deleting goal",
+      "reopened": "Goal reopened",
+      "completed": "Goal completed!",
+      "updateError": "Error updating goal"
+    },
+    "editor": {
+      "editTitle": "Edit Goal",
+      "createTitle": "New Budget Goal",
+      "editDescription": "Update your budget goal details.",
+      "createDescription": "Set a financial target to track your progress.",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "saveChanges": "Save Changes",
+      "createSubmit": "Create Goal",
+      "fields": {
+        "name": "Goal name *",
+        "namePlaceholder": "e.g., Emergency fund",
+        "description": "Description",
+        "descriptionPlaceholder": "Describe your goal (optional)",
+        "targetAmount": "Target amount (R$) *",
+        "currentAmount": "Current amount (R$)",
+        "amountPlaceholder": "0.00",
+        "category": "Category",
+        "categoryPlaceholder": "Select...",
+        "categoryNone": "None",
+        "endDate": "Target date"
+      }
+    }
+  },
+  "health": {
+    "title": "Financial health",
+    "subtitle": "Assessment based on your financial data",
+    "loading": "Loading assessment…",
+    "error": "Error loading financial health data.",
+    "scoreTitle": "Score",
+    "scoreMaxUnit": "/100 points",
+    "scoreProgressLabel": "Financial health score",
+    "pointsUnit": "points",
+    "scoreValueText": "{score} out of 100 points · {label}",
+    "monthlySummaryAria": "Monthly summary",
+    "monthlyIncome": "Monthly income",
+    "monthlyExpense": "Monthly expenses",
+    "monthlyBalance": "Monthly balance",
+    "monthlyDeficit": "Monthly deficit",
+    "criteriaTitle": "Score criteria",
+    "pointsFraction": "{points}/{maxPoints} points",
+    "scoreLabels": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "regular": "Fair",
+      "attention": "Attention",
+      "critical": "Critical"
+    },
+    "criteria": {
+      "savings": "Savings rate",
+      "credit": "Credit usage",
+      "diversification": "Diversification",
+      "netWorth": "Net worth",
+      "trend": "Trend"
+    },
+    "details": {
+      "savingsRate": "{rate}% saved",
+      "noIncome": "No income recorded",
+      "creditUsed": "{rate}% used",
+      "noCards": "No credit cards",
+      "accountsCount": "{count, plural, one {# account} other {# accounts}}",
+      "expensesLower": "Expenses {pct}% lower",
+      "expensesStable": "Stable expenses",
+      "expensesHigher": "Expenses {pct}% higher",
+      "insufficientData": "Insufficient data"
+    }
+  },
+  "dashboard": {
+    "title": "Goals hub",
+    "subtitle": "Track your financial objectives",
+    "loading": "Loading goals…",
+    "error": "Could not load the goals hub.",
+    "tabsAria": "Goals hub sections",
+    "tabs": {
+      "overview": "Overview",
+      "goals": "Goals & Savings",
+      "investments": "Investments"
+    },
+    "metrics": {
+      "totalGoals": "Total goals",
+      "inProgress": "In progress",
+      "completed": "Completed",
+      "totalAccumulated": "Total accumulated"
+    },
+    "progress": {
+      "title": "Overall progress",
+      "ariaLabel": "Overall goals progress",
+      "accumulated": "Accumulated",
+      "targetTotal": "Target total",
+      "remaining": "Remaining",
+      "estimatedCompletion": "Estimated completion: {date}",
+      "levels": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "inProgress": "In progress",
+        "start": "Starting"
+      }
+    },
+    "groupsAria": "Accumulated by group",
+    "groups": {
+      "budgetGoals": "Budget goals",
+      "savings": "Savings",
+      "investments": "Investments",
+      "investmentResult": "Investment return",
+      "goalsCount": "{count, plural, one {# goal} other {# goals}}",
+      "investmentsCount": "{count, plural, one {# investment} other {# investments}}"
+    },
+    "recentTitle": "Recent goals",
+    "recentEmpty": "No goals registered.",
+    "budgetGoalLabel": "Budget goal",
+    "savingsGoalLabel": "Savings goal",
+    "budgetTag": "Budget",
+    "combined": {
+      "empty": "No goals found. Create budget or savings goals to track them here.",
+      "completed": "Completed",
+      "inProgress": "In progress",
+      "progressAria": "Goal progress for {name}",
+      "currentAndTarget": "Current: {current} · Target: {target}",
+      "remaining": "Remaining",
+      "monthlyContribution": "Monthly contribution",
+      "perMonth": "{value}/mo",
+      "approxMonths": "{count, plural, one {~# month} other {~# months}}",
+      "startDate": "Start",
+      "deadline": "Deadline"
+    },
+    "investmentsList": {
+      "empty": "No investments. Start investing to track your portfolio here.",
+      "currentValue": "Current value",
+      "invested": "Invested",
+      "result": "Result",
+      "returnRate": "Return"
+    },
+    "investmentTypes": {
+      "stock": "Stocks",
+      "bond": "Fixed Income",
+      "fii": "REITs",
+      "cdb": "CDB",
+      "lci": "LCI",
+      "lca": "LCA",
+      "tesouro": "Treasury",
+      "crypto": "Crypto",
+      "etf": "ETF",
+      "other": "Other"
+    },
+    "savingsTypes": {
+      "savings": "Savings",
+      "piggyBank": "Piggy Bank",
+      "cdi": "CDI Account",
+      "investment": "Investment",
+      "emergencyFund": "Emergency Fund"
+    }
+  },
+  "monthlyBudget": {
+    "title": "Monthly budget",
+    "currentMonth": "Current month · {month}.",
+    "newLimit": "New limit",
+    "loading": "Loading budget…",
+    "error": "Could not load budget.",
+    "emptyTitle": "No budget set.",
+    "emptyDescription": "Set spending limits by category to track your month.",
+    "summary": {
+      "totalBudget": "Total budget",
+      "totalSpent": "Total spent",
+      "available": "Available"
+    },
+    "overBudgetPrefix": "Warning:",
+    "overBudgetMessage": "total monthly budget exceeded by {amount}.",
+    "row": {
+      "spentOfAmount": "{spent} of {amount}",
+      "actionsAria": "Limit actions for {category}",
+      "edit": "Edit",
+      "delete": "Delete",
+      "usedPct": " · {pct}% used",
+      "exceededBy": "Exceeded by {amount}",
+      "remaining": "{amount} left",
+      "status": {
+        "exceeded": "Exceeded",
+        "critical": "Critical",
+        "warning": "Warning",
+        "good": "Good"
+      }
+    },
+    "deleteDialog": {
+      "title": "Delete budget?",
+      "descriptionWithCategory": "Are you sure you want to delete the limit for category \"{category}\"?",
+      "descriptionFallback": "This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "toasts": {
+      "invalidFields": "Please fill in all fields correctly",
+      "invalidPeriod": "Invalid month or year",
+      "updateError": "Error updating",
+      "createError": "Error creating",
+      "updated": "Budget updated",
+      "created": "Budget created",
+      "connectionError": "Connection error",
+      "deleted": "Budget deleted",
+      "deleteError": "Error deleting"
+    },
+    "editor": {
+      "editTitle": "Edit Budget",
+      "createTitle": "New Budget",
+      "description": "Enter the category, amount, and limit period.",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "update": "Update",
+      "create": "Create",
+      "category": "Category",
+      "categoryPlaceholder": "Select a category",
+      "limitAmount": "Limit Amount (R$)",
+      "amountPlaceholder": "0.00",
+      "month": "Month",
+      "year": "Year"
+    }
+  },
+  "challenges": {
+    "title": "Savings challenges",
+    "loading": "Loading challenges…",
+    "error": "Could not load savings challenge data.",
+    "summaryAria": "Monthly savings",
+    "metrics": {
+      "savingsRate": "Savings rate",
+      "monthSavings": "Monthly savings",
+      "dailyAverage": "Daily spending avg",
+      "projectedSavings": "Projected savings",
+      "daysRemaining": "Days remaining"
+    },
+    "rateLabels": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "attention": "Attention",
+      "low": "Low",
+      "negative": "Negative"
+    },
+    "today": {
+      "title": "Today's spending",
+      "overTarget": "Target exceeded",
+      "withinTarget": "Within target",
+      "usagePrefix": "of {target} available · {pct}% of daily target used",
+      "progressLabel": "Daily target usage",
+      "noSpending": "No spending yet"
+    },
+    "targetsTitle": "Challenge targets",
+    "row": {
+      "onTrack": "On track",
+      "almostThere": "Almost there",
+      "needsWork": "Needs improvement",
+      "progressAria": "Progress for {title}",
+      "currentAndTarget": "Current: {current} · Target: {target}",
+      "accepted": "Challenge accepted!",
+      "start": "Start Challenge"
+    },
+    "motivation": {
+      "high": "Awesome! You are saving {rate}% of your income. Keep it up!",
+      "good": "Great job! Your savings rate is healthy. {days, plural, one {# day} other {# days}} left — stay focused!",
+      "medium": "You are on the right track. Try cutting small expenses to reach 20% savings.",
+      "low": "Your savings rate is low. How about trimming unnecessary spending over these {days, plural, one {# day} other {# days}}?",
+      "negative": "Your expenses exceeded your income. Review your spending and look for ways to save."
+    },
+    "footerSummary": "Income: {income} · Expenses: {expenses} · {elapsed} of {total} days"
+  },
+  "insights": {
+    "title": "Smart insights",
+    "subtitle": "Automatic analysis of your finances",
+    "loading": "Loading insights…",
+    "error": "Could not load financial insights.",
+    "empty": "No insights available. Add transactions and accounts to receive automatic insights.",
+    "emptyFiltered": "No insights in this filter.",
+    "filterAria": "Filter insights",
+    "tabs": {
+      "all": "All",
+      "positive": "Positive",
+      "alerts": "Alerts",
+      "info": "Information"
+    },
+    "types": {
+      "success": "Positive",
+      "warning": "Attention",
+      "danger": "Risk",
+      "info": "Info"
+    },
+    "trends": {
+      "up": "Rising",
+      "down": "Falling",
+      "stable": "Stable"
+    }
+  }
+}

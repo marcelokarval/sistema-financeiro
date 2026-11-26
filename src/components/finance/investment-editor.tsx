@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeTranslations } from '@/i18n/provider';
+import { INVESTMENT_TYPE_KEYS } from './portfolio-i18n';
 
 export interface InvestmentDraft {
   name: string;
@@ -34,6 +36,7 @@ interface InvestmentEditorProps {
 export function InvestmentEditor({
   mode, open, saving, form, accounts, categories, onFieldChange, onOpenChange, onCloseAutoFocus, onSave,
 }: InvestmentEditorProps) {
+  const t = useSafeTranslations('investments');
   const isEditing = mode !== 'create';
   const fromDetail = mode === 'edit-detail';
 
@@ -42,36 +45,36 @@ export function InvestmentEditor({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
-      closeLabel="Fechar formulário"
+      closeLabel={t('editor.closeLabel')}
       contentClassName="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto"
-      title={isEditing ? 'Editar Investimento' : 'Novo Investimento'}
+      title={isEditing ? t('editor.editTitle') : t('editor.createTitle')}
       description={
         isEditing
-          ? 'Atualize os dados do investimento'
-          : 'Preencha os dados do novo investimento'
+          ? t('editor.editDescription')
+          : t('editor.createDescription')
       }
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t('editor.cancel')}
           </Button>
           <Button disabled={saving} onClick={onSave}>
-            {saving ? 'Salvando…' : isEditing ? 'Salvar' : 'Criar'}
+            {saving ? t('editor.saving') : isEditing ? t('editor.save') : t('editor.create')}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
         <div>
-          <Label htmlFor="investment-form-name">Nome</Label>
+          <Label htmlFor="investment-form-name">{t('editor.nameLabel')}</Label>
           <Input id="investment-form-name"
             value={form.name}
             onChange={(e) => onFieldChange('name', e.target.value)}
-            placeholder={fromDetail ? 'Ex: PETR4, Tesouro IPCA...' : 'Ex: PETR4, Tesouro IPCA, MXRF11...'}
+            placeholder={fromDetail ? t('editor.namePlaceholderDetail') : t('editor.namePlaceholder')}
           />
         </div>
         <div>
-          <Label htmlFor="investment-form-type">Tipo</Label>
+          <Label htmlFor="investment-form-type">{t('editor.typeLabel')}</Label>
           <Select
             value={form.type}
             onValueChange={(v) => onFieldChange('type', v)}
@@ -80,75 +83,68 @@ export function InvestmentEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="STOCK">Ações</SelectItem>
-              <SelectItem value="BOND">Renda Fixa</SelectItem>
-              <SelectItem value="FII">FIIs</SelectItem>
-              <SelectItem value="CDB">CDB</SelectItem>
-              <SelectItem value="LCI">LCI</SelectItem>
-              <SelectItem value="LCA">LCA</SelectItem>
-              <SelectItem value="TESOURO">Tesouro Direto</SelectItem>
-              <SelectItem value="CRYPTO">Cripto</SelectItem>
-              <SelectItem value="ETF">ETF</SelectItem>
-              <SelectItem value="OTHER">Outro</SelectItem>
+              {INVESTMENT_TYPE_KEYS.map((key) => (
+                <SelectItem key={key} value={key}>{t(`types.${key}`)}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor="investment-form-description">Descrição</Label>
+          <Label htmlFor="investment-form-description">{t('editor.descriptionLabel')}</Label>
           <Input id="investment-form-description"
             value={form.description}
             onChange={(e) => onFieldChange('description', e.target.value)}
-            placeholder={fromDetail ? 'Descrição opcional' : 'Descrição opcional do investimento'}
+            placeholder={fromDetail ? t('editor.descriptionPlaceholderDetail') : t('editor.descriptionPlaceholder')}
           />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="investment-form-investedAmount">Valor Investido (R$)</Label>
+            <Label htmlFor="investment-form-investedAmount">{t('editor.investedAmountLabel')}</Label>
             <Input id="investment-form-investedAmount"
               type="number"
               step="0.01"
               value={form.investedAmount}
               onChange={(e) => onFieldChange('investedAmount', e.target.value)}
-              placeholder={fromDetail ? undefined : '0,00'}
+              placeholder={fromDetail ? undefined : t('editor.decimalPlaceholder')}
             />
           </div>
           <div>
-            <Label htmlFor="investment-form-yieldRate">Rentabilidade (%)</Label>
+            <Label htmlFor="investment-form-yieldRate">{t('editor.yieldRateLabel')}</Label>
             <Input id="investment-form-yieldRate"
               type="number"
               step="0.01"
               value={form.yieldRate}
               onChange={(e) => onFieldChange('yieldRate', e.target.value)}
-              placeholder={fromDetail ? undefined : '0,00'}
+              placeholder={fromDetail ? undefined : t('editor.decimalPlaceholder')}
             />
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="investment-form-brokerage">Corretora</Label>
+            <Label htmlFor="investment-form-brokerage">{t('editor.brokerageLabel')}</Label>
             <Input id="investment-form-brokerage"
               value={form.brokerage}
               onChange={(e) => onFieldChange('brokerage', e.target.value)}
-              placeholder={fromDetail ? 'Ex: XP, Rico...' : 'Ex: XP, Rico, Clear...'}
+              placeholder={fromDetail ? t('editor.brokeragePlaceholderDetail') : t('editor.brokeragePlaceholder')}
             />
           </div>
           <div>
-            <Label htmlFor="investment-form-ticker">Ticker</Label>
+            <Label htmlFor="investment-form-ticker">{t('editor.tickerLabel')}</Label>
             <Input id="investment-form-ticker"
               value={form.ticker}
               onChange={(e) => onFieldChange('ticker', e.target.value)}
-              placeholder="Ex: PETR4, MXRF11..."
+              placeholder={t('editor.tickerPlaceholder')}
             />
           </div>
         </div>
         <div>
-          <Label htmlFor="investment-form-accountId">Conta</Label>
+          <Label htmlFor="investment-form-accountId">{t('editor.accountLabel')}</Label>
           <Select
             value={form.accountId}
             onValueChange={(v) => onFieldChange('accountId', v)}
           >
             <SelectTrigger id="investment-form-accountId">
-              <SelectValue placeholder={fromDetail ? 'Selecione...' : 'Selecione uma conta...'} />
+              <SelectValue placeholder={fromDetail ? t('editor.selectPlaceholder') : t('editor.accountPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {accounts.map((account) => (
@@ -160,13 +156,13 @@ export function InvestmentEditor({
           </Select>
         </div>
         <div>
-          <Label htmlFor="investment-form-categoryId">Categoria</Label>
+          <Label htmlFor="investment-form-categoryId">{t('editor.categoryLabel')}</Label>
           <Select
             value={form.categoryId}
             onValueChange={(v) => onFieldChange('categoryId', v)}
           >
             <SelectTrigger id="investment-form-categoryId">
-              <SelectValue placeholder={fromDetail ? 'Selecione...' : 'Selecione uma categoria...'} />
+              <SelectValue placeholder={fromDetail ? t('editor.selectPlaceholder') : t('editor.categoryPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {categories.map((category) => (

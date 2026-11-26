@@ -1,0 +1,150 @@
+{
+  "title": "Consorcios",
+  "subtitle": "Sigue cuotas, pagos y asambleas.",
+  "loading": "Cargando consorcios…",
+  "loadingInstallments": "Cargando cuotas…",
+  "status": {
+    "ACTIVE": "Activo",
+    "COMPLETED": "Completado",
+    "CANCELLED": "Cancelado",
+    "CONTEMPLATED": "Adjudicado"
+  },
+  "installmentStatus": {
+    "PAID": "Pagada",
+    "PENDING": "Pendiente",
+    "OVERDUE": "Vencida"
+  },
+  "filters": {
+    "ariaLabel": "Filtrar consorcios por estado",
+    "ALL": "Todos",
+    "ACTIVE": "Activos",
+    "COMPLETED": "Completados",
+    "CANCELLED": "Cancelados",
+    "CONTEMPLATED": "Adjudicados"
+  },
+  "actions": {
+    "newConsortium": "Nuevo consorcio",
+    "backToConsortiums": "Volver a consorcios",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "retry": "Intentar de nuevo",
+    "openAriaLabel": "Abrir consorcio {description}",
+    "editAriaLabel": "Editar consorcio {description}",
+    "deleteAriaLabel": "Eliminar consorcio {description}",
+    "markPaid": "Marcar como pagada",
+    "markPaidAriaLabel": "Marcar cuota {number} como pagada"
+  },
+  "errors": {
+    "loadList": "No fue posible cargar los consorcios.",
+    "loadInstallments": "No fue posible cargar las cuotas. Vuelve y abre el consorcio nuevamente.",
+    "create": "Error al crear el consorcio",
+    "update": "Error al actualizar el consorcio",
+    "delete": "Error al eliminar el consorcio",
+    "markPaid": "Error al marcar la cuota",
+    "markPaidError": "Error al marcar la cuota como pagada"
+  },
+  "toast": {
+    "created": "¡Consorcio creado con éxito!",
+    "updated": "¡Consorcio actualizado!",
+    "deleted": "¡Consorcio eliminado!",
+    "installmentPaid": "¡Cuota marcada como pagada!"
+  },
+  "summary": {
+    "ariaLabel": "Resumen de consorcios",
+    "totalInConsortiums": "Total en consorcios",
+    "totalPaid": "Total pagado",
+    "remainingAmount": "Valor restante",
+    "overallProgress": "Progreso general"
+  },
+  "list": {
+    "title": "Consorcios registrados",
+    "showingCount": "{shown} de {total, plural, one {# consorcio} other {# consorcios}}",
+    "emptyAllTitle": "Ningún consorcio registrado",
+    "emptyAllSubtitle": "Usa Nuevo consorcio para comenzar.",
+    "emptyFilteredTitle": "Ningún consorcio encontrado",
+    "emptyFilteredSubtitle": "Cambia el filtro para ver más resultados.",
+    "ariaLabel": "Consorcios registrados",
+    "group": "Grupo {group}",
+    "quota": "Cuota {quota}",
+    "paidInstallmentsMonthly": "{paid}/{total} cuotas pagadas · <mono>{monthly}</mono>/mes",
+    "nextAssembly": "Próxima asamblea: {date}"
+  },
+  "progress": {
+    "label": "Progreso del financiamiento",
+    "ariaLabel": "Progreso del financiamiento de {description}",
+    "valueText": "{percent}% · {funded} de {total}"
+  },
+  "detail": {
+    "summaryAriaLabel": "Resumen del consorcio",
+    "totalAmount": "Valor total",
+    "fundedAmount": "Valor financiado",
+    "monthlyPayment": "Cuota mensual",
+    "paidInstallments": "Cuotas pagadas",
+    "installmentsTitle": "Cuotas",
+    "paidOf": "{paid} de {total} pagadas",
+    "emptyInstallments": "No se encontraron cuotas",
+    "installmentsAriaLabel": "Cuotas del consorcio",
+    "installmentLabel": "Cuota {number}",
+    "dueDate": "Vencimiento: {date}",
+    "paidOn": "Pagada el {date}",
+    "assembliesTitle": "Asambleas y registro",
+    "assembliesAttended": "Asambleas asistidas",
+    "nextAssembly": "Próxima asamblea",
+    "notScheduled": "No programada",
+    "administrator": "Administradora",
+    "startDate": "Fecha de inicio"
+  },
+  "createDialog": {
+    "title": "Nuevo Consorcio",
+    "description": "Completa los datos del nuevo consorcio",
+    "descriptionLabel": "Descripción del Bien",
+    "descriptionPlaceholder": "Ej: Honda Civic 2024",
+    "groupLabel": "Grupo",
+    "groupPlaceholder": "Ej: 0123",
+    "quotaLabel": "Cuota",
+    "quotaPlaceholder": "Ej: 0042",
+    "administratorLabel": "Administradora",
+    "administratorPlaceholder": "Ej: Banco do Brasil, Santander...",
+    "totalAmountLabel": "Valor Total (R$)",
+    "monthlyPaymentLabel": "Cuota Mensal (R$)",
+    "decimalPlaceholder": "0,00",
+    "installmentCountLabel": "Total de Cuotas",
+    "installmentCountPlaceholder": "Ej: 120",
+    "startDateLabel": "Fecha de Inicio",
+    "nextAssemblyLabel": "Próxima Asamblea",
+    "categoryLabel": "Categoría",
+    "categoryPlaceholder": "Selecciona...",
+    "accountLabel": "Cuenta Vinculada",
+    "accountNone": "Ninguna",
+    "cancel": "Cancelar",
+    "submit": "Crear Consorcio"
+  },
+  "editor": {
+    "title": "Editar Consorcio",
+    "description": "Actualiza la información de asamblea del consorcio",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "nextAssemblyLabel": "Próxima Fecha de Asamblea",
+    "assembliesAttendedLabel": "Asambleas Asistidas"
+  },
+  "delete": {
+    "title": "Eliminar Consorcio",
+    "descriptionDetail": "¿Seguro que deseas eliminar el consorcio \"{description}\"? Esta acción no se puede deshacer.",
+    "descriptionList": "¿Seguro que deseas eliminar este consorcio? Esta acción no se puede deshacer y se eliminarán todas las cuotas asociadas.",
+    "cancel": "Cancelar",
+    "confirm": "Eliminar"
+  },
+  "payment": {
+    "title": "Marcar Cuota como Pagada",
+    "description": "Cuota {number} — {amount}",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar Pago",
+    "paidDateLabel": "Fecha de Pago",
+    "notesLabel": "Notas",
+    "notesPlaceholder": "Nota opcional...",
+    "assemblySection": "Información de la Asamblea (opcional)",
+    "assemblyDateLabel": "Fecha de la Asamblea",
+    "assemblyResultLabel": "Resultado de la Asamblea",
+    "assemblyResultPlaceholder": "Ej: Adjudicado en la asamblea..."
+  }
+}

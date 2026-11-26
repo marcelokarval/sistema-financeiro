@@ -4,6 +4,7 @@ import type { FormEvent, KeyboardEvent, RefObject } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useSafeTranslations } from '@/i18n/provider';
 
 export interface AdvisorComposerProps {
   suggestions: readonly string[];
@@ -27,9 +28,11 @@ export function AdvisorComposer({
   onSuggestionClick,
   onKeyDown,
 }: AdvisorComposerProps) {
+  const t = useSafeTranslations('advisor');
+
   return (
     <div className="border-t border-border px-3 py-3 sm:px-4">
-      <p className="mb-2 text-xs font-medium text-muted-foreground">Sugestões de perguntas</p>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">{t('composer.suggestionsTitle')}</p>
       <div className="mb-3 flex flex-wrap gap-1.5">
         {suggestions.map((suggestion) => (
           <Button
@@ -52,14 +55,14 @@ export function AdvisorComposer({
           value={inputValue}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={onKeyDown}
-          aria-label="Sua dúvida financeira"
-          placeholder="Digite sua dúvida financeira..."
+          aria-label={t('composer.inputAriaLabel')}
+          placeholder={t('composer.inputPlaceholder')}
           disabled={isLoading}
           className="h-10 min-w-0 flex-1 rounded-md"
         />
         <Button
           type="submit"
-          aria-label="Enviar mensagem"
+          aria-label={t('composer.sendAriaLabel')}
           size="icon"
           disabled={!inputValue.trim() || isLoading}
           className="size-10 shrink-0"

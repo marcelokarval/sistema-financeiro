@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 
 export interface SavingsContributionDraft {
@@ -42,17 +43,23 @@ export function SavingsContributionDialog({
   onCloseAutoFocus,
   onSubmit,
 }: SavingsContributionDialogProps) {
+  const t = useSafeTranslations('savings');
+  const locale = useSafeLocale();
+
   return (
     <FinanceFormDialogShell
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
       contentClassName="sm:max-w-md max-h-[85dvh] overflow-y-auto"
-      title="Depositar"
+      title={t('contribution.title')}
       description={
         goal
-          ? `Adicione um valor à meta "${goal.name}". Atual: ${currencyFmt(goal.currentAmount)}`
-          : 'Adicione um valor à meta selecionada.'
+          ? t('contribution.descriptionWithGoal', {
+              name: goal.name,
+              amount: currencyFmt(goal.currentAmount, locale),
+            })
+          : t('contribution.descriptionFallback')
       }
       footer={
         <>
@@ -61,17 +68,15 @@ export function SavingsContributionDialog({
             onClick={() => onOpenChange(false)}
             disabled={submitting}
           >
-            Cancelar
+            {t('contribution.cancel')}
           </Button>
           <Button onClick={onSubmit} disabled={submitting} className="gap-1.5">
             {submitting ? (
-              <>
-                Depositando...
-              </>
+              t('contribution.submitting')
             ) : (
               <>
                 <ArrowDownToLine className="w-4 h-4" />
-                Depositar
+                {t('contribution.submit')}
               </>
             )}
           </Button>
@@ -81,27 +86,31 @@ export function SavingsContributionDialog({
       <div className="space-y-4 py-2">
         {goal && (
           <p className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
-            Conta vinculada: {goal.account?.name ?? (goal.accountId ? 'Conta vinculada à meta' : 'Nenhuma')}
+            {t('contribution.linkedAccountLabel', {
+              account:
+                goal.account?.name ??
+                (goal.accountId ? t('contribution.linkedAccountFallback') : t('contribution.accountNone')),
+            })}
           </p>
         )}
         <div className="space-y-2">
-          <Label htmlFor="deposit-amount">Valor do depósito (R$) *</Label>
+          <Label htmlFor="deposit-amount">{t('contribution.amountLabel')}</Label>
           <Input
             id="deposit-amount"
             type="number"
             min="0.01"
             step="0.01"
-            placeholder="0,00"
+            placeholder={t('contribution.amountPlaceholder')}
             value={form.amount}
             onChange={(e) => onFieldChange('amount', e.target.value)}
             autoFocus
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="deposit-desc">Descrição (opcional)</Label>
+          <Label htmlFor="deposit-desc">{t('contribution.descriptionLabel')}</Label>
           <Input
             id="deposit-desc"
-            placeholder="Ex: Bônus, Economia do mês..."
+            placeholder={t('contribution.descriptionPlaceholder')}
             value={form.description}
             onChange={(e) => onFieldChange('description', e.target.value)}
           />

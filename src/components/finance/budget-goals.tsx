@@ -13,6 +13,7 @@ import {
 import { currencyFmt } from '@/lib/helpers';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import {
   BudgetGoalEditor,
   type BudgetGoalCategoryOption,
@@ -68,17 +69,25 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
   onDelete: (goal: BudgetGoal) => void;
   onToggle: (goal: BudgetGoal) => void;
 }) {
+  const t = useSafeTranslations('goals');
+  const locale = useSafeLocale();
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const openingEditor = useRef(false);
   const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
   const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
   const width = Math.max(0, percent);
+  const metrics: Array<[string, number]> = [
+    [t('budgetGoals.metrics.current'), goal.currentAmount],
+    [t('budgetGoals.metrics.target'), goal.targetAmount],
+    ...(!goal.isCompleted && remaining > 0 ? [[t('budgetGoals.metrics.remaining'), remaining] as [string, number]] : []),
+  ];
+
   return (
     <li className="grid min-w-0 gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-x-5">
       <div className="min-w-0">
         <h3 className="break-words text-sm font-semibold">{goal.name}</h3>
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-xs text-muted-foreground">
-          <span>{goal.isCompleted ? 'Concluída' : 'Ativa'}</span>
+          <span>{goal.isCompleted ? t('budgetGoals.status.completed') : t('budgetGoals.status.active')}</span>
           {goal.category && (
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full border border-border" style={{ backgroundColor: goal.category.color }} />
@@ -90,8 +99,8 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
       </div>
       <div className="min-w-0 space-y-1.5 text-xs">
         <FinanceProgress
-          label="Progresso"
-          ariaLabel={`Progresso da meta ${goal.name}`}
+          label={t('budgetGoals.progressLabel')}
+          ariaLabel={t('budgetGoals.progressAriaLabel', { name: goal.name })}
           value={width}
           min={0}
           max={100}
@@ -100,8 +109,8 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
           valueText={`${Math.round(percent)}%`}
         />
         <dl className="flex flex-wrap gap-x-4 gap-y-1">
-          {([['Atual', goal.currentAmount], ['Alvo', goal.targetAmount], ...(!goal.isCompleted && remaining > 0 ? [['Restante', remaining] as const] : [])] as const).map(([label, value]) => (
-            <FinanceMetric key={label} variant="compact" label={label} value={currencyFmt(value)} valueClassName="text-xs font-normal" />
+          {metrics.map(([label, value]) => (
+            <FinanceMetric key={label} variant="compact" label={label} value={currencyFmt(value, locale)} valueClassName="text-xs font-normal" />
           ))}
         </dl>
       </div>
@@ -109,7 +118,7 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
         {!goal.isCompleted && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button ref={menuTrigger} type="button" variant="outline" size="icon" aria-label={`Mais ações de ${goal.name}`}><MoreHorizontal aria-hidden="true" /></Button>
+              <Button ref={menuTrigger} type="button" variant="outline" size="icon" aria-label={t('budgetGoals.actions.more', { name: goal.name })}><MoreHorizontal aria-hidden="true" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" onCloseAutoFocus={(event) => {
               // Do not pull focus back out of the editor or off a new target.
@@ -119,14 +128,14 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
               <DropdownMenuItem onSelect={() => {
                 openingEditor.current = true;
                 onEdit(goal, menuTrigger.current);
-              }}><Pencil aria-hidden="true" /> Editar</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onToggle(goal)}><CheckCircle2 aria-hidden="true" /> Marcar como concluída</DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(goal)}><Trash2 aria-hidden="true" /> Excluir</DropdownMenuItem>
+              }}><Pencil aria-hidden="true" /> {t('budgetGoals.actions.edit')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onToggle(goal)}><CheckCircle2 aria-hidden="true" /> {t('budgetGoals.actions.markCompleted')}</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(goal)}><Trash2 aria-hidden="true" /> {t('budgetGoals.actions.delete')}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
         <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={() => onToggle(goal)}>
-          {goal.isCompleted ? 'Reabrir meta' : 'Marcar como concluída'}
+          {goal.isCompleted ? t('budgetGoals.actions.reopen') : t('budgetGoals.actions.markCompleted')}
         </Button>
       </div>
     </li>
@@ -134,6 +143,7 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
 }
 
 export function BudgetGoalsWidget() {
+  const t = useSafeTranslations('goals');
   const [goals, setGoals] = useState<BudgetGoal[]>([]);
   const [categories, setCategories] = useState<BudgetGoalCategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,12 +222,12 @@ export function BudgetGoalsWidget() {
 
   const handleSubmit = async () => {
     if (!form.name.trim()) {
-      toast.error('O nome da meta é obrigatório');
+      toast.error(t('budgetGoals.toasts.nameRequired'));
       return;
     }
     const target = parseFloat(form.targetAmount);
     if (!target || target <= 0) {
-      toast.error('O valor alvo deve ser maior que zero');
+      toast.error(t('budgetGoals.toasts.targetPositive'));
       return;
     }
 
@@ -242,15 +252,15 @@ export function BudgetGoalsWidget() {
 
       if (!res.ok) {
         const err = await res.json();
-        toast.error(err.error || 'Erro ao salvar meta');
+        toast.error(err.error || t('budgetGoals.toasts.saveError'));
         return;
       }
 
-      toast.success(editingGoal ? 'Meta atualizada com sucesso!' : 'Meta criada com sucesso!');
+      toast.success(editingGoal ? t('budgetGoals.toasts.updated') : t('budgetGoals.toasts.created'));
       setDialogOpen(false);
       fetchData();
     } catch {
-      toast.error('Erro de conexão');
+      toast.error(t('budgetGoals.toasts.connectionError'));
     } finally {
       setSubmitting(false);
     }
@@ -264,14 +274,14 @@ export function BudgetGoalsWidget() {
         body: JSON.stringify({ id: goal.id }),
       });
       if (res.ok) {
-        toast.success('Meta excluída');
+        toast.success(t('budgetGoals.toasts.deleted'));
         pendingDeletionFocus.current.add(goal.id);
         fetchData();
       } else {
-        toast.error('Erro ao excluir meta');
+        toast.error(t('budgetGoals.toasts.deleteError'));
       }
     } catch {
-      toast.error('Erro de conexão');
+      toast.error(t('budgetGoals.toasts.connectionError'));
     }
   };
 
@@ -286,11 +296,11 @@ export function BudgetGoalsWidget() {
         }),
       });
       if (res.ok) {
-        toast.success(goal.isCompleted ? 'Meta reaberta' : 'Meta concluída!');
+        toast.success(goal.isCompleted ? t('budgetGoals.toasts.reopened') : t('budgetGoals.toasts.completed'));
         fetchData();
       }
     } catch {
-      toast.error('Erro ao atualizar meta');
+      toast.error(t('budgetGoals.toasts.updateError'));
     }
   };
 
@@ -347,21 +357,22 @@ export function BudgetGoalsContent({
   onToggle: (goal: BudgetGoal) => void;
   onRetry: () => void;
 }) {
+  const t = useSafeTranslations('goals');
   if (loading) {
     return (
-      <section data-qa="quiet-budget-goals" aria-label="Metas de orçamento" aria-busy="true" className={panel}>
-        <h2 className="font-semibold">Metas de orçamento</h2>
-        <p role="status" className="text-sm text-muted-foreground">Carregando metas…</p>
+      <section data-qa="quiet-budget-goals" aria-label={t('budgetGoals.title')} aria-busy="true" className={panel}>
+        <h2 className="font-semibold">{t('budgetGoals.title')}</h2>
+        <p role="status" className="text-sm text-muted-foreground">{t('budgetGoals.loading')}</p>
       </section>
     );
   }
   if (error) {
     return (
-      <section data-qa="quiet-budget-goals" aria-label="Metas de orçamento" className={panel}>
-        <h2 className="font-semibold">Metas de orçamento</h2>
+      <section data-qa="quiet-budget-goals" aria-label={t('budgetGoals.title')} className={panel}>
+        <h2 className="font-semibold">{t('budgetGoals.title')}</h2>
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-          <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar as metas de orçamento.</p>
-          <Button variant="outline" size="sm" className="min-h-9" onClick={onRetry}>Tentar novamente</Button>
+          <p role="alert" className="text-sm text-muted-foreground">{t('budgetGoals.error')}</p>
+          <Button variant="outline" size="sm" className="min-h-9" onClick={onRetry}>{t('common.retry')}</Button>
         </div>
       </section>
     );
@@ -369,19 +380,19 @@ export function BudgetGoalsContent({
   const activeCount = goals.filter((g) => !g.isCompleted).length;
   const completedCount = goals.filter((g) => g.isCompleted).length;
   return (
-    <section data-qa="quiet-budget-goals" aria-label="Metas de orçamento" className={panel}>
+    <section data-qa="quiet-budget-goals" aria-label={t('budgetGoals.title')} className={panel}>
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="font-semibold">Metas de orçamento</h2>
-          <p className="text-xs text-muted-foreground">{activeCount} ativa{activeCount !== 1 ? 's' : ''} · {completedCount} concluída{completedCount !== 1 ? 's' : ''}</p>
+          <h2 className="font-semibold">{t('budgetGoals.title')}</h2>
+          <p className="text-xs text-muted-foreground">{t('budgetGoals.summary', { activeCount, completedCount })}</p>
         </div>
-        <Button ref={createButtonRef} variant="default" size="sm" className="min-h-9" onClick={onCreate}><Plus aria-hidden="true" /> Nova Meta</Button>
+        <Button ref={createButtonRef} variant="default" size="sm" className="min-h-9" onClick={onCreate}><Plus aria-hidden="true" /> {t('budgetGoals.newGoal')}</Button>
       </header>
       {goals.length === 0 ? (
         <div className="space-y-2 border-t border-border pt-3">
-          <h3 className="text-sm font-medium">Nenhuma meta cadastrada</h3>
-          <p className="text-sm text-muted-foreground">Crie sua primeira meta de orçamento para acompanhar seus objetivos.</p>
-          <Button variant="outline" size="sm" onClick={onCreate}>Criar Meta</Button>
+          <h3 className="text-sm font-medium">{t('budgetGoals.emptyTitle')}</h3>
+          <p className="text-sm text-muted-foreground">{t('budgetGoals.emptyDescription')}</p>
+          <Button variant="outline" size="sm" onClick={onCreate}>{t('budgetGoals.createGoal')}</Button>
         </div>
       ) : (
         <ul className="divide-y divide-border border-y border-border">

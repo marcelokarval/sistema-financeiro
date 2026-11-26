@@ -1,0 +1,144 @@
+{
+  "title": "Caixinhas",
+  "subtitle": "Acompanhe suas metas de poupança e investimentos.",
+  "loading": "Carregando caixinhas…",
+  "actions": {
+    "newGoal": "Nova meta",
+    "retry": "Tentar novamente",
+    "deposit": "Depositar",
+    "depositAriaLabel": "Depositar em {name}",
+    "moreActionsAriaLabel": "Mais ações de {name}",
+    "edit": "Editar",
+    "delete": "Excluir"
+  },
+  "filters": {
+    "ariaLabel": "Filtrar metas por tipo",
+    "ALL": "Todos",
+    "SAVINGS": "Poupança",
+    "PIGGY_BANK": "Porquinho",
+    "CDI": "CDI",
+    "EMERGENCY_FUND": "Reserva",
+    "INVESTMENT": "Investimento"
+  },
+  "types": {
+    "SAVINGS": "Poupança",
+    "PIGGY_BANK": "Porquinho",
+    "CDI": "Conta CDI",
+    "INVESTMENT": "Investimento",
+    "EMERGENCY_FUND": "Reserva de Emergência"
+  },
+  "summary": {
+    "ariaLabel": "Resumo das caixinhas",
+    "totalAccumulated": "Total acumulado",
+    "percentOfTargets": "{percent}% do total das metas",
+    "totalGoals": "Total de metas",
+    "inProgress": "{count} em andamento",
+    "completedGoals": "Metas concluídas",
+    "percentAchieved": "{percent}% alcançadas",
+    "monthlyContribution": "Contribuição mensal",
+    "monthlyPlannedNote": "Total mensal planejado"
+  },
+  "list": {
+    "title": "Metas cadastradas",
+    "showingCount": "{shown} de {total, plural, one {# meta} other {# metas}}",
+    "loadError": "Não foi possível carregar as caixinhas.",
+    "emptyFilteredTitle": "Nenhuma meta do tipo {type}",
+    "emptyFilteredSubtitle": "Altere o filtro ou crie uma meta deste tipo.",
+    "emptyAllTitle": "Nenhuma meta de poupança cadastrada",
+    "emptyAllSubtitle": "Use Nova meta para começar a poupar.",
+    "ariaLabel": "Metas cadastradas"
+  },
+  "row": {
+    "completed": "Concluída",
+    "linkedAccount": "Conta vinculada: {name}",
+    "monthlyContribution": "{amount}/mês",
+    "noMonthlyContribution": "Sem contribuição mensal",
+    "targetDate": "Prazo: {date}",
+    "yieldRate": "{rate}% a.a.",
+    "accumulated": "Acumulado",
+    "target": "Meta",
+    "progressLabel": "Progresso da meta",
+    "progressAriaLabel": "Progresso da meta {name}",
+    "progressValueText": "{percent}% · {current} de {target}",
+    "remaining": "Faltam {amount}"
+  },
+  "errors": {
+    "nameRequired": "O nome da meta é obrigatório",
+    "targetPositive": "O valor alvo deve ser maior que zero",
+    "saveGoal": "Erro ao salvar meta",
+    "deleteGoal": "Erro ao excluir meta",
+    "depositAmountInvalid": "Informe um valor válido para o depósito",
+    "depositError": "Erro ao realizar depósito",
+    "connection": "Erro de conexão"
+  },
+  "toast": {
+    "goalUpdated": "Meta atualizada com sucesso!",
+    "goalCreated": "Meta criada com sucesso!",
+    "goalDeleted": "Meta excluída com sucesso!",
+    "depositSuccess": "Depósito de {amount} realizado!"
+  },
+  "delete": {
+    "title": "Excluir meta de poupança?",
+    "description": "Esta ação não pode ser desfeita. Todo o histórico de depósitos será perdido.",
+    "cancel": "Cancelar",
+    "confirm": "Excluir"
+  },
+  "editor": {
+    "createTitle": "Nova Meta de Poupança",
+    "editTitle": "Editar Meta",
+    "createDescription": "Defina um objetivo financeiro para começar a poupar.",
+    "editDescription": "Atualize os dados da sua meta de poupança.",
+    "cancel": "Cancelar",
+    "saving": "Salvando...",
+    "saveChanges": "Salvar Alterações",
+    "createGoal": "Criar Meta",
+    "nameLabel": "Nome da meta *",
+    "namePlaceholder": "Ex: Viagem, Carro novo...",
+    "typeLabel": "Tipo *",
+    "colorLabel": "Cor",
+    "descriptionLabel": "Descrição",
+    "descriptionPlaceholder": "Descreva sua meta (opcional)",
+    "targetLabel": "Valor alvo (R$) *",
+    "currentLabel": "Valor atual (R$)",
+    "monthlyLabel": "Contribuição mensal (R$)",
+    "yieldLabel": "Rendimento (% a.a.)",
+    "decimalPlaceholder": "0,00",
+    "targetDateLabel": "Data alvo",
+    "accountLabel": "Conta vinculada",
+    "accountNone": "Nenhuma",
+    "types": {
+      "SAVINGS": "Poupança",
+      "PIGGY_BANK": "Porquinho",
+      "CDI": "Conta CDI",
+      "INVESTMENT": "Investimento",
+      "EMERGENCY_FUND": "Reserva"
+    },
+    "colors": {
+      "emerald": "Verde",
+      "sky": "Azul",
+      "violet": "Violeta",
+      "amber": "Âmbar",
+      "coral": "Rosa coral",
+      "cyan": "Ciano",
+      "indigo": "Índigo",
+      "pink": "Rosa",
+      "teal": "Verde-azulado",
+      "lime": "Verde-lima"
+    }
+  },
+  "contribution": {
+    "title": "Depositar",
+    "descriptionWithGoal": "Adicione um valor à meta \"{name}\". Atual: {amount}",
+    "descriptionFallback": "Adicione um valor à meta selecionada.",
+    "cancel": "Cancelar",
+    "submitting": "Depositando...",
+    "submit": "Depositar",
+    "linkedAccountLabel": "Conta vinculada: {account}",
+    "linkedAccountFallback": "Conta vinculada à meta",
+    "accountNone": "Nenhuma",
+    "amountLabel": "Valor do depósito (R$) *",
+    "amountPlaceholder": "0,00",
+    "descriptionLabel": "Descrição (opcional)",
+    "descriptionPlaceholder": "Ex: Bônus, Economia do mês..."
+  }
+}

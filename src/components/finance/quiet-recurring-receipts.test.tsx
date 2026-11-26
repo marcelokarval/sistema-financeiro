@@ -13,6 +13,34 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent }
 import { toast } from 'sonner';
 import { buildReceiptPrintHtml, ReceiptGenerator, ReceiptWorkspace } from './receipt-generator';
 import { buildReceiptFields } from './receipt-fields';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function ptUseContext(ctx: React.Context<unknown>, locale: CanonicalLocale = 'pt') {
+  return ctx === AppIntlBridgeContext
+    ? { locale, messages: getMessagesForLocale(locale) }
+    : (ctx as unknown as { _currentValue?: unknown })._currentValue;
+}
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 const noop = () => {};
 const entries = [
@@ -79,7 +107,7 @@ test('formulário de recorrência usa FinanceFormDialogShell com Fechar no cabe�
   const onSave = () => {};
   const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
   const previousDispatcher = internals.H;
-  internals.H = { useId: () => 'test-id' };
+  internals.H = { useId: () => 'test-id', useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx), useMemo: (f: () => unknown) => f() };
   let editor: any;
   let shell: any;
   try {
@@ -140,7 +168,7 @@ test('formulário de recorrência usa FinanceFormDialogShell com Fechar no cabe�
   const editorSource = readFileSync(new URL('./recurring-transaction-editor.tsx', import.meta.url), 'utf8');
   const shellSource = readFileSync(new URL('../shared/finance-dialog-shell.tsx', import.meta.url), 'utf8');
   expect(editorSource).toContain('<FinanceFormDialogShell');
-  expect(editorSource).toContain('closeLabel="Fechar"');
+  expect(editorSource).toContain("closeLabel={t('editor.closeLabel')}");
   expect(shellSource).toMatch(/<DialogClose asChild>\s*<Button[^>]*type="button"[^>]*aria-label=\{closeLabel\}/);
 });
 
@@ -256,6 +284,9 @@ test('prévia, impressão, cópia e TXT conservam os campos de compra e transaç
         useState: (initial: unknown) => [stateIndex++ === 2 ? receipt : initial, noop],
         useRef: () => ({ current: null }),
         useCallback: (callback: unknown) => callback,
+        useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+        useMemo: (f: () => unknown) => f(),
+        useId: () => 'test-id',
       };
       let copied = '';
       let downloaded: Blob | undefined;
@@ -316,13 +347,13 @@ function findRecurringNode(node: any, predicate: (element: any) => boolean): any
   if (predicate(node)) return node;
   let children = node.props?.children;
   if (node.type === RecurringTransactionEditor) {
-    children = RecurringTransactionEditor(node.props);
+    children = withPtIntlDispatcher(() => RecurringTransactionEditor(node.props));
   } else if (node.type === RecurringDeleteConfirmation) {
-    children = RecurringDeleteConfirmation(node.props);
+    children = withPtIntlDispatcher(() => RecurringDeleteConfirmation(node.props));
   } else if (node.type === FinanceFormDialogShell) {
-    children = FinanceFormDialogShell(node.props);
+    children = withPtIntlDispatcher(() => FinanceFormDialogShell(node.props));
   } else if (node.type === FinanceConfirmationDialogShell) {
-    children = FinanceConfirmationDialogShell(node.props);
+    children = withPtIntlDispatcher(() => FinanceConfirmationDialogShell(node.props));
   }
   for (const child of React.Children.toArray(children)) {
     const found = findRecurringNode(child, predicate);
@@ -358,6 +389,8 @@ for (const method of ['POST', 'PUT'] as const) {
         useId: () => 'test-id',
         useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
         useCallback: (fn: unknown) => fn,
+        useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+        useMemo: (f: () => unknown) => f(),
         useEffect: noop,
       };
       return RecurringTransactionsWidget();
@@ -430,6 +463,8 @@ for (const operation of ['pause', 'activate', 'delete'] as const) {
           useId: () => 'test-id',
           useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
           useCallback: (fn: unknown) => fn,
+          useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+          useMemo: (f: () => unknown) => f(),
           useEffect: noop,
         };
         return RecurringTransactionsWidget();
@@ -495,7 +530,11 @@ for (const operation of ['POST', 'PUT', 'DELETE-same', 'DELETE-other'] as const)
           return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
         },
         useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
-        useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+        useId: () => 'test-id',
+      useCallback: (fn: unknown) => fn,
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useMemo: (f: () => unknown) => f(),
+      useEffect: noop,
       };
       return RecurringTransactionsWidget();
     };
@@ -564,7 +603,11 @@ test('DELETE impede cliques repetidos por id pendente e permite retry após 503'
         return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
       },
       useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
-      useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+      useId: () => 'test-id',
+      useCallback: (fn: unknown) => fn,
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useMemo: (f: () => unknown) => f(),
+      useEffect: noop,
     };
     return RecurringTransactionsWidget();
   };
@@ -616,12 +659,14 @@ for (const [file, count] of [['recurring-delete-confirmation.tsx', 1]] as const)
     expect(parentSource).not.toContain('<AlertDialogAction');
     expect(parentSource).not.toContain('<Dialog ');
 
-    const confirm = RecurringDeleteConfirmation({
-      open: true,
-      onOpenChange: noop,
-      onCloseAutoFocus: noop,
-      onConfirm: noop,
-    });
+    const confirm = withPtIntlDispatcher(() =>
+      RecurringDeleteConfirmation({
+        open: true,
+        onOpenChange: noop,
+        onCloseAutoFocus: noop,
+        onConfirm: noop,
+      }),
+    );
     expect(confirm.type).toBe(FinanceConfirmationDialogShell);
     const alertDialog = findRecurringNode(confirm, (e) => e.type === AlertDialog);
     expect(alertDialog).toBeDefined();
@@ -670,7 +715,11 @@ test('recurring-transactions exibe erro com retry e bloqueia duplo clique durant
         return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
       },
       useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
-      useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+      useId: () => 'test-id',
+      useCallback: (fn: unknown) => fn,
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useMemo: (f: () => unknown) => f(),
+      useEffect: noop,
     };
     return RecurringTransactionsWidget();
   };
@@ -726,7 +775,11 @@ for (const method of ['POST', 'PUT', 'DELETE'] as const) {
           return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
         },
         useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
-        useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+        useId: () => 'test-id',
+      useCallback: (fn: unknown) => fn,
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useMemo: (f: () => unknown) => f(),
+      useEffect: noop,
       };
       return RecurringTransactionsWidget();
     };
@@ -795,7 +848,11 @@ for (const operation of ['POST', 'PUT', 'DELETE'] as const) {
           return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
         },
         useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
-        useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+        useId: () => 'test-id',
+      useCallback: (fn: unknown) => fn,
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useMemo: (f: () => unknown) => f(),
+      useEffect: noop,
       };
       return RecurringTransactionsWidget();
     };
@@ -861,7 +918,11 @@ test('PUT: envio pendente repetido no mesmo ID envia apenas 1 mutação', async 
         return [states[i], (value: any) => { states[i] = typeof value === 'function' ? value(states[i]) : value; }];
       },
       useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ??= { current: initial }; },
-      useId: () => 'test-id', useCallback: (fn: unknown) => fn, useEffect: noop,
+      useId: () => 'test-id',
+      useCallback: (fn: unknown) => fn,
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useMemo: (f: () => unknown) => f(),
+      useEffect: noop,
     };
     return RecurringTransactionsWidget();
   };
@@ -920,4 +981,74 @@ test('receipt-generator gera HTML standalone para impressão, remove micro-tipog
     /> as React.ReactElement,
   );
   expect(workspaceHtml).toContain('Selecionar registro recente');
+});
+
+test('renderiza RecurringPanel, ReceiptWorkspace, buildReceiptFields e buildReceiptPrintHtml em pt, es e en', () => {
+  const expected = {
+    pt: { newRec: 'Nova transação recorrente', generate: 'Gerar recibo', htmlLang: '<html lang="pt-BR">', totalUpper: 'VALOR TOTAL' },
+    es: { newRec: 'Nueva transacción recurrente', generate: 'Generar recibo', htmlLang: '<html lang="es-ES">', totalUpper: 'VALOR TOTAL' },
+    en: { newRec: 'New recurring transaction', generate: 'Generate receipt', htmlLang: '<html lang="en-US">', totalUpper: 'TOTAL AMOUNT' },
+  } as const;
+
+  expect(buildReceiptFields(purchase).rows.length).toBeGreaterThan(0);
+
+  for (const locale of CANONICAL_LOCALES) {
+    const recHtml = renderWithIntl(
+      <RecurringPanel
+        recurring={entries}
+        loading={false}
+        processing={false}
+        activeCount={2}
+        inactiveCount={1}
+        monthlyIncome={200}
+        monthlyTotal={125.4}
+        openNew={noop}
+        processRecurring={noop}
+        openEdit={noop}
+        requestDelete={noop}
+        toggleActive={noop}
+      />,
+      locale,
+    );
+    expect(recHtml).toContain(expected[locale].newRec);
+    expect(recHtml).not.toContain('MISSING_MESSAGE');
+
+    const wsHtml = renderWithIntl(
+      <ReceiptWorkspace
+        receiptType="purchase"
+        setReceiptType={noop}
+        receiptId="p1"
+        setReceiptId={noop}
+        receiptData={purchase}
+        error={null}
+        isLoading={false}
+        copied={false}
+        generateReceipt={noop}
+        handlePrint={noop}
+        handleDownload={noop}
+        handleCopy={noop}
+      />,
+      locale,
+    );
+    expect(wsHtml).toContain(expected[locale].generate);
+    expect(wsHtml).toContain(expected[locale].totalUpper);
+
+    expect(buildReceiptFields(purchase, { locale }).rows.length).toBeGreaterThan(0);
+    const printHtml = buildReceiptPrintHtml(purchase, {
+      locale,
+      texts: {
+        brandName: 'FinanceApp',
+        brandSubtitle: 'Finance',
+        printWindowTitle: 'Receipt',
+        receiptHeading: 'RECEIPT',
+        itemsHeading: (count) => `Items (${count})`,
+        notes: 'Notes',
+        totalUpper: expected[locale].totalUpper,
+        thankYou: 'Thanks',
+        autoGeneratedPrint: 'Auto',
+      },
+    });
+    expect(printHtml).toContain(expected[locale].htmlLang);
+    expect(printHtml).toContain(expected[locale].totalUpper);
+  }
 });

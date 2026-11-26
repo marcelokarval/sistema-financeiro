@@ -10,10 +10,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { FinanceConfirmationDialogShell } from '@/components/shared/finance-dialog-shell';
 import { FinanceMetric } from '@/components/shared/finance-metric';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate as dateFmt, purchaseDateForInput, purchaseDateForSave } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
+import { createFallbackTranslator, PT_OPERATIONS_MESSAGES } from './operations-i18n';
 import { PurchaseEditor, type PurchaseCardOption, type PurchaseCategoryOption, type PurchaseFormDraft } from './purchase-editor';
 import type { PurchaseItemDraft } from './purchase-items-editor';
 
@@ -42,6 +44,8 @@ function PurchaseRecordRow({ purchase, isExpanded, onToggle, onCaptureOrigin, on
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('purchases'), PT_OPERATIONS_MESSAGES.purchases);
   const detailId = `purchase-items-${purchase.id}`;
   const summaryId = `purchase-summary-${purchase.id}`;
   const amountId = `purchase-amount-${purchase.id}`;
@@ -50,7 +54,7 @@ function PurchaseRecordRow({ purchase, isExpanded, onToggle, onCaptureOrigin, on
       <div className="flex min-w-0 items-start gap-1 px-2 py-1.5 sm:px-3">
         <button
           type="button"
-          aria-label={`Itens da compra: ${purchase.merchant}`}
+          aria-label={t('records.toggleItemsAria', { merchant: purchase.merchant })}
           aria-describedby={`${summaryId} ${amountId}`}
           aria-expanded={isExpanded}
           aria-controls={detailId}
@@ -62,39 +66,39 @@ function PurchaseRecordRow({ purchase, isExpanded, onToggle, onCaptureOrigin, on
             <span className="min-w-0">
               <span className="block break-words text-sm font-semibold">{purchase.merchant}</span>
               <span id={summaryId} className="block break-words text-xs text-muted-foreground">
-                {dateFmt(purchase.date)} · {purchase.items.length} {purchase.items.length === 1 ? 'item' : 'itens'}
+                {dateFmt(purchase.date, 'date', locale)} · {t('records.itemCount', { count: purchase.items.length })}
                 {purchase.card && ` · ${purchase.card.name}`}
                 {purchase.category && ` · ${purchase.category.name}`}
               </span>
             </span>
-            <span id={amountId} className={cn('text-sm font-semibold sm:text-right', amountStyle)}>{currencyFmt(purchase.totalAmount)}</span>
+            <span id={amountId} className={cn('text-sm font-semibold sm:text-right', amountStyle)}>{currencyFmt(purchase.totalAmount, locale)}</span>
           </span>
         </button>
-        <Button variant="ghost" size="icon" aria-label={`Editar compra: ${purchase.merchant}`} className={cn('size-11 shrink-0', focusStyle)} onClickCapture={(event) => onCaptureOrigin(event.currentTarget)} onClick={onEdit}>
+        <Button variant="ghost" size="icon" aria-label={t('records.editAria', { merchant: purchase.merchant })} className={cn('size-11 shrink-0', focusStyle)} onClickCapture={(event) => onCaptureOrigin(event.currentTarget)} onClick={onEdit}>
           <Pencil aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon" aria-label={`Excluir compra: ${purchase.merchant}`} className={cn('size-11 shrink-0 text-destructive hover:text-destructive', focusStyle)} onClickCapture={(event) => onCaptureOrigin(event.currentTarget)} onClick={onDelete}>
+        <Button variant="ghost" size="icon" aria-label={t('records.deleteAria', { merchant: purchase.merchant })} className={cn('size-11 shrink-0 text-destructive hover:text-destructive', focusStyle)} onClickCapture={(event) => onCaptureOrigin(event.currentTarget)} onClick={onDelete}>
           <Trash2 aria-hidden="true" />
         </Button>
       </div>
       <div id={detailId} hidden={!isExpanded} className="min-w-0 border-t border-border bg-muted/30 px-3 py-3 sm:px-4">
         {isExpanded && (
           <>
-            <h4 className="text-xs font-semibold text-muted-foreground">Itens da compra ({purchase.items.length})</h4>
+            <h4 className="text-xs font-semibold text-muted-foreground">{t('records.itemsHeading', { count: purchase.items.length })}</h4>
             <ul role="list" className="mt-1 divide-y divide-border">
               {purchase.items.map((item) => (
                 <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2 text-sm">
                   <span className="min-w-0 flex-1 basis-28 break-words">{item.quantity} × {item.name}</span>
-                  <span className={cn('text-xs text-muted-foreground', amountStyle)}>{currencyFmt(item.unitPrice)} / un.</span>
-                  <strong className={cn('text-xs', amountStyle)}>{currencyFmt(item.totalPrice)}</strong>
+                  <span className={cn('text-xs text-muted-foreground', amountStyle)}>{t('records.unitShort', { price: currencyFmt(item.unitPrice, locale) })}</span>
+                  <strong className={cn('text-xs', amountStyle)}>{currencyFmt(item.totalPrice, locale)}</strong>
                 </li>
               ))}
             </ul>
             <div className="flex flex-wrap justify-between gap-x-3 border-t border-border pt-2 text-sm font-semibold">
-              <span>Total da compra</span>
-              <span className={amountStyle}>{currencyFmt(purchase.totalAmount)}</span>
+              <span>{t('records.purchaseTotal')}</span>
+              <span className={amountStyle}>{currencyFmt(purchase.totalAmount, locale)}</span>
             </div>
-            {purchase.notes && <p className="mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">Observações: {purchase.notes}</p>}
+            {purchase.notes && <p className="mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">{t('records.notesPrefix', { notes: purchase.notes })}</p>}
           </>
         )}
       </div>
@@ -103,15 +107,17 @@ function PurchaseRecordRow({ purchase, isExpanded, onToggle, onCaptureOrigin, on
 }
 
 function TopMerchantRow({ rank, name, total, count, pct }: { rank: number; name: string; total: number; count: number; pct: number }) {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('purchases'), PT_OPERATIONS_MESSAGES.purchases);
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 px-3 py-3 sm:px-4">
       <span className="font-mono text-xs text-muted-foreground">{rank}.</span>
       <div className="min-w-0">
         <div className="flex flex-wrap justify-between gap-x-3 gap-y-1">
           <span className="min-w-0 break-words text-sm font-medium">{name}</span>
-          <span className={cn('text-xs font-semibold', amountStyle)}>{currencyFmt(total)}</span>
+          <span className={cn('text-xs font-semibold', amountStyle)}>{currencyFmt(total, locale)}</span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{count} {count === 1 ? 'compra' : 'compras'}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t('ranking.purchaseCount', { count })}</p>
         <div aria-hidden="true" className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
           <div style={{ width: `${pct}%` }} className="h-full bg-muted-foreground/60" />
         </div>
@@ -121,6 +127,8 @@ function TopMerchantRow({ rank, name, total, count, pct }: { rank: number; name:
 }
 
 export function PurchasesView() {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('purchases'), PT_OPERATIONS_MESSAGES.purchases);
   const storeSelectedPurchaseId = useAppStore((state) => state.selectedPurchaseId);
   const setStoreSelectedPurchaseId = useAppStore((state) => state.setSelectedPurchaseId);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -225,9 +233,9 @@ export function PurchasesView() {
   };
 
   const savePurchase = async () => {
-    if (!form.merchant) { toast.error('Informe o estabelecimento'); return; }
+    if (!form.merchant) { toast.error(t('errors.merchantRequired')); return; }
     const validItems = items.filter((i) => i.name.trim());
-    if (validItems.length === 0) { toast.error('Adicione ao menos um item'); return; }
+    if (validItems.length === 0) { toast.error(t('errors.itemsRequired')); return; }
     const submittedOpening = activeOpening.current;
     if (!submittedOpening || mutationPending.current) return;
     mutationPending.current = true;
@@ -239,10 +247,10 @@ export function PurchasesView() {
         body: JSON.stringify(editingPurchase ? { id: editingPurchase.id, ...body } : body),
       });
       if (!res.ok) throw new Error('HTTP error');
-      toast.success(editingPurchase ? 'Compra atualizada!' : 'Compra registrada!');
+      toast.success(editingPurchase ? t('toasts.updated') : t('toasts.created'));
       await fetchPurchases();
       if (activeOpening.current === submittedOpening) closeDialog('form');
-    } catch { toast.error('Erro ao salvar compra'); } finally { mutationPending.current = false; }
+    } catch { toast.error(t('errors.save')); } finally { mutationPending.current = false; }
   };
 
   const deletePurchase = async (id: string) => {
@@ -252,13 +260,13 @@ export function PurchasesView() {
     try {
       const res = await fetch('/api/purchases', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
       if (!res.ok) throw new Error('HTTP error');
-      toast.success('Compra excluída!');
+      toast.success(t('toasts.deleted'));
       await fetchPurchases();
       if (activeOpening.current === submittedOpening) {
         submittedOpening.origin = newButton.current;
         closeDialog('delete');
       }
-    } catch { toast.error('Erro ao excluir compra'); } finally { mutationPending.current = false; }
+    } catch { toast.error(t('errors.delete')); } finally { mutationPending.current = false; }
   };
 
   const filtered = purchases.filter((p) => p.merchant.toLowerCase().includes(search.toLowerCase()) || (p.card?.name || '').toLowerCase().includes(search.toLowerCase()));
@@ -278,39 +286,39 @@ export function PurchasesView() {
     <section aria-labelledby="purchases-heading" className="min-w-0 space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Movimentação</p>
-          <h2 id="purchases-heading" className="text-2xl font-semibold tracking-tight">Compras</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Acompanhe os gastos e os itens de cada compra.</p>
+          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{t('eyebrow')}</p>
+          <h2 id="purchases-heading" className="text-2xl font-semibold tracking-tight">{t('title')}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         {!loading && (
           <Button ref={newButton} onClickCapture={(event) => beginOpening(event.currentTarget)} onClick={openNew} className={cn('min-h-11', focusStyle)}>
-            <Plus aria-hidden="true" /> Nova compra
+            <Plus aria-hidden="true" /> {t('actions.newPurchase')}
           </Button>
         )}
       </header>
       {refreshFailed && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <p role="status">Não foi possível atualizar a lista de compras.</p>
-          <Button type="button" variant="outline" className={focusStyle} onClick={() => void fetchPurchases()}>Tentar atualizar lista</Button>
+          <p role="status">{t('errors.refresh')}</p>
+          <Button type="button" variant="outline" className={focusStyle} onClick={() => void fetchPurchases()}>{t('actions.retryList')}</Button>
         </div>
       )}
       {optionsFailed && (
         <div role="alert" className="flex flex-wrap items-center gap-2 text-sm">
-          <p className="text-destructive">Não foi possível carregar cartões ou categorias.</p>
-          <Button type="button" variant="outline" className={focusStyle} onClick={() => { void fetchCards(); void fetchCategories(); }}>Tentar novamente</Button>
+          <p className="text-destructive">{t('errors.options')}</p>
+          <Button type="button" variant="outline" className={focusStyle} onClick={() => { void fetchCards(); void fetchCategories(); }}>{t('actions.retryOptions')}</Button>
         </div>
       )}
       {loading ? (
         <div role="status" className="space-y-3 text-sm text-muted-foreground">
-          <p>Carregando compras…</p>
+          <p>{t('loading')}</p>
           <Skeleton className="h-20 rounded-lg" />
           <Skeleton className="h-32 rounded-lg" />
         </div>
       ) : (
         <>
           {purchases.length > 0 && (
-            <dl aria-label="Totais de compras" className="grid grid-cols-2 gap-px border-y border-border bg-border lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
-              {([['Total das compras', currencyFmt(totalSpent)], ['Valor médio por compra', currencyFmt(avgPurchase)], ['Estabelecimentos', Object.keys(merchantStats).length], ['Itens comprados', totalItems]] as const).map(([label, value], index) => (
+            <dl aria-label={t('summary.ariaLabel')} className="grid grid-cols-2 gap-px border-y border-border bg-border lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+              {([[t('summary.totalSpent'), currencyFmt(totalSpent, locale)], [t('summary.avgPurchase'), currencyFmt(avgPurchase, locale)], [t('summary.merchants'), Object.keys(merchantStats).length], [t('summary.items'), totalItems]] as const).map(([label, value], index) => (
                 <FinanceMetric key={label} variant="cell" label={label} value={value} className="border-0 bg-background px-3 py-4 sm:px-4" valueClassName={cn(amountStyle, index === 0 ? 'text-xl sm:text-2xl' : 'text-lg')} />
               ))}
             </dl>
@@ -318,19 +326,19 @@ export function PurchasesView() {
           <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
             <section aria-labelledby="purchase-records-heading" className="min-w-0 rounded-lg border border-border bg-card">
               <header className="space-y-3 border-b border-border px-3 py-4 sm:px-4">
-                <h3 id="purchase-records-heading" className="text-sm font-semibold">Registros de compras</h3>
+                <h3 id="purchase-records-heading" className="text-sm font-semibold">{t('records.title')}</h3>
                 <div className="relative">
-                  <Label htmlFor="purchase-search" className="sr-only">Buscar por estabelecimento ou cartão</Label>
+                  <Label htmlFor="purchase-search" className="sr-only">{t('records.searchLabel')}</Label>
                   <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="purchase-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Estabelecimento ou cartão" className={cn('min-h-11 pl-9', focusStyle)} />
+                  <Input id="purchase-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('records.searchPlaceholder')} className={cn('min-h-11 pl-9', focusStyle)} />
                 </div>
                 <p role="status" className="text-xs text-muted-foreground">
-                  {filtered.length} {filtered.length === 1 ? 'compra encontrada' : 'compras encontradas'}
-                  {filtered.length > 0 && (<> · Total dos resultados: <strong className={cn('font-semibold text-foreground', amountStyle)}>{currencyFmt(filtered.reduce((s, p) => s + p.totalAmount, 0))}</strong></>)}
+                  {t('records.foundCount', { count: filtered.length })}
+                  {filtered.length > 0 && (<> · {t('records.resultsTotalPrefix')} <strong className={cn('font-semibold text-foreground', amountStyle)}>{currencyFmt(filtered.reduce((s, p) => s + p.totalAmount, 0), locale)}</strong></>)}
                 </p>
               </header>
               {filtered.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-muted-foreground">{search ? 'Nenhuma compra corresponde à busca.' : 'Nenhuma compra registrada.'}</p>
+                <p className="px-4 py-8 text-sm text-muted-foreground">{search ? t('records.emptySearch') : t('records.empty')}</p>
               ) : (
                 <ul role="list" className="divide-y divide-border">
                   {filtered.map((purchase) => (
@@ -350,8 +358,8 @@ export function PurchasesView() {
             {topMerchants.length > 0 && (
               <section aria-labelledby="purchase-ranking-heading" className="min-w-0 rounded-lg border border-border bg-card">
                 <header className="border-b border-border px-3 py-4 sm:px-4">
-                  <h3 id="purchase-ranking-heading" className="text-sm font-semibold">Estabelecimentos com mais gastos</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">Considera todas as compras, sem aplicar a busca.</p>
+                  <h3 id="purchase-ranking-heading" className="text-sm font-semibold">{t('ranking.title')}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{t('ranking.subtitle')}</p>
                 </header>
                 <ol role="list" className="divide-y divide-border">
                   {topMerchants.map(([name, stats], idx) => (
@@ -387,16 +395,16 @@ export function PurchasesView() {
         onOpenChange={(open) => { if (!open) closeDialog('delete'); }}
         onCloseAutoFocus={restoreFocus}
         contentClassName="motion-reduce:animate-none border-border bg-card shadow-none"
-        title="Excluir compra?"
-        description="Esta ação não pode ser desfeita. Todos os itens da compra serão removidos."
+        title={t('deleteDialog.title')}
+        description={t('deleteDialog.description')}
         footer={
           <>
-            <AlertDialogCancel className={focusStyle}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className={focusStyle}>{t('actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => { event.preventDefault(); if (showDeleteDialog) deletePurchase(showDeleteDialog); }}
               className={cn('bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline', focusStyle)}
             >
-              Excluir
+              {t('actions.delete')}
             </AlertDialogAction>
           </>
         }

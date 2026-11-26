@@ -1,0 +1,147 @@
+{
+  "loading": "Loading accounts…",
+  "title": "Accounts",
+  "subtitle": "Track your balances and transactions.",
+  "actions": {
+    "transfer": "Transfer",
+    "newAccount": "New account",
+    "retry": "Try again",
+    "backToAccounts": "Back to accounts",
+    "newTransaction": "New transaction",
+    "cancel": "Cancel",
+    "register": "Record",
+    "save": "Save",
+    "delete": "Delete",
+    "create": "Create",
+    "update": "Update"
+  },
+  "errors": {
+    "loadAccounts": "Could not update accounts.",
+    "loadTransactions": "Could not load transactions.",
+    "accountNameRequired": "Account name is required",
+    "updateAccount": "Error updating account",
+    "createAccount": "Error creating account",
+    "saveAccount": "Error saving account",
+    "deleteAccount": "Error deleting account",
+    "descriptionRequired": "Enter the transaction description",
+    "amountPositive": "Enter an amount greater than zero",
+    "createTransaction": "Error recording transaction",
+    "updateTransaction": "Error updating transaction",
+    "deleteTransaction": "Error deleting transaction",
+    "transferFailed": "Transfer error",
+    "transferError": "Error making transfer"
+  },
+  "toasts": {
+    "accountUpdated": "Account updated!",
+    "accountCreated": "Account created!",
+    "accountDeleted": "Account deleted!",
+    "transactionCreated": "Transaction recorded!",
+    "transactionUpdated": "Transaction updated!",
+    "transactionDeleted": "Transaction deleted!",
+    "transferSuccess": "Transfer completed successfully!"
+  },
+  "summary": {
+    "ariaLabel": "Accounts summary",
+    "totalBalance": "Accounts balance",
+    "monthIncome": "Monthly income",
+    "monthExpense": "Monthly expenses",
+    "totalAccounts": "Total accounts"
+  },
+  "list": {
+    "title": "Registered accounts",
+    "empty": "No accounts registered. Use “New account” to get started.",
+    "openAccountAria": "Open account {name}",
+    "editAccountAria": "Edit account {name}",
+    "deleteAccountAria": "Delete account {name}",
+    "transactionCount": "{count, plural, one {# transaction} other {# transactions}}"
+  },
+  "detail": {
+    "ariaLabel": "Account summary",
+    "currentBalance": "Current balance",
+    "listIncome": "Listed income",
+    "listExpense": "Listed expenses",
+    "listCount": "Listed transactions",
+    "transactionsTitle": "Transactions",
+    "loadingTransactions": "Loading transactions…",
+    "emptyTransactions": "No transactions recorded.",
+    "incomeType": "Income",
+    "expenseType": "Expense",
+    "editTransactionAria": "Edit transaction {description}",
+    "deleteTransactionAria": "Delete transaction {description}"
+  },
+  "accountForm": {
+    "editTitle": "Edit Account",
+    "createTitle": "New Account",
+    "editDescription": "Update account details",
+    "createDescription": "Fill in the new account details",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Checking, Wallet...",
+    "typeLabel": "Type",
+    "balanceLabel": "Initial Balance (BRL)",
+    "colorLabel": "Color"
+  },
+  "accountTypes": {
+    "CASH": "Cash",
+    "BANK": "Bank",
+    "DIGITAL_WALLET": "Digital Wallet"
+  },
+  "colors": {
+    "green": "Green",
+    "blue": "Blue",
+    "purple": "Purple",
+    "cyan": "Cyan",
+    "orange": "Orange",
+    "red": "Red",
+    "pink": "Pink"
+  },
+  "deleteAccountDialog": {
+    "title": "Delete account?",
+    "description": "This action cannot be undone. All linked transactions will also be removed."
+  },
+  "transactionDialog": {
+    "createTitle": "New Transaction",
+    "createDescription": "Record a new transaction in {account}",
+    "editTitle": "Edit Transaction",
+    "editDescription": "Update transaction details in {account}",
+    "deleteTitle": "Delete transaction?",
+    "deleteDescription": "This action cannot be undone and will update the balance of account {account}."
+  },
+  "picker": {
+    "title": "New entry",
+    "description": "Choose the account where you want to record the transaction.",
+    "loading": "Loading accounts…",
+    "loadFailed": "Could not load accounts.",
+    "retry": "Try again",
+    "noAccounts": "Create an account before recording an entry.",
+    "createAccount": "Create account",
+    "availableAria": "Available accounts",
+    "cancel": "Cancel"
+  },
+  "transactionFields": {
+    "typeLabel": "Type",
+    "expense": "Expense",
+    "income": "Income",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "e.g. Salary, Lunch...",
+    "amountLabel": "Amount (BRL)",
+    "amountPlaceholder": "0.00",
+    "dateLabel": "Date",
+    "categoryLabel": "Category",
+    "categoryPlaceholder": "Select...",
+    "noCategory": "None"
+  },
+  "transfer": {
+    "title": "Transfer between Accounts",
+    "description": "Move money from one account to another",
+    "fromLabel": "From (Source)",
+    "toLabel": "To (Destination)",
+    "selectAccountPlaceholder": "Select account...",
+    "amountLabel": "Amount (BRL)",
+    "amountPlaceholder": "0.00",
+    "dateLabel": "Date",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "e.g. Transfer to investment",
+    "cancel": "Cancel",
+    "submit": "Transfer"
+  }
+}

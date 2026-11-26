@@ -13,6 +13,34 @@ import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/compon
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function ptUseContext(ctx: React.Context<unknown>, locale: CanonicalLocale = 'pt') {
+  return ctx === AppIntlBridgeContext
+    ? { locale, messages: getMessagesForLocale(locale) }
+    : (ctx as unknown as { _currentValue?: unknown })._currentValue;
+}
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 test('Investimentos identifica a tela e anuncia carregamento sem mostrar totais fictícios', () => {
   const html = renderToStaticMarkup(<investments.InvestmentsView />);
@@ -94,11 +122,15 @@ test('detalhe não oferece pagamento de parcela de outro plano', () => {
 
 // SSR não renderiza os portais Radix. Este contrato de markup não prova foco:
 // a interação do editor/confirmador pelos dois caminhos pertence ao QA no DOM.
-for (const editorFile of ['investment-editor.tsx', 'investment-entry-editor.tsx', 'installment-plan-editor.tsx'] as const) {
+for (const [editorFile, key] of [
+  ['investment-editor.tsx', "closeLabel={t('editor.closeLabel')}"],
+  ['investment-entry-editor.tsx', "closeLabel={t('entryEditor.closeLabel')}"],
+  ['installment-plan-editor.tsx', "closeLabel={t('editor.closeLabel')}"],
+] as const) {
   test(`${editorFile}: formulário usa FinanceFormDialogShell com saída superior nomeada`, () => {
     const editorSource = readFileSync(new URL(editorFile, import.meta.url), 'utf8');
     expect(editorSource).toContain('<FinanceFormDialogShell');
-    expect(editorSource).toContain('closeLabel="Fechar formulário"');
+    expect(editorSource).toContain(key);
     const shellSource = readFileSync(new URL('../shared/finance-dialog-shell.tsx', import.meta.url), 'utf8');
     const headers = shellSource.split(/<DialogHeader[^>]*>/).slice(1).map((part) => part.split('</DialogHeader>')[0]);
     expect(headers).toHaveLength(1);
@@ -110,7 +142,7 @@ for (const editorFile of ['investment-editor.tsx', 'investment-entry-editor.tsx'
 test('investments-view.tsx usa InvestmentEntryEditor e mantém exclusão de movimentação fora da extração', () => {
   const source = readFileSync(new URL('investments-view.tsx', import.meta.url), 'utf8');
   expect(source).toContain('<InvestmentEntryEditor');
-  expect(source).toContain('Excluir Transação');
+  expect(source).toContain("t('deleteTx.title')");
   expect(source).not.toContain('<Dialog ');
 });
 
@@ -151,10 +183,12 @@ for (const [file, count] of [["investment-delete-confirmation.tsx",1],["investme
 
 test('installments-view.tsx usa tokens --ds-accent-* no status das parcelas em vez de cores Tailwind fixas', async () => {
   const source = await Bun.file(new URL('installments-view.tsx', import.meta.url)).text();
-  expect(source).not.toMatch(/bg-green-500\/10|bg-amber-500\/10|bg-rose-500\/10|text-green-600|text-amber-600|text-rose-600/);
-  expect(source).toContain('--ds-accent-positive');
-  expect(source).toContain('--ds-accent-warning');
-  expect(source).toContain('--ds-accent-danger');
+  const i18nSource = await Bun.file(new URL('portfolio-i18n.ts', import.meta.url)).text();
+  const combined = `${source}\n${i18nSource}`;
+  expect(combined).not.toMatch(/bg-green-500\/10|bg-amber-500\/10|bg-rose-500\/10|text-green-600|text-amber-600|text-rose-600/);
+  expect(combined).toContain('--ds-accent-positive');
+  expect(combined).toContain('--ds-accent-warning');
+  expect(combined).toContain('--ds-accent-danger');
 });
 
 test('Parcelas filtra OVERDUE apenas para planos atrasados ou com parcelas vencidas', async () => {
@@ -162,7 +196,7 @@ test('Parcelas filtra OVERDUE apenas para planos atrasados ou com parcelas venci
   expect(source).not.toContain("p.status === 'OVERDUE' || p.status === 'ACTIVE'");
   expect(source).toContain('selectedInstallmentPlanId');
   expect(source).toContain('Skeleton');
-  expect(source).toContain('Não foi possível carregar os planos');
+  expect(source).toContain("t('errors.loadPlans')");
   expect(source).toContain('createInFlight');
 });
 
@@ -170,10 +204,10 @@ test('Investimentos consome selectedInvestmentId, usa Skeleton/erro/retry e calc
   const source = await Bun.file(new URL('investments-view.tsx', import.meta.url)).text();
   expect(source).toContain('selectedInvestmentId');
   expect(source).toContain('Skeleton');
-  expect(source).toContain('Não foi possível carregar os investimentos');
+  expect(source).toContain("t('errors.loadPortfolio')");
   expect(source).not.toContain('dividendsReceived: 0');
-  expect(source).toContain('Informe o nome do investimento');
-  expect(source).toContain('Informe um valor maior que zero');
+  expect(source).toContain("t('errors.nameRequired')");
+  expect(source).toContain("t('errors.amountPositive')");
 });
 
 type ViewElement = React.ReactElement<Record<string, any>>;
@@ -183,13 +217,13 @@ const findElement = (node: React.ReactNode, matches: (element: ViewElement) => b
     if (matches(child)) return child;
     let content = child.props.children;
     if (child.type === InstallmentPlanEditor) {
-      content = InstallmentPlanEditor((child as React.ReactElement<React.ComponentProps<typeof InstallmentPlanEditor>>).props);
+      content = withPtIntlDispatcher(() => InstallmentPlanEditor((child as React.ReactElement<React.ComponentProps<typeof InstallmentPlanEditor>>).props));
     } else if (child.type === InstallmentDeleteConfirmation) {
-      content = InstallmentDeleteConfirmation((child as React.ReactElement<React.ComponentProps<typeof InstallmentDeleteConfirmation>>).props);
+      content = withPtIntlDispatcher(() => InstallmentDeleteConfirmation((child as React.ReactElement<React.ComponentProps<typeof InstallmentDeleteConfirmation>>).props));
     } else if (child.type === FinanceFormDialogShell) {
-      content = FinanceFormDialogShell((child as React.ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props);
+      content = withPtIntlDispatcher(() => FinanceFormDialogShell((child as React.ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props));
     } else if (child.type === FinanceConfirmationDialogShell) {
-      content = FinanceConfirmationDialogShell((child as React.ReactElement<React.ComponentProps<typeof FinanceConfirmationDialogShell>>).props);
+      content = withPtIntlDispatcher(() => FinanceConfirmationDialogShell((child as React.ReactElement<React.ComponentProps<typeof FinanceConfirmationDialogShell>>).props));
     }
     const nested = findElement(content, matches);
     if (nested) return nested;
@@ -223,6 +257,8 @@ async function exerciseInstallments(
       useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
       useCallback: (fn: unknown) => fn,
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
       useLayoutEffect: () => {},
     };
@@ -261,30 +297,32 @@ test('InstallmentPlanEditor usa FinanceFormDialogShell, closeLabel e preserva pe
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
   const onSubmit = async () => {};
-  const element = InstallmentPlanEditor({
-    open: true,
-    creating: true,
-    form: {
-      description: 'Financiamento teste',
-      totalAmount: '1200',
-      installmentCount: '12',
-      monthlyValue: '100.00',
-      interestRate: '',
-      type: 'FINANCING',
-      startDate: '2026-05-01',
-      cardId: '',
-      categoryId: '',
-    },
-    cards: [],
-    categories: [],
-    planTypes: { FINANCING: { label: 'Financiamento', icon: () => null } },
-    onFieldChange: () => {},
-    onAmountChange: () => {},
-    onCountChange: () => {},
-    onOpenChange,
-    onCloseAutoFocus,
-    onSubmit,
-  });
+  const element = withPtIntlDispatcher(() =>
+    InstallmentPlanEditor({
+      open: true,
+      creating: true,
+      form: {
+        description: 'Financiamento teste',
+        totalAmount: '1200',
+        installmentCount: '12',
+        monthlyValue: '100.00',
+        interestRate: '',
+        type: 'FINANCING',
+        startDate: '2026-05-01',
+        cardId: '',
+        categoryId: '',
+      },
+      cards: [],
+      categories: [],
+      planTypes: { FINANCING: { label: 'Financiamento', icon: () => null } },
+      onFieldChange: () => {},
+      onAmountChange: () => {},
+      onCountChange: () => {},
+      onOpenChange,
+      onCloseAutoFocus,
+      onSubmit,
+    }),
+  );
 
   expect(element.type).toBe(FinanceFormDialogShell);
   expect(element.props.closeLabel).toBe('Fechar formulário');
@@ -304,15 +342,17 @@ test('InstallmentDeleteConfirmation usa FinanceConfirmationDialogShell com pend�
   let prevented = 0;
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
-  const element = InstallmentDeleteConfirmation({
-    open: true,
-    deleting: false,
-    planDescription: 'Plano sintético',
-    actionDisabled: true,
-    onOpenChange,
-    onCloseAutoFocus,
-    onConfirm: () => { confirmed++; },
-  });
+  const element = withPtIntlDispatcher(() =>
+    InstallmentDeleteConfirmation({
+      open: true,
+      deleting: false,
+      planDescription: 'Plano sintético',
+      actionDisabled: true,
+      onOpenChange,
+      onCloseAutoFocus,
+      onConfirm: () => { confirmed++; },
+    }),
+  );
 
   expect(element.type).toBe(FinanceConfirmationDialogShell);
   expect(element.props.onOpenChange).toBe(onOpenChange);
@@ -410,25 +450,27 @@ test('InvestmentEntryEditor adota FinanceFormDialogShell com closeLabel, modos c
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
   const onSave = async () => {};
-  const createEl = InvestmentEntryEditor({
-    mode: 'create',
-    open: true,
-    saving: false,
-    investmentName: 'CDB sintético',
-    form: {
-      type: 'APORTE',
-      amount: '150',
-      quantity: '',
-      unitPrice: '',
-      date: '2026-05-01',
-      description: 'Aporte teste',
-      notes: '',
-    },
-    onFieldChange: () => {},
-    onOpenChange,
-    onCloseAutoFocus,
-    onSave,
-  });
+  const createEl = withPtIntlDispatcher(() =>
+    InvestmentEntryEditor({
+      mode: 'create',
+      open: true,
+      saving: false,
+      investmentName: 'CDB sintético',
+      form: {
+        type: 'APORTE',
+        amount: '150',
+        quantity: '',
+        unitPrice: '',
+        date: '2026-05-01',
+        description: 'Aporte teste',
+        notes: '',
+      },
+      onFieldChange: () => {},
+      onOpenChange,
+      onCloseAutoFocus,
+      onSave,
+    }),
+  );
 
   expect(createEl.type).toBe(FinanceFormDialogShell);
   expect(createEl.props.closeLabel).toBe('Fechar formulário');
@@ -440,25 +482,27 @@ test('InvestmentEntryEditor adota FinanceFormDialogShell com closeLabel, modos c
   expect(createSubmit?.props.disabled).toBe(false);
   expect(createSubmit?.props.children).toBe('Registrar');
 
-  const editEl = InvestmentEntryEditor({
-    mode: 'edit',
-    open: true,
-    saving: true,
-    investmentName: 'CDB sintético',
-    form: {
-      type: 'DIVIDENDO',
-      amount: '45',
-      quantity: '1',
-      unitPrice: '45',
-      date: '2026-05-02',
-      description: 'Provento',
-      notes: 'Obs',
-    },
-    onFieldChange: () => {},
-    onOpenChange,
-    onCloseAutoFocus,
-    onSave,
-  });
+  const editEl = withPtIntlDispatcher(() =>
+    InvestmentEntryEditor({
+      mode: 'edit',
+      open: true,
+      saving: true,
+      investmentName: 'CDB sintético',
+      form: {
+        type: 'DIVIDENDO',
+        amount: '45',
+        quantity: '1',
+        unitPrice: '45',
+        date: '2026-05-02',
+        description: 'Provento',
+        notes: 'Obs',
+      },
+      onFieldChange: () => {},
+      onOpenChange,
+      onCloseAutoFocus,
+      onSave,
+    }),
+  );
 
   expect(editEl.props.title).toBe('Editar Transação');
   expect(editEl.props.description).toBe('Atualizar transação em CDB sintético');
@@ -490,6 +534,8 @@ async function exerciseInvestments(
       useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
       useCallback: (fn: unknown) => fn,
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
       useLayoutEffect: () => {},
     };
@@ -562,5 +608,29 @@ test('Task 1.5: fetchDividends trata 503 e falha de rede evitando zero silencios
         expect(realZeroHtml).toContain('R$ 0,00');
       },
     );
+  }
+});
+
+test('renderiza InvestmentsView, InstallmentsView e InstallmentEntries em pt, es e en sem chaves cruas', () => {
+  const expected = {
+    pt: { investHeading: 'Investimentos', instHeading: 'Parcelas e financiamentos', overdue: 'Atrasado' },
+    es: { investHeading: 'Inversiones', instHeading: 'Cuotas y financiamientos', overdue: 'Vencido' },
+    en: { investHeading: 'Investments', instHeading: 'Installments &amp; financing', overdue: 'Overdue' },
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const invHtml = renderWithIntl(<investments.InvestmentsView />, locale);
+    expect(invHtml).toContain(expected[locale].investHeading);
+    expect(invHtml).not.toContain('MISSING_MESSAGE');
+
+    const instHtml = renderWithIntl(<installments.InstallmentsView />, locale);
+    expect(instHtml).toContain(expected[locale].instHeading);
+    expect(instHtml).not.toContain('MISSING_MESSAGE');
+
+    const entriesHtml = renderWithIntl(
+      <installments.InstallmentEntries plan={plan} paying={null} onPay={noop} />,
+      locale,
+    );
+    expect(entriesHtml).toContain(expected[locale].overdue);
   }
 });

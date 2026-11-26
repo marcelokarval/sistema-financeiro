@@ -13,7 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeTranslations } from '@/i18n/provider';
 import { cn } from '@/lib/utils';
+import { RECURRING_FREQUENCY_KEYS, RECURRING_TYPE_KEYS } from './portfolio-i18n';
 
 const focusClass =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)] motion-reduce:transition-none';
@@ -74,6 +76,7 @@ export function RecurringTransactionEditor({
   onCloseAutoFocus,
   onSave,
 }: RecurringTransactionEditorProps) {
+  const t = useSafeTranslations('recurring');
   const formId = useId();
   const isEditing = mode === 'edit';
 
@@ -82,17 +85,17 @@ export function RecurringTransactionEditor({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
-      closeLabel="Fechar"
+      closeLabel={t('editor.closeLabel')}
       contentClassName="max-h-[90dvh] overflow-y-auto motion-reduce:animate-none"
       title={
         isEditing
-          ? 'Editar Transação Recorrente'
-          : 'Nova Transação Recorrente'
+          ? t('editor.editTitle')
+          : t('editor.createTitle')
       }
       description={
         isEditing
-          ? 'Atualize os dados da transação recorrente'
-          : 'Configure uma nova transação que se repete automaticamente'
+          ? t('editor.editDescription')
+          : t('editor.createDescription')
       }
       footer={
         <>
@@ -103,7 +106,7 @@ export function RecurringTransactionEditor({
               disabled={submitting}
               className={focusClass}
             >
-              Cancelar
+              {t('editor.cancel')}
             </Button>
           </DialogClose>
           <Button
@@ -112,14 +115,14 @@ export function RecurringTransactionEditor({
             disabled={submitting}
             className={focusClass}
           >
-            {submitting ? 'Salvando…' : isEditing ? 'Salvar' : 'Criar'}
+            {submitting ? t('editor.saving') : isEditing ? t('editor.save') : t('editor.create')}
           </Button>
         </>
       }
     >
       <div className="grid min-w-0 gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor={`${formId}-type`}>Tipo</Label>
+          <Label htmlFor={`${formId}-type`}>{t('editor.typeLabel')}</Label>
           <Select
             value={form.type}
             onValueChange={(v) => onFieldChange('type', v)}
@@ -128,33 +131,34 @@ export function RecurringTransactionEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="EXPENSE">Despesa</SelectItem>
-              <SelectItem value="INCOME">Receita</SelectItem>
+              {RECURRING_TYPE_KEYS.map((key) => (
+                <SelectItem key={key} value={key}>{t(`types.${key}`)}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor={`${formId}-description`}>Descrição</Label>
+          <Label htmlFor={`${formId}-description`}>{t('editor.descriptionLabel')}</Label>
           <Input
             id={`${formId}-description`}
             value={form.description}
             onChange={(e) => onFieldChange('description', e.target.value)}
-            placeholder="Ex: Salário, Aluguel, Netflix..."
+            placeholder={t('editor.descriptionPlaceholder')}
           />
         </div>
         <div>
-          <Label htmlFor={`${formId}-amount`}>Valor (R$)</Label>
+          <Label htmlFor={`${formId}-amount`}>{t('editor.amountLabel')}</Label>
           <Input
             id={`${formId}-amount`}
             type="number"
             step="0.01"
             value={form.amount}
             onChange={(e) => onFieldChange('amount', e.target.value)}
-            placeholder="0,00"
+            placeholder={t('editor.amountPlaceholder')}
           />
         </div>
         <div>
-          <Label htmlFor={`${formId}-frequency`}>Frequência</Label>
+          <Label htmlFor={`${formId}-frequency`}>{t('editor.frequencyLabel')}</Label>
           <Select
             value={form.frequency}
             onValueChange={(v) => onFieldChange('frequency', v)}
@@ -163,16 +167,14 @@ export function RecurringTransactionEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="WEEKLY">Semanal</SelectItem>
-              <SelectItem value="BIWEEKLY">Quinzenal</SelectItem>
-              <SelectItem value="MONTHLY">Mensal</SelectItem>
-              <SelectItem value="QUARTERLY">Trimestral</SelectItem>
-              <SelectItem value="YEARLY">Anual</SelectItem>
+              {RECURRING_FREQUENCY_KEYS.map((key) => (
+                <SelectItem key={key} value={key}>{t(`frequencies.${key}`)}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor={`${formId}-next-date`}>Próxima Data</Label>
+          <Label htmlFor={`${formId}-next-date`}>{t('editor.nextDateLabel')}</Label>
           <Input
             id={`${formId}-next-date`}
             type="date"
@@ -181,13 +183,13 @@ export function RecurringTransactionEditor({
           />
         </div>
         <div>
-          <Label htmlFor={`${formId}-category`}>Categoria</Label>
+          <Label htmlFor={`${formId}-category`}>{t('editor.categoryLabel')}</Label>
           <Select
             value={form.categoryId}
             onValueChange={(v) => onFieldChange('categoryId', v)}
           >
             <SelectTrigger id={`${formId}-category`} className={cn('w-full', focusClass)}>
-              <SelectValue placeholder="Selecione..." />
+              <SelectValue placeholder={t('editor.selectPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {categories
@@ -201,13 +203,13 @@ export function RecurringTransactionEditor({
           </Select>
         </div>
         <div>
-          <Label htmlFor={`${formId}-account`}>Conta</Label>
+          <Label htmlFor={`${formId}-account`}>{t('editor.accountLabel')}</Label>
           <Select
             value={form.accountId}
             onValueChange={(v) => onFieldChange('accountId', v)}
           >
             <SelectTrigger id={`${formId}-account`} className={cn('w-full', focusClass)}>
-              <SelectValue placeholder="Selecione..." />
+              <SelectValue placeholder={t('editor.selectPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {accounts.map((a) => (
@@ -219,13 +221,13 @@ export function RecurringTransactionEditor({
           </Select>
         </div>
         <div>
-          <Label htmlFor={`${formId}-card`}>Cartão</Label>
+          <Label htmlFor={`${formId}-card`}>{t('editor.cardLabel')}</Label>
           <Select
             value={form.cardId}
             onValueChange={(v) => onFieldChange('cardId', v)}
           >
             <SelectTrigger id={`${formId}-card`} className={cn('w-full', focusClass)}>
-              <SelectValue placeholder="Selecione..." />
+              <SelectValue placeholder={t('editor.selectPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {cards.map((c) => (

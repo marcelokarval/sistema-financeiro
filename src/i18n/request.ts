@@ -2,6 +2,7 @@ import { cookies, headers } from 'next/headers';
 import { getRequestConfig } from 'next-intl/server';
 import { LOCALE_COOKIE, normalizeLocale, resolveAcceptLanguage } from './config';
 import { getMessagesForLocale } from './messages';
+import type { AppMessages } from './types';
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
@@ -15,7 +16,7 @@ export default getRequestConfig(async () => {
 
   return {
     locale,
-    messages: getMessagesForLocale(locale),
+    messages: getMessagesForLocale(locale) as AppMessages,
     timeZone: 'UTC',
   };
 });

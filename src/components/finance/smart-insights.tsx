@@ -23,8 +23,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
+import { useSafeTranslations } from '@/i18n/provider';
 import { useAppStore, type ViewType } from '@/lib/store';
 import { cn } from '@/lib/utils';
+import { INSIGHT_TYPE_PRESENTATION } from './analytics-i18n';
 
 // --- Types ---
 interface FinancialInsight {
@@ -70,15 +72,9 @@ function getInsightIcon(iconName: string, type: string) {
   }
 }
 
-const typePresentation = {
-  success: { label: 'Positivo', color: 'text-[var(--ds-accent-positive)]' },
-  warning: { label: 'Atenção', color: 'text-[var(--ds-accent-warning)]' },
-  danger: { label: 'Risco', color: 'text-destructive' },
-  info: { label: 'Informação', color: 'text-primary' },
-};
-
 function TrendIndicator({ trend }: { trend: 'up' | 'down' | 'stable' }) {
-  return <span className="text-xs text-muted-foreground">{trend === 'up' ? 'Em alta' : trend === 'down' ? 'Em queda' : 'Estável'}</span>;
+  const t = useSafeTranslations('goals');
+  return <span className="text-xs text-muted-foreground">{t(`insights.trends.${trend}`)}</span>;
 }
 
 export function insightActionDestination(insight: Pick<FinancialInsight, 'id' | 'action'>): ViewType {
@@ -90,13 +86,14 @@ export function insightActionDestination(insight: Pick<FinancialInsight, 'id' | 
 }
 
 export function InsightCard({ insight, onNavigate }: { insight: FinancialInsight; onNavigate?: (view: ViewType) => void }) {
-  const { label, color } = typePresentation[insight.type] ?? typePresentation.info;
+  const t = useSafeTranslations('goals');
+  const { labelKey, color } = INSIGHT_TYPE_PRESENTATION[insight.type] ?? INSIGHT_TYPE_PRESENTATION.info;
   const navigate = onNavigate ?? ((view: ViewType) => useAppStore.getState().setCurrentView(view));
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-4">
       <span aria-hidden="true" className={color}>{getInsightIcon(insight.icon, insight.type)}</span>
       <div className="min-w-0 space-y-1">
-        <p className={cn('text-xs font-medium', color)}>{label}</p>
+        <p className={cn('text-xs font-medium', color)}>{t(`insights.types.${labelKey}`)}</p>
         <h4 className="break-words text-sm font-semibold">{insight.title}</h4>
         <p className="break-words text-sm text-muted-foreground">{insight.description}</p>
         {insight.action && (
@@ -137,9 +134,10 @@ function filterInsights(insights: FinancialInsight[], tab: string): FinancialIns
 }
 
 function EmptyState({ filtered = false }: { filtered?: boolean }) {
+  const t = useSafeTranslations('goals');
   return (
     <p role="status" className="px-3 py-4 text-sm text-muted-foreground sm:px-4">
-      {filtered ? 'Nenhuma análise neste filtro.' : 'Nenhuma análise disponível. Adicione transações e contas para receber análises automáticas.'}
+      {filtered ? t('insights.emptyFiltered') : t('insights.empty')}
     </p>
   );
 }
@@ -201,6 +199,7 @@ export function SmartInsightsContent({
   onTabChange: (tab: string) => void;
   onRetry: () => void;
 }) {
+  const t = useSafeTranslations('goals');
   const filteredInsights = filterInsights(insights, activeTab);
   const positiveCount = insights.filter((i) => i.type === 'success').length;
   const alertCount = insights.filter((i) => i.type === 'warning' || i.type === 'danger').length;
@@ -216,21 +215,22 @@ export function SmartInsightsContent({
   return (
     <QueryPanel
       titleId="quiet-insights"
-      title="Insights inteligentes"
-      subtitle="Análise automática das suas finanças"
+      title={t('insights.title')}
+      subtitle={t('insights.subtitle')}
       status={status}
-      loadingMessage="Carregando análises…"
-      errorMessage="Não foi possível carregar os insights financeiros."
-      emptyMessage="Nenhuma análise disponível. Adicione transações e contas para receber análises automáticas."
+      loadingMessage={t('insights.loading')}
+      errorMessage={t('insights.error')}
+      emptyMessage={t('insights.empty')}
+      retryLabel={t('common.retry')}
       onRetry={onRetry}
       contentClassName="space-y-0 p-0 sm:p-0"
     >
       <Tabs value={activeTab} onValueChange={onTabChange} className="border-b border-border px-3 py-2 sm:px-4">
-        <TabsList aria-label="Filtrar análises" className="grid h-auto w-full grid-cols-2 gap-1 sm:w-fit sm:grid-cols-4">
-          <TabsTrigger value="all" className="min-h-9 text-xs">Todos <span className="font-mono tabular-nums">{insights.length}</span></TabsTrigger>
-          <TabsTrigger value="positive" className="min-h-9 text-xs">Positivos <span className="font-mono tabular-nums">{positiveCount}</span></TabsTrigger>
-          <TabsTrigger value="alerts" className="min-h-9 text-xs">Alertas <span className="font-mono tabular-nums">{alertCount}</span></TabsTrigger>
-          <TabsTrigger value="info" className="min-h-9 text-xs">Informações <span className="font-mono tabular-nums">{infoCount}</span></TabsTrigger>
+        <TabsList aria-label={t('insights.filterAria')} className="grid h-auto w-full grid-cols-2 gap-1 sm:w-fit sm:grid-cols-4">
+          <TabsTrigger value="all" className="min-h-9 text-xs">{t('insights.tabs.all')} <span className="font-mono tabular-nums">{insights.length}</span></TabsTrigger>
+          <TabsTrigger value="positive" className="min-h-9 text-xs">{t('insights.tabs.positive')} <span className="font-mono tabular-nums">{positiveCount}</span></TabsTrigger>
+          <TabsTrigger value="alerts" className="min-h-9 text-xs">{t('insights.tabs.alerts')} <span className="font-mono tabular-nums">{alertCount}</span></TabsTrigger>
+          <TabsTrigger value="info" className="min-h-9 text-xs">{t('insights.tabs.info')} <span className="font-mono tabular-nums">{infoCount}</span></TabsTrigger>
         </TabsList>
       </Tabs>
       {filteredInsights.length > 0 ? (

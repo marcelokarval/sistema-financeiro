@@ -21,19 +21,14 @@ import {
   Legend,
   ReferenceLine,
 } from 'recharts';
-import { currencyFmt } from '@/lib/helpers';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
+import { currencyFmt, shortCurrency } from '@/lib/helpers';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
 import {
   FinanceChartTooltip,
   type FinanceChartTooltipRow,
 } from '@/components/shared/finance-chart-tooltip';
-
-// ─── Helpers ───────────────────────────────────────────────────────
-
-const shortCurrency = (v: number) => {
-  if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return v.toFixed(0);
-};
+import { PROJECTION_MONTH_OPTIONS, PROJECTION_RISK_CONFIG } from './analytics-i18n';
 
 // ─── Types ─────────────────────────────────────────────────────────
 interface AccountProjection {
@@ -62,11 +57,12 @@ interface ProjectionData {
 
 // ─── Risk Badge ────────────────────────────────────────────────────
 function RiskBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
+  const t = useSafeTranslations('analytics');
   if (level === 'low') {
     return (
       <Badge className="bg-[var(--ds-accent-positive)]/10 text-[var(--ds-accent-positive)] border-[var(--ds-accent-positive)]/20 text-xs px-3 py-1 hover:bg-[var(--ds-accent-positive)]/15">
         <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
-        Baixo
+        {t('projection.risk.lowBadge')}
       </Badge>
     );
   }
@@ -74,19 +70,18 @@ function RiskBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
     return (
       <Badge className="bg-[var(--ds-accent-danger)]/10 text-[var(--ds-accent-danger)] border-[var(--ds-accent-danger)]/20 text-xs px-3 py-1 hover:bg-[var(--ds-accent-danger)]/15">
         <ShieldAlert className="w-3.5 h-3.5 mr-1.5" />
-        Alto
+        {t('projection.risk.highBadge')}
       </Badge>
     );
   }
   return (
     <Badge className="bg-[var(--ds-accent-warning)]/10 text-[var(--ds-accent-warning)] border-[var(--ds-accent-warning)]/20 text-xs px-3 py-1 hover:bg-[var(--ds-accent-warning)]/15">
       <Shield className="w-3.5 h-3.5 mr-1.5" />
-      Médio
+      {t('projection.risk.mediumBadge')}
     </Badge>
   );
 }
 
-// ─── Trend Icon ────────────────────────────────────────────────────
 // ─── Custom Tooltip ────────────────────────────────────────────────
 export function BalanceProjectionTooltip({
   active,
@@ -99,6 +94,7 @@ export function BalanceProjectionTooltip({
   label?: string;
   showValues?: boolean;
 }) {
+  const locale = useSafeLocale();
   if (!active || !Array.isArray(payload) || payload.length === 0) return null;
 
   const rows: FinanceChartTooltipRow[] = payload.flatMap((entry) => {
@@ -110,7 +106,7 @@ export function BalanceProjectionTooltip({
     return [{
       key,
       label: rowLabel,
-      value: currencyFmt(entry.value),
+      value: currencyFmt(entry.value, locale),
       color: entry.color,
     }];
   });
@@ -135,10 +131,10 @@ function MonthSelector({
   selected: number;
   onChange: (m: number) => void;
 }) {
-  const options = [3, 6, 9, 12];
+  const t = useSafeTranslations('analytics');
   return (
-    <div role="group" aria-label="Horizonte da projeção" className="flex flex-wrap items-center gap-1 rounded-md bg-muted/40 p-0.5">
-      {options.map((m) => (
+    <div role="group" aria-label={t('projection.horizonAria')} className="flex flex-wrap items-center gap-1 rounded-md bg-muted/40 p-0.5">
+      {PROJECTION_MONTH_OPTIONS.map((m) => (
         <button
           key={m}
           type="button"
@@ -150,7 +146,7 @@ function MonthSelector({
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
           }`}
         >
-          {m} meses
+          {t('projection.monthsOption', { count: m })}
         </button>
       ))}
     </div>
@@ -236,6 +232,8 @@ export function BalanceProjectionContent({
   onRetry: () => void;
   showValues?: boolean;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const status: QueryPanelStatus = loading
     ? 'loading'
     : error || (error === undefined && !data)
@@ -251,7 +249,7 @@ export function BalanceProjectionContent({
         variant="outline"
         size="icon"
         className="size-9"
-        aria-label="Atualizar projeção de saldos"
+        aria-label={t('projection.refreshAria')}
         onClick={onRetry}
       >
         <RefreshCw className="w-4 h-4" />
@@ -263,18 +261,18 @@ export function BalanceProjectionContent({
     return (
       <QueryPanel
         titleId="quiet-balance-projection"
-        title="Projeção de saldos"
+        title={t('projection.title')}
         controls={controls}
         status={status}
-        loadingMessage="Carregando projeção de saldos…"
-        errorMessage="Não foi possível carregar a projeção de saldos."
-        emptyMessage="Nenhuma projeção de saldos disponível."
+        loadingMessage={t('projection.loading')}
+        errorMessage={t('projection.error')}
+        emptyMessage={t('projection.empty')}
+        retryLabel={t('common.retry')}
         onRetry={onRetry}
       />
     );
   }
 
-  // ─── Chart data (per account) ────────────────────────────────────
   const chartData = data.monthLabels.map((label, idx) => {
     const row: Record<string, string | number> = { month: label };
     data.accounts.forEach((acc) => {
@@ -283,80 +281,58 @@ export function BalanceProjectionContent({
     return row;
   });
 
-  // ─── Risk assessment ─────────────────────────────────────────────
-  const riskConfig = {
-    low: {
-      bgClass: 'bg-muted/20 border-border',
-      textClass: 'text-[var(--ds-accent-positive)]',
-      iconBg: 'bg-[var(--ds-accent-positive)]/10',
-      message: 'Suas finanças estão saudáveis! Você mantém uma boa taxa de poupança acima de 20%.',
-    },
-    medium: {
-      bgClass: 'bg-muted/20 border-border',
-      textClass: 'text-[var(--ds-accent-warning)]',
-      iconBg: 'bg-[var(--ds-accent-warning)]/10',
-      message: 'Atenção: sua taxa de poupança está entre 0% e 20%. Considere reduzir gastos para aumentar suas economias.',
-    },
-    high: {
-      bgClass: 'bg-muted/20 border-border',
-      textClass: 'text-[var(--ds-accent-danger)]',
-      iconBg: 'bg-[var(--ds-accent-danger)]/10',
-      message: 'Alerta vermelho! Suas despesas superam suas receitas. Revise urgentemente seus gastos para evitar endividamento.',
-    },
-  };
-
-  const currentRisk = riskConfig[data.riskLevel];
+  const currentRisk = PROJECTION_RISK_CONFIG[data.riskLevel];
   const projectionChange = data.totalProjected - data.totalCurrentBalance;
   const projectionChangePct =
     data.totalCurrentBalance !== 0
       ? ((projectionChange / Math.abs(data.totalCurrentBalance)) * 100).toFixed(1)
       : '0.0';
 
-  // ─── Render ───────────────────────────────────────────────────────
   return (
     <QueryPanel
       titleId="quiet-balance-projection"
-      title="Projeção de saldos"
-      subtitle={`Estimativas por conta · ${data.months} meses`}
+      title={t('projection.title')}
+      subtitle={t('projection.subtitle', { count: data.months })}
       controls={controls}
       status="success"
-      loadingMessage="Carregando projeção de saldos…"
-      errorMessage="Não foi possível carregar a projeção de saldos."
-      emptyMessage="Nenhuma projeção de saldos disponível."
+      loadingMessage={t('projection.loading')}
+      errorMessage={t('projection.error')}
+      emptyMessage={t('projection.empty')}
+      retryLabel={t('common.retry')}
       onRetry={onRetry}
     >
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border lg:grid-cols-4">
         <div className="min-w-0 space-y-1 bg-card p-3">
-          <dt className="text-xs text-muted-foreground">Saldo total atual</dt>
-          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(data.totalCurrentBalance)}</dd>
+          <dt className="text-xs text-muted-foreground">{t('projection.metrics.currentTotal')}</dt>
+          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(data.totalCurrentBalance, locale)}</dd>
         </div>
         <div className="min-w-0 space-y-1 bg-card p-3">
-          <dt className="text-xs text-muted-foreground">Projeção em {data.months} meses</dt>
-          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(data.totalProjected)}</dd>
-          <dd className="text-xs text-muted-foreground">Variação: {projectionChange >= 0 ? '+' : ''}{projectionChangePct}%</dd>
+          <dt className="text-xs text-muted-foreground">{t('projection.metrics.projectedIn', { count: data.months })}</dt>
+          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(data.totalProjected, locale)}</dd>
+          <dd className="text-xs text-muted-foreground">
+            {t('projection.metrics.variation', { value: `${projectionChange >= 0 ? '+' : ''}${projectionChangePct}%` })}
+          </dd>
         </div>
         <div className="min-w-0 space-y-1 bg-card p-3">
-          <dt className="text-xs text-muted-foreground">Economia mensal média</dt>
-          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{data.averageMonthlySavings >= 0 ? '+' : ''}{currencyFmt(data.averageMonthlySavings)}</dd>
-          <dd className="text-xs text-muted-foreground">Taxa: {data.savingsRate}%</dd>
+          <dt className="text-xs text-muted-foreground">{t('projection.metrics.avgMonthlySavings')}</dt>
+          <dd className="break-words font-mono text-sm font-semibold tabular-nums">
+            {data.averageMonthlySavings >= 0 ? '+' : ''}{currencyFmt(data.averageMonthlySavings, locale)}
+          </dd>
+          <dd className="text-xs text-muted-foreground">{t('projection.metrics.rate', { rate: data.savingsRate })}</dd>
         </div>
         <div className="min-w-0 space-y-1 bg-card p-3">
-          <dt className="text-xs text-muted-foreground">Nível de risco</dt>
+          <dt className="text-xs text-muted-foreground">{t('projection.metrics.riskLevel')}</dt>
           <dd><RiskBadge level={data.riskLevel} /></dd>
         </div>
       </dl>
 
       {data.accounts.length > 0 ? (
         <figure className="min-w-0 border-t border-border pt-3">
-          <figcaption className="text-xs font-medium">Saldos projetados por conta</figcaption>
+          <figcaption className="text-xs font-medium">{t('projection.chartCaption')}</figcaption>
           <div className="h-56 min-w-0 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="var(--border)"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="month"
                   tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
@@ -371,21 +347,12 @@ export function BalanceProjectionContent({
                   tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={shortCurrency}
+                  tickFormatter={(v) => shortCurrency(v, locale)}
                 />
                 <RechartsTooltip content={<BalanceProjectionTooltip showValues={showValues} />} />
-                <Legend
-                  iconType="line"
-                  iconSize={12}
-                  wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
-                />
+                <Legend iconType="line" iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
                 {/* Reference line at current month (index 0) */}
-                <ReferenceLine
-                  x={data.monthLabels[0]}
-                  stroke="var(--muted-foreground)"
-                  strokeDasharray="4 4"
-                  strokeWidth={1}
-                />
+                <ReferenceLine x={data.monthLabels[0]} stroke="var(--muted-foreground)" strokeDasharray="4 4" strokeWidth={1} />
                 {data.accounts.map((acc) => (
                   <Area
                     key={acc.accountId}
@@ -404,7 +371,7 @@ export function BalanceProjectionContent({
             </ResponsiveContainer>
           </div>
         </figure>
-      ) : <p role="status" className="text-sm text-muted-foreground">Nenhuma conta para projetar.</p>}
+      ) : <p role="status" className="text-sm text-muted-foreground">{t('projection.emptyAccounts')}</p>}
       <div className={`rounded-lg border p-4 ${currentRisk.bgClass}`}>
         <div className="flex items-start gap-3">
           <div className={`w-9 h-9 rounded-lg ${currentRisk.iconBg} flex items-center justify-center shrink-0 mt-0.5`}>
@@ -419,22 +386,17 @@ export function BalanceProjectionContent({
           <div className="flex-1 min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <p className={`text-sm font-semibold ${currentRisk.textClass}`}>
-                {data.riskLevel === 'high'
-                  ? 'Risco Alto — Ação Necessária'
-                  : data.riskLevel === 'medium'
-                    ? 'Risco Médio — Atenção Recomendada'
-                    : 'Risco Baixo — Finanças Saudáveis'}
+                {t(`projection.risk.${currentRisk.headingKey}`)}
               </p>
               <RiskBadge level={data.riskLevel} />
             </div>
             <p className={`text-xs ${currentRisk.textClass} leading-relaxed`}>
-              {currentRisk.message}
+              {t(`projection.risk.${currentRisk.messageKey}`)}
             </p>
-            {/* Savings rate visual bar */}
             <div className="mt-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-muted-foreground font-medium">
-                  Taxa de poupança
+                  {t('projection.risk.savingsRateLabel')}
                 </span>
                 <span className={`font-mono text-xs font-semibold tabular-nums ${currentRisk.textClass}`}>
                   {data.savingsRate}%
@@ -442,7 +404,7 @@ export function BalanceProjectionContent({
               </div>
               <div
                 role="progressbar"
-                aria-label="Taxa de poupança"
+                aria-label={t('projection.risk.savingsRateLabel')}
                 aria-valuenow={Math.round(Math.max(0, Math.min(100, Math.abs(data.savingsRate))))}
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -473,7 +435,7 @@ export function BalanceProjectionContent({
 
       {data.accounts.length > 0 && (
         <div className="border-t border-border">
-          <h4 className="px-2 py-3 text-xs font-semibold">Detalhes por conta · {data.accounts.length}</h4>
+          <h4 className="px-2 py-3 text-xs font-semibold">{t('projection.accountDetails', { count: data.accounts.length })}</h4>
           <ul className="max-h-96 divide-y divide-border overflow-y-auto">
             {data.accounts.map((acc) => {
               const finalBalance = acc.projectedBalances[acc.projectedBalances.length - 1];
@@ -482,14 +444,14 @@ export function BalanceProjectionContent({
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span aria-hidden="true" className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: acc.accountColor }} />
                     <span className="min-w-0 break-words text-sm font-medium">{acc.accountName}</span>
-                    <span className="text-xs text-muted-foreground">{acc.trend === 'up' ? 'Em alta' : acc.trend === 'down' ? 'Em queda' : 'Estável'}</span>
+                    <span className="text-xs text-muted-foreground">{t(`projection.trends.${acc.trend}`)}</span>
                   </div>
                   <dl className="grid grid-cols-2 gap-2 text-xs md:grid-cols-5">
-                    <div className="min-w-0"><dt className="text-muted-foreground">Saldo atual</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.currentBalance)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">Saldo projetado</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(finalBalance)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">Receita/mês</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.avgMonthlyIncome)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">Despesa/mês</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.avgMonthlyExpense)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">Líquido/mês</dt><dd className="break-words font-mono tabular-nums">{acc.monthlyNet >= 0 ? '+' : ''}{currencyFmt(acc.monthlyNet)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.current')}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.currentBalance, locale)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.projected')}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(finalBalance, locale)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.incomePerMonth')}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.avgMonthlyIncome, locale)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.expensePerMonth')}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.avgMonthlyExpense, locale)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.netPerMonth')}</dt><dd className="break-words font-mono tabular-nums">{acc.monthlyNet >= 0 ? '+' : ''}{currencyFmt(acc.monthlyNet, locale)}</dd></div>
                   </dl>
                 </li>
               );

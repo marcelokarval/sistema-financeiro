@@ -1,0 +1,147 @@
+{
+  "loading": "Carregando contas…",
+  "title": "Contas",
+  "subtitle": "Acompanhe seus saldos e movimentações.",
+  "actions": {
+    "transfer": "Transferir",
+    "newAccount": "Nova conta",
+    "retry": "Tentar novamente",
+    "backToAccounts": "Voltar para contas",
+    "newTransaction": "Nova transação",
+    "cancel": "Cancelar",
+    "register": "Registrar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "create": "Criar",
+    "update": "Atualizar"
+  },
+  "errors": {
+    "loadAccounts": "Não foi possível atualizar as contas.",
+    "loadTransactions": "Não foi possível carregar as transações.",
+    "accountNameRequired": "Nome da conta é obrigatório",
+    "updateAccount": "Erro ao atualizar conta",
+    "createAccount": "Erro ao criar conta",
+    "saveAccount": "Erro ao salvar conta",
+    "deleteAccount": "Erro ao excluir conta",
+    "descriptionRequired": "Informe a descrição da transação",
+    "amountPositive": "Informe um valor maior que zero",
+    "createTransaction": "Erro ao registrar transação",
+    "updateTransaction": "Erro ao atualizar transação",
+    "deleteTransaction": "Erro ao excluir transação",
+    "transferFailed": "Erro na transferência",
+    "transferError": "Erro ao realizar transferência"
+  },
+  "toasts": {
+    "accountUpdated": "Conta atualizada!",
+    "accountCreated": "Conta criada!",
+    "accountDeleted": "Conta excluída!",
+    "transactionCreated": "Transação registrada!",
+    "transactionUpdated": "Transação atualizada!",
+    "transactionDeleted": "Transação excluída!",
+    "transferSuccess": "Transferência realizada com sucesso!"
+  },
+  "summary": {
+    "ariaLabel": "Posição das contas",
+    "totalBalance": "Saldo em contas",
+    "monthIncome": "Receitas do mês",
+    "monthExpense": "Despesas do mês",
+    "totalAccounts": "Total de contas"
+  },
+  "list": {
+    "title": "Contas cadastradas",
+    "empty": "Nenhuma conta cadastrada. Use “Nova conta” para começar.",
+    "openAccountAria": "Abrir conta {name}",
+    "editAccountAria": "Editar conta {name}",
+    "deleteAccountAria": "Excluir conta {name}",
+    "transactionCount": "{count, plural, one {# transação} other {# transações}}"
+  },
+  "detail": {
+    "ariaLabel": "Posição da conta",
+    "currentBalance": "Saldo atual",
+    "listIncome": "Receitas na lista",
+    "listExpense": "Despesas na lista",
+    "listCount": "Transações na lista",
+    "transactionsTitle": "Transações",
+    "loadingTransactions": "Carregando transações…",
+    "emptyTransactions": "Nenhuma transação registrada.",
+    "incomeType": "Receita",
+    "expenseType": "Despesa",
+    "editTransactionAria": "Editar transação {description}",
+    "deleteTransactionAria": "Excluir transação {description}"
+  },
+  "accountForm": {
+    "editTitle": "Editar Conta",
+    "createTitle": "Nova Conta",
+    "editDescription": "Atualize os dados da conta",
+    "createDescription": "Preencha os dados da nova conta",
+    "nameLabel": "Nome",
+    "namePlaceholder": "Ex: Nubank, Carteira...",
+    "typeLabel": "Tipo",
+    "balanceLabel": "Saldo Inicial (R$)",
+    "colorLabel": "Cor"
+  },
+  "accountTypes": {
+    "CASH": "Dinheiro",
+    "BANK": "Banco",
+    "DIGITAL_WALLET": "Carteira Digital"
+  },
+  "colors": {
+    "green": "Verde",
+    "blue": "Azul",
+    "purple": "Roxo",
+    "cyan": "Ciano",
+    "orange": "Laranja",
+    "red": "Vermelho",
+    "pink": "Rosa"
+  },
+  "deleteAccountDialog": {
+    "title": "Excluir conta?",
+    "description": "Esta ação não pode ser desfeita. Todas as transações vinculadas também serão removidas."
+  },
+  "transactionDialog": {
+    "createTitle": "Nova Transação",
+    "createDescription": "Registrar nova transação em {account}",
+    "editTitle": "Editar Transação",
+    "editDescription": "Atualize os dados da transação em {account}",
+    "deleteTitle": "Excluir transação?",
+    "deleteDescription": "Esta ação não pode ser desfeita e atualizará o saldo da conta {account}."
+  },
+  "picker": {
+    "title": "Novo lançamento",
+    "description": "Escolha a conta em que deseja registrar a transação.",
+    "loading": "Carregando contas…",
+    "loadFailed": "Não foi possível carregar as contas.",
+    "retry": "Tentar novamente",
+    "noAccounts": "Cadastre uma conta antes de registrar um lançamento.",
+    "createAccount": "Cadastrar conta",
+    "availableAria": "Contas disponíveis",
+    "cancel": "Cancelar"
+  },
+  "transactionFields": {
+    "typeLabel": "Tipo",
+    "expense": "Despesa",
+    "income": "Receita",
+    "descriptionLabel": "Descrição",
+    "descriptionPlaceholder": "Ex: Salário, Almoço...",
+    "amountLabel": "Valor (R$)",
+    "amountPlaceholder": "0,00",
+    "dateLabel": "Data",
+    "categoryLabel": "Categoria",
+    "categoryPlaceholder": "Selecione...",
+    "noCategory": "Nenhuma"
+  },
+  "transfer": {
+    "title": "Transferir entre Contas",
+    "description": "Mova dinheiro de uma conta para outra",
+    "fromLabel": "De (Origem)",
+    "toLabel": "Para (Destino)",
+    "selectAccountPlaceholder": "Selecione a conta...",
+    "amountLabel": "Valor (R$)",
+    "amountPlaceholder": "0,00",
+    "dateLabel": "Data",
+    "descriptionLabel": "Descrição (opcional)",
+    "descriptionPlaceholder": "Ex: Transferência para investimento",
+    "cancel": "Cancelar",
+    "submit": "Transferir"
+  }
+}

@@ -15,7 +15,8 @@ import {
   FinanceChartTooltip,
   type FinanceChartTooltipRow,
 } from '@/components/shared/finance-chart-tooltip';
-import { currencyFmt } from '@/lib/helpers';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
+import { currencyFmt, shortCurrency } from '@/lib/helpers';
 
 export interface CategoryItem {
   categoryId: string;
@@ -40,11 +41,6 @@ export interface BreakdownData {
   monthlyData: MonthlyItem[];
 }
 
-const shortCurrency = (v: number) => {
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return v.toFixed(0);
-};
-
 /** Recharts tooltip adapter for ExpenseBreakdown donut chart. */
 export function ExpenseBreakdownTooltip({
   active,
@@ -55,6 +51,7 @@ export function ExpenseBreakdownTooltip({
   payload?: Array<{ name?: string; value?: unknown; payload?: { color?: string } }>;
   showValues?: boolean;
 }) {
+  const locale = useSafeLocale();
   if (!active || !Array.isArray(payload) || payload.length === 0) return null;
 
   const rows: FinanceChartTooltipRow[] = payload.flatMap((entry, idx) => {
@@ -64,7 +61,7 @@ export function ExpenseBreakdownTooltip({
     return [{
       key: `${entry.name}-${idx}`,
       label: entry.name,
-      value: currencyFmt(entry.value),
+      value: currencyFmt(entry.value, locale),
       color: entry.payload?.color,
     }];
   });
@@ -88,6 +85,7 @@ export function ExpenseCategoryTooltip({
   categoryName: string;
   showValues?: boolean;
 }) {
+  const locale = useSafeLocale();
   if (!active || !Array.isArray(payload) || payload.length === 0) return null;
   const value = payload[0]?.value;
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -96,7 +94,7 @@ export function ExpenseCategoryTooltip({
     <FinanceChartTooltip
       active={active}
       title={label}
-      rows={[{ key: 'valor', label: categoryName, value: currencyFmt(value) }]}
+      rows={[{ key: 'valor', label: categoryName, value: currencyFmt(value, locale) }]}
       showValues={showValues}
     />
   );
@@ -109,6 +107,8 @@ function ExpenseCategoryMonthlyChart({
   category: CategoryItem;
   monthlyData: MonthlyItem[];
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const series = monthlyData.map((m) => ({
     month: m.month,
     valor: m.total * (category.percentage / 100),
@@ -119,7 +119,7 @@ function ExpenseCategoryMonthlyChart({
       <div className="border-t border-border/50 pt-3">
         <p className="text-xs text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
           <TrendingDown className="w-3 h-3" />
-          Estimativa mensal pela participação da categoria
+          {t('expenses.monthlyEstimate')}
         </p>
         <div className="h-28">
           <ResponsiveContainer width="100%" height="100%">
@@ -137,7 +137,7 @@ function ExpenseCategoryMonthlyChart({
                 stroke="var(--muted-foreground)"
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={shortCurrency}
+                tickFormatter={(v) => shortCurrency(v, locale)}
                 width={40}
               />
               <RechartsTooltip content={<ExpenseCategoryTooltip categoryName={category.categoryName} />} />
@@ -170,6 +170,7 @@ function ExpenseCategoryRow({
   onToggle: () => void;
   onHover: (categoryId: string | null) => void;
 }) {
+  const locale = useSafeLocale();
   return (
     <li>
       <button
@@ -206,7 +207,7 @@ function ExpenseCategoryRow({
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <div className="text-right">
-            <p className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(cat.total)}</p>
+            <p className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(cat.total, locale)}</p>
             <p className="font-mono text-xs tabular-nums text-muted-foreground">{cat.percentage.toFixed(1)}%</p>
           </div>
           {isExpanded ? (
@@ -238,6 +239,8 @@ export function ExpenseCategoryList({
   onSelectActive: (categoryId: string | null) => void;
   onToggleExpand: (categoryId: string) => void;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const remaining = categories.slice(8);
 
   return (
@@ -259,12 +262,12 @@ export function ExpenseCategoryList({
           <div className="w-3.5 h-3.5 rounded-sm shrink-0 bg-muted-foreground" />
           <div className="flex-1 min-w-0">
             <span className="text-sm font-medium text-muted-foreground">
-              Outros ({remaining.length} categorias)
+              {t('expenses.othersCount', { count: remaining.length })}
             </span>
           </div>
           <div className="text-right shrink-0">
             <p className="font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-              {currencyFmt(remaining.reduce((s, c) => s + c.total, 0))}
+              {currencyFmt(remaining.reduce((s, c) => s + c.total, 0), locale)}
             </p>
             <p className="font-mono text-xs tabular-nums text-muted-foreground">
               {remaining.reduce((s, c) => s + c.percentage, 0).toFixed(1)}%

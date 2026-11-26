@@ -6,19 +6,6 @@ import {
   Pencil,
   Trash2,
   ArrowLeft,
-  ArrowDownRight,
-  TrendingUp,
-  Wallet,
-  DollarSign,
-  BarChart3,
-  Gift,
-  Building2,
-  Bitcoin,
-  Landmark,
-  BadgeDollarSign,
-  Receipt,
-  RefreshCw,
-  CircleDollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,44 +27,17 @@ import {
   percentFmt,
   dateFmt,
 } from '@/lib/helpers';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { purchaseDateForInput } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
+import {
+  INVESTMENT_FILTER_TABS,
+  INVESTMENT_TX_META,
+  INVESTMENT_TYPE_META,
+} from './portfolio-i18n';
 import { InvestmentDeleteConfirmation } from './investment-delete-confirmation';
 import { InvestmentEditor, type InvestmentDraft } from './investment-editor';
 import { InvestmentEntryEditor, type InvestmentEntryDraft } from './investment-entry-editor';
-
-// ── Constants ───────────────────────────────────────────────────────
-
-const investmentTypes: Record<string, { label: string; icon: React.ElementType }> = {
-  STOCK:    { label: 'Ações',          icon: TrendingUp },
-  BOND:     { label: 'Renda Fixa',     icon: Landmark },
-  FII:      { label: 'FIIs',           icon: Building2 },
-  CDB:      { label: 'CDB',            icon: BadgeDollarSign },
-  LCI:      { label: 'LCI',            icon: CircleDollarSign },
-  LCA:      { label: 'LCA',            icon: CircleDollarSign },
-  TESOURO:  { label: 'Tesouro Direto', icon: BarChart3 },
-  CRYPTO:   { label: 'Cripto',         icon: Bitcoin },
-  ETF:      { label: 'ETF',            icon: RefreshCw },
-  OTHER:    { label: 'Outro',          icon: Wallet },
-};
-
-const transactionTypes: Record<string, { label: string; icon: React.ElementType }> = {
-  APORTE:         { label: 'Aporte',         icon: Plus },
-  DIVIDENDO:      { label: 'Dividendo',      icon: Gift },
-  VENDA:          { label: 'Venda',          icon: ArrowDownRight },
-  REINVESTIMENTO: { label: 'Reinvestimento',  icon: RefreshCw },
-  TAXA:           { label: 'Taxa',           icon: Receipt },
-  BONUS:          { label: 'Bônus',          icon: DollarSign },
-};
-
-const filterTabs = [
-  { value: 'all',    label: 'Todos' },
-  { value: 'STOCK',  label: 'Ações' },
-  { value: 'FII',    label: 'FIIs' },
-  { value: 'BOND',   label: 'Renda Fixa' },
-  { value: 'TESOURO', label: 'Tesouro' },
-  { value: 'CRYPTO', label: 'Cripto' },
-];
 
 // ── Interfaces ──────────────────────────────────────────────────────
 
@@ -121,6 +81,8 @@ interface Category {
 // ── Component ──────────────────────────────────────────────────────
 
 export function InvestmentsView() {
+  const t = useSafeTranslations('investments');
+  const locale = useSafeLocale();
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [history, setHistory] = useState<
     { phase: 'loading' | 'error' } | { phase: 'ready'; transactions: InvestmentTransaction[] }
@@ -360,7 +322,7 @@ export function InvestmentsView() {
 
   const saveInvestment = async () => {
     if (!form.name.trim()) {
-      toast.error('Informe o nome do investimento');
+      toast.error(t('errors.nameRequired'));
       return;
     }
     if (saveInvestmentInFlight.current) return;
@@ -385,7 +347,7 @@ export function InvestmentsView() {
           body: JSON.stringify({ id: editingInvestment.id, ...body }),
         });
         if (!res.ok) throw new Error('Falha ao atualizar investimento');
-        toast.success('Investimento atualizado!');
+        toast.success(t('toast.updated'));
       } else {
         const res = await fetch('/api/investments', {
           method: 'POST',
@@ -393,13 +355,13 @@ export function InvestmentsView() {
           body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error('Falha ao criar investimento');
-        toast.success('Investimento criado!');
+        toast.success(t('toast.created'));
       }
       setShowInvestmentDialog(false);
       fetchInvestments();
       if (editingInvestment) void fetchTransactions(editingInvestment.id);
     } catch {
-      toast.error('Erro ao salvar investimento');
+      toast.error(t('errors.saveInvestment'));
     } finally {
       saveInvestmentInFlight.current = false;
       setSavingInvestment(false);
@@ -421,14 +383,14 @@ export function InvestmentsView() {
         body: JSON.stringify({ id }),
       });
       if (!res.ok) throw new Error('Falha ao excluir investimento');
-      toast.success('Investimento excluído!');
+      toast.success(t('toast.deleted'));
       prepareDeleteFocus();
       setShowDeleteDialog(null);
       setDividendEntries((entries) => entries.filter((entry) => entry.investmentId !== id));
       if (activeInvestmentId.current === id) closeInvestmentDetail();
       fetchInvestments();
     } catch {
-      toast.error('Erro ao excluir investimento');
+      toast.error(t('errors.deleteInvestment'));
     } finally {
       deleteInFlight.current = false;
       setDeleting(false);
@@ -443,7 +405,7 @@ export function InvestmentsView() {
     if (!selectedInvestment) return;
     const parsedAmount = parseFloat(txForm.amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Informe um valor maior que zero');
+      toast.error(t('errors.amountPositive'));
       return;
     }
     if (saveTransactionInFlight.current) return;
@@ -466,7 +428,7 @@ export function InvestmentsView() {
           body: JSON.stringify({ id: editingTransaction.id, ...body }),
         });
         if (!res.ok) throw new Error('Falha ao atualizar transação');
-        toast.success('Transação atualizada!');
+        toast.success(t('toast.txUpdated'));
         if (editingTransaction.type === 'DIVIDENDO' || txForm.type === 'DIVIDENDO') {
           void fetchDividends();
         }
@@ -477,7 +439,7 @@ export function InvestmentsView() {
           body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error('Falha ao registrar transação');
-        toast.success('Transação registrada!');
+        toast.success(t('toast.txCreated'));
         if (txForm.type === 'DIVIDENDO') {
           setDividendEntries((entries) => [...entries, { investmentId: selectedInvestment.id, type: 'DIVIDENDO', amount: parsedAmount }]);
         }
@@ -496,7 +458,7 @@ export function InvestmentsView() {
       fetchTransactions(selectedInvestment.id);
       fetchInvestments();
     } catch {
-      toast.error(editingTransaction ? 'Erro ao atualizar transação' : 'Erro ao registrar transação');
+      toast.error(editingTransaction ? t('errors.updateTransaction') : t('errors.createTransaction'));
     } finally {
       saveTransactionInFlight.current = false;
       setSavingTransaction(false);
@@ -514,7 +476,7 @@ export function InvestmentsView() {
         body: JSON.stringify({ id: tx.id }),
       });
       if (!res.ok) throw new Error('Falha ao excluir transação');
-      toast.success('Transação excluída!');
+      toast.success(t('toast.txDeleted'));
       setDeletingTransaction(null);
       if (tx.type === 'DIVIDENDO') {
         void fetchDividends();
@@ -522,7 +484,7 @@ export function InvestmentsView() {
       fetchTransactions(selectedInvestment.id);
       fetchInvestments();
     } catch {
-      toast.error('Erro ao excluir transação');
+      toast.error(t('errors.deleteTransaction'));
     } finally {
       deleteTxInFlight.current = false;
       setDeletingTx(false);
@@ -597,9 +559,9 @@ export function InvestmentsView() {
   if (loading) {
     return (
       <section className="space-y-4" aria-labelledby="investments-title">
-        <h2 id="investments-title" tabIndex={-1} className="text-xl font-semibold tracking-tight">Investimentos</h2>
+        <h2 id="investments-title" tabIndex={-1} className="text-xl font-semibold tracking-tight">{t('title')}</h2>
         <div role="status" className="space-y-3 rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-          <p>Carregando investimentos…</p>
+          <p>{t('loading')}</p>
           <Skeleton aria-hidden="true" className="h-20 rounded-lg motion-reduce:animate-none" />
           <Skeleton aria-hidden="true" className="h-32 rounded-lg motion-reduce:animate-none" />
         </div>
@@ -608,7 +570,7 @@ export function InvestmentsView() {
   }
 
   if (selectedInvestment) {
-    const invType = investmentTypes[selectedInvestment.type] || investmentTypes.OTHER;
+    const invType = INVESTMENT_TYPE_META[selectedInvestment.type] || INVESTMENT_TYPE_META.OTHER;
     const yieldPct = selectedInvestment.investedAmount > 0
       ? ((selectedInvestment.currentBalance - selectedInvestment.investedAmount) / selectedInvestment.investedAmount) * 100
       : 0;
@@ -616,30 +578,36 @@ export function InvestmentsView() {
 
     return (
       <section className="min-w-0 space-y-5" aria-labelledby="investment-detail-title">
-        <Button variant="ghost" size="sm" onClick={closeInvestmentDetail}><ArrowLeft aria-hidden="true" /> Voltar aos investimentos</Button>
+        <Button variant="ghost" size="sm" onClick={closeInvestmentDetail}><ArrowLeft aria-hidden="true" /> {t('actions.backToPortfolio')}</Button>
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 id="investment-detail-title" tabIndex={-1} className="break-words text-xl font-semibold tracking-tight">{selectedInvestment.name}</h2>
             <p className="mt-1 break-words text-sm text-muted-foreground">
-              {invType.label}{selectedInvestment.ticker && ` · ${selectedInvestment.ticker}`}{selectedInvestment.brokerage && ` · ${selectedInvestment.brokerage}`}
+              {t(invType.labelKey)}{selectedInvestment.ticker && ` · ${selectedInvestment.ticker}`}{selectedInvestment.brokerage && ` · ${selectedInvestment.brokerage}`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => openEditInvestment(selectedInvestment))}><Pencil aria-hidden="true" /> Editar investimento</Button>
-            <Button variant="outline" size="sm" className="text-destructive" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => setShowDeleteDialog(selectedInvestment.id))}><Trash2 aria-hidden="true" /> Excluir investimento</Button>
+            <Button variant="outline" size="sm" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => openEditInvestment(selectedInvestment))}><Pencil aria-hidden="true" /> {t('actions.editInvestment')}</Button>
+            <Button variant="outline" size="sm" className="text-destructive" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => setShowDeleteDialog(selectedInvestment.id))}><Trash2 aria-hidden="true" /> {t('actions.deleteInvestment')}</Button>
           </div>
         </header>
-        <InvestmentMetrics label="Posição do investimento" metrics={[
-          { label: 'Valor atual', value: currencyFmt(selectedInvestment.currentBalance), note: `${isPositive ? 'Rentabilidade' : 'Queda'} de ${percentFmt(yieldPct)} sobre o valor investido` },
-          { label: 'Valor investido', value: currencyFmt(selectedInvestment.investedAmount) },
-          { label: 'Lucro ou prejuízo', value: `${isPositive ? '+' : ''}${currencyFmt(selectedInvestment.currentBalance - selectedInvestment.investedAmount)}` },
+        <InvestmentMetrics label={t('detail.positionAriaLabel')} metrics={[
+          {
+            label: t('detail.currentValue'),
+            value: currencyFmt(selectedInvestment.currentBalance, locale),
+            note: isPositive
+              ? t('detail.yieldPositive', { percent: percentFmt(yieldPct, locale) })
+              : t('detail.yieldNegative', { percent: percentFmt(yieldPct, locale) }),
+          },
+          { label: t('detail.investedValue'), value: currencyFmt(selectedInvestment.investedAmount, locale) },
+          { label: t('detail.profitOrLoss'), value: `${isPositive ? '+' : ''}${currencyFmt(selectedInvestment.currentBalance - selectedInvestment.investedAmount, locale)}` },
         ]} />
         {history.phase === 'ready' && investmentStats ? (
           <>
-            <InvestmentMetrics label="Resumo das transações" metrics={[
-              { label: 'Total de aportes', value: currencyFmt(investmentStats.totalAportes) },
-              { label: 'Dividendos', value: currencyFmt(investmentStats.totalDividendos) },
-              { label: 'Transações', value: String(investmentStats.txCount) },
+            <InvestmentMetrics label={t('detail.txSummaryAriaLabel')} metrics={[
+              { label: t('detail.totalContributions'), value: currencyFmt(investmentStats.totalAportes, locale) },
+              { label: t('detail.dividends'), value: currencyFmt(investmentStats.totalDividendos, locale) },
+              { label: t('detail.transactions'), value: String(investmentStats.txCount) },
             ]} />
             <InvestmentEntries
               transactions={history.transactions}
@@ -652,9 +620,9 @@ export function InvestmentsView() {
           <section aria-labelledby="investment-history-title" className="space-y-3">
             <InvestmentHistoryHeader onNew={openTransactionDialog} />
             {history.phase === 'error' ? (
-              <p role="alert" className="rounded-lg border bg-card p-4 text-sm text-destructive">Não foi possível carregar o histórico de transações.</p>
+              <p role="alert" className="rounded-lg border bg-card p-4 text-sm text-destructive">{t('errors.loadHistory')}</p>
             ) : (
-              <p role="status" className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">Carregando histórico de transações…</p>
+              <p role="status" className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">{t('loadingHistory')}</p>
             )}
       </section>
         )}
@@ -701,13 +669,16 @@ export function InvestmentsView() {
           <AlertDialog open={!!deletingTransaction} onOpenChange={(open) => { if (!open && !deleteTxInFlight.current) setDeletingTransaction(null); }}>
             <AlertDialogContent onCloseAutoFocus={restoreDialogFocus} className="motion-reduce:animate-none">
               <AlertDialogHeader>
-                <AlertDialogTitle>Excluir Transação</AlertDialogTitle>
+                <AlertDialogTitle>{t('deleteTx.title')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza que deseja excluir esta transação de <strong>{selectedInvestment.name}</strong>? Esta ação não pode ser desfeita.
+                  {t.rich('deleteTx.description', {
+                    name: selectedInvestment.name,
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={deletingTx}>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel disabled={deletingTx}>{t('deleteTx.cancel')}</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={deletingTx}
                   onClick={(event) => {
@@ -716,7 +687,7 @@ export function InvestmentsView() {
                   }}
                   className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
                 >
-                  Excluir
+                  {t('deleteTx.confirm')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -778,69 +749,71 @@ export function InvestmentPortfolio({ summary, count, records, filter, loadError
   onOpen: (investment: Investment) => void; onEdit: (investment: Investment, event: MouseEvent<HTMLButtonElement>) => void;
   onDelete: (id: string, event: MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const t = useSafeTranslations('investments');
+  const locale = useSafeLocale();
   return (
     <section className="min-w-0 space-y-5" aria-labelledby="investments-title">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="investments-title" tabIndex={-1} className="text-xl font-semibold tracking-tight">Investimentos</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Posição e movimentações da carteira</p>
+          <h2 id="investments-title" tabIndex={-1} className="text-xl font-semibold tracking-tight">{t('title')}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <Button onClick={onNew} size="sm"><Plus aria-hidden="true" /> Novo investimento</Button>
+        <Button onClick={onNew} size="sm"><Plus aria-hidden="true" /> {t('actions.newInvestment')}</Button>
       </header>
       {loadError && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-4 text-sm">
-          <p className="text-destructive">Não foi possível carregar os investimentos.</p>
-          {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>Tentar novamente</Button>}
+          <p className="text-destructive">{t('errors.loadPortfolio')}</p>
+          {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>{t('actions.retry')}</Button>}
         </div>
       )}
       {!loadError && dividendLoadError && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-4 text-sm">
-          <p className="text-destructive">Não foi possível carregar os dividendos.</p>
-          {onRetryDividends && <Button size="sm" variant="outline" onClick={onRetryDividends}>Tentar novamente</Button>}
+          <p className="text-destructive">{t('errors.loadDividends')}</p>
+          {onRetryDividends && <Button size="sm" variant="outline" onClick={onRetryDividends}>{t('actions.retry')}</Button>}
         </div>
       )}
-      <InvestmentMetrics label="Resumo da carteira" metrics={[
-        { label: 'Valor atual', value: currencyFmt(summary.currentTotal), note: 'Soma dos saldos atuais' },
-        { label: 'Total investido', value: currencyFmt(summary.totalInvested), note: `${count} investimento${count !== 1 ? 's' : ''}` },
-        { label: 'Rentabilidade total', value: percentFmt(summary.rentabilidade), note: summary.rentabilidade >= 0 ? 'Lucro acumulado' : 'Prejuízo acumulado' },
+      <InvestmentMetrics label={t('summary.ariaLabel')} metrics={[
+        { label: t('summary.currentValue'), value: currencyFmt(summary.currentTotal, locale), note: t('summary.currentValueNote') },
+        { label: t('summary.totalInvested'), value: currencyFmt(summary.totalInvested, locale), note: t('summary.investmentCount', { count }) },
+        { label: t('summary.totalYield'), value: percentFmt(summary.rentabilidade, locale), note: summary.rentabilidade >= 0 ? t('summary.accumulatedProfit') : t('summary.accumulatedLoss') },
         {
-          label: 'Dividendos recebidos',
-          value: dividendLoadError ? '—' : currencyFmt(summary.dividendsReceived),
-          note: dividendLoadError ? 'Não foi possível carregar os dividendos' : 'Consulte o histórico de cada investimento',
+          label: t('summary.dividendsReceived'),
+          value: dividendLoadError ? '—' : currencyFmt(summary.dividendsReceived, locale),
+          note: dividendLoadError ? t('errors.loadDividendsShort') : t('summary.dividendsNote'),
         },
       ]} />
       <section aria-labelledby="investment-records-title" className="space-y-3">
-        <h3 id="investment-records-title" className="font-semibold">Carteira</h3>
+        <h3 id="investment-records-title" className="font-semibold">{t('portfolio.sectionTitle')}</h3>
         <Tabs value={filter} onValueChange={onFilter}>
-          <TabsList aria-label="Filtrar investimentos por tipo" className="h-auto max-w-full flex-wrap justify-start gap-1 border bg-card">
-            {filterTabs.map((tab) => <TabsTrigger key={tab.value} value={tab.value} className="flex-none px-3 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">{tab.label}</TabsTrigger>)}
+          <TabsList aria-label={t('filters.ariaLabel')} className="h-auto max-w-full flex-wrap justify-start gap-1 border bg-card">
+            {INVESTMENT_FILTER_TABS.map((tab) => <TabsTrigger key={tab.value} value={tab.value} className="flex-none px-3 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">{t(tab.labelKey)}</TabsTrigger>)}
           </TabsList>
         </Tabs>
         {records.length === 0 ? (
-          <p className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">{filter === 'all' ? 'Nenhum investimento cadastrado. Use “Novo investimento” para começar.' : 'Nenhum investimento neste filtro. Escolha outro tipo.'}</p>
+          <p className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">{filter === 'all' ? t('portfolio.emptyAll') : t('portfolio.emptyFiltered')}</p>
         ) : (
           <ul className="divide-y rounded-lg border bg-card">
             {records.map((inv) => {
-              const type = investmentTypes[inv.type] || investmentTypes.OTHER;
+              const type = INVESTMENT_TYPE_META[inv.type] || INVESTMENT_TYPE_META.OTHER;
               const yieldPct = inv.investedAmount > 0 ? ((inv.currentBalance - inv.investedAmount) / inv.investedAmount) * 100 : 0;
               return (
                 <li key={inv.id} className="grid min-w-0 gap-2 px-3 py-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                  <button type="button" id={`investment-row-${inv.id}`} onClick={() => onOpen(inv)} aria-label={`Abrir investimento: ${inv.name}`} className="grid min-w-0 gap-2 rounded-md p-2 text-left hover:bg-accent md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center">
+                  <button type="button" id={`investment-row-${inv.id}`} onClick={() => onOpen(inv)} aria-label={t('actions.openAriaLabel', { name: inv.name })} className="grid min-w-0 gap-2 rounded-md p-2 text-left hover:bg-accent md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center">
                     <span className="flex min-w-0 items-start gap-2">
                       <type.icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0">
                         <span className="block break-words text-sm font-semibold">{inv.name}</span>
-                        <span className="block break-words text-xs text-muted-foreground">{type.label}{inv.ticker && ` · ${inv.ticker}`}{inv.brokerage && ` · ${inv.brokerage}`}</span>
+                        <span className="block break-words text-xs text-muted-foreground">{t(type.labelKey)}{inv.ticker && ` · ${inv.ticker}`}{inv.brokerage && ` · ${inv.brokerage}`}</span>
                       </span>
                     </span>
                     <span className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                      <span className="min-w-0">Investido<span className="block break-words font-mono tabular-nums text-foreground">{currencyFmt(inv.investedAmount)}</span></span>
-                      <span className="min-w-0">Atual<span className="block break-words font-mono font-semibold tabular-nums text-foreground">{currencyFmt(inv.currentBalance)}</span><span className="block">{percentFmt(yieldPct)}</span></span>
+                      <span className="min-w-0">{t('portfolio.investedLabel')}<span className="block break-words font-mono tabular-nums text-foreground">{currencyFmt(inv.investedAmount, locale)}</span></span>
+                      <span className="min-w-0">{t('portfolio.currentLabel')}<span className="block break-words font-mono font-semibold tabular-nums text-foreground">{currencyFmt(inv.currentBalance, locale)}</span><span className="block">{percentFmt(yieldPct, locale)}</span></span>
                     </span>
                   </button>
                   <div className="flex flex-wrap gap-1 px-2 md:px-0">
-                    <Button size="icon" variant="ghost" aria-label={`Editar investimento: ${inv.name}`} onClick={(event) => onEdit(inv, event)}><Pencil aria-hidden="true" /></Button>
-                    <Button size="icon" variant="ghost" aria-label={`Excluir investimento: ${inv.name}`} className="text-destructive" onClick={(event) => onDelete(inv.id, event)}><Trash2 aria-hidden="true" /></Button>
+                    <Button size="icon" variant="ghost" aria-label={t('actions.editAriaLabel', { name: inv.name })} onClick={(event) => onEdit(inv, event)}><Pencil aria-hidden="true" /></Button>
+                    <Button size="icon" variant="ghost" aria-label={t('actions.deleteAriaLabel', { name: inv.name })} className="text-destructive" onClick={(event) => onDelete(inv.id, event)}><Trash2 aria-hidden="true" /></Button>
                   </div>
                 </li>
               );
@@ -853,10 +826,11 @@ export function InvestmentPortfolio({ summary, count, records, filter, loadError
 }
 
 function InvestmentHistoryHeader({ onNew }: { onNew: (event: MouseEvent<HTMLButtonElement>) => void }) {
+  const t = useSafeTranslations('investments');
   return (
     <header className="flex flex-wrap items-center justify-between gap-2">
-      <h3 id="investment-history-title" className="font-semibold">Histórico de transações</h3>
-      <Button size="sm" onClick={onNew}><Plus aria-hidden="true" /> Nova transação</Button>
+      <h3 id="investment-history-title" className="font-semibold">{t('detail.historyTitle')}</h3>
+      <Button size="sm" onClick={onNew}><Plus aria-hidden="true" /> {t('actions.newTransaction')}</Button>
     </header>
   );
 }
@@ -867,36 +841,38 @@ export function InvestmentEntries({ transactions, onNew, onEdit, onDelete }: {
   onEdit?: (tx: InvestmentTransaction, event: MouseEvent<HTMLButtonElement>) => void;
   onDelete?: (tx: InvestmentTransaction, event: MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const t = useSafeTranslations('investments');
+  const locale = useSafeLocale();
   return (
     <section aria-labelledby="investment-history-title" className="space-y-3">
       <InvestmentHistoryHeader onNew={onNew} />
       {transactions.length === 0 ? (
-        <p className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">Nenhuma transação registrada neste investimento.</p>
+        <p className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">{t('detail.emptyHistory')}</p>
       ) : (
         <ul className="divide-y rounded-lg border bg-card">
           {transactions.map((tx) => {
-            const type = transactionTypes[tx.type] || transactionTypes.APORTE;
+            const type = INVESTMENT_TX_META[tx.type] || INVESTMENT_TX_META.APORTE;
             const isCredit = ['APORTE', 'DIVIDENDO', 'REINVESTIMENTO', 'BONUS'].includes(tx.type);
-            const txTitle = tx.description || type.label;
+            const txTitle = tx.description || t(type.labelKey);
             return (
               <li key={tx.id} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                 <div className="flex min-w-0 items-start gap-2">
                   <type.icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 space-y-1">
                     <p className="break-words text-sm font-medium">{txTitle}</p>
-                    <p className="break-words text-xs text-muted-foreground">{dateFmt(tx.date)} · {type.label}{tx.quantity && tx.unitPrice ? ` · ${tx.quantity} × ${currencyFmt(tx.unitPrice)}` : null}</p>
+                    <p className="break-words text-xs text-muted-foreground">{dateFmt(tx.date, locale)} · {t(type.labelKey)}{tx.quantity && tx.unitPrice ? ` · ${tx.quantity} × ${currencyFmt(tx.unitPrice, locale)}` : null}</p>
                     {tx.notes && <p className="break-words text-xs text-muted-foreground">{tx.notes}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="mr-1 break-words font-mono text-sm font-semibold tabular-nums">{isCredit ? '+' : '-'}{currencyFmt(tx.amount)}</span>
+                  <span className="mr-1 break-words font-mono text-sm font-semibold tabular-nums">{isCredit ? '+' : '-'}{currencyFmt(tx.amount, locale)}</span>
                   {onEdit && (
-                    <Button size="icon" variant="ghost" aria-label={`Editar transação: ${txTitle}`} onClick={(event) => onEdit(tx, event)}>
+                    <Button size="icon" variant="ghost" aria-label={t('actions.editTxAriaLabel', { title: txTitle })} onClick={(event) => onEdit(tx, event)}>
                       <Pencil aria-hidden="true" />
                     </Button>
                   )}
                   {onDelete && (
-                    <Button size="icon" variant="ghost" aria-label={`Excluir transação: ${txTitle}`} className="text-destructive hover:text-destructive" onClick={(event) => onDelete(tx, event)}>
+                    <Button size="icon" variant="ghost" aria-label={t('actions.deleteTxAriaLabel', { title: txTitle })} className="text-destructive hover:text-destructive" onClick={(event) => onDelete(tx, event)}>
                       <Trash2 aria-hidden="true" />
                     </Button>
                   )}

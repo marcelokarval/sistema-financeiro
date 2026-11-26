@@ -1,0 +1,89 @@
+{
+  "title": "Transacciones recurrentes",
+  "subtitle": "Sigue los movimientos programados y gestiona sus próximas fechas.",
+  "loading": "Cargando recurrencias…",
+  "actions": {
+    "newRecurring": "Nueva transacción recurrente",
+    "process": "Procesar",
+    "processing": "Procesando…",
+    "retry": "Intentar de nuevo",
+    "pause": "Pausar",
+    "activate": "Activar",
+    "toggleAriaLabel": "{action} {description}",
+    "edit": "Editar",
+    "editAriaLabel": "Editar {description}",
+    "delete": "Eliminar",
+    "deleteAriaLabel": "Eliminar {description}"
+  },
+  "errors": {
+    "loadList": "No fue posible cargar las transacciones recurrentes.",
+    "toggleStatus": "Error al cambiar el estado",
+    "validation": "Completa descripción y monto correctamente",
+    "save": "Error al guardar la transacción recurrente",
+    "delete": "Error al eliminar",
+    "process": "Error al procesar",
+    "processTransactions": "Error al procesar transacciones"
+  },
+  "toast": {
+    "paused": "Transacción pausada",
+    "activated": "Transacción activada",
+    "updated": "¡Transacción recurrente actualizada!",
+    "created": "¡Transacción recurrente creada!",
+    "deleted": "¡Transacción recurrente eliminada!",
+    "processed": "Procesamiento completado"
+  },
+  "summary": {
+    "ariaLabel": "Resumen de recurrencias",
+    "activeIncome": "Ingresos activos",
+    "activeExpenses": "Gastos activos",
+    "activePaused": "Activas / pausadas"
+  },
+  "list": {
+    "title": "Recurrencias registradas",
+    "count": "{count, plural, one {# registro} other {# registros}}",
+    "emptyTitle": "Ninguna transacción recurrente",
+    "emptySubtitle": "Usa Nueva transacción recurrente para registrar un movimiento programado.",
+    "nextDate": "Próxima fecha",
+    "statusActive": "Activa",
+    "statusPaused": "Pausada"
+  },
+  "types": {
+    "INCOME": "Ingreso",
+    "EXPENSE": "Gasto"
+  },
+  "frequencies": {
+    "WEEKLY": "Semanal",
+    "BIWEEKLY": "Quincenal",
+    "MONTHLY": "Mensual",
+    "QUARTERLY": "Trimestral",
+    "YEARLY": "Anual"
+  },
+  "editor": {
+    "closeLabel": "Cerrar",
+    "createTitle": "Nueva Transacción Recurrente",
+    "editTitle": "Editar Transacción Recurrente",
+    "createDescription": "Configura una nueva transacción que se repite automáticamente",
+    "editDescription": "Actualiza los datos de la transacción recurrente",
+    "cancel": "Cancelar",
+    "saving": "Guardando…",
+    "save": "Guardar",
+    "create": "Crear",
+    "typeLabel": "Tipo",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Ej: Salario, Alquiler, Netflix...",
+    "amountLabel": "Valor (R$)",
+    "amountPlaceholder": "0,00",
+    "frequencyLabel": "Frecuencia",
+    "nextDateLabel": "Próxima Fecha",
+    "categoryLabel": "Categoría",
+    "accountLabel": "Cuenta",
+    "cardLabel": "Tarjeta",
+    "selectPlaceholder": "Selecciona..."
+  },
+  "delete": {
+    "title": "Eliminar Transacción Recurrente",
+    "description": "¿Seguro que deseas eliminar esta transacción recurrente? Esta acción no se puede deshacer.",
+    "cancel": "Cancelar",
+    "confirm": "Eliminar"
+  }
+}

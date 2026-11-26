@@ -1,0 +1,89 @@
+{
+  "eyebrow": "Activity",
+  "title": "Purchases",
+  "subtitle": "Track spending and items for each purchase.",
+  "loading": "Loading purchases…",
+  "actions": {
+    "newPurchase": "New purchase",
+    "retryList": "Retry refreshing list",
+    "retryOptions": "Try again",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "errors": {
+    "merchantRequired": "Enter the merchant",
+    "itemsRequired": "Add at least one item",
+    "save": "Error saving purchase",
+    "delete": "Error deleting purchase",
+    "refresh": "Could not refresh the purchase list.",
+    "options": "Could not load cards or categories."
+  },
+  "toasts": {
+    "updated": "Purchase updated!",
+    "created": "Purchase recorded!",
+    "deleted": "Purchase deleted!"
+  },
+  "summary": {
+    "ariaLabel": "Purchase totals",
+    "totalSpent": "Total purchases",
+    "avgPurchase": "Average per purchase",
+    "merchants": "Merchants",
+    "items": "Items purchased"
+  },
+  "records": {
+    "title": "Purchase records",
+    "searchLabel": "Search by merchant or card",
+    "searchPlaceholder": "Merchant or card",
+    "foundCount": "{count, plural, one {# purchase found} other {# purchases found}}",
+    "resultsTotalPrefix": "Results total:",
+    "emptySearch": "No purchases match your search.",
+    "empty": "No purchases recorded.",
+    "itemCount": "{count, plural, one {# item} other {# items}}",
+    "toggleItemsAria": "Purchase items: {merchant}",
+    "editAria": "Edit purchase: {merchant}",
+    "deleteAria": "Delete purchase: {merchant}",
+    "itemsHeading": "Purchase items ({count})",
+    "unitShort": "{price} / ea.",
+    "purchaseTotal": "Purchase total",
+    "notesPrefix": "Notes: {notes}"
+  },
+  "ranking": {
+    "title": "Top spending merchants",
+    "subtitle": "Includes all purchases, ignoring search filter.",
+    "purchaseCount": "{count, plural, one {# purchase} other {# purchases}}"
+  },
+  "deleteDialog": {
+    "title": "Delete purchase?",
+    "description": "This action cannot be undone. All purchase items will be removed."
+  },
+  "editor": {
+    "closeLabel": "Close form",
+    "editTitle": "Edit purchase",
+    "createTitle": "New purchase",
+    "description": "Record purchase details with all items",
+    "totalPrefix": "Total: {amount}",
+    "cancel": "Cancel",
+    "update": "Update",
+    "register": "Record",
+    "merchantLabel": "Merchant",
+    "merchantPlaceholder": "e.g. Whole Foods, Amazon...",
+    "cardLabel": "Card",
+    "selectPlaceholder": "Select…",
+    "noCard": "No card",
+    "categoryLabel": "Category",
+    "noCategory": "No category",
+    "dateLabel": "Date",
+    "notesLabel": "Notes (optional)",
+    "notesPlaceholder": "Additional notes..."
+  },
+  "itemsEditor": {
+    "legend": "Purchase items",
+    "itemGroupAria": "Item {index}",
+    "itemNameLabel": "Item name",
+    "quantityLabel": "Quantity",
+    "unitPriceLabel": "Unit price",
+    "subtotalPrefix": "Subtotal: {amount}",
+    "removeItemAria": "Remove item {index}",
+    "addItem": "Add item"
+  }
+}

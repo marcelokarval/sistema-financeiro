@@ -1,0 +1,126 @@
+{
+  "title": "Parcelas e financiamentos",
+  "subtitle": "Acompanhe seus planos e pagamentos",
+  "loading": "Carregando planos…",
+  "loadingEntries": "Carregando parcelas…",
+  "planTypes": {
+    "FINANCING": "Financiamento",
+    "CARD_INSTALLMENT": "Parcelamento no Cartão",
+    "LOAN": "Empréstimo",
+    "PERSONAL": "Empréstimo Pessoal",
+    "RENTAL": "Aluguel"
+  },
+  "planStatus": {
+    "ACTIVE": "Ativo",
+    "COMPLETED": "Concluído",
+    "CANCELLED": "Cancelado",
+    "OVERDUE": "Atrasado"
+  },
+  "installmentStatus": {
+    "PAID": "Pago",
+    "PENDING": "Pendente",
+    "OVERDUE": "Atrasado"
+  },
+  "filters": {
+    "ariaLabel": "Filtrar planos por situação",
+    "ALL": "Todos",
+    "ACTIVE": "Ativos",
+    "COMPLETED": "Concluídos",
+    "OVERDUE": "Atrasados"
+  },
+  "empty": {
+    "ALL": "Nenhum plano cadastrado. Use “Novo plano” para começar.",
+    "ACTIVE": "Nenhum plano ativo.",
+    "COMPLETED": "Nenhum plano concluído.",
+    "OVERDUE": "Nenhum plano em atraso."
+  },
+  "actions": {
+    "newPlan": "Novo plano",
+    "backToPlans": "Voltar aos planos",
+    "deletePlan": "Excluir plano",
+    "retry": "Tentar novamente",
+    "openAriaLabel": "Abrir plano: {description}"
+  },
+  "errors": {
+    "loadPlans": "Não foi possível carregar os planos.",
+    "loadPlanDetail": "Não foi possível carregar os detalhes do plano.",
+    "createPlan": "Erro ao criar plano",
+    "deletePlan": "Erro ao excluir plano",
+    "payInstallment": "Erro ao registrar pagamento"
+  },
+  "toast": {
+    "planCreated": "Plano criado com sucesso!",
+    "planDeleted": "Plano excluído!",
+    "installmentPaid": "Parcela marcada como paga!"
+  },
+  "summary": {
+    "ariaLabel": "Resumo dos planos",
+    "remainingAmount": "Valor restante",
+    "remainingNote": "Saldo devedor total",
+    "totalFinanced": "Total financiado",
+    "planCount": "{count, plural, one {# plano no total} other {# planos no total}}",
+    "totalPaid": "Total pago",
+    "overdueInstallments": "Parcelas em atraso",
+    "attentionNeeded": "Atenção necessária",
+    "noOverdue": "Nenhum atraso"
+  },
+  "portfolio": {
+    "sectionTitle": "Planos",
+    "totalLabel": "Total",
+    "perMonth": "{amount}/mês · {count}x",
+    "paidOf": "{paid} de {total} pagas · {percent}%",
+    "overdueCount": "{count, plural, one {# em atraso} other {# em atraso}}",
+    "nextDue": "Próximo vencimento: {date}"
+  },
+  "detail": {
+    "summaryAriaLabel": "Resumo do plano",
+    "remainingAmount": "Valor restante",
+    "totalFinanced": "Total financiado",
+    "paidAmount": "Valor pago",
+    "nextDue": "Próximo vencimento",
+    "progressTitle": "Progresso do pagamento",
+    "paidOf": "{paid} de {total} pagas · {percent}%",
+    "interestDetails": "Taxa de juros: <strong>{rate}%</strong> · Parcela mensal: <mono>{monthly}</mono> · Início: <strong>{startDate}</strong>"
+  },
+  "entries": {
+    "title": "Parcelas",
+    "empty": "Nenhuma parcela encontrada. As parcelas serão geradas automaticamente.",
+    "label": "Parcela {number} de {total}",
+    "dueDate": "Vencimento: {date}",
+    "paidOn": "Pago em {date}",
+    "payAriaLabel": "Pagar parcela {number} de {total}",
+    "paying": "Pagando…",
+    "pay": "Pagar"
+  },
+  "editor": {
+    "closeLabel": "Fechar formulário",
+    "title": "Novo Plano de Parcelas",
+    "description": "Cadastre um novo financiamento, empréstimo ou parcelamento",
+    "cancel": "Cancelar",
+    "creating": "Criando…",
+    "create": "Criar Plano",
+    "descriptionLabel": "Descrição",
+    "descriptionPlaceholder": "Ex: Financiamento do Apartamento...",
+    "typeLabel": "Tipo",
+    "totalAmountLabel": "Valor Total (R$)",
+    "decimalPlaceholder": "0,00",
+    "countLabel": "Nº de Parcelas",
+    "countPlaceholder": "12",
+    "monthlyValueLabel": "Valor da Parcela (R$)",
+    "monthlyValuePlaceholder": "Auto-calculado",
+    "monthlyValueHint": "Calculado automaticamente pelo valor total ÷ parcelas",
+    "interestRateLabel": "Taxa de Juros (% a.a.)",
+    "startDateLabel": "Data de Início",
+    "cardLabel": "Cartão (opcional)",
+    "cardPlaceholder": "Nenhum cartão",
+    "categoryLabel": "Categoria",
+    "categoryPlaceholder": "Selecione..."
+  },
+  "delete": {
+    "title": "Excluir plano",
+    "descriptionGeneric": "Tem certeza que deseja excluir este plano? Esta ação não pode ser desfeita.",
+    "descriptionNamed": "Tem certeza que deseja excluir o plano \"{description}\"? Esta ação não pode ser desfeita.",
+    "cancel": "Cancelar",
+    "confirm": "Excluir"
+  }
+}

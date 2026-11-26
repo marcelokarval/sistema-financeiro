@@ -1,0 +1,89 @@
+{
+  "title": "Transações recorrentes",
+  "subtitle": "Acompanhe lançamentos programados e gerencie suas próximas datas.",
+  "loading": "Carregando recorrências…",
+  "actions": {
+    "newRecurring": "Nova transação recorrente",
+    "process": "Processar",
+    "processing": "Processando…",
+    "retry": "Tentar novamente",
+    "pause": "Pausar",
+    "activate": "Ativar",
+    "toggleAriaLabel": "{action} {description}",
+    "edit": "Editar",
+    "editAriaLabel": "Editar {description}",
+    "delete": "Excluir",
+    "deleteAriaLabel": "Excluir {description}"
+  },
+  "errors": {
+    "loadList": "Não foi possível carregar as transações recorrentes.",
+    "toggleStatus": "Erro ao alterar status",
+    "validation": "Preencha descrição e valor corretamente",
+    "save": "Erro ao salvar transação recorrente",
+    "delete": "Erro ao excluir",
+    "process": "Erro ao processar",
+    "processTransactions": "Erro ao processar transações"
+  },
+  "toast": {
+    "paused": "Transação pausada",
+    "activated": "Transação ativada",
+    "updated": "Transação recorrente atualizada!",
+    "created": "Transação recorrente criada!",
+    "deleted": "Transação recorrente excluída!",
+    "processed": "Processamento concluído"
+  },
+  "summary": {
+    "ariaLabel": "Resumo das recorrências",
+    "activeIncome": "Receitas ativas",
+    "activeExpenses": "Despesas ativas",
+    "activePaused": "Ativas / pausadas"
+  },
+  "list": {
+    "title": "Recorrências cadastradas",
+    "count": "{count, plural, one {# registro} other {# registros}}",
+    "emptyTitle": "Nenhuma transação recorrente",
+    "emptySubtitle": "Use Nova transação recorrente para cadastrar um lançamento programado.",
+    "nextDate": "Próxima data",
+    "statusActive": "Ativa",
+    "statusPaused": "Pausada"
+  },
+  "types": {
+    "INCOME": "Receita",
+    "EXPENSE": "Despesa"
+  },
+  "frequencies": {
+    "WEEKLY": "Semanal",
+    "BIWEEKLY": "Quinzenal",
+    "MONTHLY": "Mensal",
+    "QUARTERLY": "Trimestral",
+    "YEARLY": "Anual"
+  },
+  "editor": {
+    "closeLabel": "Fechar",
+    "createTitle": "Nova Transação Recorrente",
+    "editTitle": "Editar Transação Recorrente",
+    "createDescription": "Configure uma nova transação que se repete automaticamente",
+    "editDescription": "Atualize os dados da transação recorrente",
+    "cancel": "Cancelar",
+    "saving": "Salvando…",
+    "save": "Salvar",
+    "create": "Criar",
+    "typeLabel": "Tipo",
+    "descriptionLabel": "Descrição",
+    "descriptionPlaceholder": "Ex: Salário, Aluguel, Netflix...",
+    "amountLabel": "Valor (R$)",
+    "amountPlaceholder": "0,00",
+    "frequencyLabel": "Frequência",
+    "nextDateLabel": "Próxima Data",
+    "categoryLabel": "Categoria",
+    "accountLabel": "Conta",
+    "cardLabel": "Cartão",
+    "selectPlaceholder": "Selecione..."
+  },
+  "delete": {
+    "title": "Excluir Transação Recorrente",
+    "description": "Tem certeza que deseja excluir esta transação recorrente? Esta ação não pode ser desfeita.",
+    "cancel": "Cancelar",
+    "confirm": "Excluir"
+  }
+}

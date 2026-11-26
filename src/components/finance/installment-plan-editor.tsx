@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeTranslations } from '@/i18n/provider';
 
 export interface InstallmentPlanDraft {
   description: string;
@@ -55,42 +56,44 @@ export function InstallmentPlanEditor({
   onCloseAutoFocus,
   onSubmit,
 }: InstallmentPlanEditorProps) {
+  const t = useSafeTranslations('installments');
+
   return (
     <FinanceFormDialogShell
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
-      closeLabel="Fechar formulário"
+      closeLabel={t('editor.closeLabel')}
       contentClassName="motion-reduce:animate-none max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg"
-      title="Novo Plano de Parcelas"
-      description="Cadastre um novo financiamento, empréstimo ou parcelamento"
+      title={t('editor.title')}
+      description={t('editor.description')}
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t('editor.cancel')}
           </Button>
           <Button
             onClick={onSubmit}
             disabled={creating || !form.description || !form.totalAmount || !form.installmentCount}
           >
-            {creating ? 'Criando…' : 'Criar Plano'}
+            {creating ? t('editor.creating') : t('editor.create')}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
         <div>
-          <Label htmlFor="plan-form-description">Descrição</Label>
+          <Label htmlFor="plan-form-description">{t('editor.descriptionLabel')}</Label>
           <Input
             id="plan-form-description"
             value={form.description}
             onChange={(e) => onFieldChange('description', e.target.value)}
-            placeholder="Ex: Financiamento do Apartamento..."
+            placeholder={t('editor.descriptionPlaceholder')}
           />
         </div>
 
         <div>
-          <Label htmlFor="plan-form-type">Tipo</Label>
+          <Label htmlFor="plan-form-type">{t('editor.typeLabel')}</Label>
           <Select
             value={form.type}
             onValueChange={(v) => onFieldChange('type', v)}
@@ -113,58 +116,58 @@ export function InstallmentPlanEditor({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="plan-form-totalAmount">Valor Total (R$)</Label>
+            <Label htmlFor="plan-form-totalAmount">{t('editor.totalAmountLabel')}</Label>
             <Input
               id="plan-form-totalAmount"
               type="number"
               step="0.01"
               value={form.totalAmount}
               onChange={(e) => onAmountChange(e.target.value)}
-              placeholder="0,00"
+              placeholder={t('editor.decimalPlaceholder')}
             />
           </div>
           <div>
-            <Label htmlFor="plan-form-installmentCount">Nº de Parcelas</Label>
+            <Label htmlFor="plan-form-installmentCount">{t('editor.countLabel')}</Label>
             <Input
               id="plan-form-installmentCount"
               type="number"
               min="1"
               value={form.installmentCount}
               onChange={(e) => onCountChange(e.target.value)}
-              placeholder="12"
+              placeholder={t('editor.countPlaceholder')}
             />
           </div>
         </div>
 
         <div>
-          <Label htmlFor="plan-form-monthlyValue">Valor da Parcela (R$)</Label>
+          <Label htmlFor="plan-form-monthlyValue">{t('editor.monthlyValueLabel')}</Label>
           <Input
             id="plan-form-monthlyValue"
             type="number"
             step="0.01"
             value={form.monthlyValue}
             onChange={(e) => onFieldChange('monthlyValue', e.target.value)}
-            placeholder="Auto-calculado"
+            placeholder={t('editor.monthlyValuePlaceholder')}
           />
           <p className="text-[11px] text-muted-foreground mt-1">
-            Calculado automaticamente pelo valor total ÷ parcelas
+            {t('editor.monthlyValueHint')}
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="plan-form-interestRate">Taxa de Juros (% a.a.)</Label>
+            <Label htmlFor="plan-form-interestRate">{t('editor.interestRateLabel')}</Label>
             <Input
               id="plan-form-interestRate"
               type="number"
               step="0.01"
               value={form.interestRate}
               onChange={(e) => onFieldChange('interestRate', e.target.value)}
-              placeholder="0,00"
+              placeholder={t('editor.decimalPlaceholder')}
             />
           </div>
           <div>
-            <Label htmlFor="plan-form-startDate">Data de Início</Label>
+            <Label htmlFor="plan-form-startDate">{t('editor.startDateLabel')}</Label>
             <Input
               id="plan-form-startDate"
               type="date"
@@ -175,13 +178,13 @@ export function InstallmentPlanEditor({
         </div>
 
         <div>
-          <Label htmlFor="plan-form-cardId">Cartão (opcional)</Label>
+          <Label htmlFor="plan-form-cardId">{t('editor.cardLabel')}</Label>
           <Select
             value={form.cardId}
             onValueChange={(v) => onFieldChange('cardId', v)}
           >
             <SelectTrigger id="plan-form-cardId">
-              <SelectValue placeholder="Nenhum cartão" />
+              <SelectValue placeholder={t('editor.cardPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {cards.map((c) => (
@@ -200,13 +203,13 @@ export function InstallmentPlanEditor({
         </div>
 
         <div>
-          <Label htmlFor="plan-form-categoryId">Categoria</Label>
+          <Label htmlFor="plan-form-categoryId">{t('editor.categoryLabel')}</Label>
           <Select
             value={form.categoryId}
             onValueChange={(v) => onFieldChange('categoryId', v)}
           >
             <SelectTrigger id="plan-form-categoryId">
-              <SelectValue placeholder="Selecione..." />
+              <SelectValue placeholder={t('editor.categoryPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {categories

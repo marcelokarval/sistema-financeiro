@@ -364,7 +364,15 @@ function installFixture(
       ? createElement('main', { id: 'fixture', className: 'min-h-screen bg-background p-3' }, createElement(FinancialCalendar))
       : createElement('main', { id: 'fixture', className: 'min-h-screen bg-background p-3' }, createElement(ForecastHarness, { showValues: options.showValues ?? true }));
     qa.rootInstance.render(
-      createElement(ThemeProvider, { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true }, body),
+      createElement(
+        ThemeProvider,
+        { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
+        createElement(
+          AppIntlProvider,
+          { locale: 'pt', messages: getMessagesForLocale('pt') },
+          body,
+        ),
+      ),
     );
   };
 

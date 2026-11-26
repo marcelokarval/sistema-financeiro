@@ -1,0 +1,89 @@
+{
+  "title": "Recurring transactions",
+  "subtitle": "Track scheduled entries and manage their upcoming dates.",
+  "loading": "Loading recurring transactions…",
+  "actions": {
+    "newRecurring": "New recurring transaction",
+    "process": "Process",
+    "processing": "Processing…",
+    "retry": "Try again",
+    "pause": "Pause",
+    "activate": "Activate",
+    "toggleAriaLabel": "{action} {description}",
+    "edit": "Edit",
+    "editAriaLabel": "Edit {description}",
+    "delete": "Delete",
+    "deleteAriaLabel": "Delete {description}"
+  },
+  "errors": {
+    "loadList": "Could not load recurring transactions.",
+    "toggleStatus": "Error changing status",
+    "validation": "Fill in description and amount properly",
+    "save": "Error saving recurring transaction",
+    "delete": "Error deleting",
+    "process": "Error processing",
+    "processTransactions": "Error processing transactions"
+  },
+  "toast": {
+    "paused": "Transaction paused",
+    "activated": "Transaction activated",
+    "updated": "Recurring transaction updated!",
+    "created": "Recurring transaction created!",
+    "deleted": "Recurring transaction deleted!",
+    "processed": "Processing complete"
+  },
+  "summary": {
+    "ariaLabel": "Recurring summary",
+    "activeIncome": "Active income",
+    "activeExpenses": "Active expenses",
+    "activePaused": "Active / paused"
+  },
+  "list": {
+    "title": "Registered recurring",
+    "count": "{count, plural, one {# record} other {# records}}",
+    "emptyTitle": "No recurring transactions",
+    "emptySubtitle": "Use New recurring transaction to schedule an entry.",
+    "nextDate": "Next date",
+    "statusActive": "Active",
+    "statusPaused": "Paused"
+  },
+  "types": {
+    "INCOME": "Income",
+    "EXPENSE": "Expense"
+  },
+  "frequencies": {
+    "WEEKLY": "Weekly",
+    "BIWEEKLY": "Biweekly",
+    "MONTHLY": "Monthly",
+    "QUARTERLY": "Quarterly",
+    "YEARLY": "Yearly"
+  },
+  "editor": {
+    "closeLabel": "Close",
+    "createTitle": "New Recurring Transaction",
+    "editTitle": "Edit Recurring Transaction",
+    "createDescription": "Set up a new automatically repeating transaction",
+    "editDescription": "Update recurring transaction details",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "save": "Save",
+    "create": "Create",
+    "typeLabel": "Type",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "e.g., Salary, Rent, Netflix...",
+    "amountLabel": "Amount (BRL)",
+    "amountPlaceholder": "0.00",
+    "frequencyLabel": "Frequency",
+    "nextDateLabel": "Next Date",
+    "categoryLabel": "Category",
+    "accountLabel": "Account",
+    "cardLabel": "Card",
+    "selectPlaceholder": "Select..."
+  },
+  "delete": {
+    "title": "Delete Recurring Transaction",
+    "description": "Are you sure you want to delete this recurring transaction? This action cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  }
+}

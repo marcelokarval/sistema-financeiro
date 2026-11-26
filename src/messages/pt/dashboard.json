@@ -1,0 +1,168 @@
+{
+  "eyebrow": "Posição financeira",
+  "title": "Resumo financeiro",
+  "hideValues": "Ocultar valores",
+  "showValues": "Mostrar valores",
+  "refreshAriaLabel": "Atualizar resumo",
+  "periodGroupAriaLabel": "Período do resumo",
+  "filters": {
+    "month": "Este mês",
+    "quarter": "Últimos 3 meses",
+    "halfyear": "Últimos 6 meses",
+    "year": "Este ano",
+    "all": "Tudo"
+  },
+  "periodRange": "Período: {from} a {to}",
+  "customPeriod": {
+    "summary": "Período personalizado",
+    "from": "De",
+    "to": "Até",
+    "apply": "Filtrar",
+    "invalidRange": "A data final não pode ser anterior à inicial."
+  },
+  "loading": "Carregando resumo…",
+  "error": "Não foi possível carregar o resumo.",
+  "retry": "Tentar novamente",
+  "unavailable": "Dados do resumo indisponíveis.",
+  "moreDetails": "Mais detalhes financeiros",
+  "metrics": {
+    "sectionAriaLabel": "Indicadores principais",
+    "totalBalance": {
+      "label": "Saldo em contas",
+      "caption": "Posição atual · contas ativas"
+    },
+    "periodBalance": {
+      "label": "Saldo do período",
+      "caption": "Entradas menos saídas no intervalo"
+    },
+    "periodExpense": {
+      "label": "Despesas do período",
+      "caption": "Transações de saída e compras"
+    }
+  },
+  "flow": {
+    "title": "Entradas e saídas",
+    "caption": "Agregação mensal da API, desde o início do primeiro mês até a data final do período.",
+    "empty": "Sem dados para a série mensal.",
+    "hidden": "Série oculta enquanto os valores estão ocultos.",
+    "income": "Entradas",
+    "expense": "Saídas",
+    "zeroedNote": "Totais zerados podem indicar ausência de lançamentos ou valores que somaram zero.",
+    "tableSummary": "Valores por mês",
+    "monthColumn": "Mês"
+  },
+  "recentTransactions": {
+    "title": "Atividade recente",
+    "caption": "Últimas transações do período selecionado.",
+    "empty": "Nenhuma transação no período."
+  },
+  "details": {
+    "otherMetrics": {
+      "title": "Outros indicadores do resumo",
+      "caption": "Posição atual de contas e cartões; totais e atividade do período selecionado.",
+      "cardBill": "Fatura dos cartões",
+      "cardUsage": "Limite usado: {usage} · Disponível: {available}",
+      "accountsMinusBills": "Contas menos faturas",
+      "periodIncome": "Entradas do período",
+      "surplus": "Superávit",
+      "deficit": "Déficit",
+      "savingsLabel": "Poupança",
+      "recentPurchasesCount": "Compras recentes do período",
+      "recentTransactionsCount": "Transações recentes do período",
+      "dailyAverage": "Gasto médio por dia",
+      "dailyAverageCaption": "Total do período dividido pelo dia corrente do mês."
+    },
+    "variations": {
+      "net": "Variação do saldo mensal",
+      "expense": "Variação dos gastos mensais",
+      "volume": "Variação do volume financeiro mensal",
+      "daily": "Variação do gasto médio diário"
+    },
+    "monthlyComparison": {
+      "summary": "Comparativo mensal",
+      "income": "Entradas: {value}",
+      "expense": "Saídas: {value}",
+      "balance": "Saldo: {value}"
+    },
+    "expenseByCategory": {
+      "title": "Despesas por categoria",
+      "caption": "Período selecionado · transações de saída e compras com categoria.",
+      "empty": "Nenhuma despesa categorizada no período."
+    },
+    "accountBalances": {
+      "title": "Distribuição por conta",
+      "caption": "Posição atual · contas ativas.",
+      "empty": "Nenhuma conta ativa."
+    },
+    "recentPurchases": {
+      "title": "Compras recentes",
+      "caption": "Período selecionado. Abra uma compra para ler seus itens.",
+      "itemCount": "{count, plural, =0 {# itens} one {# item} other {# itens}}",
+      "noItems": "Nenhum item cadastrado.",
+      "empty": "Nenhuma compra no período."
+    }
+  },
+  "quickStats": {
+    "title": "Resumo rápido",
+    "subtitle": "Posição atual e indicadores do mês · variações ante o mês anterior",
+    "loading": "Carregando indicadores…",
+    "error": "Não foi possível carregar os indicadores.",
+    "vsLastMonth": "em relação ao mês anterior",
+    "metrics": {
+      "netWorth": "Patrimônio Líquido",
+      "monthlyIncome": "Receita Mensal",
+      "monthlyExpense": "Despesa Mensal",
+      "monthlySavings": "Economia Mensal",
+      "investments": "Investimentos",
+      "cardDebt": "Dívida em Cartões"
+    },
+    "badges": {
+      "currentPosition": "Posição atual",
+      "savingsRate": "Taxa de economia: {rate}%",
+      "investmentPct": "{pct}% do patrimônio (valor absoluto)"
+    },
+    "sparklines": {
+      "balance": "Histórico do saldo",
+      "income": "Histórico de receitas",
+      "expense": "Histórico de despesas",
+      "savingsHistory": "Histórico de economia mensal",
+      "savingsEstimate": "Variação do saldo (estimativa)",
+      "investmentsHistory": "Histórico de investimentos",
+      "investmentsEstimate": "Estimativa sem histórico de investimentos",
+      "cardDebtHistory": "Histórico da dívida em cartões",
+      "cardDebtEstimate": "Proporção das despesas (estimativa da dívida)"
+    },
+    "health": {
+      "title": "Saúde Financeira",
+      "trendUp": "Tendência positiva",
+      "trendDown": "Tendência negativa",
+      "trendStable": "Estável",
+      "recommendedTarget": "Taxa de economia mensal — meta recomendada: 20%+"
+    }
+  },
+  "upcomingBills": {
+    "title": "Próximos vencimentos",
+    "subtitle": "Atrasados e próximos 30 dias · independente do período do resumo.",
+    "refreshAriaLabel": "Atualizar vencimentos",
+    "loading": "Carregando vencimentos…",
+    "error": "Não foi possível carregar os próximos pagamentos.",
+    "empty": "Nenhum pagamento pendente no recorte.",
+    "groups": {
+      "overdue": "Atrasados",
+      "urgent": "Próximos (urgentes)",
+      "thisMonth": "Este mês"
+    },
+    "totals": {
+      "summary": "Totais de vencimentos",
+      "thisWeek": "Até o fim da semana, incluindo atrasados",
+      "thisMonth": "Até o fim do mês, incluindo atrasados",
+      "next30Days": "Atrasados e próximos 30 dias"
+    },
+    "days": {
+      "overdue": "{count, plural, one {# dia de atraso} other {# dias de atraso}}",
+      "today": "Hoje",
+      "tomorrow": "Amanhã",
+      "inDays": "{count, plural, one {Em # dia} other {Em # dias}}"
+    }
+  }
+}

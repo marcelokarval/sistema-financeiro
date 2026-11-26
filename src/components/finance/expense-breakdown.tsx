@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
 import {
@@ -46,6 +47,8 @@ export function currentExpenseBreakdown(request: ExpenseBreakdownRequest, settle
 }
 
 export function ExpenseBreakdown() {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const [request, setRequest] = useState<ExpenseBreakdownRequest>({ months: '6' });
   const [settled, setSettled] = useState<ExpenseBreakdownResult | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -68,6 +71,7 @@ export function ExpenseBreakdown() {
     setRequest({ months });
   };
 
+  const othersLabel = t('expenses.others');
   const chartData = useMemo(() => {
     if (!data) return [];
     const top = data.categories.slice(0, 8);
@@ -87,7 +91,7 @@ export function ExpenseBreakdown() {
         ? (othersTotal / data.totalExpense) * 100
         : 0;
       result.push({
-        name: 'Outros',
+        name: othersLabel,
         value: othersTotal,
         color: 'var(--muted-foreground)',
         categoryId: 'outros',
@@ -96,7 +100,7 @@ export function ExpenseBreakdown() {
     }
 
     return result;
-  }, [data]);
+  }, [data, othersLabel]);
 
   const top3 = data?.categories.slice(0, 3) || [];
 
@@ -113,7 +117,7 @@ export function ExpenseBreakdown() {
 
   const controls = (
     <>
-      <div role="group" aria-label="Período das despesas" className="flex flex-wrap items-center gap-1 rounded-md bg-muted/50 p-0.5">
+      <div role="group" aria-label={t('expenses.periodAria')} className="flex flex-wrap items-center gap-1 rounded-md bg-muted/50 p-0.5">
         <Button
           aria-pressed={showCurrentMonth}
           variant={showCurrentMonth ? 'default' : 'ghost'}
@@ -121,7 +125,7 @@ export function ExpenseBreakdown() {
           className="min-h-9 px-2 text-xs"
           onClick={() => selectPeriod('1')}
         >
-          Mês atual
+          {t('expenses.currentMonth')}
         </Button>
         <Button
           aria-pressed={!showCurrentMonth}
@@ -130,14 +134,14 @@ export function ExpenseBreakdown() {
           className="min-h-9 px-2 text-xs"
           onClick={() => selectPeriod('6')}
         >
-          6 meses
+          {t('expenses.sixMonths')}
         </Button>
       </div>
       <Button
         variant="outline"
         size="icon"
         className="size-9"
-        aria-label="Atualizar despesas por categoria"
+        aria-label={t('expenses.refreshAria')}
         onClick={refresh}
       >
         <RefreshCw className="w-3.5 h-3.5" />
@@ -148,25 +152,28 @@ export function ExpenseBreakdown() {
   return (
     <QueryPanel
       titleId="quiet-expense-breakdown"
-      title="Detalhamento de despesas"
-      subtitle={`Distribuição por categoria · ${showCurrentMonth ? 'mês atual' : 'últimos 6 meses'}`}
+      title={t('expenses.title')}
+      subtitle={t('expenses.subtitle', {
+        period: showCurrentMonth ? t('expenses.periodCurrent') : t('expenses.periodSixMonths'),
+      })}
       controls={controls}
       status={panelStatus}
-      loadingMessage="Carregando despesas por categoria…"
-      errorMessage="Não foi possível carregar as despesas do período selecionado."
-      emptyMessage="Nenhuma despesa registrada no período selecionado."
+      loadingMessage={t('expenses.loading')}
+      errorMessage={t('expenses.error')}
+      emptyMessage={t('expenses.empty')}
+      retryLabel={t('common.retry')}
       onRetry={refresh}
     >
       {data && (
         <>
           <div className="min-w-0 space-y-2">
-            <p className="text-xs text-muted-foreground">Total de despesas</p>
-            <p className="break-words font-mono text-lg font-semibold tabular-nums">{currencyFmt(data.totalExpense)}</p>
+            <p className="text-xs text-muted-foreground">{t('expenses.totalExpenses')}</p>
+            <p className="break-words font-mono text-lg font-semibold tabular-nums">{currencyFmt(data.totalExpense, locale)}</p>
           </div>
 
           {chartData.length > 0 && (
             <figure className="flex min-w-0 flex-col items-center">
-              <figcaption className="text-xs font-medium">Participação no total de despesas</figcaption>
+              <figcaption className="text-xs font-medium">{t('expenses.chartCaption')}</figcaption>
               <div className="w-full max-w-[320px] h-60">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -216,7 +223,7 @@ export function ExpenseBreakdown() {
           )}
 
           {data.categories.length === 0 && (
-            <p role="status" className="text-sm text-muted-foreground">Nenhuma categoria com despesas para exibir.</p>
+            <p role="status" className="text-sm text-muted-foreground">{t('expenses.emptyCategories')}</p>
           )}
 
           <ExpenseCategoryList
@@ -230,13 +237,13 @@ export function ExpenseBreakdown() {
 
           {top3.length > 0 && (
             <div>
-              <h4 className="mb-2 text-xs font-semibold">Categorias com maior despesa</h4>
+              <h4 className="mb-2 text-xs font-semibold">{t('expenses.top3Title')}</h4>
               <ol className="grid gap-px overflow-hidden rounded-md border border-border bg-border md:grid-cols-3">
                 {top3.map((cat, idx) => (
                   <li key={cat.categoryId} className="min-w-0 space-y-1 bg-card p-3 text-xs">
                     <p className="break-words font-medium">{idx + 1}. {cat.categoryName}</p>
                     <p className="flex flex-wrap gap-x-2 font-mono tabular-nums">
-                      {currencyFmt(cat.total)} <span className="text-muted-foreground">{cat.percentage.toFixed(1)}%</span>
+                      {currencyFmt(cat.total, locale)} <span className="text-muted-foreground">{cat.percentage.toFixed(1)}%</span>
                     </p>
                   </li>
                 ))}

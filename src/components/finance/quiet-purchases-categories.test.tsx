@@ -10,6 +10,34 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
 import { FinanceMetric } from '@/components/shared/finance-metric';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function ptUseContext(ctx: React.Context<unknown>, locale: CanonicalLocale = 'pt') {
+  return ctx === AppIntlBridgeContext
+    ? { locale, messages: getMessagesForLocale(locale) }
+    : (ctx as unknown as { _currentValue?: unknown })._currentValue;
+}
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 import { PurchasesView } from './purchases-view';
 import { PurchaseEditor } from './purchase-editor';
 import { PurchaseItemsEditor } from './purchase-items-editor';
@@ -47,7 +75,7 @@ function find(node: ReactNode, match: (element: Element) => boolean): Element | 
         || child.type.name === 'PurchaseItemRow'
         || child.type.name === 'CategoryRow'
       ) {
-        expanded = (child.type as (props: Element['props']) => ReactNode)(child.props);
+        expanded = withPtIntlDispatcher(() => (child.type as (props: Element['props']) => ReactNode)(child.props));
       }
     }
     const nested = find(expanded, match);
@@ -118,6 +146,8 @@ function createHarness<T>(mount: () => T) {
         return callbacks[i].fn;
       },
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useDebugValue: () => {},
       useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
       useEffect(fn: () => void, deps?: readonly unknown[]) {
@@ -245,7 +275,7 @@ test('Compras põe o total da coleção antes da lista, usa FinanceMetric e deix
   expect(purchasesSrc).toContain("from '@/components/shared/finance-metric'");
   expect(purchasesSrc).toContain("from '@/components/shared/finance-dialog-shell'");
   expect(purchasesSrc).toContain("from './purchase-editor'");
-  const strip = purchasesSrc.indexOf('aria-label="Totais de compras"');
+  const strip = purchasesSrc.indexOf("aria-label={t('summary.ariaLabel')}");
   const list = purchasesSrc.indexOf('aria-labelledby="purchase-records-heading"');
   const ranking = purchasesSrc.indexOf('id="purchase-ranking-heading"');
   expect(strip).toBeGreaterThan(-1);
@@ -259,31 +289,33 @@ test('PurchaseEditor e PurchaseItemsEditor preservam casca, fieldset, legend e r
   const changed: unknown[] = [];
   let added = 0;
   let removed = -1;
-  const editor = PurchaseEditor({
-    mode: 'create',
-    open: true,
-    form: { merchant: '', cardId: '', categoryId: '', date: '2026-11-20', notes: '' },
-    items: [
-      { name: 'Café', quantity: 2, unitPrice: 5, totalPrice: 10 },
-      { name: 'Pão', quantity: 1, unitPrice: 4, totalPrice: 4 },
-    ],
-    cards: qaCards,
-    categories: qaCategories,
-    totalAmount: 14,
-    onFieldChange: (field, value) => changed.push([field, value]),
-    onItemChange: (idx, field, value) => changed.push([idx, field, value]),
-    onAddItem: () => { added++; },
-    onRemoveItem: (idx) => { removed = idx; },
-    onOpenChange: () => {},
-    onCloseAutoFocus: () => {},
-    onCancel: () => {},
-    onSubmit: () => {},
-  });
+  const editor = withPtIntlDispatcher(() =>
+    PurchaseEditor({
+      mode: 'create',
+      open: true,
+      form: { merchant: '', cardId: '', categoryId: '', date: '2026-11-20', notes: '' },
+      items: [
+        { name: 'Café', quantity: 2, unitPrice: 5, totalPrice: 10 },
+        { name: 'Pão', quantity: 1, unitPrice: 4, totalPrice: 4 },
+      ],
+      cards: qaCards,
+      categories: qaCategories,
+      totalAmount: 14,
+      onFieldChange: (field, value) => changed.push([field, value]),
+      onItemChange: (idx, field, value) => changed.push([idx, field, value]),
+      onAddItem: () => { added++; },
+      onRemoveItem: (idx) => { removed = idx; },
+      onOpenChange: () => {},
+      onCloseAutoFocus: () => {},
+      onCancel: () => {},
+      onSubmit: () => {},
+    }),
+  );
 
   expect(editor.type).toBe(FinanceFormDialogShell);
   expect(editor.props.closeLabel).toBe('Fechar formulário');
   const itemsEditor = required(editor, (node) => node.type === PurchaseItemsEditor);
-  const markup = renderToStaticMarkup(itemsEditor);
+  const markup = renderWithIntl(itemsEditor, 'pt');
   expect(markup).toContain('<fieldset');
   expect(markup).toContain('<legend');
   expect(markup).toContain('Itens da compra');
@@ -332,30 +364,32 @@ test('Compras renderiza expansor acessível, ações nomeadas, consome selectedP
     expect(optionsRes.status).toBe(503);
     const purchasesSrc = readFileSync(new URL('./purchases-view.tsx', import.meta.url), 'utf8');
     const editorSrc = readFileSync(new URL('./purchase-editor.tsx', import.meta.url), 'utf8');
-    expect(editorSrc).toContain('Nenhum cartão');
-    expect(editorSrc).toContain('Nenhuma categoria');
-    expect(purchasesSrc).toContain('Não foi possível carregar cartões ou categorias');
+    expect(editorSrc).toContain("t('editor.noCard')");
+    expect(editorSrc).toContain("t('editor.noCategory')");
+    expect(purchasesSrc).toContain("t('errors.options')");
     expect(calls.length).toBeGreaterThan(0);
   });
 });
 
 test('CategoryIconColorPicker e CategoryEditor preservam fieldset, nomes acessíveis, prévia e casca pt-BR', () => {
   const changes: unknown[] = [];
-  const editor = CategoryEditor({
-    mode: 'create',
-    open: true,
-    form: { name: 'Lazer', icon: 'gamepad-2', type: 'EXPENSE', color: '#8b5cf6' },
-    onFieldChange: (field, value) => changes.push([field, value]),
-    onOpenChange: () => {},
-    onCloseAutoFocus: () => {},
-    onCancel: () => {},
-    onSubmit: () => {},
-  });
+  const editor = withPtIntlDispatcher(() =>
+    CategoryEditor({
+      mode: 'create',
+      open: true,
+      form: { name: 'Lazer', icon: 'gamepad-2', type: 'EXPENSE', color: '#8b5cf6' },
+      onFieldChange: (field, value) => changes.push([field, value]),
+      onOpenChange: () => {},
+      onCloseAutoFocus: () => {},
+      onCancel: () => {},
+      onSubmit: () => {},
+    }),
+  );
 
   expect(editor.type).toBe(FinanceFormDialogShell);
   expect(editor.props.closeLabel).toBe('Fechar formulário');
   const picker = required(editor, (node) => node.type === CategoryIconColorPicker);
-  const markup = renderToStaticMarkup(picker);
+  const markup = renderWithIntl(picker, 'pt');
   expect(markup).toContain('<fieldset');
   expect(markup).toContain('<legend class="text-sm font-medium">Ícone</legend>');
   expect(markup).toContain('<legend class="text-sm font-medium">Cor</legend>');
@@ -622,4 +656,45 @@ test('Compras PUT preserva instante histórico quando data civil não muda e env
     expect(typeof (put.body as { date: string }).date).toBe('string');
     expect((put.body as { date: string }).date).toBe('2026-11-19T01:15:00.000Z');
   });
+});
+
+test('renderiza PurchaseItemsEditor, CategoryIconColorPicker, PurchasesView e CategoriesView em pt, es e en sem chaves cruas', () => {
+  const expected = {
+    pt: { items: 'Itens da compra', preview: 'Pré-visualização', loadingPurchases: 'Carregando compras…', loadingCategories: 'Carregando categorias…' },
+    es: { items: 'Ítems de la compra', preview: 'Vista previa', loadingPurchases: 'Cargando compras…', loadingCategories: 'Cargando categorías…' },
+    en: { items: 'Purchase items', preview: 'Preview', loadingPurchases: 'Loading purchases…', loadingCategories: 'Loading categories…' },
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const itemsHtml = renderWithIntl(
+      <PurchaseItemsEditor
+        items={[{ name: 'Café', quantity: 1, unitPrice: 10, totalPrice: 10 }]}
+        onItemChange={() => {}}
+        onAddItem={() => {}}
+        onRemoveItem={() => {}}
+      />,
+      locale,
+    );
+    expect(itemsHtml).toContain(expected[locale].items);
+    expect(itemsHtml).not.toContain('MISSING_MESSAGE');
+
+    const pickerHtml = renderWithIntl(
+      <CategoryIconColorPicker
+        name="Lazer"
+        type="EXPENSE"
+        icon="gamepad-2"
+        color="#8b5cf6"
+        onIconChange={() => {}}
+        onColorChange={() => {}}
+      />,
+      locale,
+    );
+    expect(pickerHtml).toContain(expected[locale].preview);
+
+    const purchasesHtml = renderWithIntl(<PurchasesView />, locale);
+    expect(purchasesHtml).toContain(expected[locale].loadingPurchases);
+
+    const categoriesHtml = renderWithIntl(<CategoriesView />, locale);
+    expect(categoriesHtml).toContain(expected[locale].loadingCategories);
+  }
 });

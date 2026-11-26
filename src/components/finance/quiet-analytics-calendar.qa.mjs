@@ -66,6 +66,8 @@ function installFixture(
   SpendingTimeline,
   TransactionAnalytics,
   UpcomingBills,
+  AppIntlProvider,
+  getMessagesForLocale,
   createElement,
   createRoot,
   ThemeProvider,
@@ -324,7 +326,11 @@ function installFixture(
       createElement(
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
-        createElement('main', { id: 'fixture', className: 'min-h-screen bg-background p-3' }, createElement(SuiteView, { domain })),
+        createElement(
+          AppIntlProvider,
+          { locale: 'pt', messages: getMessagesForLocale('pt') },
+          createElement('main', { id: 'fixture', className: 'min-h-screen bg-background p-3' }, createElement(SuiteView, { domain })),
+        ),
       ),
     );
   };
@@ -701,6 +707,8 @@ try {
     import { SpendingTimeline } from ${JSON.stringify(join(financeDir, 'spending-timeline.tsx'))};
     import { TransactionAnalytics } from ${JSON.stringify(join(financeDir, 'transaction-analytics.tsx'))};
     import { UpcomingBills } from ${JSON.stringify(join(financeDir, 'upcoming-bills.tsx'))};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement, useState } from 'react';
     import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
@@ -712,6 +720,8 @@ try {
       SpendingTimeline,
       TransactionAnalytics,
       UpcomingBills,
+      AppIntlProvider,
+      getMessagesForLocale,
       createElement,
       createRoot,
       ThemeProvider,

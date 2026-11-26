@@ -1,0 +1,110 @@
+{
+  "loading": "Loading cards…",
+  "title": "Cards",
+  "subtitle": "Track statements, limits, and purchases.",
+  "actions": {
+    "newCard": "New card",
+    "backToCards": "Back to cards",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "errors": {
+    "loadCards": "Could not load cards.",
+    "loadPurchases": "Could not load card purchases.",
+    "nameRequired": "Card name is required",
+    "saveCard": "Error saving card",
+    "deleteCard": "Error deleting card"
+  },
+  "toasts": {
+    "cardUpdated": "Card updated!",
+    "cardAdded": "Card added!",
+    "cardDeleted": "Card deleted!"
+  },
+  "summary": {
+    "ariaLabel": "Cards summary",
+    "totalBalance": "Total statements",
+    "totalLimit": "Total limit"
+  },
+  "list": {
+    "title": "Registered cards",
+    "empty": "No cards registered. Use “New card” to get started.",
+    "openCardAria": "Open card {name}",
+    "copyNumberAria": "Copy masked number for {name}",
+    "editCardAria": "Edit card {name}",
+    "deleteCardAria": "Delete card {name}",
+    "copied": "Copied",
+    "cycleDates": "Closes day {closingDay} · Due day {dueDay}",
+    "currentBalance": "Current statement",
+    "available": "Available"
+  },
+  "usage": {
+    "high": "High limit usage",
+    "normal": "Limit usage"
+  },
+  "detail": {
+    "positionAria": "Card summary",
+    "currentBalance": "Current statement",
+    "limit": "Limit",
+    "available": "Available",
+    "infoAria": "Card details",
+    "maskedNumber": "Masked number",
+    "closing": "Closing",
+    "due": "Due",
+    "day": "Day {day}",
+    "purchasesTitle": "Card purchases",
+    "purchaseCount": "{count, plural, one {# purchase} other {# purchases}}",
+    "loadingPurchases": "Loading card purchases…",
+    "emptyPurchases": "No purchases recorded on this card.",
+    "purchaseItems": "Purchase items ({count})",
+    "unitShort": "{price} ea.",
+    "total": "Total",
+    "noItems": "No itemized details for this purchase."
+  },
+  "types": {
+    "CREDIT": "Credit",
+    "DEBIT": "Debit",
+    "BOTH": "Credit & Debit"
+  },
+  "brands": {
+    "VISA": "Visa",
+    "MASTERCARD": "Mastercard",
+    "ELO": "Elo",
+    "AMEX": "American Express",
+    "HIPER": "Hiper"
+  },
+  "deleteDialog": {
+    "title": "Delete card?",
+    "description": "This action cannot be undone. Purchase history will be preserved."
+  },
+  "editor": {
+    "editTitle": "Edit Card",
+    "createTitle": "New Card",
+    "editDescription": "Update card details",
+    "createDescription": "Add a new card",
+    "cancel": "Cancel",
+    "update": "Update",
+    "add": "Add",
+    "nameLabel": "Card Name",
+    "namePlaceholder": "e.g. Platinum Rewards",
+    "typeLabel": "Type",
+    "brandLabel": "Network",
+    "digitsLabel": "Last 4 digits",
+    "digitsPlaceholder": "0000",
+    "flagLabel": "Issuer/Bank (optional)",
+    "flagPlaceholder": "e.g. Chase, Citibank",
+    "limitLabel": "Credit Limit (BRL)",
+    "closingDayLabel": "Closing Day",
+    "dueDayLabel": "Due Day",
+    "colorLabel": "Color",
+    "colors": {
+      "purple": "Purple",
+      "orange": "Orange",
+      "red": "Red",
+      "blue": "Blue",
+      "cyan": "Cyan",
+      "green": "Green",
+      "pink": "Pink"
+    }
+  }
+}
