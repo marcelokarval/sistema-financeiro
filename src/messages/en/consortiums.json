@@ -1,0 +1,150 @@
+{
+  "title": "Consortiums",
+  "subtitle": "Track installments, payments, and assemblies.",
+  "loading": "Loading consortiums…",
+  "loadingInstallments": "Loading installments…",
+  "status": {
+    "ACTIVE": "Active",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled",
+    "CONTEMPLATED": "Awarded"
+  },
+  "installmentStatus": {
+    "PAID": "Paid",
+    "PENDING": "Pending",
+    "OVERDUE": "Overdue"
+  },
+  "filters": {
+    "ariaLabel": "Filter consortiums by status",
+    "ALL": "All",
+    "ACTIVE": "Active",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled",
+    "CONTEMPLATED": "Awarded"
+  },
+  "actions": {
+    "newConsortium": "New consortium",
+    "backToConsortiums": "Back to consortiums",
+    "edit": "Edit",
+    "delete": "Delete",
+    "retry": "Try again",
+    "openAriaLabel": "Open consortium {description}",
+    "editAriaLabel": "Edit consortium {description}",
+    "deleteAriaLabel": "Delete consortium {description}",
+    "markPaid": "Mark as paid",
+    "markPaidAriaLabel": "Mark installment {number} as paid"
+  },
+  "errors": {
+    "loadList": "Could not load consortiums.",
+    "loadInstallments": "Could not load installments. Go back and open the consortium again.",
+    "create": "Error creating consortium",
+    "update": "Error updating consortium",
+    "delete": "Error deleting consortium",
+    "markPaid": "Error marking installment",
+    "markPaidError": "Error marking installment as paid"
+  },
+  "toast": {
+    "created": "Consortium created successfully!",
+    "updated": "Consortium updated!",
+    "deleted": "Consortium deleted!",
+    "installmentPaid": "Installment marked as paid!"
+  },
+  "summary": {
+    "ariaLabel": "Consortiums summary",
+    "totalInConsortiums": "Total in consortiums",
+    "totalPaid": "Total paid",
+    "remainingAmount": "Remaining amount",
+    "overallProgress": "Overall progress"
+  },
+  "list": {
+    "title": "Registered consortiums",
+    "showingCount": "{shown} of {total, plural, one {# consortium} other {# consortiums}}",
+    "emptyAllTitle": "No consortiums registered",
+    "emptyAllSubtitle": "Use New consortium to get started.",
+    "emptyFilteredTitle": "No consortiums found",
+    "emptyFilteredSubtitle": "Change the filter to see more results.",
+    "ariaLabel": "Registered consortiums",
+    "group": "Group {group}",
+    "quota": "Quota {quota}",
+    "paidInstallmentsMonthly": "{paid}/{total} installments paid · <mono>{monthly}</mono>/mo",
+    "nextAssembly": "Next assembly: {date}"
+  },
+  "progress": {
+    "label": "Financing progress",
+    "ariaLabel": "Financing progress for {description}",
+    "valueText": "{percent}% · {funded} of {total}"
+  },
+  "detail": {
+    "summaryAriaLabel": "Consortium summary",
+    "totalAmount": "Total amount",
+    "fundedAmount": "Funded amount",
+    "monthlyPayment": "Monthly payment",
+    "paidInstallments": "Paid installments",
+    "installmentsTitle": "Installments",
+    "paidOf": "{paid} of {total} paid",
+    "emptyInstallments": "No installments found",
+    "installmentsAriaLabel": "Consortium installments",
+    "installmentLabel": "Installment {number}",
+    "dueDate": "Due: {date}",
+    "paidOn": "Paid on {date}",
+    "assembliesTitle": "Assemblies & details",
+    "assembliesAttended": "Assemblies attended",
+    "nextAssembly": "Next assembly",
+    "notScheduled": "Not scheduled",
+    "administrator": "Administrator",
+    "startDate": "Start date"
+  },
+  "createDialog": {
+    "title": "New Consortium",
+    "description": "Fill in the details of the new consortium",
+    "descriptionLabel": "Asset Description",
+    "descriptionPlaceholder": "e.g., Honda Civic 2024",
+    "groupLabel": "Group",
+    "groupPlaceholder": "e.g., 0123",
+    "quotaLabel": "Quota",
+    "quotaPlaceholder": "e.g., 0042",
+    "administratorLabel": "Administrator",
+    "administratorPlaceholder": "e.g., Banco do Brasil, Santander...",
+    "totalAmountLabel": "Total Amount (BRL)",
+    "monthlyPaymentLabel": "Monthly Payment (BRL)",
+    "decimalPlaceholder": "0.00",
+    "installmentCountLabel": "Total Installments",
+    "installmentCountPlaceholder": "e.g., 120",
+    "startDateLabel": "Start Date",
+    "nextAssemblyLabel": "Next Assembly",
+    "categoryLabel": "Category",
+    "categoryPlaceholder": "Select...",
+    "accountLabel": "Linked Account",
+    "accountNone": "None",
+    "cancel": "Cancel",
+    "submit": "Create Consortium"
+  },
+  "editor": {
+    "title": "Edit Consortium",
+    "description": "Update consortium assembly information",
+    "cancel": "Cancel",
+    "save": "Save",
+    "nextAssemblyLabel": "Next Assembly Date",
+    "assembliesAttendedLabel": "Assemblies Attended"
+  },
+  "delete": {
+    "title": "Delete Consortium",
+    "descriptionDetail": "Are you sure you want to delete the consortium \"{description}\"? This action cannot be undone.",
+    "descriptionList": "Are you sure you want to delete this consortium? This action cannot be undone and all associated installments will be removed.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  },
+  "payment": {
+    "title": "Mark Installment as Paid",
+    "description": "Installment {number} — {amount}",
+    "cancel": "Cancel",
+    "confirm": "Confirm Payment",
+    "paidDateLabel": "Payment Date",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Optional note...",
+    "assemblySection": "Assembly Information (optional)",
+    "assemblyDateLabel": "Assembly Date",
+    "assemblyResultLabel": "Assembly Result",
+    "assemblyResultPlaceholder": "e.g., Awarded at assembly..."
+  }
+}

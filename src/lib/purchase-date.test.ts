@@ -5,6 +5,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CardsView } from '@/components/finance/cards-view';
 import { formatPurchaseDate, purchaseDateForInput, purchaseDateForSave } from './purchase-date';
+import { currencyFmt, dateFmt, dateShortFmt, percentFmt, shortCurrency } from './helpers';
 import { existsSync } from 'node:fs';
 import { NextRequest } from 'next/server';
 import { DashboardContent } from '@/components/finance/dashboard-view';
@@ -90,6 +91,64 @@ timeZoneTest('Dashboard mantém o dia civil de Compras recentes sem mudar a data
   expect(markup).toMatch(new RegExp("Compra civil<span[^>]*>19/11/2026 · 0 itens"));
   expect(markup).toContain(`>${local} · 0 itens</span>`);
   expect(markup).toMatch(new RegExp(`Transação controle</p><(?:p|div)[^>]*>${local}`));
+});
+
+test('formatadores financeiros preservam BRL nominal e formatação regional por locale', () => {
+  const ptCurrency = currencyFmt(1234.56, 'pt');
+  const esCurrency = currencyFmt(1234.56, 'es');
+  const enCurrency = currencyFmt(1234.56, 'en');
+
+  expect(ptCurrency).toContain('R$');
+  expect(ptCurrency).toContain('1.234,56');
+  expect(esCurrency).toContain('BRL');
+  expect(esCurrency).toContain('1234,56');
+  expect(esCurrency).not.toContain('€');
+  expect(enCurrency).toContain('R$');
+  expect(enCurrency).toContain('1,234.56');
+  expect(enCurrency).not.toMatch(/(?<![R])\$/);
+
+  expect(shortCurrency(1500, 'pt')).toBe('1,5k');
+  expect(shortCurrency(1500, 0)).toBe('1,5k');
+  expect(shortCurrency(1500, 'es')).toBe('1,5k');
+  expect(shortCurrency(1500, 'en')).toBe('1.5k');
+  expect(shortCurrency(2500000, 'en')).toBe('2.5M');
+  expect(shortCurrency(500, 'en')).toBe('500');
+
+  expect(percentFmt(12.34, 'pt')).toBe('+12,3%');
+  expect(percentFmt(12.34, 'es')).toBe('+12,3%');
+  expect(percentFmt(12.34, 'en')).toBe('+12.3%');
+  expect(percentFmt(-4.5, 'en')).toBe('-4.5%');
+});
+
+test('formatadores de data preservam dia civil em UTC para pt, es e en', () => {
+  for (const input of ['2026-11-19', '2026-11-19T00:00:00.000Z']) {
+    expect(dateFmt(input, 'pt')).toBe('19/11/2026');
+    expect(dateFmt(input, 'es')).toBe('19/11/2026');
+    expect(dateFmt(input, 'en')).toBe('11/19/2026');
+
+    expect(dateShortFmt(input, 'pt')).toBe('19/11/26');
+    expect(dateShortFmt(input, 'es')).toBe('19/11/26');
+    expect(dateShortFmt(input, 'en')).toBe('11/19/26');
+
+    expect(formatPurchaseDate(input, 'date', 'pt')).toBe('19/11/2026');
+    expect(formatPurchaseDate(input, 'date', 'es')).toBe('19/11/2026');
+    expect(formatPurchaseDate(input, 'date', 'en')).toBe('11/19/2026');
+  }
+
+  expect(dateFmt('invalida', 'en')).toBe('invalida');
+  expect(dateShortFmt('invalida', 'es')).toBe('invalida');
+});
+
+timeZoneTest('formatPurchaseDate preserva hora local de instante histórico por locale', () => {
+  expect(formatPurchaseDate('2026-11-19T01:15:00Z', 'date', 'en')).toBe(
+    bahia ? '11/18/2026' : '11/19/2026',
+  );
+  expect(formatPurchaseDate('2026-11-19T01:15:00Z', 'receipt', 'es')).toBe(
+    bahia ? '18/11/2026, 22:15' : '19/11/2026, 01:15',
+  );
+  expect(formatPurchaseDate('2026-11-19T01:15:00Z', 'receipt', 'en')).toContain(
+    bahia ? '11/18/2026' : '11/19/2026',
+  );
 });
 
 // Opt-in: provisione uma base nova em bwrap com /tmp privado, sem .env e sem rede.

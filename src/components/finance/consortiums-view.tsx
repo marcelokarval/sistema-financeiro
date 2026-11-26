@@ -31,11 +31,19 @@ import {
 } from './consortium-installment-payment';
 
 import { currencyFmt, dateFmt, pct } from '@/lib/helpers';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { findPayableConsortiumInstallment, isCurrentConsortiumSelection, readConsortiumInstallments,
   resolveConsortiumPaymentRefresh,
   type ConsortiumInstallment, type ConsortiumSelection } from '@/lib/consortium-selection';
 import { EmptyState, StatusBadge } from '@/components/shared/ui-helpers';
 import { useAppStore } from '@/lib/store';
+import {
+  buildStatusBadgeLabels,
+  CONSORTIUM_FILTER_TABS,
+  CONSORTIUM_INSTALLMENT_STATUS_META,
+  CONSORTIUM_STATUS_META,
+  formatCivilDate,
+} from './portfolio-i18n';
 
 // ── Types ─────────────────────────────────────────────────────────
 interface Consortium {
@@ -81,32 +89,19 @@ interface Account {
   name: string;
 }
 
-// ── Status Configs ────────────────────────────────────────────────
-const consortiumStatusLabels: Record<string, { text: string; className: string }> = {
-  ACTIVE: { text: 'Ativo', className: 'bg-muted text-[var(--ds-accent-positive)]' },
-  COMPLETED: { text: 'Concluído', className: 'bg-muted text-[var(--ds-accent-positive)]' },
-  CANCELLED: { text: 'Cancelado', className: 'bg-muted text-muted-foreground' },
-  CONTEMPLATED: { text: 'Contemplado', className: 'bg-muted text-[var(--ds-accent-warning)]' },
-};
-
-const installmentStatusLabels: Record<string, { text: string; className: string }> = {
-  PAID: { text: 'Paga', className: 'bg-muted text-[var(--ds-accent-positive)]' },
-  PENDING: { text: 'Pendente', className: 'bg-muted text-[var(--ds-accent-warning)]' },
-  OVERDUE: { text: 'Vencida', className: 'bg-muted text-destructive' },
-};
-
 type FilterStatus = 'ALL' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'CONTEMPLATED';
 
 const assemblyDateForInput = (value: string | null) => value?.slice(0, 10) ?? '';
 
-function formatAssemblyDate(value: string) {
+function formatAssemblyDate(value: string, locale?: string) {
   // A API serializa o dia escolhido no input como ISO em UTC.
-  const [year, month, day] = assemblyDateForInput(value).split('-');
-  return `${day}/${month}/${year}`;
+  return formatCivilDate(value, locale);
 }
 
 // ── Component ─────────────────────────────────────────────────────
 export function ConsortiumsView() {
+  const t = useSafeTranslations('consortiums');
+  const locale = useSafeLocale();
   const [consortiums, setConsortiums] = useState<Consortium[]>([]);
   const [installments, setInstallments] = useState<ConsortiumInstallment[]>([]);
   const [installmentLoad, setInstallmentLoad] = useState<InstallmentLoad>('loading');
@@ -408,16 +403,16 @@ export function ConsortiumsView() {
       });
       if (!res.ok) {
         const data = await res.json();
-        if (currentCreateOpening.current === opening) toast.error(data.error || 'Erro ao criar consórcio');
+        if (currentCreateOpening.current === opening) toast.error(data.error || t('errors.create'));
         return;
       }
       if (currentCreateOpening.current === opening) {
-        toast.success('Consórcio criado com sucesso!');
+        toast.success(t('toast.created'));
         closeCreateDialog();
       }
       void fetchConsortiums();
     } catch {
-      if (currentCreateOpening.current === opening) toast.error('Erro ao criar consórcio');
+      if (currentCreateOpening.current === opening) toast.error(t('errors.create'));
     } finally {
       pendingCreates.current.delete(opening);
       setCreating((current) => current === opening ? null : current);
@@ -447,17 +442,17 @@ export function ConsortiumsView() {
       });
       if (!res.ok) {
         const data = await res.json();
-        if (currentEditOpening.current === opening) toast.error(data.error || 'Erro ao atualizar consórcio');
+        if (currentEditOpening.current === opening) toast.error(data.error || t('errors.update'));
         return;
       }
       if (currentEditOpening.current === opening) {
-        toast.success('Consórcio atualizado!');
+        toast.success(t('toast.updated'));
         closeEditDialog();
       }
       const detailOpening = currentOpening.current;
       void fetchConsortiums(detailOpening?.consortiumId === id ? detailOpening : undefined);
     } catch {
-      if (currentEditOpening.current === opening) toast.error('Erro ao atualizar consórcio');
+      if (currentEditOpening.current === opening) toast.error(t('errors.update'));
     } finally {
       pendingEdits.current.delete(id);
       setEditingIds(new Set(pendingEdits.current));
@@ -483,16 +478,16 @@ export function ConsortiumsView() {
         body: JSON.stringify({ id }),
       });
       if (!res.ok) {
-        toast.error('Erro ao excluir consórcio');
+        toast.error(t('errors.delete'));
         return;
       }
-      toast.success('Consórcio excluído!');
+      toast.success(t('toast.deleted'));
       if (dialogOrigin.current === originAtConfirm) dialogOrigin.current = null;
       setShowDeleteDialog((current) => current === id ? null : current);
       if (opening?.consortiumId === id && isCurrentConsortiumSelection(currentOpening.current, opening)) closeConsortium();
       void fetchConsortiums();
     } catch {
-      toast.error('Erro ao excluir consórcio');
+      toast.error(t('errors.delete'));
     } finally {
       deleteInFlight.current = false;
       setDeleting(false);
@@ -530,14 +525,14 @@ export function ConsortiumsView() {
       });
       if (!res.ok) {
         const data = await res.json();
-        if (currentConfirmation.current === confirmation) toast.error(data.error || 'Erro ao marcar parcela');
+        if (currentConfirmation.current === confirmation) toast.error(data.error || t('errors.markPaid'));
         return;
       }
       succeeded = true;
       paidInSession.current.add(installment.id);
-      if (currentConfirmation.current === confirmation) toast.success('Parcela marcada como paga!');
+      if (currentConfirmation.current === confirmation) toast.success(t('toast.installmentPaid'));
     } catch {
-      if (currentConfirmation.current === confirmation) toast.error('Erro ao marcar parcela como paga');
+      if (currentConfirmation.current === confirmation) toast.error(t('errors.markPaidError'));
     } finally {
       // Releia sem reaproveitar a confirmação, inclusive após erro de resultado incerto.
       const refresh = resolveConsortiumPaymentRefresh(currentOpening.current, opening, succeeded);
@@ -575,7 +570,7 @@ export function ConsortiumsView() {
   if (loading) {
     return (
       <section className="space-y-4" aria-busy="true">
-        <p role="status" className="text-sm text-muted-foreground">Carregando consórcios…</p>
+        <p role="status" className="text-sm text-muted-foreground">{t('loading')}</p>
         <Skeleton className="motion-reduce:animate-none h-24 rounded-xl" />
         <Skeleton className="motion-reduce:animate-none h-36 rounded-xl" />
       </section>
@@ -588,7 +583,7 @@ export function ConsortiumsView() {
       <section className="min-w-0 space-y-6" aria-labelledby="consortium-detail-title">
         <header className="space-y-3">
           <Button variant="ghost" className="min-h-11 text-muted-foreground" onClick={closeConsortium}>
-            <ArrowLeft aria-hidden="true" /> Voltar aos consórcios
+            <ArrowLeft aria-hidden="true" /> {t('actions.backToConsortiums')}
           </Button>
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 space-y-2">
@@ -597,10 +592,10 @@ export function ConsortiumsView() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" className="min-h-11" onClick={(event) => { captureDialogFocus(event); openEditDialog(c); }}>
-                <Pencil aria-hidden="true" /> Editar
+                <Pencil aria-hidden="true" /> {t('actions.edit')}
               </Button>
               <Button variant="outline" className="min-h-11 text-destructive hover:text-destructive" onClick={(event) => { captureDialogFocus(event); setShowDeleteDialog(c.id); }}>
-                <Trash2 aria-hidden="true" /> Excluir
+                <Trash2 aria-hidden="true" /> {t('actions.delete')}
               </Button>
             </div>
           </div>
@@ -635,46 +630,44 @@ export function ConsortiumsView() {
     <section className="min-w-0 space-y-6" aria-labelledby="consortium-list-title">
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <h2 id="consortium-list-title" ref={listHeading} tabIndex={-1} className="text-2xl font-semibold tracking-tight">Consórcios</h2>
-          <p className="text-sm text-muted-foreground">Acompanhe parcelas, pagamentos e assembleias.</p>
+          <h2 id="consortium-list-title" ref={listHeading} tabIndex={-1} className="text-2xl font-semibold tracking-tight">{t('title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Button id="consortium-create" className="min-h-11 self-start sm:self-auto" onClick={(event) => { captureDialogFocus(event); openCreateDialog(); }}>
-          <Plus aria-hidden="true" /> Novo consórcio
+          <Plus aria-hidden="true" /> {t('actions.newConsortium')}
         </Button>
       </header>
-      <dl aria-label="Resumo de consórcios" className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border px-2 py-4 sm:grid-cols-4">
-        <ConsortiumDatum label="Total em consórcios" value={currencyFmt(summary.totalEmConsortios)} />
-        <ConsortiumDatum label="Total pago" value={currencyFmt(summary.totalPago)} />
-        <ConsortiumDatum label="Valor restante" value={currencyFmt(summary.valorRestante)} />
-        <ConsortiumDatum label="Progresso geral" value={`${summary.taxaProgresso}%`} />
+      <dl aria-label={t('summary.ariaLabel')} className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border px-2 py-4 sm:grid-cols-4">
+        <ConsortiumDatum label={t('summary.totalInConsortiums')} value={currencyFmt(summary.totalEmConsortios, locale)} />
+        <ConsortiumDatum label={t('summary.totalPaid')} value={currencyFmt(summary.totalPago, locale)} />
+        <ConsortiumDatum label={t('summary.remainingAmount')} value={currencyFmt(summary.valorRestante, locale)} />
+        <ConsortiumDatum label={t('summary.overallProgress')} value={`${summary.taxaProgresso}%`} />
       </dl>
       <section aria-labelledby="consortium-records-title" className="space-y-3">
-        <h3 id="consortium-records-title" className="text-base font-semibold">Consórcios cadastrados</h3>
+        <h3 id="consortium-records-title" className="text-base font-semibold">{t('list.title')}</h3>
         <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterStatus)}>
-          <TabsList aria-label="Filtrar consórcios por situação" className="h-auto max-w-full flex-wrap justify-start gap-1 p-1">
-            <TabsTrigger className="min-h-10" value="ALL">Todos</TabsTrigger>
-            <TabsTrigger className="min-h-10" value="ACTIVE">Ativos</TabsTrigger>
-            <TabsTrigger className="min-h-10" value="COMPLETED">Concluídos</TabsTrigger>
-            <TabsTrigger className="min-h-10" value="CANCELLED">Cancelados</TabsTrigger>
-            <TabsTrigger className="min-h-10" value="CONTEMPLATED">Contemplados</TabsTrigger>
+          <TabsList aria-label={t('filters.ariaLabel')} className="h-auto max-w-full flex-wrap justify-start gap-1 p-1">
+            {CONSORTIUM_FILTER_TABS.map((status) => (
+              <TabsTrigger key={status} className="min-h-10" value={status}>{t(`filters.${status}`)}</TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
-        <p role="status" className="text-xs text-muted-foreground">{filteredConsortiums.length} de {consortiums.length} consórcios</p>
+        <p role="status" className="text-xs text-muted-foreground">{t('list.showingCount', { shown: filteredConsortiums.length, total: consortiums.length })}</p>
         {loadError && consortiums.length === 0 ? (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
-            <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar os consórcios.</p>
+            <p role="alert" className="text-sm text-muted-foreground">{t('errors.loadList')}</p>
             <Button variant="outline" size="sm" className="min-h-9" onClick={() => { setLoading(true); void fetchConsortiums(); }}>
               <RefreshCw aria-hidden="true" className="size-3.5" />
-              Tentar novamente
+              {t('actions.retry')}
             </Button>
           </div>
         ) : filteredConsortiums.length === 0 ? (
           <EmptyState icon={Building2}
-            title={filter === "ALL" ? "Nenhum consórcio cadastrado" : "Nenhum consórcio encontrado"}
-            subtitle={filter === "ALL" ? "Use Novo consórcio para começar." : "Altere o filtro para ver mais resultados."}
+            title={filter === "ALL" ? t('list.emptyAllTitle') : t('list.emptyFilteredTitle')}
+            subtitle={filter === "ALL" ? t('list.emptyAllSubtitle') : t('list.emptyFilteredSubtitle')}
           />
         ) : (
-          <ul aria-label="Consórcios cadastrados" className="divide-y divide-border rounded-xl border border-border bg-card">
+          <ul aria-label={t('list.ariaLabel')} className="divide-y divide-border rounded-xl border border-border bg-card">
             {filteredConsortiums.map((c) => (
               <ConsortiumRow key={c.id} consortium={c}
                 onOpen={() => { detailOrigin.current = c.id; openConsortium(c); }}
@@ -690,55 +683,55 @@ export function ConsortiumsView() {
         <Dialog open={!!createOpening} onOpenChange={(open) => { if (!open) closeCreateDialog(); }}>
           <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Novo Consórcio</DialogTitle>
+              <DialogTitle>{t('createDialog.title')}</DialogTitle>
               <DialogDescription>
-                Preencha os dados do novo consórcio
+                {t('createDialog.description')}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <Label htmlFor="consortium-description">Descrição do Bem</Label>
+                  <Label htmlFor="consortium-description">{t('createDialog.descriptionLabel')}</Label>
                   <Input id="consortium-description"
                     value={createForm.description}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, description: e.target.value })
                     }
-                    placeholder="Ex: Honda Civic 2024"
+                    placeholder={t('createDialog.descriptionPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="consortium-group">Grupo</Label>
+                  <Label htmlFor="consortium-group">{t('createDialog.groupLabel')}</Label>
                   <Input id="consortium-group"
                     value={createForm.group}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, group: e.target.value })
                     }
-                    placeholder="Ex: 0123"
+                    placeholder={t('createDialog.groupPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="consortium-quota">Cota</Label>
+                  <Label htmlFor="consortium-quota">{t('createDialog.quotaLabel')}</Label>
                   <Input id="consortium-quota"
                     value={createForm.quota}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, quota: e.target.value })
                     }
-                    placeholder="Ex: 0042"
+                    placeholder={t('createDialog.quotaPlaceholder')}
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label htmlFor="consortium-administrator">Administradora</Label>
+                  <Label htmlFor="consortium-administrator">{t('createDialog.administratorLabel')}</Label>
                   <Input id="consortium-administrator"
                     value={createForm.administrator}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, administrator: e.target.value })
                     }
-                    placeholder="Ex: Banco do Brasil, Santander..."
+                    placeholder={t('createDialog.administratorPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="consortium-total-amount">Valor Total (R$)</Label>
+                  <Label htmlFor="consortium-total-amount">{t('createDialog.totalAmountLabel')}</Label>
                   <Input id="consortium-total-amount"
                     type="number"
                     step="0.01"
@@ -746,11 +739,11 @@ export function ConsortiumsView() {
                     onChange={(e) =>
                       setCreateForm({ ...createForm, totalAmount: e.target.value })
                     }
-                    placeholder="0,00"
+                    placeholder={t('createDialog.decimalPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="consortium-monthly-payment">Parcela Mensal (R$)</Label>
+                  <Label htmlFor="consortium-monthly-payment">{t('createDialog.monthlyPaymentLabel')}</Label>
                   <Input id="consortium-monthly-payment"
                     type="number"
                     step="0.01"
@@ -758,22 +751,22 @@ export function ConsortiumsView() {
                     onChange={(e) =>
                       setCreateForm({ ...createForm, monthlyPayment: e.target.value })
                     }
-                    placeholder="0,00"
+                    placeholder={t('createDialog.decimalPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="consortium-installment-count">Total de Parcelas</Label>
+                  <Label htmlFor="consortium-installment-count">{t('createDialog.installmentCountLabel')}</Label>
                   <Input id="consortium-installment-count"
                     type="number"
                     value={createForm.installmentCount}
                     onChange={(e) =>
                       setCreateForm({ ...createForm, installmentCount: e.target.value })
                     }
-                    placeholder="Ex: 120"
+                    placeholder={t('createDialog.installmentCountPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="consortium-start-date">Data de Início</Label>
+                  <Label htmlFor="consortium-start-date">{t('createDialog.startDateLabel')}</Label>
                   <Input id="consortium-start-date"
                     type="date"
                     value={createForm.startDate}
@@ -783,7 +776,7 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="consortium-next-assembly">Próxima Assembleia</Label>
+                  <Label htmlFor="consortium-next-assembly">{t('createDialog.nextAssemblyLabel')}</Label>
                   <Input id="consortium-next-assembly"
                     type="date"
                     value={createForm.nextAssemblyDate}
@@ -793,7 +786,7 @@ export function ConsortiumsView() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="consortium-category">Categoria</Label>
+                  <Label htmlFor="consortium-category">{t('createDialog.categoryLabel')}</Label>
                   <Select
                     value={createForm.categoryId}
                     onValueChange={(v) =>
@@ -801,7 +794,7 @@ export function ConsortiumsView() {
                     }
                   >
                     <SelectTrigger id="consortium-category" className="w-full">
-                      <SelectValue placeholder="Selecione..." />
+                      <SelectValue placeholder={t('createDialog.categoryPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
@@ -813,7 +806,7 @@ export function ConsortiumsView() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="consortium-account">Conta Vinculada</Label>
+                  <Label htmlFor="consortium-account">{t('createDialog.accountLabel')}</Label>
                   <Select
                     value={createForm.accountId || 'none'}
                     onValueChange={(v) =>
@@ -821,10 +814,10 @@ export function ConsortiumsView() {
                     }
                   >
                     <SelectTrigger id="consortium-account" className="w-full">
-                      <SelectValue placeholder="Nenhuma" />
+                      <SelectValue placeholder={t('createDialog.accountNone')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Nenhuma</SelectItem>
+                      <SelectItem value="none">{t('createDialog.accountNone')}</SelectItem>
                       {accounts.map((acc) => (
                         <SelectItem key={acc.id} value={acc.id}>
                           {acc.name}
@@ -837,12 +830,12 @@ export function ConsortiumsView() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={closeCreateDialog}>
-                Cancelar
+                {t('createDialog.cancel')}
               </Button>
               <Button
                 onClick={createConsortium} disabled={createOpening !== null && creating === createOpening}
               >
-                Criar Consórcio
+                {t('createDialog.submit')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -867,26 +860,30 @@ function ConsortiumDatum({ label, value }: { label: string; value: string }) {
 }
 
 function ConsortiumIdentity({ consortium: c }: { consortium: Consortium }) {
+  const t = useSafeTranslations('consortiums');
+  const statusLabels = useMemo(() => buildStatusBadgeLabels(CONSORTIUM_STATUS_META, t), [t]);
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-      <StatusBadge status={c.status} labels={consortiumStatusLabels} />
-      {c.group && <span className="break-words">Grupo {c.group}</span>}
-      {c.quota && <span className="break-words">Cota {c.quota}</span>}
+      <StatusBadge status={c.status} labels={statusLabels} />
+      {c.group && <span className="break-words">{t('list.group', { group: c.group })}</span>}
+      {c.quota && <span className="break-words">{t('list.quota', { quota: c.quota })}</span>}
     </div>
   );
 }
 
 function ConsortiumProgress({ consortium: c }: { consortium: Consortium }) {
+  const t = useSafeTranslations('consortiums');
+  const locale = useSafeLocale();
   const progress = pct(c.fundedAmount, c.totalAmount);
   const barValue = Math.min(100, Math.max(0, progress));
   return (
     <div className="min-w-0 space-y-1.5">
       <div className="flex flex-wrap justify-between gap-x-3 text-xs text-muted-foreground">
-        <span>Progresso do financiamento</span>
+        <span>{t('progress.label')}</span>
         <span className="font-mono text-foreground tabular-nums">{progress}%</span>
       </div>
-      <div role="progressbar" aria-label={`Progresso do financiamento de ${c.description}`} aria-valuenow={barValue}
-        aria-valuetext={`${progress}% · ${currencyFmt(c.fundedAmount)} de ${currencyFmt(c.totalAmount)}`} className="h-1.5 rounded-full bg-muted">
+      <div role="progressbar" aria-label={t('progress.ariaLabel', { description: c.description })} aria-valuenow={barValue}
+        aria-valuetext={t('progress.valueText', { percent: progress, funded: currencyFmt(c.fundedAmount, locale), total: currencyFmt(c.totalAmount, locale) })} className="h-1.5 rounded-full bg-muted">
         <div className="h-full rounded-full bg-primary" style={{ width: `${barValue}%` }} />
       </div>
     </div>
@@ -899,11 +896,13 @@ export function ConsortiumRow({ consortium: c, onOpen, onEdit, onDelete }: {
   onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
   onDelete: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const t = useSafeTranslations('consortiums');
+  const locale = useSafeLocale();
   return (
     <li className="grid min-w-0 gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)_auto] lg:items-center">
       <div className="min-w-0 space-y-1.5">
         <Button id={`consortium-open-${c.id}`} variant="ghost" className="h-auto min-h-11 max-w-full justify-start whitespace-normal px-2 text-left"
-          aria-label={`Abrir consórcio ${c.description}`} onClick={onOpen}>
+          aria-label={t('actions.openAriaLabel', { description: c.description })} onClick={onOpen}>
           <span className="min-w-0 break-words font-semibold">{c.description}</span><ChevronRight aria-hidden="true" />
         </Button>
         <ConsortiumIdentity consortium={c} />
@@ -912,13 +911,18 @@ export function ConsortiumRow({ consortium: c, onOpen, onEdit, onDelete }: {
       <div className="min-w-0 space-y-2">
         <ConsortiumProgress consortium={c} />
         <p className="break-words text-xs text-muted-foreground">
-          {c.paidInstallments}/{c.installmentCount} parcelas pagas · <span className="font-mono tabular-nums">{currencyFmt(c.monthlyPayment)}</span>/mês
+          {t.rich('list.paidInstallmentsMonthly', {
+            paid: c.paidInstallments,
+            total: c.installmentCount,
+            monthly: currencyFmt(c.monthlyPayment, locale),
+            mono: (chunks) => <span className="font-mono tabular-nums">{chunks}</span>,
+          })}
         </p>
-        {c.nextAssemblyDate && <p className="text-xs text-muted-foreground">Próxima assembleia: {formatAssemblyDate(c.nextAssemblyDate)}</p>}
+        {c.nextAssemblyDate && <p className="text-xs text-muted-foreground">{t('list.nextAssembly', { date: formatAssemblyDate(c.nextAssemblyDate, locale) })}</p>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" className="min-h-11" aria-label={`Editar consórcio ${c.description}`} onClick={onEdit}><Pencil aria-hidden="true" /> Editar</Button>
-        <Button variant="outline" className="min-h-11 text-destructive hover:text-destructive" aria-label={`Excluir consórcio ${c.description}`} onClick={onDelete}><Trash2 aria-hidden="true" /> Excluir</Button>
+        <Button variant="outline" className="min-h-11" aria-label={t('actions.editAriaLabel', { description: c.description })} onClick={onEdit}><Pencil aria-hidden="true" /> {t('actions.edit')}</Button>
+        <Button variant="outline" className="min-h-11 text-destructive hover:text-destructive" aria-label={t('actions.deleteAriaLabel', { description: c.description })} onClick={onDelete}><Trash2 aria-hidden="true" /> {t('actions.delete')}</Button>
       </div>
     </li>
   );
@@ -929,15 +933,21 @@ export function ConsortiumDetail({ consortium: c, installments, installmentLoad 
   installmentLoad?: InstallmentLoad;
   onPay: (installment: ConsortiumInstallment, event: MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const t = useSafeTranslations('consortiums');
+  const locale = useSafeLocale();
+  const installmentStatusLabels = useMemo(
+    () => buildStatusBadgeLabels(CONSORTIUM_INSTALLMENT_STATUS_META, t),
+    [t],
+  );
   const rows = installmentLoad === 'ready' && installments.every((row) => row.consortiumId === c.id) ? installments : [];
   return (
     <>
       <div className="space-y-3">
-        <dl aria-label="Resumo do consórcio" className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border px-2 py-4 sm:grid-cols-4">
-          <ConsortiumDatum label="Valor total" value={currencyFmt(c.totalAmount)} />
-          <ConsortiumDatum label="Valor financiado" value={currencyFmt(c.fundedAmount)} />
-          <ConsortiumDatum label="Parcela mensal" value={currencyFmt(c.monthlyPayment)} />
-          <ConsortiumDatum label="Parcelas pagas" value={`${c.paidInstallments}/${c.installmentCount}`} />
+        <dl aria-label={t('detail.summaryAriaLabel')} className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border px-2 py-4 sm:grid-cols-4">
+          <ConsortiumDatum label={t('detail.totalAmount')} value={currencyFmt(c.totalAmount, locale)} />
+          <ConsortiumDatum label={t('detail.fundedAmount')} value={currencyFmt(c.fundedAmount, locale)} />
+          <ConsortiumDatum label={t('detail.monthlyPayment')} value={currencyFmt(c.monthlyPayment, locale)} />
+          <ConsortiumDatum label={t('detail.paidInstallments')} value={`${c.paidInstallments}/${c.installmentCount}`} />
         </dl>
         <ConsortiumProgress consortium={c} />
       </div>
@@ -945,33 +955,33 @@ export function ConsortiumDetail({ consortium: c, installments, installmentLoad 
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,0.45fr)]">
         <section aria-labelledby="consortium-installments" className="min-w-0 rounded-xl border border-border bg-card">
           <header className="px-4 py-3">
-            <h3 id="consortium-installments" className="text-base font-semibold">Parcelas</h3>
+            <h3 id="consortium-installments" className="text-base font-semibold">{t('detail.installmentsTitle')}</h3>
             <p className="text-sm text-muted-foreground">
-              {rows.filter((i) => i.status === 'PAID').length} de {c.installmentCount} pagas
+              {t('detail.paidOf', { paid: rows.filter((i) => i.status === 'PAID').length, total: c.installmentCount })}
             </p>
           </header>
           {installmentLoad === 'loading' ? (
-            <p role="status" className="border-t border-border px-4 py-6 text-sm text-muted-foreground">Carregando parcelas…</p>
+            <p role="status" className="border-t border-border px-4 py-6 text-sm text-muted-foreground">{t('loadingInstallments')}</p>
           ) : installmentLoad === 'error' ? (
-            <p role="status" className="border-t border-border px-4 py-6 text-sm text-muted-foreground">Não foi possível carregar as parcelas. Volte e abra o consórcio novamente.</p>
+            <p role="status" className="border-t border-border px-4 py-6 text-sm text-muted-foreground">{t('errors.loadInstallments')}</p>
           ) : rows.length === 0 ? (
-            <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground">Nenhuma parcela encontrada</p>
+            <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground">{t('detail.emptyInstallments')}</p>
           ) : (
-            <ul aria-label="Parcelas do consórcio" className="divide-y divide-border border-t border-border">
+            <ul aria-label={t('detail.installmentsAriaLabel')} className="divide-y divide-border border-t border-border">
               {rows.map((inst) => (
                 <li key={inst.id} className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                   <div className="min-w-0 space-y-1 break-words">
-                    <p className="text-sm font-semibold">Parcela {inst.number}</p>
-                    <p className="text-xs text-muted-foreground">Vencimento: {dateFmt(inst.dueDate)}</p>
-                    {inst.paidDate && <p className="text-xs text-muted-foreground">Paga em {dateFmt(inst.paidDate)}</p>}
+                    <p className="text-sm font-semibold">{t('detail.installmentLabel', { number: inst.number })}</p>
+                    <p className="text-xs text-muted-foreground">{t('detail.dueDate', { date: dateFmt(inst.dueDate, locale) })}</p>
+                    {inst.paidDate && <p className="text-xs text-muted-foreground">{t('detail.paidOn', { date: dateFmt(inst.paidDate, locale) })}</p>}
                     {inst.notes && <p className="text-xs text-muted-foreground">{inst.notes}</p>}
                   </div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
                     <StatusBadge status={inst.status} labels={installmentStatusLabels} />
-                    <span className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(inst.amount)}</span>
+                    <span className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(inst.amount, locale)}</span>
                     {(inst.status === 'PENDING' || inst.status === 'OVERDUE') && (
-                      <Button variant="outline" className="min-h-11" aria-label={`Marcar parcela ${inst.number} como paga`} onClick={(event) => onPay(inst, event)}>
-                        <CheckCircle2 aria-hidden="true" /> Marcar como paga
+                      <Button variant="outline" className="min-h-11" aria-label={t('actions.markPaidAriaLabel', { number: inst.number })} onClick={(event) => onPay(inst, event)}>
+                        <CheckCircle2 aria-hidden="true" /> {t('actions.markPaid')}
                       </Button>
                     )}
                   </div>
@@ -981,12 +991,12 @@ export function ConsortiumDetail({ consortium: c, installments, installmentLoad 
           )}
         </section>
         <section aria-labelledby="consortium-assemblies" className="min-w-0 rounded-xl border border-border bg-card p-4">
-          <h3 id="consortium-assemblies" className="text-base font-semibold">Assembleias e cadastro</h3>
+          <h3 id="consortium-assemblies" className="text-base font-semibold">{t('detail.assembliesTitle')}</h3>
           <dl className="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-1">
-            <ConsortiumDatum label="Assembleias assistidas" value={String(c.assembliesAttended)} />
-            <ConsortiumDatum label="Próxima assembleia" value={c.nextAssemblyDate ? formatAssemblyDate(c.nextAssemblyDate) : "Não agendada"} />
-            <ConsortiumDatum label="Administradora" value={c.administrator || "—"} />
-            <ConsortiumDatum label="Data de início" value={dateFmt(c.startDate)} />
+            <ConsortiumDatum label={t('detail.assembliesAttended')} value={String(c.assembliesAttended)} />
+            <ConsortiumDatum label={t('detail.nextAssembly')} value={c.nextAssemblyDate ? formatAssemblyDate(c.nextAssemblyDate, locale) : t('detail.notScheduled')} />
+            <ConsortiumDatum label={t('detail.administrator')} value={c.administrator || "—"} />
+            <ConsortiumDatum label={t('detail.startDate')} value={dateFmt(c.startDate, locale)} />
           </dl>
         </section>
       </div>

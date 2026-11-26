@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { parseJsonBodyLocalized } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 type TransactionType =
   | "APORTE"
@@ -32,6 +39,8 @@ function applyTransactionEffect(
 
 // GET /api/investments/transactions - Listar transações de investimento
 export async function GET(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const { searchParams } = new URL(request.url);
     const investmentId = searchParams.get("investmentId");
@@ -54,17 +63,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(transactions);
   } catch (error) {
     console.error("Erro ao buscar transações de investimento:", error);
-    return NextResponse.json(
-      { error: "Erro ao buscar transações de investimento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.investments.txFetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/investments/transactions - Criar transação de investimento
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const body = await request.json();
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
+
     const {
       investmentId,
       type,
@@ -75,52 +91,69 @@ export async function POST(request: NextRequest) {
       description,
       notes,
       accountId,
-    } = body;
+    } = parsedBody.data;
 
-    if (!investmentId) {
-      return NextResponse.json(
-        { error: "ID do investimento é obrigatório" },
-        { status: 400 }
+    const resolvedInvestmentId =
+      typeof investmentId === "string" ? investmentId.trim() : "";
+
+    if (!resolvedInvestmentId) {
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.idRequired"),
+        400
       );
     }
 
-    if (!type || !["APORTE", "DIVIDENDO", "VENDA", "REINVESTIMENTO", "TAXA", "BONUS"].includes(type)) {
-      return NextResponse.json(
-        { error: "Tipo de transação inválido. Use: APORTE, DIVIDENDO, VENDA, REINVESTIMENTO, TAXA ou BONUS" },
-        { status: 400 }
+    if (
+      typeof type !== "string" ||
+      !["APORTE", "DIVIDENDO", "VENDA", "REINVESTIMENTO", "TAXA", "BONUS"].includes(type)
+    ) {
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txInvalidType"),
+        400
       );
     }
 
     if (amount === undefined || amount === null) {
-      return NextResponse.json(
-        { error: "Valor da transação é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txAmountRequired"),
+        400
       );
     }
 
     const parsedAmount = typeof amount === "boolean" ? NaN : Number(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      return NextResponse.json(
-        { error: "Valor da transação deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txAmountPositive"),
+        400
       );
     }
 
-    if (date !== undefined && date !== null && isNaN(new Date(date).getTime())) {
-      return NextResponse.json(
-        { error: "Data da transação inválida" },
-        { status: 400 }
+    if (
+      date !== undefined &&
+      date !== null &&
+      ((typeof date !== "string" && typeof date !== "number") ||
+        isNaN(new Date(date).getTime()))
+    ) {
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txInvalidDate"),
+        400
       );
     }
 
     const investment = await db.investment.findUnique({
-      where: { id: investmentId },
+      where: { id: resolvedInvestmentId },
     });
 
     if (!investment) {
-      return NextResponse.json(
-        { error: "Investimento não encontrado" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.investments.notFound"),
+        404
       );
     }
 
@@ -133,20 +166,20 @@ export async function POST(request: NextRequest) {
     const transaction = await db.$transaction(async (tx) => {
       const newTransaction = await tx.investmentTransaction.create({
         data: {
-          investmentId,
+          investmentId: resolvedInvestmentId,
           type: transactionType,
           amount: parsedAmount,
-          quantity: quantity ?? 0,
-          unitPrice: unitPrice ?? 0,
-          date: date ? new Date(date) : new Date(),
-          description: description?.trim() ?? "",
-          notes: notes?.trim() ?? "",
-          accountId: accountId ?? null,
+          quantity: typeof quantity === "number" ? quantity : 0,
+          unitPrice: typeof unitPrice === "number" ? unitPrice : 0,
+          date: date ? new Date(date as string | number) : new Date(),
+          description: typeof description === "string" ? description.trim() : "",
+          notes: typeof notes === "string" ? notes.trim() : "",
+          accountId: typeof accountId === "string" && accountId.trim() ? accountId.trim() : null,
         },
       });
 
       await tx.investment.update({
-        where: { id: investmentId },
+        where: { id: resolvedInvestmentId },
         data: {
           currentBalance: { increment: currentBalanceDelta },
           investedAmount: { increment: investedAmountDelta },
@@ -159,17 +192,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(transaction, { status: 201 });
   } catch (error) {
     console.error("Erro ao criar transação de investimento:", error);
-    return NextResponse.json(
-      { error: "Erro ao criar transação de investimento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.investments.txCreateFailed"),
+      500
     );
   }
 }
 
 // PUT /api/investments/transactions - Atualizar transação de investimento
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const body = await request.json();
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
+
     const {
       id,
       investmentId,
@@ -181,59 +221,82 @@ export async function PUT(request: NextRequest) {
       description,
       notes,
       accountId,
-    } = body;
+    } = parsedBody.data;
 
-    if (!id) {
-      return NextResponse.json(
-        { error: "ID da transação é obrigatório" },
-        { status: 400 }
+    const txId = typeof id === "string" ? id.trim() : "";
+    if (!txId) {
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txIdRequired"),
+        400
       );
     }
 
     if (
       type !== undefined &&
-      !["APORTE", "DIVIDENDO", "VENDA", "REINVESTIMENTO", "TAXA", "BONUS"].includes(type)
+      (typeof type !== "string" ||
+        !["APORTE", "DIVIDENDO", "VENDA", "REINVESTIMENTO", "TAXA", "BONUS"].includes(type))
     ) {
-      return NextResponse.json(
-        { error: "Tipo de transação inválido. Use: APORTE, DIVIDENDO, VENDA, REINVESTIMENTO, TAXA ou BONUS" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txInvalidType"),
+        400
       );
     }
 
-    const parsedAmount = amount !== undefined ? Number(amount) : undefined;
+    const parsedAmount =
+      amount !== undefined
+        ? typeof amount === "boolean"
+          ? NaN
+          : Number(amount)
+        : undefined;
     if (parsedAmount !== undefined && (!Number.isFinite(parsedAmount) || parsedAmount <= 0)) {
-      return NextResponse.json(
-        { error: "Valor da transação deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txAmountPositive"),
+        400
       );
     }
 
-    if (date !== undefined && date !== null && isNaN(new Date(date).getTime())) {
-      return NextResponse.json(
-        { error: "Data da transação inválida" },
-        { status: 400 }
+    if (
+      date !== undefined &&
+      date !== null &&
+      ((typeof date !== "string" && typeof date !== "number") ||
+        isNaN(new Date(date).getTime()))
+    ) {
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txInvalidDate"),
+        400
       );
     }
 
     const existingTransaction = await db.investmentTransaction.findUnique({
-      where: { id },
+      where: { id: txId },
     });
 
     if (!existingTransaction) {
-      return NextResponse.json(
-        { error: "Transação não encontrada" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.investments.txNotFound"),
+        404
       );
     }
 
-    if (investmentId !== undefined && investmentId !== existingTransaction.investmentId) {
+    const resolvedTargetInvestmentId =
+      typeof investmentId === "string" ? investmentId : undefined;
+    if (
+      resolvedTargetInvestmentId !== undefined &&
+      resolvedTargetInvestmentId !== existingTransaction.investmentId
+    ) {
       const targetInvestment = await db.investment.findUnique({
-        where: { id: investmentId },
+        where: { id: resolvedTargetInvestmentId },
       });
       if (!targetInvestment) {
-        return NextResponse.json(
-          { error: "Investimento não encontrado" },
-          { status: 404 }
+        return apiErrorResponse(
+          "NOT_FOUND",
+          translateApiMessage(locale, "crud.investments.notFound"),
+          404
         );
       }
     }
@@ -260,7 +323,7 @@ export async function PUT(request: NextRequest) {
 
       // Aplicar novo efeito no investimento
       await tx.investment.update({
-        where: { id: investmentId ?? existingTransaction.investmentId },
+        where: { id: resolvedTargetInvestmentId ?? existingTransaction.investmentId },
         data: {
           currentBalance: { increment: newEffects.currentBalanceDelta },
           investedAmount: { increment: newEffects.investedAmountDelta },
@@ -269,17 +332,21 @@ export async function PUT(request: NextRequest) {
 
       // Atualizar a transação
       const updatedTransaction = await tx.investmentTransaction.update({
-        where: { id },
+        where: { id: txId },
         data: {
-          ...(investmentId !== undefined && { investmentId }),
+          ...(resolvedTargetInvestmentId !== undefined && {
+            investmentId: resolvedTargetInvestmentId,
+          }),
           ...(type !== undefined && { type }),
           ...(parsedAmount !== undefined && { amount: parsedAmount }),
-          ...(quantity !== undefined && { quantity }),
-          ...(unitPrice !== undefined && { unitPrice }),
-          ...(date !== undefined && { date: new Date(date) }),
-          ...(description !== undefined && { description: description.trim() }),
-          ...(notes !== undefined && { notes: notes.trim() }),
-          ...(accountId !== undefined && { accountId: accountId ?? null }),
+          ...(typeof quantity === "number" && { quantity }),
+          ...(typeof unitPrice === "number" && { unitPrice }),
+          ...(date !== undefined && { date: new Date(date as string | number) }),
+          ...(typeof description === "string" && { description: description.trim() }),
+          ...(typeof notes === "string" && { notes: notes.trim() }),
+          ...(accountId !== undefined && {
+            accountId: typeof accountId === "string" && accountId.trim() ? accountId.trim() : null,
+          }),
         },
       });
 
@@ -289,36 +356,49 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(transaction);
   } catch (error) {
     console.error("Erro ao atualizar transação de investimento:", error);
-    return NextResponse.json(
-      { error: "Erro ao atualizar transação de investimento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.investments.txUpdateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/investments/transactions - Excluir transação de investimento
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     let id = new URL(request.url).searchParams.get("id");
     if (!id) {
       const rawBody = await request.text();
       if (rawBody.trim()) {
         try {
-          const parsed = JSON.parse(rawBody) as { id?: string };
-          id = parsed.id ?? null;
+          const parsed: unknown = JSON.parse(rawBody);
+          if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+            return apiErrorResponse(
+              "INVALID_JSON",
+              translateApiMessage(locale, "validation.invalidJson"),
+              400
+            );
+          }
+          const rawId = (parsed as { id?: unknown }).id;
+          id = typeof rawId === "string" ? rawId : null;
         } catch {
-          return NextResponse.json(
-            { error: "Corpo JSON inválido" },
-            { status: 400 }
+          return apiErrorResponse(
+            "INVALID_JSON",
+            translateApiMessage(locale, "validation.invalidJson"),
+            400
           );
         }
       }
     }
 
     if (!id) {
-      return NextResponse.json(
-        { error: "ID da transação é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.txIdRequired"),
+        400
       );
     }
 
@@ -327,9 +407,10 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!existingTransaction) {
-      return NextResponse.json(
-        { error: "Transação não encontrada" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.investments.txNotFound"),
+        404
       );
     }
 
@@ -351,15 +432,15 @@ export async function DELETE(request: NextRequest) {
       });
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Transação excluída com sucesso",
-    });
+    return apiSuccessMessage(
+      translateApiMessage(locale, "crud.investments.txDeleted")
+    );
   } catch (error) {
     console.error("Erro ao excluir transação de investimento:", error);
-    return NextResponse.json(
-      { error: "Erro ao excluir transação de investimento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.investments.txDeleteFailed"),
+      500
     );
   }
 }

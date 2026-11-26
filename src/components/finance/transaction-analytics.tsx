@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSafeTranslations } from '@/i18n/provider';
+import { TRANSACTION_TYPE_FILTER_KEYS } from './analytics-i18n';
 import {
   TransactionDistributionTab,
   TransactionOverviewTab,
@@ -15,15 +17,10 @@ import {
 
 export { TransactionAnalyticsTooltip } from './transaction-analysis-tabs';
 
-const TYPE_LABELS: Record<'ALL' | 'INCOME' | 'EXPENSE', string> = {
-  ALL: 'Todos',
-  INCOME: 'Receitas',
-  EXPENSE: 'Despesas',
-};
-
 function AnalyticsLoadingSkeleton() {
+  const t = useSafeTranslations('analytics');
   return (
-    <Card role="status" aria-label="Carregando análise de transações" className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
+    <Card role="status" aria-label={t('transactions.loadingAria')} className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
       <CardHeader className="px-4 sm:px-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -144,6 +141,7 @@ export function TransactionAnalyticsContent({
   fetchData?: () => void;
   onRetry?: () => void;
 }) {
+  const t = useSafeTranslations('analytics');
   const handleRetry = onRetry ?? fetchData;
 
   const maxMerchantTotal = useMemo(() => {
@@ -163,15 +161,15 @@ export function TransactionAnalyticsContent({
       <section aria-labelledby="transaction-analytics-heading" className="min-w-0">
         <Card className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
           <CardHeader className="px-4 sm:px-5">
-            <h3 id="transaction-analytics-heading" className="text-base font-semibold">Análise de Transações</h3>
+            <h3 id="transaction-analytics-heading" className="text-base font-semibold">{t('transactions.title')}</h3>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3 px-4 sm:px-5">
             <p role="alert" className="text-sm text-muted-foreground">
-              Não foi possível carregar a análise de transações.
+              {t('transactions.error')}
             </p>
             <Button variant="outline" size="sm" className="min-h-9" onClick={handleRetry}>
               <RefreshCw aria-hidden="true" className="size-3.5" />
-              Tentar novamente
+              {t('common.retry')}
             </Button>
           </CardContent>
         </Card>
@@ -187,23 +185,23 @@ export function TransactionAnalyticsContent({
         <CardHeader className="px-4 sm:px-5">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="min-w-0">
-              <h3 id="transaction-analytics-heading" className="text-base font-semibold">Análise de Transações</h3>
+              <h3 id="transaction-analytics-heading" className="text-base font-semibold">{t('transactions.title')}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Padrões e tendências detalhadas
+                {t('transactions.subtitle')}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div role="group" aria-label="Tipo de transação" className="flex flex-wrap items-center gap-1">
-                {(['ALL', 'INCOME', 'EXPENSE'] as const).map((t) => (
+              <div role="group" aria-label={t('transactions.typeFilterAria')} className="flex flex-wrap items-center gap-1">
+                {TRANSACTION_TYPE_FILTER_KEYS.map((filterKey) => (
                   <Button
-                    key={t}
-                    variant={typeFilter === t ? 'default' : 'ghost'}
+                    key={filterKey}
+                    variant={typeFilter === filterKey ? 'default' : 'ghost'}
                     size="sm"
                     className="min-h-9 text-xs px-2.5"
-                    aria-pressed={typeFilter === t}
-                    onClick={() => onTypeFilterChange(t)}
+                    aria-pressed={typeFilter === filterKey}
+                    onClick={() => onTypeFilterChange(filterKey)}
                   >
-                    {TYPE_LABELS[t]}
+                    {t(`transactions.types.${filterKey}`)}
                   </Button>
                 ))}
               </div>
@@ -211,7 +209,7 @@ export function TransactionAnalyticsContent({
                 variant="outline"
                 size="icon"
                 className="size-9"
-                aria-label="Atualizar análise"
+                aria-label={t('transactions.refreshAria')}
                 onClick={fetchData}
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -224,13 +222,13 @@ export function TransactionAnalyticsContent({
           <Tabs value={activeTab} onValueChange={onTabChange}>
             <TabsList className="mb-3 grid h-auto w-full grid-cols-3 gap-0.5 p-1">
               <TabsTrigger value="overview" className="h-auto min-w-0 whitespace-normal px-1 py-1.5 text-xs leading-tight">
-                Visão Geral
+                {t('transactions.tabs.overview')}
               </TabsTrigger>
               <TabsTrigger value="distribution" className="h-auto min-w-0 whitespace-normal px-1 py-1.5 text-xs leading-tight">
-                Distribuição
+                {t('transactions.tabs.distribution')}
               </TabsTrigger>
               <TabsTrigger value="patterns" className="h-auto min-w-0 whitespace-normal px-1 py-1.5 text-xs leading-tight">
-                Padrões
+                {t('transactions.tabs.patterns')}
               </TabsTrigger>
             </TabsList>
 

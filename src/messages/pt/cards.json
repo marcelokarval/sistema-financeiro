@@ -1,0 +1,110 @@
+{
+  "loading": "Carregando cartões…",
+  "title": "Cartões",
+  "subtitle": "Acompanhe faturas, limites e compras.",
+  "actions": {
+    "newCard": "Novo cartão",
+    "backToCards": "Voltar para cartões",
+    "retry": "Tentar novamente",
+    "cancel": "Cancelar",
+    "delete": "Excluir"
+  },
+  "errors": {
+    "loadCards": "Não foi possível carregar os cartões.",
+    "loadPurchases": "Não foi possível carregar as compras do cartão.",
+    "nameRequired": "Nome do cartão é obrigatório",
+    "saveCard": "Erro ao salvar cartão",
+    "deleteCard": "Erro ao excluir cartão"
+  },
+  "toasts": {
+    "cardUpdated": "Cartão atualizado!",
+    "cardAdded": "Cartão adicionado!",
+    "cardDeleted": "Cartão excluído!"
+  },
+  "summary": {
+    "ariaLabel": "Posição dos cartões",
+    "totalBalance": "Total em faturas",
+    "totalLimit": "Limite total"
+  },
+  "list": {
+    "title": "Cartões cadastrados",
+    "empty": "Nenhum cartão cadastrado. Use “Novo cartão” para começar.",
+    "openCardAria": "Abrir cartão {name}",
+    "copyNumberAria": "Copiar número mascarado de {name}",
+    "editCardAria": "Editar cartão {name}",
+    "deleteCardAria": "Excluir cartão {name}",
+    "copied": "Copiado",
+    "cycleDates": "Fecha dia {closingDay} · Vence dia {dueDay}",
+    "currentBalance": "Fatura atual",
+    "available": "Disponível"
+  },
+  "usage": {
+    "high": "Uso elevado do limite",
+    "normal": "Uso do limite"
+  },
+  "detail": {
+    "positionAria": "Posição do cartão",
+    "currentBalance": "Fatura atual",
+    "limit": "Limite",
+    "available": "Disponível",
+    "infoAria": "Dados do cartão",
+    "maskedNumber": "Número mascarado",
+    "closing": "Fechamento",
+    "due": "Vencimento",
+    "day": "Dia {day}",
+    "purchasesTitle": "Compras no cartão",
+    "purchaseCount": "{count, plural, one {# compra} other {# compras}}",
+    "loadingPurchases": "Carregando compras do cartão…",
+    "emptyPurchases": "Nenhuma compra registrada neste cartão.",
+    "purchaseItems": "Itens da compra ({count})",
+    "unitShort": "{price} un.",
+    "total": "Total",
+    "noItems": "Nenhum item detalhado nesta compra."
+  },
+  "types": {
+    "CREDIT": "Crédito",
+    "DEBIT": "Débito",
+    "BOTH": "Crédito e Débito"
+  },
+  "brands": {
+    "VISA": "Visa",
+    "MASTERCARD": "Mastercard",
+    "ELO": "Elo",
+    "AMEX": "American Express",
+    "HIPER": "Hiper"
+  },
+  "deleteDialog": {
+    "title": "Excluir cartão?",
+    "description": "Esta ação não pode ser desfeita. O histórico de compras será preservado."
+  },
+  "editor": {
+    "editTitle": "Editar Cartão",
+    "createTitle": "Novo Cartão",
+    "editDescription": "Atualize os dados do cartão",
+    "createDescription": "Adicione um novo cartão",
+    "cancel": "Cancelar",
+    "update": "Atualizar",
+    "add": "Adicionar",
+    "nameLabel": "Nome do Cartão",
+    "namePlaceholder": "Ex: Nubank Platinum",
+    "typeLabel": "Tipo",
+    "brandLabel": "Bandeira",
+    "digitsLabel": "Últimos 4 dígitos",
+    "digitsPlaceholder": "0000",
+    "flagLabel": "Bandeira/Banco (opcional)",
+    "flagPlaceholder": "Ex: Nubank, Inter",
+    "limitLabel": "Limite de Crédito (R$)",
+    "closingDayLabel": "Dia de Fechamento",
+    "dueDayLabel": "Dia de Vencimento",
+    "colorLabel": "Cor",
+    "colors": {
+      "purple": "Roxo",
+      "orange": "Laranja",
+      "red": "Vermelho",
+      "blue": "Azul",
+      "cyan": "Ciano",
+      "green": "Verde",
+      "pink": "Rosa"
+    }
+  }
+}

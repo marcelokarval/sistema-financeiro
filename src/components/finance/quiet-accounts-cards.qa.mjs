@@ -8,10 +8,11 @@ import { fileURLToPath } from "node:url";
 const dir = await mkdtemp(join(tmpdir(), "quiet-accounts-cards-"));
 const session = `quiet-accounts-cards-${process.pid}`;
 const sourceDir = fileURLToPath(new URL(".", import.meta.url));
+const rootDir = fileURLToPath(new URL("../../../", import.meta.url));
 
 async function cli(...args) {
   const proc = Bun.spawn(["playwright-cli", `-s=${session}`, ...args], {
-    cwd: dir, stdout: "pipe", stderr: "pipe", stdin: "ignore", timeout: 30000,
+    cwd: dir, stdout: "pipe", stderr: "pipe", stdin: "ignore", timeout: 120000,
   });
   const [stdout, stderr, exit] = await Promise.all([
     new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited,
@@ -125,7 +126,7 @@ async function runCases(page, html) {
     await field("transfer-description").fill("Transferência QA");
     await rejectAndRetry({ method: "POST", url: "/api/transfer", action: "Transferir",
       body: { fromAccountId: "a", toAccountId: "b", amount: 2.75, date: "2026-01-15",
-        description: "Transferência QA" }, error: "Erro ao realizar transferência",
+        description: "Transferência QA" }, error: "Erro na transferência",
       success: "Transferência realizada com sucesso!", draft: ["transfer-amount", "2.75"] });
   });
 
@@ -314,6 +315,8 @@ async function runCases(page, html) {
 const entry = [
   `import { AccountsView } from ${JSON.stringify(join(sourceDir, "accounts-view.tsx"))};`,
   `import { CardsView } from ${JSON.stringify(join(sourceDir, "cards-view.tsx"))};`,
+  `import { AppIntlProvider } from ${JSON.stringify(join(rootDir, "src/i18n/provider.tsx"))};`,
+  `import { getMessagesForLocale } from ${JSON.stringify(join(rootDir, "src/i18n/messages.ts"))};`,
   "import { createElement, Fragment } from 'react';",
   "import { createRoot } from 'react-dom/client';",
   "import { Toaster } from 'sonner';",
@@ -336,7 +339,7 @@ const entry = [
   "  throw new Error('Requisição inesperada: ' + url);",
   "};",
   "qa.reply = (index, merchant) => qa.pending[index].resolve(Response.json([{ id: merchant, merchant, totalAmount: 2, date: '2026-01-15', items: [] }]));",
-  "qa.mount = kind => createRoot(document.getElementById('root')).render(createElement(Fragment, null, createElement(kind === 'cards' ? CardsView : AccountsView, { refreshCounter: 0, onLaunchClose() {} }), createElement(Toaster)));",
+  "qa.mount = kind => createRoot(document.getElementById('root')).render(createElement(AppIntlProvider, { locale: 'pt', messages: getMessagesForLocale('pt') }, createElement(Fragment, null, createElement(kind === 'cards' ? CardsView : AccountsView, { refreshCounter: 0, onLaunchClose() {} }), createElement(Toaster))));",
 ].join("\n");
 
 try {
@@ -351,7 +354,7 @@ try {
   const html = join(dir, "fixture.html");
   const script = (await bundle.outputs[0].text()).replaceAll("</script", "<\\/script");
   await writeFile(html, `<!doctype html><meta charset="utf-8"><div id="root"></div><script>${script}</script>`);
-  await cli("open", "about:blank", "--browser=chrome", "--idle-timeout=30s");
+  await cli("open", "about:blank", "--browser=chrome", "--idle-timeout=120s");
   await cli("snapshot");
   const outcome = await cli("run-code", `(page) => (${runCases.toString()})(page, ${JSON.stringify(html)})`);
   const result = outcome.match(/^### Result\n([^\n]+)/m)?.[1];

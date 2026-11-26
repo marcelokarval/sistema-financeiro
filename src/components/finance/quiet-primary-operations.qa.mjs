@@ -34,7 +34,7 @@ const source = fileURLToPath(import.meta.url);
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const pagePath = join(root, 'src/app/page.tsx');
 
-function installFixture(Page, ThemeProvider, Toaster, createElement, createRoot, useAppStore) {
+function installFixture(Page, ThemeProvider, AppIntlProvider, getMessagesForLocale, Toaster, createElement, createRoot, useAppStore) {
   const accounts = [
     { id: 'a', name: 'Conta A', type: 'BANK', balance: 1500, color: '#22c55e', icon: 'wallet', isActive: true },
     { id: 'b', name: 'Conta B', type: 'BANK', balance: 800, color: '#3b82f6', icon: 'wallet', isActive: true },
@@ -161,7 +161,7 @@ function installFixture(Page, ThemeProvider, Toaster, createElement, createRoot,
     throw new Error(`Fetch fora da fixture: ${method} ${url}`);
   };
 
-  qa.mount = (theme, view) => {
+  qa.mount = (theme, view, locale = 'pt') => {
     qa.calls = [];
     qa.unexpected = [];
     qa.pending = {};
@@ -192,15 +192,19 @@ function installFixture(Page, ThemeProvider, Toaster, createElement, createRoot,
       createElement(
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
-        createElement(Page),
-        createElement(Toaster, { theme }),
+        createElement(
+          AppIntlProvider,
+          { locale, messages: getMessagesForLocale(locale) },
+          createElement(Page),
+          createElement(Toaster, { theme }),
+        ),
       ),
     );
   };
 }
 
 // Função serializada para a VM do Playwright CLI: não depende de globals Node.
-async function runCases(page, html, width, theme, phase) {
+async function runCases(page, html, width, theme, phase, localeFlagBodies) {
   const url = 'https://finance-qa.invalid/';
   const results = [];
   const errors = [];
@@ -208,10 +212,21 @@ async function runCases(page, html, width, theme, phase) {
   const onError = (error) => errors.push(error.message);
   const routeAll = (route) => {
     const request = route.request();
-    if (request.url() === url && request.method() === 'GET' && request.isNavigationRequest()) {
+    const reqUrl = request.url();
+    if (reqUrl === url && request.method() === 'GET' && request.isNavigationRequest()) {
       return route.fulfill({ path: html, contentType: 'text/html; charset=utf-8' });
     }
-    blocked.push(request.url());
+    if (request.method() === 'GET' && reqUrl.startsWith(url)) {
+      const reqPath = reqUrl.slice(url.length - 1);
+      if (localeFlagBodies && Object.hasOwn(localeFlagBodies, reqPath)) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'image/svg+xml; charset=utf-8',
+          body: localeFlagBodies[reqPath],
+        });
+      }
+    }
+    blocked.push(reqUrl);
     return route.abort();
   };
 
@@ -698,8 +713,10 @@ try {
     import { Toaster } from 'sonner';
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { useAppStore } from ${JSON.stringify(join(root, 'src/lib/store.ts'))};
-    (${installFixture.toString()})(Page, ThemeProvider, Toaster, createElement, createRoot, useAppStore);`;
+    (${installFixture.toString()})(Page, ThemeProvider, AppIntlProvider, getMessagesForLocale, Toaster, createElement, createRoot, useAppStore);`;
 
   const realtime = `export function useRealtime() { return { isConnected: true, refreshCounter: 0, reconnect: () => {} }; }`;
 
@@ -763,6 +780,15 @@ try {
   daemonPid = opened.pid;
   await cli('snapshot');
 
+  const localeFlagBodies = Object.fromEntries(
+    await Promise.all(
+      ['pt', 'es', 'en'].map(async (code) => [
+        `/locale-flags/${code}.svg`,
+        await readFile(join(root, 'public/locale-flags', `${code}.svg`), 'utf8'),
+      ]),
+    ),
+  );
+
   const gaps = [];
   let count = 0;
   const phases = ['accounts', 'inv-con'];
@@ -775,7 +801,7 @@ try {
         for (const label of ['baseline', 'candidate']) {
           const outcome = await cli(
             'run-code',
-            `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)})`,
+            `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)}, ${JSON.stringify(localeFlagBodies)})`,
           );
           const result = outcome.match(/^### Result\s*\n([^\n]+)/m)?.[1];
           assert(result, `${label}/${phase}: resultado DOM ausente`);

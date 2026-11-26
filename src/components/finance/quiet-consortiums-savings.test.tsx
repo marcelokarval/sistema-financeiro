@@ -15,6 +15,34 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function ptUseContext(ctx: React.Context<unknown>, locale: CanonicalLocale = 'pt') {
+  return ctx === AppIntlBridgeContext
+    ? { locale, messages: getMessagesForLocale(locale) }
+    : (ctx as unknown as { _currentValue?: unknown })._currentValue;
+}
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 const consortium = {
   id: 'c1', description: 'Cota sintética', group: '27', quota: '12', administrator: 'Administradora teste',
@@ -98,7 +126,7 @@ test('carregamento e erro não reaproveitam parcelas pendentes da seleção', ()
 test('as duas telas colocam a faixa de dados antes dos registros e não usam gradiente ornamental', async () => {
   for (const name of ['consortiums-view.tsx', 'savings-view.tsx']) {
     const source = await Bun.file(new URL(name, import.meta.url)).text();
-    const position = source.indexOf('<dl aria-label="Resumo');
+    const position = source.indexOf('<dl aria-label=');
     expect(position).toBeGreaterThan(-1);
     expect(source.indexOf('<ul', position)).toBeGreaterThan(position);
     expect(source).not.toMatch(/bg-gradient|linear-gradient|card-glow|<StatCard\b/);
@@ -137,19 +165,19 @@ const findElement = (node: ReactNode, matches: (element: ViewElement) => boolean
     if (matches(child)) return child;
     let content = child.props.children;
     if (child.type === ConsortiumEditor) {
-      content = ConsortiumEditor((child as ReactElement<React.ComponentProps<typeof ConsortiumEditor>>).props);
+      content = withPtIntlDispatcher(() => ConsortiumEditor((child as ReactElement<React.ComponentProps<typeof ConsortiumEditor>>).props));
     } else if (child.type === ConsortiumDeleteConfirmation) {
-      content = ConsortiumDeleteConfirmation((child as ReactElement<React.ComponentProps<typeof ConsortiumDeleteConfirmation>>).props);
+      content = withPtIntlDispatcher(() => ConsortiumDeleteConfirmation((child as ReactElement<React.ComponentProps<typeof ConsortiumDeleteConfirmation>>).props));
     } else if (child.type === ConsortiumInstallmentPayment) {
-      content = ConsortiumInstallmentPayment((child as ReactElement<React.ComponentProps<typeof ConsortiumInstallmentPayment>>).props);
+      content = withPtIntlDispatcher(() => ConsortiumInstallmentPayment((child as ReactElement<React.ComponentProps<typeof ConsortiumInstallmentPayment>>).props));
     } else if (child.type === SavingsGoalEditor) {
-      content = SavingsGoalEditor((child as ReactElement<React.ComponentProps<typeof SavingsGoalEditor>>).props);
+      content = withPtIntlDispatcher(() => SavingsGoalEditor((child as ReactElement<React.ComponentProps<typeof SavingsGoalEditor>>).props));
     } else if (child.type === SavingsContributionDialog) {
-      content = SavingsContributionDialog((child as ReactElement<React.ComponentProps<typeof SavingsContributionDialog>>).props);
+      content = withPtIntlDispatcher(() => SavingsContributionDialog((child as ReactElement<React.ComponentProps<typeof SavingsContributionDialog>>).props));
     } else if (child.type === FinanceFormDialogShell) {
-      content = FinanceFormDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props);
+      content = withPtIntlDispatcher(() => FinanceFormDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props));
     } else if (child.type === FinanceConfirmationDialogShell) {
-      content = FinanceConfirmationDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceConfirmationDialogShell>>).props);
+      content = withPtIntlDispatcher(() => FinanceConfirmationDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceConfirmationDialogShell>>).props));
     }
     const nested = findElement(content, matches);
     if (nested) return nested;
@@ -184,6 +212,8 @@ async function exerciseConsortium(
       useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
       useCallback: (fn: unknown) => fn,
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
     };
     try {
@@ -527,6 +557,8 @@ test('consortiums-view exibe erro com retry quando /api/consortiums falha, usa S
       useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
       useCallback: (fn: unknown) => fn,
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
     };
     try {
@@ -584,6 +616,8 @@ test('savings-view exibe erro com retry quando /api/savings falha e consome newG
       useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
       useCallback: (fn: unknown) => fn,
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
     };
     try {
@@ -619,16 +653,18 @@ test('savings-view exibe erro com retry quando /api/savings falha e consome newG
 test('ConsortiumEditor adota FinanceFormDialogShell com papel dialog, sem closeLabel extra e com rodapé específico', () => {
   let cancelled = 0;
   const onCloseAutoFocus = () => {};
-  const element = ConsortiumEditor({
-    origin: 'list',
-    open: true,
-    draft: { nextAssemblyDate: '2026-05-15', assembliesAttended: '1' },
-    saving: true,
-    onFieldChange: () => {},
-    onCancel: () => { cancelled++; },
-    onSave: async () => {},
-    onCloseAutoFocus,
-  });
+  const element = withPtIntlDispatcher(() =>
+    ConsortiumEditor({
+      origin: 'list',
+      open: true,
+      draft: { nextAssemblyDate: '2026-05-15', assembliesAttended: '1' },
+      saving: true,
+      onFieldChange: () => {},
+      onCancel: () => { cancelled++; },
+      onSave: async () => {},
+      onCloseAutoFocus,
+    }),
+  );
 
   expect(element.type).toBe(FinanceFormDialogShell);
   expect(element.props.closeLabel).toBeUndefined();
@@ -653,14 +689,16 @@ test('ConsortiumDeleteConfirmation adota FinanceConfirmationDialogShell com pape
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
   const onConfirm = async () => {};
-  const element = ConsortiumDeleteConfirmation({
-    context: { origin: 'detail', description: 'Cota sintética' },
-    open: true,
-    deleting: true,
-    onOpenChange,
-    onConfirm,
-    onCloseAutoFocus,
-  });
+  const element = withPtIntlDispatcher(() =>
+    ConsortiumDeleteConfirmation({
+      context: { origin: 'detail', description: 'Cota sintética' },
+      open: true,
+      deleting: true,
+      onOpenChange,
+      onConfirm,
+      onCloseAutoFocus,
+    }),
+  );
 
   expect(element.type).toBe(FinanceConfirmationDialogShell);
   expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
@@ -703,28 +741,30 @@ test('SavingsGoalEditor adota FinanceFormDialogShell em criação e edição, se
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
   const onSubmit = async () => {};
-  const editEl = SavingsGoalEditor({
-    mode: 'edit',
-    open: true,
-    submitting: true,
-    form: {
-      name: 'Reserva sintética',
-      type: 'EMERGENCY_FUND',
-      description: '',
-      targetAmount: '500',
-      currentAmount: '0',
-      monthlyContribution: '',
-      yieldRate: '0',
-      targetDate: '',
-      accountId: 'none',
-      color: '#10b981',
-    },
-    accounts: [{ id: 'a1', name: 'Conta sintética' }],
-    onFieldChange: () => {},
-    onOpenChange,
-    onCloseAutoFocus,
-    onSubmit,
-  });
+  const editEl = withPtIntlDispatcher(() =>
+    SavingsGoalEditor({
+      mode: 'edit',
+      open: true,
+      submitting: true,
+      form: {
+        name: 'Reserva sintética',
+        type: 'EMERGENCY_FUND',
+        description: '',
+        targetAmount: '500',
+        currentAmount: '0',
+        monthlyContribution: '',
+        yieldRate: '0',
+        targetDate: '',
+        accountId: 'none',
+        color: '#10b981',
+      },
+      accounts: [{ id: 'a1', name: 'Conta sintética' }],
+      onFieldChange: () => {},
+      onOpenChange,
+      onCloseAutoFocus,
+      onSubmit,
+    }),
+  );
 
   expect(editEl.type).toBe(FinanceFormDialogShell);
   expect(editEl.props.closeLabel).toBeUndefined();
@@ -736,28 +776,30 @@ test('SavingsGoalEditor adota FinanceFormDialogShell em criação e edição, se
   const submitBtn = findElement(editEl, (e) => e.props.onClick === onSubmit);
   expect(submitBtn?.props.disabled).toBe(true);
 
-  const createEl = SavingsGoalEditor({
-    mode: 'create',
-    open: true,
-    submitting: false,
-    form: {
-      name: '',
-      type: 'SAVINGS',
-      description: '',
-      targetAmount: '',
-      currentAmount: '0',
-      monthlyContribution: '',
-      yieldRate: '',
-      targetDate: '',
-      accountId: 'none',
-      color: '#10b981',
-    },
-    accounts: [],
-    onFieldChange: () => {},
-    onOpenChange,
-    onCloseAutoFocus,
-    onSubmit,
-  });
+  const createEl = withPtIntlDispatcher(() =>
+    SavingsGoalEditor({
+      mode: 'create',
+      open: true,
+      submitting: false,
+      form: {
+        name: '',
+        type: 'SAVINGS',
+        description: '',
+        targetAmount: '',
+        currentAmount: '0',
+        monthlyContribution: '',
+        yieldRate: '',
+        targetDate: '',
+        accountId: 'none',
+        color: '#10b981',
+      },
+      accounts: [],
+      onFieldChange: () => {},
+      onOpenChange,
+      onCloseAutoFocus,
+      onSubmit,
+    }),
+  );
   expect(findElement(createEl, (e) => React.Children.toArray(e.props.children).includes('Nova Meta de Poupança'))).toBeDefined();
   expect(findElement(createEl, (e) => e.props.onClick === onSubmit)?.props.disabled).toBe(false);
 });
@@ -766,16 +808,18 @@ test('SavingsContributionDialog adota FinanceFormDialogShell preservando conta v
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
   const onSubmit = async () => {};
-  const element = SavingsContributionDialog({
-    open: true,
-    submitting: true,
-    goal,
-    form: { amount: '50', description: '' },
-    onFieldChange: () => {},
-    onOpenChange,
-    onCloseAutoFocus,
-    onSubmit,
-  });
+  const element = withPtIntlDispatcher(() =>
+    SavingsContributionDialog({
+      open: true,
+      submitting: true,
+      goal,
+      form: { amount: '50', description: '' },
+      onFieldChange: () => {},
+      onOpenChange,
+      onCloseAutoFocus,
+      onSubmit,
+    }),
+  );
 
   expect(element.type).toBe(FinanceFormDialogShell);
   expect(element.props.closeLabel).toBeUndefined();
@@ -814,6 +858,8 @@ async function exerciseSavings(
       useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
       useCallback: (fn: unknown) => fn,
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
     };
     try {
@@ -955,21 +1001,23 @@ test('ConsortiumInstallmentPayment adota FinanceFormDialogShell com papel dialog
   let cancelled = 0;
   const onCloseAutoFocus = () => {};
   const onConfirm = async () => {};
-  const element = ConsortiumInstallmentPayment({
-    open: true,
-    installment: { number: 3, amount: 125 },
-    form: {
-      paidDate: '2026-05-10',
-      notes: 'Pago via app',
-      assemblyDate: '',
-      assemblyResult: '',
-    },
-    submitting: true,
-    onFieldChange: () => {},
-    onCancel: () => { cancelled++; },
-    onConfirm,
-    onCloseAutoFocus,
-  });
+  const element = withPtIntlDispatcher(() =>
+    ConsortiumInstallmentPayment({
+      open: true,
+      installment: { number: 3, amount: 125 },
+      form: {
+        paidDate: '2026-05-10',
+        notes: 'Pago via app',
+        assemblyDate: '',
+        assemblyResult: '',
+      },
+      submitting: true,
+      onFieldChange: () => {},
+      onCancel: () => { cancelled++; },
+      onConfirm,
+      onCloseAutoFocus,
+    }),
+  );
 
   expect(element.type).toBe(FinanceFormDialogShell);
   expect(element.props.closeLabel).toBeUndefined();
@@ -1015,6 +1063,8 @@ test('Baixa de consórcio A/B: trocar para B ou fechar A antes de confirmar não
       useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
       useCallback: (fn: unknown) => fn,
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
     };
     try {
@@ -1106,6 +1156,8 @@ for (const outcome of ['ok', 'http503'] as const) {
         useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
         useCallback: (fn: unknown) => fn,
         useMemo: (factory: () => unknown) => factory(),
+        useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+        useId: () => 'test-id',
         useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
       };
       try {
@@ -1383,6 +1435,8 @@ test('Caixinhas fluxo handleDeleteGoal: restaura #savings-create após res.ok + 
         return callbackSlots[idx].fn;
       },
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useEffect: (effect: () => void | (() => void), deps?: unknown[]) => {
         const idx = effectIndex++;
         const slot = (effectSlots[idx] ??= {});
@@ -1488,5 +1542,25 @@ test('Caixinhas fluxo handleDeleteGoal: restaura #savings-create após res.ok + 
     toast.success = success;
     toast.error = error;
     useAppStore.setState(useAppStore.getInitialState(), true);
+  }
+});
+
+test('renderiza ConsortiumRow, ConsortiumDetail e SavingsGoalRow em pt, es e en sem chaves cruas', () => {
+  const expected = {
+    pt: { contemplated: 'Contemplado', goalAria: 'Progresso da meta Reserva sintética' },
+    es: { contemplated: 'Adjudicado', goalAria: 'Progreso de la meta Reserva sintética' },
+    en: { contemplated: 'Awarded', goalAria: 'Progress for goal Reserva sintética' },
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const rowHtml = renderWithIntl(<consortiums.ConsortiumRow consortium={consortium} onOpen={noop} onEdit={noop} onDelete={noop} />, locale);
+    expect(rowHtml).toContain(expected[locale].contemplated);
+    expect(rowHtml).not.toContain('MISSING_MESSAGE');
+
+    const detailHtml = renderWithIntl(<consortiums.ConsortiumDetail consortium={consortium} installments={[]} onPay={noop} />, locale);
+    expect(detailHtml).toContain('Cota sintética');
+
+    const savingsHtml = renderWithIntl(<savings.SavingsGoalRow goal={goal} onDeposit={noop} onEdit={noop} onDelete={noop} />, locale);
+    expect(savingsHtml).toContain(`aria-label="${expected[locale].goalAria}"`);
   }
 });

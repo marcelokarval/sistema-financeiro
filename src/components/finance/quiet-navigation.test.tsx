@@ -9,12 +9,15 @@ import { MobileNav } from './mobile-nav';
 import { QuickStatsOverview } from './quick-stats-overview';
 import { AppHeader } from './app-header';
 import { AppOverlays } from './app-overlays';
+import { NotificationPanel } from './notification-panel';
 import { GlobalSearchResult, SearchResults, searchGroupMeta } from './global-search-result';
 import { readFileSync } from 'node:fs';
 import { useAppStore, type ViewType } from '@/lib/store';
 import * as globalSearchModule from './global-search';
 import { searchDestination, type SearchResultType } from './global-search';
+import { QuickActions } from './quick-actions';
 import * as pageModule from '@/app/page';
+import { renderWithIntl } from '@/test-utils/intl';
 
 const noop = () => {};
 
@@ -49,19 +52,23 @@ describe('navegação e shell transversal Quiet Financial OS', () => {
   test('QuickStatsOverview aceita refreshCounter e oferece retry no estado de erro', () => {
     const quickStatsSrc = readFileSync(new URL('./quick-stats-overview.tsx', import.meta.url), 'utf8');
     expect(quickStatsSrc).toContain('refreshCounter');
-    expect(quickStatsSrc).toContain('Tentar novamente');
-    const html = renderToStaticMarkup(<QuickStatsOverview refreshCounter={1} />);
+    expect(quickStatsSrc).toContain("t('retry')");
+    const html = renderWithIntl(<QuickStatsOverview refreshCounter={1} />, 'pt');
     expect(html).toContain('Resumo rápido');
+    expect(renderWithIntl(<QuickStatsOverview refreshCounter={1} />, 'es')).toContain('Resumen rápido');
+    expect(renderWithIntl(<QuickStatsOverview refreshCounter={1} />, 'en')).toContain('Quick stats');
   });
 
   test('GlobalSearch e NotificationPanel possuem tratamento de erro com retry e persistência/data civil', () => {
     const searchSrc = readFileSync(new URL('./global-search.tsx', import.meta.url), 'utf8');
     const notifSrc = readFileSync(new URL('./notification-panel.tsx', import.meta.url), 'utf8');
-    expect(searchSrc).toContain('Tentar novamente');
-    expect(searchSrc).toContain('formatPurchaseDate(t.date)');
-    expect(notifSrc).toContain('Tentar novamente');
+    expect(searchSrc).toContain("t('retry')");
+    expect(searchSrc).toContain("formatPurchaseDate(tx.date, 'date', locale)");
+    expect(notifSrc).toContain("t('retry')");
     expect(notifSrc).toContain('localStorage');
     expect(notifSrc).toContain('QueryPanel');
+    expect(renderWithIntl(<NotificationPanel isOpen onClose={noop} />, 'es')).toContain('Notificaciones');
+    expect(renderWithIntl(<NotificationPanel isOpen onClose={noop} />, 'en')).toContain('Notifications');
   });
 
   test('AppHeader separa o cabeçalho com ações globais, notificação sem papel de dialog e indicador offline', () => {
@@ -447,5 +454,129 @@ describe('contrato alinhado da Busca Global (Alternativa A)', () => {
     expect(built.some((item: any) => item.type === 'investments' && item.id === 'inv-1' && item.label === 'Tesouro Selic')).toBe(true);
     expect(built.some((item: any) => item.type === 'installments' && item.id === 'ins-1' && item.label === 'Notebook Parcelado')).toBe(true);
     expect(built.some((item: any) => item.type === 'consortiums' && item.id === 'con-1' && item.label === 'Consórcio Imóvel')).toBe(true);
+  });
+});
+
+describe('internacionalização do shell em pt, es e en', () => {
+  test('Sidebar, MobileNav, QuickActions, AppHeader e AppOverlays traduzem rótulos em es e en com LanguageSwitcher integrado', () => {
+    const esSidebar = renderWithIntl(
+      <Sidebar collapsed={false} isConnected={true} onToggle={noop} onNavigate={noop} />,
+      'es',
+    );
+    expect(esSidebar).toContain('Patrimonio personal');
+    expect(esSidebar).toContain('Cuentas');
+    expect(esSidebar).toContain('Tarjetas');
+    expect(esSidebar).toContain('aria-label="Recargar"');
+
+    const enSidebar = renderWithIntl(
+      <Sidebar collapsed={false} isConnected={false} onToggle={noop} onNavigate={noop} />,
+      'en',
+    );
+    expect(enSidebar).toContain('Personal wealth');
+    expect(enSidebar).toContain('Accounts');
+    expect(enSidebar).toContain('Cards');
+    expect(enSidebar).toContain('Real-time unavailable');
+    expect(enSidebar).toContain('aria-label="Reload"');
+
+    const enMobileNav = renderWithIntl(<MobileNav />, 'en');
+    expect(enMobileNav).toContain('aria-label="Mobile navigation"');
+    expect(enMobileNav).toContain('Overview');
+    expect(enMobileNav).toContain('Accounts');
+    expect(enMobileNav).toContain('More');
+
+    const esQuickActions = renderWithIntl(<QuickActions />, 'es');
+    expect(esQuickActions).toContain('Acciones rápidas');
+    const enQuickActions = renderWithIntl(<QuickActions />, 'en');
+    expect(enQuickActions).toContain('Quick actions');
+
+    const enHeader = renderWithIntl(
+      <AppHeader
+        currentView="cards"
+        isConnected={false}
+        darkTheme={false}
+        onToggleTheme={noop}
+        searchButtonRef={createRef()}
+        onOpenSearch={noop}
+        advisorButtonRef={createRef()}
+        aiAssistantVisible={false}
+        onOpenAdvisor={noop}
+        notificationButtonRef={createRef()}
+        showNotifications={false}
+        onToggleNotifications={noop}
+        onCloseNotifications={noop}
+        onDismissNotifications={noop}
+        onQuickNavigate={noop}
+        onNewGoal={noop}
+        onExport={noop}
+        newEntryButtonRef={createRef()}
+        onNewEntry={noop}
+      />,
+      'en',
+    );
+    expect(enHeader).toContain('Track cards and statements');
+    expect(enHeader).toContain('aria-label="Open global search"');
+    expect(enHeader).toContain('aria-label="New entry"');
+    expect(enHeader).toContain('data-language-switcher="compact"');
+    expect(enHeader).toContain('src="/locale-flags/en.svg"');
+
+    const esOverlays = renderWithIntl(
+      <AppOverlays
+        advisorDialogRef={createRef()}
+        aiAssistantVisible={true}
+        advisorOpened={true}
+        onCloseAdvisor={noop}
+        onAdvisorDialogClose={noop}
+        showSearch={false}
+        onCloseSearch={noop}
+        onSelectSearch={noop}
+      />,
+      'es',
+    );
+    expect(esOverlays).toContain('Asistente financiero IA');
+    expect(esOverlays).toContain('aria-label="Cerrar asistente financiero"');
+  });
+
+  test('SearchResults e buildSearchResults respeitam locale na formatação e rótulos', () => {
+    const enStatusHtml = renderWithIntl(
+      <SearchResults groups={[]} query="" loading={false} activeIndex={0} onActivate={noop} onSelect={noop} />,
+      'en',
+    );
+    expect(enStatusHtml).toContain('Start typing to search');
+
+    const esLoadingHtml = renderWithIntl(
+      <SearchResults groups={[]} query="abc" loading={false} activeIndex={0} onActivate={noop} onSelect={noop} />,
+      'es',
+    );
+    expect(esLoadingHtml).toContain('No se encontraron resultados');
+
+    const buildSearchResults = (globalSearchModule as {
+      buildSearchResults: (
+        rawData: Record<string, any[]>,
+        query: string,
+        options?: { locale?: string },
+      ) => Array<{ id: string; secondary: string }>;
+    }).buildSearchResults;
+
+    const enResults = buildSearchResults(
+      {
+        transactions: [
+          { id: 'tx-1', description: 'Transfer', amount: 300, type: 'TRANSFER', date: '2026-11-19', accountId: 'acc-1' },
+        ],
+        cards: [
+          { id: 'card-1', name: 'Main Card', type: 'CREDIT', brand: 'VISA', lastFourDigits: '1234', currentBalance: 250 },
+        ],
+      },
+      '',
+      { locale: 'en' },
+    );
+
+    const tx = enResults.find((item) => item.id === 'tx-1');
+    expect(tx?.secondary).toContain('Transfer');
+    expect(tx?.secondary).toContain('11/19/2026');
+    expect(tx?.secondary).toContain('R$');
+
+    const card = enResults.find((item) => item.id === 'card-1');
+    expect(card?.secondary).toContain('Credit');
+    expect(card?.secondary).toContain('Statement:');
   });
 });

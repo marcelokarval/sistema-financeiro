@@ -71,3 +71,8 @@ test('invalida o resultado do mesmo intervalo quando o contador externo avança'
   expect(currentDashboardResult(request, settled, 2)).toEqual(result);
   expect(currentDashboardResult(request, settled, 3)).toEqual({ status: 'loading' });
 });
+
+test('QUICK_FILTERS expõe chaves estáveis independentes do idioma', async () => {
+  const { QUICK_FILTERS } = await import('./dashboard-query');
+  expect(QUICK_FILTERS.map((item) => item.key)).toEqual(['month', 'quarter', 'halfyear', 'year', 'all']);
+});

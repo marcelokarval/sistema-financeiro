@@ -1,0 +1,19 @@
+{
+  "title": "Notificações",
+  "subtitle": "Atividade recente",
+  "unreadCount": "{count, plural, one {# nova} other {# novas}}",
+  "allRead": "Todas lidas",
+  "close": "Fechar",
+  "loading": "Carregando atividades…",
+  "error": "Não foi possível carregar as notificações.",
+  "retry": "Tentar novamente",
+  "emptyTitle": "Nenhuma notificação",
+  "emptySubtitle": "Suas atividades financeiras aparecerão aqui.",
+  "markAllRead": "Ler tudo",
+  "listAriaLabel": "Atividade recente",
+  "kinds": {
+    "income": "Receita",
+    "expense": "Despesa",
+    "purchase": "Compra"
+  }
+}

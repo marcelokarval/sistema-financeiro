@@ -3,6 +3,7 @@
 import type { MouseEvent } from 'react';
 import { AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { FinanceConfirmationDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeTranslations } from '@/i18n/provider';
 
 interface ConsortiumDeleteConfirmationProps {
   context: { origin: 'list' } | { origin: 'detail'; description: string };
@@ -14,27 +15,26 @@ interface ConsortiumDeleteConfirmationProps {
 }
 
 export function ConsortiumDeleteConfirmation({ context, open, deleting, onOpenChange, onConfirm, onCloseAutoFocus }: ConsortiumDeleteConfirmationProps) {
+  const t = useSafeTranslations('consortiums');
   return (
     <FinanceConfirmationDialogShell
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
-      title="Excluir Consórcio"
+      title={t('delete.title')}
       description={
-        context.origin === 'detail' ? (
-          <>Tem certeza que deseja excluir o consórcio &quot;{context.description}&quot;? Esta ação não pode ser desfeita.</>
-        ) : (
-          <>Tem certeza que deseja excluir este consórcio? Esta ação não pode ser desfeita e todas as parcelas associadas serão removidas.</>
-        )
+        context.origin === 'detail'
+          ? t('delete.descriptionDetail', { description: context.description })
+          : t('delete.descriptionList')
       }
       footer={
         <>
-          <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>{t('delete.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
             disabled={deleting} onClick={onConfirm}
           >
-            Excluir
+            {t('delete.confirm')}
           </AlertDialogAction>
         </>
       }

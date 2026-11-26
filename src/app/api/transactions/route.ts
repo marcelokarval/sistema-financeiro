@@ -4,12 +4,20 @@ import { db } from "@/lib/db";
 import {
   parseCivilDateEnd,
   parseCivilDateStart,
-  parseJsonBody,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  resolveRequestLocale,
+  translateApiMessage,
+  type SupportedLocale,
+} from "@/lib/server-i18n";
 
 class TransactionDomainError extends Error {
   constructor(
+    public readonly code: string,
     message: string,
     public readonly status: number
   ) {
@@ -20,13 +28,17 @@ class TransactionDomainError extends Error {
 async function validateTransactionRefs(
   tx: Prisma.TransactionClient,
   refs: { accountId?: unknown; categoryId?: unknown; cardId?: unknown },
-  accountMissingStatus: number
+  accountMissingStatus: number,
+  locale: SupportedLocale
 ): Promise<void> {
   if (typeof refs.accountId === "string" && refs.accountId) {
     const account = await tx.account.findUnique({ where: { id: refs.accountId } });
     if (!account) {
       throw new TransactionDomainError(
-        accountMissingStatus === 404 ? "Account not found" : "Conta inválida.",
+        accountMissingStatus === 404 ? "NOT_FOUND" : "FOREIGN_KEY_ERROR",
+        accountMissingStatus === 404
+          ? translateApiMessage(locale, "crud.transactions.accountNotFound")
+          : translateApiMessage(locale, "validation.invalidAccount"),
         accountMissingStatus
       );
     }
@@ -34,13 +46,21 @@ async function validateTransactionRefs(
   if (typeof refs.categoryId === "string" && refs.categoryId) {
     const category = await tx.category.findUnique({ where: { id: refs.categoryId } });
     if (!category) {
-      throw new TransactionDomainError("Categoria inválida.", 400);
+      throw new TransactionDomainError(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.transactions.invalidCategory"),
+        400
+      );
     }
   }
   if (typeof refs.cardId === "string" && refs.cardId) {
     const card = await tx.card.findUnique({ where: { id: refs.cardId } });
     if (!card) {
-      throw new TransactionDomainError("Cartão inválido.", 400);
+      throw new TransactionDomainError(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.transactions.invalidCard"),
+        400
+      );
     }
   }
 }
@@ -51,6 +71,8 @@ function isValidOptionalId(value: unknown): value is string | null | undefined {
 
 // GET /api/transactions - List transactions with optional filters
 export async function GET(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const { searchParams } = new URL(request.url);
 
@@ -72,9 +94,10 @@ export async function GET(request: NextRequest) {
       if (from !== null) {
         const fromDate = parseCivilDateStart(from);
         if (!fromDate) {
-          return NextResponse.json(
-            { error: "Data inicial inválida. Use o formato YYYY-MM-DD." },
-            { status: 400 }
+          return apiErrorResponse(
+            "VALIDATION_ERROR",
+            translateApiMessage(locale, "errors.invalidStartDate"),
+            400
           );
         }
         where.date.gte = fromDate;
@@ -82,17 +105,19 @@ export async function GET(request: NextRequest) {
       if (to !== null) {
         const toDate = parseCivilDateEnd(to);
         if (!toDate) {
-          return NextResponse.json(
-            { error: "Data final inválida. Use o formato YYYY-MM-DD." },
-            { status: 400 }
+          return apiErrorResponse(
+            "VALIDATION_ERROR",
+            translateApiMessage(locale, "errors.invalidEndDate"),
+            400
           );
         }
         where.date.lte = toDate;
       }
       if (where.date.gte && where.date.lte && where.date.gte > where.date.lte) {
-        return NextResponse.json(
-          { error: "Intervalo de datas inválido: 'from' deve ser anterior ou igual a 'to'." },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "errors.invalidDateRange"),
+          400
         );
       }
     }
@@ -110,72 +135,87 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(transactions);
   } catch (error) {
     console.error("Error fetching transactions:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch transactions" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.transactions.fetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/transactions - Create transaction
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
 
-    const { type, amount, description, date, notes, categoryId, accountId, cardId } = parsedBody.data;
+    const { type, amount, description, date, notes, categoryId, accountId, cardId } =
+      parsedBody.data;
 
     if (typeof type !== "string" || !["INCOME", "EXPENSE", "TRANSFER"].includes(type)) {
-      return NextResponse.json(
-        { error: "Transaction type is required (INCOME, EXPENSE, TRANSFER)" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.typeRequired"),
+        400
       );
     }
 
     const parsedAmount = parsePositiveFiniteNumber(amount);
     if (parsedAmount === null) {
-      return NextResponse.json(
-        { error: "Valid amount is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.validAmountRequired"),
+        400
       );
     }
 
     if (typeof description !== "string" || description.trim() === "") {
-      return NextResponse.json(
-        { error: "Description is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.descriptionRequired"),
+        400
       );
     }
 
     if (!isValidOptionalId(categoryId) || !isValidOptionalId(accountId) || !isValidOptionalId(cardId)) {
-      return NextResponse.json(
-        { error: "Referência de categoria, conta ou cartão inválida." },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.invalidReference"),
+        400
       );
     }
 
     let resolvedDate = new Date();
     if (date !== undefined && date !== null) {
       if (typeof date !== "string") {
-        return NextResponse.json(
-          { error: "Invalid transaction date" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.transactions.invalidDate"),
+          400
         );
       }
       const parsedDate = parseCivilDateStart(date);
       if (!parsedDate) {
-        return NextResponse.json(
-          { error: "Invalid transaction date" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.transactions.invalidDate"),
+          400
         );
       }
       resolvedDate = parsedDate;
     }
 
     const transaction = await db.$transaction(async (tx) => {
-      await validateTransactionRefs(tx, { accountId, categoryId, cardId }, 404);
+      await validateTransactionRefs(
+        tx,
+        { accountId, categoryId, cardId },
+        404,
+        locale
+      );
 
       const created = await tx.transaction.create({
         data: {
@@ -216,37 +256,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(transaction, { status: 201 });
   } catch (error) {
     if (error instanceof TransactionDomainError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return apiErrorResponse(error.code, error.message, error.status);
     }
     console.error("Error creating transaction:", error);
-    return NextResponse.json(
-      { error: "Failed to create transaction" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.transactions.createFailed"),
+      500
     );
   }
 }
 
 // PUT /api/transactions - Update transaction
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
 
-    const { id, type, amount, description, date, notes, categoryId, accountId, cardId } = parsedBody.data;
+    const { id, type, amount, description, date, notes, categoryId, accountId, cardId } =
+      parsedBody.data;
 
     if (typeof id !== "string" || !id.trim()) {
-      return NextResponse.json(
-        { error: "Transaction id is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.idRequired"),
+        400
       );
     }
 
     if (type !== undefined && (typeof type !== "string" || !["INCOME", "EXPENSE", "TRANSFER"].includes(type))) {
-      return NextResponse.json(
-        { error: "Transaction type is required (INCOME, EXPENSE, TRANSFER)" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.typeRequired"),
+        400
       );
     }
 
@@ -254,25 +300,28 @@ export async function PUT(request: NextRequest) {
     if (amount !== undefined) {
       const parsed = parsePositiveFiniteNumber(amount);
       if (parsed === null) {
-        return NextResponse.json(
-          { error: "Valid amount is required" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.transactions.validAmountRequired"),
+          400
         );
       }
       parsedPutAmount = parsed;
     }
 
     if (description !== undefined && (typeof description !== "string" || description.trim() === "")) {
-      return NextResponse.json(
-        { error: "Description is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.descriptionRequired"),
+        400
       );
     }
 
     if (!isValidOptionalId(categoryId) || !isValidOptionalId(accountId) || !isValidOptionalId(cardId)) {
-      return NextResponse.json(
-        { error: "Referência de categoria, conta ou cartão inválida." },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.invalidReference"),
+        400
       );
     }
 
@@ -281,16 +330,18 @@ export async function PUT(request: NextRequest) {
       if (date === null) {
         parsedPutDate = new Date();
       } else if (typeof date !== "string") {
-        return NextResponse.json(
-          { error: "Invalid transaction date" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.transactions.invalidDate"),
+          400
         );
       } else {
         const parsed = parseCivilDateStart(date);
         if (!parsed) {
-          return NextResponse.json(
-            { error: "Invalid transaction date" },
-            { status: 400 }
+          return apiErrorResponse(
+            "VALIDATION_ERROR",
+            translateApiMessage(locale, "crud.transactions.invalidDate"),
+            400
           );
         }
         parsedPutDate = parsed;
@@ -300,10 +351,19 @@ export async function PUT(request: NextRequest) {
     const transaction = await db.$transaction(async (tx) => {
       const existing = await tx.transaction.findUnique({ where: { id } });
       if (!existing) {
-        throw new TransactionDomainError("Transaction not found", 404);
+        throw new TransactionDomainError(
+          "NOT_FOUND",
+          translateApiMessage(locale, "crud.transactions.notFound"),
+          404
+        );
       }
 
-      await validateTransactionRefs(tx, { accountId, categoryId, cardId }, 400);
+      await validateTransactionRefs(
+        tx,
+        { accountId, categoryId, cardId },
+        400,
+        locale
+      );
 
       const newAmount = parsedPutAmount !== undefined ? parsedPutAmount : existing.amount;
       const newType = type || existing.type;
@@ -364,18 +424,21 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(transaction);
   } catch (error) {
     if (error instanceof TransactionDomainError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return apiErrorResponse(error.code, error.message, error.status);
     }
     console.error("Error updating transaction:", error);
-    return NextResponse.json(
-      { error: "Failed to update transaction" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.transactions.updateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/transactions - Delete transaction
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     let id = new URL(request.url).searchParams.get("id");
     if (!id) {
@@ -384,34 +447,38 @@ export async function DELETE(request: NextRequest) {
         try {
           const parsed: unknown = JSON.parse(rawBody);
           if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-            return NextResponse.json(
-              { error: "Invalid JSON body" },
-              { status: 400 }
+            return apiErrorResponse(
+              "INVALID_JSON",
+              translateApiMessage(locale, "validation.invalidJson"),
+              400
             );
           }
           const rawId = (parsed as { id?: unknown }).id;
           id = typeof rawId === "string" ? rawId : null;
         } catch {
-          return NextResponse.json(
-            { error: "Invalid JSON body" },
-            { status: 400 }
+          return apiErrorResponse(
+            "INVALID_JSON",
+            translateApiMessage(locale, "validation.invalidJson"),
+            400
           );
         }
       }
     }
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Transaction id is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transactions.idRequired"),
+        400
       );
     }
 
     const existing = await db.transaction.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Transaction not found" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.transactions.notFound"),
+        404
       );
     }
 
@@ -434,12 +501,15 @@ export async function DELETE(request: NextRequest) {
       await tx.transaction.delete({ where: { id } });
     });
 
-    return NextResponse.json({ success: true, message: "Transaction deleted" });
+    return apiSuccessMessage(
+      translateApiMessage(locale, "crud.transactions.deleted")
+    );
   } catch (error) {
     console.error("Error deleting transaction:", error);
-    return NextResponse.json(
-      { error: "Failed to delete transaction" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.transactions.deleteFailed"),
+      500
     );
   }
 }

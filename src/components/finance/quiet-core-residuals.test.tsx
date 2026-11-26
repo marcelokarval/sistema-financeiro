@@ -10,6 +10,30 @@ import { InvestmentEntries } from './investments-view';
 import { AdvisorComposer } from './advisor-composer';
 import { NotificationPanel } from './notification-panel';
 import { QueryPanel } from '@/components/shared/query-panel';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function withPtIntlDispatcher<T>(fn: () => T): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) =>
+      ctx === AppIntlBridgeContext
+        ? { locale: 'pt', messages: getMessagesForLocale('pt') }
+        : (ctx as unknown as { _currentValue?: unknown })._currentValue,
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 describe('Wave 1 — remoção de framer-motion e residuais do core', () => {
   test('nenhum arquivo em src/ importa framer-motion', () => {
@@ -115,17 +139,16 @@ describe('Wave 1 — remoção de framer-motion e residuais do core', () => {
 
   test('AccountsView expõe edição e exclusão inline de transações ligadas a PUT/DELETE /api/transactions', () => {
     const source = readFileSync(new URL('./accounts-view.tsx', import.meta.url), 'utf8');
-    expect(source).toContain('Editar transação');
-    expect(source).toContain('Excluir transação');
+    expect(source).toContain("t('detail.editTransactionAria'");
+    expect(source).toContain("t('detail.deleteTransactionAria'");
     expect(source).toContain("method: 'PUT'");
     expect(source).toContain('/api/transactions?id=');
-    expect(source).toContain('Excluir transação?');
+    expect(source).toContain("t('transactionDialog.deleteTitle')");
   });
 
   test('InvestmentEntries e InvestmentsView expõem edição e exclusão inline de transações de investimento', () => {
     const source = readFileSync(new URL('./investments-view.tsx', import.meta.url), 'utf8');
-    expect(source).toContain('Editar transação');
-    expect(source).toContain('Excluir transação');
+    expect(source).toContain("t('deleteTx.title')");
     expect(source).toContain('/api/investments/transactions');
     expect(source).toContain("method: 'PUT'");
     expect(source).toContain('/api/investments/transactions?id=');
@@ -141,6 +164,61 @@ describe('Wave 1 — remoção de framer-motion e residuais do core', () => {
     expect(html).toContain('aria-label="Editar transação: Aporte mensal"');
     expect(html).toContain('aria-label="Excluir transação: Aporte mensal"');
   });
+
+  test('renderiza AdvisorComposer, NotificationPanel, QuickStatsPanel e InvestmentEntries em pt, es e en sem chaves cruas', () => {
+    const expected = {
+      pt: { send: 'Enviar mensagem', loadingNotif: 'Carregando atividades…', savingsTitle: 'Histórico de economia mensal', editTx: 'Editar transação: Aporte mensal', currency: 'R$' },
+      es: { send: 'Enviar mensaje', loadingNotif: 'Cargando actividades…', savingsTitle: 'Historial de ahorro mensual', editTx: 'Editar transacción: Aporte mensal', currency: 'BRL' },
+      en: { send: 'Send message', loadingNotif: 'Loading activity…', savingsTitle: 'Monthly savings history', editTx: 'Edit transaction: Aporte mensal', currency: 'R$' },
+    } as const;
+
+    for (const locale of CANONICAL_LOCALES) {
+      const composerHtml = renderWithIntl(
+        <AdvisorComposer
+          suggestions={['Q1']}
+          inputValue=""
+          isLoading={false}
+          onInputChange={() => {}}
+          onSubmit={() => {}}
+          onSuggestionClick={() => {}}
+          onKeyDown={() => {}}
+        />,
+        locale,
+      );
+      expect(composerHtml).toContain(`aria-label="${expected[locale].send}"`);
+      expect(composerHtml).not.toContain('MISSING_MESSAGE');
+
+      const notifHtml = renderWithIntl(<NotificationPanel isOpen onClose={() => {}} />, locale);
+      expect(notifHtml).toContain(expected[locale].loadingNotif);
+
+      const quickStatsHtml = renderWithIntl(
+        <QuickStatsPanel
+          data={{
+            current: { totalBalance: 5000, cardDebt: 800, investments: 12000, savingsGoals: 3000, netWorth: 19200, monthlyIncome: 6000, monthlyExpense: 3500, monthlySavings: 2500, savingsRate: 41.7 },
+            sparklines: { balance: [1000, 5000], income: [5000, 6000], expense: [3000, 3500] },
+            monthlySavingsHistory: [2000, 2500],
+            investmentsHistory: [10000, 12000],
+            cardDebtHistory: [500, 800],
+            changes: { incomeVsLastMonth: 3.4, expenseVsLastMonth: 2.9, savingsVsLastMonth: 4.2 },
+          }}
+        />,
+        locale,
+      );
+      expect(quickStatsHtml).toContain(expected[locale].savingsTitle);
+      expect(quickStatsHtml).toContain(expected[locale].currency);
+
+      const entriesHtml = renderWithIntl(
+        <InvestmentEntries
+          transactions={[{ id: 'tx-1', type: 'APORTE', amount: 500, date: '2026-05-01', description: 'Aporte mensal' }]}
+          onNew={() => {}}
+          onEdit={() => {}}
+          onDelete={() => {}}
+        />,
+        locale,
+      );
+      expect(entriesHtml).toContain(`aria-label="${expected[locale].editTx}"`);
+    }
+  });
 });
 
 describe('Task 0017 — SmartInsights e QuickStatsOverview com QueryPanel preservando cálculos, zero e sparkline', () => {
@@ -149,22 +227,24 @@ describe('Task 0017 — SmartInsights e QuickStatsOverview com QueryPanel preser
     expect(src).toContain("from '@/components/shared/query-panel'");
     expect(src).toContain('<QueryPanel');
 
-    const tree = SmartInsightsContent({
-      insights: [],
-      loading: false,
-      error: false,
-      activeTab: 'all',
-      onTabChange: () => {},
-      onRetry: () => {},
-    });
+    const tree = withPtIntlDispatcher(() =>
+      SmartInsightsContent({
+        insights: [],
+        loading: false,
+        error: false,
+        activeTab: 'all',
+        onTabChange: () => {},
+        onRetry: () => {},
+      }),
+    );
     expect(React.isValidElement(tree)).toBe(true);
     expect((tree as React.ReactElement).type).toBe(QueryPanel);
 
-    const emptyHtml = renderToStaticMarkup(tree);
+    const emptyHtml = renderWithIntl(tree, 'pt');
     expect(emptyHtml).toContain('Nenhuma análise disponível');
     expect(emptyHtml).not.toContain('Tentar novamente');
 
-    const errHtml = renderToStaticMarkup(
+    const errHtml = renderWithIntl(
       <SmartInsightsContent
         insights={[]}
         loading={false}
@@ -173,6 +253,7 @@ describe('Task 0017 — SmartInsights e QuickStatsOverview com QueryPanel preser
         onTabChange={() => {}}
         onRetry={() => {}}
       />,
+      'pt',
     );
     expect(errHtml).toContain('role="alert"');
     expect(errHtml).toContain('Tentar novamente');
@@ -183,41 +264,43 @@ describe('Task 0017 — SmartInsights e QuickStatsOverview com QueryPanel preser
     expect(src).toContain("from '@/components/shared/query-panel'");
     expect(src).toContain('<QueryPanel');
     expect(src).toContain('refreshCounter');
-    expect(src).toContain('Tentar novamente');
+    expect(src).toContain("t('retry')");
 
-    const loadingHtml = renderToStaticMarkup(<QuickStatsOverview refreshCounter={2} />);
+    const loadingHtml = renderWithIntl(<QuickStatsOverview refreshCounter={2} />, 'pt');
     expect(loadingHtml).toContain('aria-busy="true"');
     expect(loadingHtml).toContain('Carregando indicadores…');
 
-    const zeroPanelEl = QuickStatsPanel({
-      data: {
-        current: {
-          totalBalance: 0,
-          cardDebt: 0,
-          investments: 0,
-          savingsGoals: 0,
-          netWorth: 0,
-          monthlyIncome: 0,
-          monthlyExpense: 0,
-          monthlySavings: 0,
-          savingsRate: 0,
+    const zeroPanelEl = withPtIntlDispatcher(() =>
+      QuickStatsPanel({
+        data: {
+          current: {
+            totalBalance: 0,
+            cardDebt: 0,
+            investments: 0,
+            savingsGoals: 0,
+            netWorth: 0,
+            monthlyIncome: 0,
+            monthlyExpense: 0,
+            monthlySavings: 0,
+            savingsRate: 0,
+          },
+          sparklines: {
+            balance: [0, 0],
+            income: [],
+            expense: [],
+          },
+          changes: {
+            incomeVsLastMonth: 0,
+            expenseVsLastMonth: 0,
+            savingsVsLastMonth: 0,
+          },
         },
-        sparklines: {
-          balance: [0, 0],
-          income: [],
-          expense: [],
-        },
-        changes: {
-          incomeVsLastMonth: 0,
-          expenseVsLastMonth: 0,
-          savingsVsLastMonth: 0,
-        },
-      },
-    });
+      }),
+    );
     expect(React.isValidElement(zeroPanelEl)).toBe(true);
     expect((zeroPanelEl as React.ReactElement).type).toBe(QueryPanel);
 
-    const zeroHtml = renderToStaticMarkup(zeroPanelEl);
+    const zeroHtml = renderWithIntl(zeroPanelEl, 'pt');
     expect(zeroHtml).toContain('R$ 0,00');
     expect(zeroHtml).toContain('0.0%');
     expect(zeroHtml).toContain('Estável');

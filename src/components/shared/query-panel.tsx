@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useSafeTranslations } from '@/i18n/provider';
 import { cn } from '@/lib/utils';
 
 export type QueryPanelStatus = 'loading' | 'error' | 'empty' | 'success';
@@ -31,16 +32,22 @@ export function QueryPanel({
   subtitle,
   controls,
   status,
-  loadingMessage = 'Carregando…',
-  errorMessage = 'Não foi possível carregar os dados.',
-  emptyMessage = 'Nenhum dado disponível.',
+  loadingMessage,
+  errorMessage,
+  emptyMessage,
   emptyContent,
   onRetry,
-  retryLabel = 'Tentar novamente',
+  retryLabel,
   children,
   className,
   contentClassName,
 }: QueryPanelProps) {
+  const t = useSafeTranslations('shared');
+  const resolvedLoadingMessage = loadingMessage ?? (t.has('queryPanel.loading') ? t('queryPanel.loading') : 'Carregando…');
+  const resolvedErrorMessage = errorMessage ?? (t.has('queryPanel.error') ? t('queryPanel.error') : 'Não foi possível carregar os dados.');
+  const resolvedEmptyMessage = emptyMessage ?? (t.has('queryPanel.empty') ? t('queryPanel.empty') : 'Nenhum dado disponível.');
+  const resolvedRetryLabel = retryLabel ?? (t.has('queryPanel.retry') ? t('queryPanel.retry') : 'Tentar novamente');
+
   return (
     <section
       aria-labelledby={titleId}
@@ -59,17 +66,17 @@ export function QueryPanel({
 
       {status === 'loading' && (
         <p role="status" className="px-3 py-3 text-sm text-muted-foreground sm:px-4">
-          {loadingMessage}
+          {resolvedLoadingMessage}
         </p>
       )}
 
       {status === 'error' && (
         <div className="flex flex-wrap items-center gap-3 px-3 py-3 sm:px-4">
-          <p role="alert" className="text-sm text-muted-foreground">{errorMessage}</p>
+          <p role="alert" className="text-sm text-muted-foreground">{resolvedErrorMessage}</p>
           {onRetry && (
             <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={onRetry}>
               <RefreshCw aria-hidden="true" className="w-3.5 h-3.5 mr-1.5" />
-              {retryLabel}
+              {resolvedRetryLabel}
             </Button>
           )}
         </div>
@@ -77,7 +84,7 @@ export function QueryPanel({
 
       {status === 'empty' && (
         <div className="px-3 py-3 sm:px-4">
-          {emptyContent ?? <p role="status" className="text-sm text-muted-foreground">{emptyMessage}</p>}
+          {emptyContent ?? <p role="status" className="text-sm text-muted-foreground">{resolvedEmptyMessage}</p>}
         </div>
       )}
 

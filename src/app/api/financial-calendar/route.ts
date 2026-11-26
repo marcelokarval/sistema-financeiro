@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { civilPurchaseDate } from "@/lib/purchase-date";
 import {
+  apiErrorResponse,
+  formatServerWeekdayShort,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
+import {
   addDays,
   addWeeks,
   addMonths,
@@ -28,7 +34,9 @@ interface CalendarEvent {
 
 interface CalendarDay {
   date: string;
+  dateKey: string;
   dayOfWeek: string;
+  dayIndex: number;
   income: number;
   expense: number;
   events: CalendarEvent[];
@@ -84,9 +92,10 @@ function getNextOccurrences(nextDate: Date, frequency: string, endDate: Date): D
 }
 
 // ─── GET Handler ─────────────────────────────────────────────────────
-export async function GET(request: NextRequest) {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url ?? "http://localhost");
     let days = parseInt(searchParams.get("days") || "30", 10);
 
     // Clamp days to 7-90
@@ -206,7 +215,6 @@ export async function GET(request: NextRequest) {
 
     // Build days array
     const daysArray: CalendarDay[] = [];
-    const dayOfWeekNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
     let totalIncome = 0;
     let totalExpense = 0;
@@ -231,11 +239,14 @@ export async function GET(request: NextRequest) {
         .reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
       const dateObj = parseISO(dateStr);
-      const dayOfWeek = dayOfWeekNames[dateObj.getDay()];
+      const dayIndex = dateObj.getDay();
+      const dayOfWeek = formatServerWeekdayShort(dayIndex, locale);
 
       daysArray.push({
         date: dateStr,
+        dateKey: dateStr,
         dayOfWeek,
+        dayIndex,
         income,
         expense,
         events,
@@ -281,9 +292,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     console.error("Error fetching financial calendar:", error);
-    return NextResponse.json(
-      { error: "Erro ao buscar calendário financeiro" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "calendar.fetchFailed"),
+      500
     );
   }
 }

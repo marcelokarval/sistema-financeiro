@@ -1,0 +1,9 @@
+{
+  "maskedValue": "R$ ••••••",
+  "queryPanel": {
+    "loading": "Loading…",
+    "error": "Could not load data.",
+    "empty": "No data available.",
+    "retry": "Try again"
+  }
+}

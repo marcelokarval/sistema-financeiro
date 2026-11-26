@@ -11,6 +11,30 @@ import { UpcomingBillsPanel } from './upcoming-bills';
 import { BudgetHeader } from './monthly-budget-tracker';
 import { FinanceRow } from '@/components/shared/finance-row';
 import { FinanceMetric } from '@/components/shared/finance-metric';
+import { renderWithIntl } from '@/test-utils/intl';
+import type { CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function withPtIntlDispatcher<T>(fn: () => T): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) =>
+      ctx === AppIntlBridgeContext
+        ? { locale: 'pt', messages: getMessagesForLocale('pt') }
+        : (ctx as unknown as { _currentValue?: unknown })._currentValue,
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 const data: DashboardData = {
   totalBalance: 9876.54, totalCardBalance: 320.24, totalCardLimit: 800,
@@ -22,12 +46,13 @@ const data: DashboardData = {
   recentPurchases: [{ id: 'p1', merchant: 'Compra de teste', totalAmount: 123.45, date: '2026-01-13', items: [{ id: 'i1', name: 'Item de teste', quantity: 1, totalPrice: 123.45 }] }],
 };
 
-function renderDashboard(status: 'ready' | 'loading' | 'error', showValues = true, fixture = data) {
+function renderDashboard(status: 'ready' | 'loading' | 'error', showValues = true, fixture = data, locale: CanonicalLocale = 'pt') {
   const query: QueryResult<DashboardData> = status === 'ready' ? { status, data: fixture } : { status };
-  return renderToStaticMarkup(
+  return renderWithIntl(
     <DashboardContent query={query} showValues={showValues} retry={() => {}}>
       <p>Widget fornecido pela página</p>
     </DashboardContent>,
+    locale,
   );
 }
 
@@ -149,7 +174,10 @@ test('encaminha o sinal realtime aos painéis sem remontá-los e limita a remont
     return [node, ...visit(node.props.children as React.ReactNode)];
   }
   const children = <p>Widget fornecido pela página</p>;
-  const render = (refreshCounter: number) => visit(DashboardContent({ query: { status: 'ready', data }, showValues: false, retry: () => {}, children, refreshCounter }));
+  const render = (refreshCounter: number) =>
+    withPtIntlDispatcher(() =>
+      visit(DashboardContent({ query: { status: 'ready', data }, showValues: false, retry: () => {}, children, refreshCounter })),
+    );
   const find = (nodes: ReturnType<typeof visit>, name: string) => nodes.find(({ type }) => typeof type === 'function' && type.name === name);
   const first = render(1);
   const second = render(2);
@@ -240,4 +268,25 @@ test('FinanceRow e FinanceMetric suportam variantes, semântica, ações opciona
   expect(dashHtml).toMatch(/<dt[^>]*>Saldo em contas<\/dt><dd[^>]*text-4xl sm:text-5xl[^>]*>/);
   const dashSrc = readFileSync(new URL('./dashboard-view.tsx', import.meta.url), 'utf8');
   expect(dashSrc).toContain("from '@/components/shared/finance-row'");
+});
+
+test('renderiza DashboardContent em pt, es e en e oculta dígitos com showValues=false', () => {
+  const expectedByLocale: Record<CanonicalLocale, { accountBalance: string; cashFlow: string; currency: string }> = {
+    pt: { accountBalance: 'Saldo em contas', cashFlow: 'Entradas e saídas', currency: 'R$' },
+    es: { accountBalance: 'Saldo en cuentas', cashFlow: 'Ingresos y gastos', currency: 'BRL' },
+    en: { accountBalance: 'Account balance', cashFlow: 'Income and expenses', currency: 'R$' },
+  };
+  for (const locale of ['pt', 'es', 'en'] as const) {
+    const html = renderDashboard('ready', true, data, locale);
+    expect(html).toContain(expectedByLocale[locale].accountBalance);
+    expect(html).toContain(expectedByLocale[locale].cashFlow);
+    expect(html).toContain(expectedByLocale[locale].currency);
+
+    const maskedHtml = renderDashboard('ready', false, data, locale);
+    expect(maskedHtml).not.toMatch(/9\.?876|350|1\.?100|320/);
+    const ariaLabels = [...maskedHtml.matchAll(/aria-label="([^"]*)"/g)].map((m) => m[1]);
+    for (const label of ariaLabels) {
+      expect(label).not.toMatch(/\d/);
+    }
+  }
 });

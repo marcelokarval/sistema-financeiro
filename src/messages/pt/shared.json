@@ -1,0 +1,9 @@
+{
+  "maskedValue": "R$ ••••••",
+  "queryPanel": {
+    "loading": "Carregando…",
+    "error": "Não foi possível carregar os dados.",
+    "empty": "Nenhum dado disponível.",
+    "retry": "Tentar novamente"
+  }
+}

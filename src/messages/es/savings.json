@@ -1,0 +1,144 @@
+{
+  "title": "Alcancías",
+  "subtitle": "Sigue tus metas de ahorro e inversiones.",
+  "loading": "Cargando alcancías…",
+  "actions": {
+    "newGoal": "Nueva meta",
+    "retry": "Intentar de nuevo",
+    "deposit": "Depositar",
+    "depositAriaLabel": "Depositar en {name}",
+    "moreActionsAriaLabel": "Más acciones de {name}",
+    "edit": "Editar",
+    "delete": "Eliminar"
+  },
+  "filters": {
+    "ariaLabel": "Filtrar metas por tipo",
+    "ALL": "Todos",
+    "SAVINGS": "Ahorro",
+    "PIGGY_BANK": "Alcancía",
+    "CDI": "CDI",
+    "EMERGENCY_FUND": "Reserva",
+    "INVESTMENT": "Inversión"
+  },
+  "types": {
+    "SAVINGS": "Ahorro",
+    "PIGGY_BANK": "Alcancía",
+    "CDI": "Cuenta CDI",
+    "INVESTMENT": "Inversión",
+    "EMERGENCY_FUND": "Reserva de Emergencia"
+  },
+  "summary": {
+    "ariaLabel": "Resumen de las alcancías",
+    "totalAccumulated": "Total acumulado",
+    "percentOfTargets": "{percent}% del total de metas",
+    "totalGoals": "Total de metas",
+    "inProgress": "{count} en progreso",
+    "completedGoals": "Metas completadas",
+    "percentAchieved": "{percent}% alcanzadas",
+    "monthlyContribution": "Aporte mensual",
+    "monthlyPlannedNote": "Total mensual planificado"
+  },
+  "list": {
+    "title": "Metas registradas",
+    "showingCount": "{shown} de {total, plural, one {# meta} other {# metas}}",
+    "loadError": "No fue posible cargar las alcancías.",
+    "emptyFilteredTitle": "Ninguna meta del tipo {type}",
+    "emptyFilteredSubtitle": "Cambia el filtro o crea una meta de este tipo.",
+    "emptyAllTitle": "Ninguna meta de ahorro registrada",
+    "emptyAllSubtitle": "Usa Nueva meta para comenzar a ahorrar.",
+    "ariaLabel": "Metas registradas"
+  },
+  "row": {
+    "completed": "Completada",
+    "linkedAccount": "Cuenta vinculada: {name}",
+    "monthlyContribution": "{amount}/mes",
+    "noMonthlyContribution": "Sin aporte mensual",
+    "targetDate": "Plazo: {date}",
+    "yieldRate": "{rate}% anual",
+    "accumulated": "Acumulado",
+    "target": "Meta",
+    "progressLabel": "Progreso de la meta",
+    "progressAriaLabel": "Progreso de la meta {name}",
+    "progressValueText": "{percent}% · {current} de {target}",
+    "remaining": "Faltan {amount}"
+  },
+  "errors": {
+    "nameRequired": "El nombre de la meta es obligatorio",
+    "targetPositive": "El valor objetivo debe ser mayor que cero",
+    "saveGoal": "Error al guardar la meta",
+    "deleteGoal": "Error al eliminar la meta",
+    "depositAmountInvalid": "Ingresa un valor válido para el depósito",
+    "depositError": "Error al realizar el depósito",
+    "connection": "Error de conexión"
+  },
+  "toast": {
+    "goalUpdated": "¡Meta actualizada con éxito!",
+    "goalCreated": "¡Meta creada con éxito!",
+    "goalDeleted": "¡Meta eliminada con éxito!",
+    "depositSuccess": "¡Depósito de {amount} realizado!"
+  },
+  "delete": {
+    "title": "¿Eliminar meta de ahorro?",
+    "description": "Esta acción no se puede deshacer. Todo el historial de depósitos se perderá.",
+    "cancel": "Cancelar",
+    "confirm": "Eliminar"
+  },
+  "editor": {
+    "createTitle": "Nueva Meta de Ahorro",
+    "editTitle": "Editar Meta",
+    "createDescription": "Define un objetivo financiero para comenzar a ahorrar.",
+    "editDescription": "Actualiza los datos de tu meta de ahorro.",
+    "cancel": "Cancelar",
+    "saving": "Guardando...",
+    "saveChanges": "Guardar Cambios",
+    "createGoal": "Crear Meta",
+    "nameLabel": "Nombre de la meta *",
+    "namePlaceholder": "Ej: Viaje, Auto nuevo...",
+    "typeLabel": "Tipo *",
+    "colorLabel": "Color",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Describe tu meta (opcional)",
+    "targetLabel": "Valor objetivo (R$) *",
+    "currentLabel": "Valor actual (R$)",
+    "monthlyLabel": "Aporte mensual (R$)",
+    "yieldLabel": "Rendimiento (% anual)",
+    "decimalPlaceholder": "0,00",
+    "targetDateLabel": "Fecha objetivo",
+    "accountLabel": "Cuenta vinculada",
+    "accountNone": "Ninguna",
+    "types": {
+      "SAVINGS": "Ahorro",
+      "PIGGY_BANK": "Alcancía",
+      "CDI": "Cuenta CDI",
+      "INVESTMENT": "Inversión",
+      "EMERGENCY_FUND": "Reserva"
+    },
+    "colors": {
+      "emerald": "Verde",
+      "sky": "Azul",
+      "violet": "Violeta",
+      "amber": "Ámbar",
+      "coral": "Rosa coral",
+      "cyan": "Cian",
+      "indigo": "Índigo",
+      "pink": "Rosa",
+      "teal": "Verde azulado",
+      "lime": "Verde lima"
+    }
+  },
+  "contribution": {
+    "title": "Depositar",
+    "descriptionWithGoal": "Agrega un monto a la meta \"{name}\". Actual: {amount}",
+    "descriptionFallback": "Agrega un monto a la meta seleccionada.",
+    "cancel": "Cancelar",
+    "submitting": "Depositando...",
+    "submit": "Depositar",
+    "linkedAccountLabel": "Cuenta vinculada: {account}",
+    "linkedAccountFallback": "Cuenta vinculada a la meta",
+    "accountNone": "Ninguna",
+    "amountLabel": "Monto del depósito (R$) *",
+    "amountPlaceholder": "0,00",
+    "descriptionLabel": "Descripción (opcional)",
+    "descriptionPlaceholder": "Ej: Bono, Ahorro del mes..."
+  }
+}

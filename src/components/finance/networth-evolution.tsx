@@ -23,19 +23,14 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import {
   FinanceChartTooltip,
   type FinanceChartTooltipRow,
 } from '@/components/shared/finance-chart-tooltip';
-// ─── Helpers ───────────────────────────────────────────────────────
-const shortCurrency = (v: number) => {
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000) return `${v < 0 ? '-' : ''}R$ ${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1000) return `${v < 0 ? '-' : ''}R$ ${(abs / 1000).toFixed(0)}k`;
-  return `R$ ${abs.toFixed(0)}`;
-};
-// ─── Types ─────────────────────────────────────────────────────────
+import { PROJECTION_MONTH_OPTIONS, formatNetworthAxis } from './analytics-i18n';
+
 interface MonthlyDataPoint {
   month: string;
   netWorth: number;
@@ -47,7 +42,7 @@ interface MonthlyDataPoint {
 interface NetworthResponse {
   monthlyData: MonthlyDataPoint[];
 }
-// ─── Custom Tooltip ────────────────────────────────────────────────
+
 export function NetworthEvolutionTooltip({
   active,
   payload,
@@ -59,18 +54,20 @@ export function NetworthEvolutionTooltip({
   label?: string;
   showValues?: boolean;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   if (!active || !Array.isArray(payload) || payload.length === 0) return null;
 
   const rows: FinanceChartTooltipRow[] = payload.flatMap((entry) => {
     const key = entry?.dataKey != null ? String(entry.dataKey) : entry?.name;
-    const rowLabel = entry?.dataKey === 'netWorth' ? 'Patrimônio' : entry?.name;
+    const rowLabel = entry?.dataKey === 'netWorth' ? t('networth.tooltip.netWorth') : entry?.name;
     if (typeof entry?.value !== 'number' || !Number.isFinite(entry.value) || !key || !rowLabel) {
       return [];
     }
     return [{
       key,
       label: rowLabel,
-      value: currencyFmt(entry.value),
+      value: currencyFmt(entry.value, locale),
       color: entry.color,
     }];
   });
@@ -87,7 +84,7 @@ export function NetworthEvolutionTooltip({
     />
   );
 }
-// ─── Main Component ────────────────────────────────────────────────
+
 export type NetworthRequest = { months: number };
 export type NetworthStatus =
   | { status: 'ready'; data: NetworthResponse }
@@ -169,11 +166,13 @@ export function NetworthEvolutionContent({
   onRetry?: () => void;
   showValues?: boolean;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const handleRetry = onRetry ?? (() => fetchData(selectedMonths));
-  // ─── Loading Skeleton ─────────────────────────────────────────────
+
   if (loading) {
     return (
-      <Card role="status" aria-label="Carregando evolução patrimonial" className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
+      <Card role="status" aria-label={t('networth.loadingAria')} className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
         <CardHeader className="px-4 sm:px-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -188,7 +187,7 @@ export function NetworthEvolutionContent({
         </CardHeader>
         <CardContent className="min-w-0 space-y-5 px-4 sm:px-5">
           <Skeleton className="max-w-full motion-reduce:animate-none h-72 w-full rounded-lg" />
-          <div role="group" aria-label="Indicadores patrimoniais" className="grid grid-cols-1 gap-3 border-y border-border py-3 sm:grid-cols-3">
+          <div role="group" aria-label={t('networth.indicatorsAria')} className="grid grid-cols-1 gap-3 border-y border-border py-3 sm:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="motion-reduce:animate-none h-24 w-full rounded-lg" />
             ))}
@@ -204,53 +203,48 @@ export function NetworthEvolutionContent({
         <CardContent className="space-y-3 px-4 py-4 text-sm">
           <Wallet className="w-10 h-10 text-muted-foreground" />
           <p role={!data ? 'alert' : 'status'} className="text-sm text-muted-foreground">
-            {data ? "Nenhum mês disponível para este intervalo." : "Não foi possível carregar a evolução patrimonial."}
+            {data ? t('networth.empty') : t('networth.error')}
           </p>
           <Button variant="outline" size="sm" className="min-h-9" onClick={handleRetry}>
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-            Tentar novamente
+            {t('common.retry')}
           </Button>
         </CardContent>
       </Card>
     );
   }
-  // ─── Computed values ─────────────────────────────────────────────
+
   const chartData = data.monthlyData;
   const current = chartData[chartData.length - 1];
   const hasAnyNegative = chartData.some((d) => d.netWorth < 0);
-  // Highest and lowest
   let highest = chartData[0];
   let lowest = chartData[0];
   for (const d of chartData) {
     if (d.netWorth > highest.netWorth) highest = d;
     if (d.netWorth < lowest.netWorth) lowest = d;
   }
-  // Milestone progress (R$ 100k)
   const milestoneTarget = 100_000;
   const milestoneProgress = Math.min(100, Math.max(0, (Math.max(0, current.netWorth) / milestoneTarget) * 100));
-  // Month selector options
-  const monthOptions = [3, 6, 9, 12];
-  // ─── Render ───────────────────────────────────────────────────────
+
   return (
     <section aria-labelledby="networth-evolution-heading" className="min-w-0">
       <Card className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
         <CardHeader className="px-4 sm:px-5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="min-w-0">
-              <h3 id="networth-evolution-heading" className="text-base font-semibold">Evolução Patrimonial</h3>
+              <h3 id="networth-evolution-heading" className="text-base font-semibold">{t('networth.title')}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Acompanhe seu patrimônio líquido ao longo do tempo
+                {t('networth.subtitle')}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {/* Month selector */}
-              <div role="group" aria-label="Período da evolução patrimonial" className="flex items-center gap-1 rounded-md bg-muted/40 p-1">
-                {monthOptions.map((m) => (
+              <div role="group" aria-label={t('networth.periodAria')} className="flex items-center gap-1 rounded-md bg-muted/40 p-1">
+                {PROJECTION_MONTH_OPTIONS.map((m) => (
                   <button
                     key={m}
                     type="button"
                     aria-pressed={selectedMonths === m}
-                    aria-label={`${m} meses`}
+                    aria-label={t('networth.monthsAria', { count: m })}
                     onClick={() => onSelectMonths(m)}
                     className={`min-h-9 px-3 py-1 rounded-md text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                       selectedMonths === m
@@ -258,7 +252,7 @@ export function NetworthEvolutionContent({
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                     }`}
                   >
-                    {m}m
+                    {t('networth.monthsShort', { count: m })}
                   </button>
                 ))}
               </div>
@@ -266,7 +260,7 @@ export function NetworthEvolutionContent({
                 variant="outline"
                 size="icon"
                 className="size-9"
-                aria-label="Atualizar patrimônio"
+                aria-label={t('networth.refreshAria')}
                 onClick={() => fetchData(selectedMonths)}
               >
                 <RefreshCw className="w-4 h-4" />
@@ -277,17 +271,16 @@ export function NetworthEvolutionContent({
         <CardContent className="min-w-0 space-y-5 px-4 sm:px-5">
           <div
             role="group"
-            aria-label="Indicadores patrimoniais"
+            aria-label={t('networth.indicatorsAria')}
             className="grid grid-cols-1 sm:grid-cols-3 gap-3"
           >
-            {/* Patrimônio no último mês */}
             <div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs text-muted-foreground font-medium">Patrimônio Atual</span>
+                  <span className="text-xs text-muted-foreground font-medium">{t('networth.current')}</span>
                 </div>
                 <p className="font-mono text-base font-semibold tabular-nums text-foreground">
-                  {currencyFmt(current.netWorth)}
+                  {currencyFmt(current.netWorth, locale)}
                 </p>
                 <div className="flex items-center gap-1 mt-1">
                   {current.changeAmount >= 0 ? (
@@ -304,33 +297,31 @@ export function NetworthEvolutionContent({
                     {current.changePercent.toFixed(1)}%
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    vs mês anterior
+                    {t('networth.vsPreviousMonth')}
                   </span>
                 </div>
               </div>
             </div>
-            {/* Maior Patrimônio */}
             <div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs text-muted-foreground font-medium">Maior Patrimônio</span>
+                  <span className="text-xs text-muted-foreground font-medium">{t('networth.highest')}</span>
                 </div>
                 <p className="font-mono text-base font-semibold tabular-nums text-[var(--money)]">
-                  {currencyFmt(highest.netWorth)}
+                  {currencyFmt(highest.netWorth, locale)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1 capitalize">
                   {highest.month}
                 </p>
               </div>
             </div>
-            {/* Menor Patrimônio */}
             <div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs text-muted-foreground font-medium">Menor Patrimônio</span>
+                  <span className="text-xs text-muted-foreground font-medium">{t('networth.lowest')}</span>
                 </div>
                 <p className="font-mono text-base font-semibold tabular-nums text-[var(--debt)]">
-                  {currencyFmt(lowest.netWorth)}
+                  {currencyFmt(lowest.netWorth, locale)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1 capitalize">
                   {lowest.month}
@@ -342,11 +333,7 @@ export function NetworthEvolutionContent({
             <div className="h-56 min-w-0 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="var(--border)"
-                    vertical={false}
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis
                     dataKey="month"
                     tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
@@ -361,23 +348,17 @@ export function NetworthEvolutionContent({
                     tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={shortCurrency}
+                    tickFormatter={(v) => formatNetworthAxis(v, locale)}
                     domain={['dataMin - 5000', 'dataMax + 5000']}
                   />
                   <RechartsTooltip content={<NetworthEvolutionTooltip showValues={showValues} />} />
-                  {/* Reference line at y=0 if any month is negative */}
                   {hasAnyNegative && (
-                    <ReferenceLine
-                      y={0}
-                      stroke="var(--muted-foreground)"
-                      strokeDasharray="4 4"
-                      strokeWidth={1}
-                    />
+                    <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="4 4" strokeWidth={1} />
                   )}
                   <Area
                     type="monotone"
                     dataKey="netWorth"
-                    name="Patrimônio Líquido"
+                    name={t('networth.series.netWorth')}
                     stroke="var(--ds-chart-2)"
                     strokeWidth={2.5}
                     fill="var(--ds-chart-2)" fillOpacity={0.12} isAnimationActive={false}
@@ -410,37 +391,36 @@ export function NetworthEvolutionContent({
           <div>
             <div className="border-t border-border pt-3">
               <div className="flex items-center gap-3 mb-3">
-                                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-foreground">
-                      Meta: {currencyFmt(milestoneTarget)}
+                      {t('networth.milestone.title', { target: currencyFmt(milestoneTarget, locale) })}
                     </p>
                     <span className="font-mono text-xs font-semibold tabular-nums text-primary">
                       {milestoneProgress.toFixed(1)}%
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Faltam {currencyFmt(Math.max(0, milestoneTarget - Math.max(0, current.netWorth)))} para alcançar a meta
+                    {t('networth.milestone.remaining', {
+                      amount: currencyFmt(Math.max(0, milestoneTarget - Math.max(0, current.netWorth)), locale),
+                    })}
                   </p>
                 </div>
               </div>
               <div
                 role="progressbar"
-                aria-label={`Progresso para meta de ${currencyFmt(milestoneTarget)}`}
+                aria-label={t('networth.milestone.progressAria', { target: currencyFmt(milestoneTarget, locale) })}
                 aria-valuenow={Math.round(milestoneProgress)}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuetext={`${milestoneProgress.toFixed(1)}%`}
                 className="h-3 rounded-full bg-muted overflow-hidden"
               >
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${milestoneProgress}%` }}
-                />
+                <div className="h-full rounded-full bg-primary" style={{ width: `${milestoneProgress}%` }} />
               </div>
               <div className="flex items-center justify-between mt-1.5">
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">{currencyFmt(0)}</span>
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">{currencyFmt(milestoneTarget)}</span>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">{currencyFmt(0, locale)}</span>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">{currencyFmt(milestoneTarget, locale)}</span>
               </div>
             </div>
           </div>

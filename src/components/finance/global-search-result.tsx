@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+import { useSafeTranslations } from '@/i18n/provider';
 import { cn } from '@/lib/utils';
 
 export type SearchResultType =
@@ -106,6 +107,8 @@ interface SearchResultsProps {
 
 /** Grouped global search results with loading, initial guidance, and filtered empty states. */
 export function SearchResults({ groups, query, loading, activeIndex, onActivate, onSelect }: SearchResultsProps) {
+  const t = useSafeTranslations('shell.globalSearch');
+
   if (loading || groups.length === 0) {
     const hasQuery = query.trim() !== '';
     const Icon = loading ? Loader2 : hasQuery ? FileX : Search;
@@ -114,9 +117,9 @@ export function SearchResults({ groups, query, loading, activeIndex, onActivate,
         <Icon aria-hidden="true" className={cn('mt-0.5 size-4 shrink-0', loading && 'motion-safe:animate-spin')} />
         <div>
           <p className="text-sm font-medium text-foreground">
-            {loading ? 'Buscando dados...' : hasQuery ? 'Nenhum resultado encontrado' : 'Comece a digitar para buscar'}
+            {loading ? t('loading') : hasQuery ? t('noResults') : t('startTyping')}
           </p>
-          {(!loading && hasQuery) && <p className="mt-1 text-xs">Tente buscar por outro termo.</p>}
+          {(!loading && hasQuery) && <p className="mt-1 text-xs">{t('noResultsHint')}</p>}
         </div>
       </div>
     );

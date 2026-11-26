@@ -9,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useSafeTranslations } from '@/i18n/provider';
+import { createFallbackTranslator, PT_OPERATIONS_MESSAGES } from './operations-i18n';
 
 export interface AccountPickerAccount {
   id: string;
@@ -39,6 +41,8 @@ export function AccountPicker<T extends AccountPickerAccount>({
   onClose,
   onCloseAutoFocus,
 }: AccountPickerProps<T>) {
+  const t = createFallbackTranslator(useSafeTranslations('accounts'), PT_OPERATIONS_MESSAGES.accounts);
+
   return (
     <Dialog
       open={open}
@@ -52,25 +56,25 @@ export function AccountPicker<T extends AccountPickerAccount>({
         onCloseAutoFocus={onCloseAutoFocus}
       >
         <DialogHeader>
-          <DialogTitle>Novo lançamento</DialogTitle>
-          <DialogDescription>Escolha a conta em que deseja registrar a transação.</DialogDescription>
+          <DialogTitle>{t('picker.title')}</DialogTitle>
+          <DialogDescription>{t('picker.description')}</DialogDescription>
         </DialogHeader>
         {loading ? (
-          <p role="status" className="text-sm text-muted-foreground">Carregando contas…</p>
+          <p role="status" className="text-sm text-muted-foreground">{t('picker.loading')}</p>
         ) : loadFailed ? (
           <div className="space-y-2 text-sm">
-            <p role="alert">Não foi possível carregar as contas.</p>
+            <p role="alert">{t('picker.loadFailed')}</p>
             <Button variant="outline" onClick={onRetry}>
-              Tentar novamente
+              {t('picker.retry')}
             </Button>
           </div>
         ) : accounts.length === 0 ? (
           <div className="space-y-2 text-sm">
-            <p>Cadastre uma conta antes de registrar um lançamento.</p>
-            <Button onClick={onCreateAccount}>Cadastrar conta</Button>
+            <p>{t('picker.noAccounts')}</p>
+            <Button onClick={onCreateAccount}>{t('picker.createAccount')}</Button>
           </div>
         ) : (
-          <ul className="space-y-1" aria-label="Contas disponíveis">
+          <ul className="space-y-1" aria-label={t('picker.availableAria')}>
             {accounts.map((account) => (
               <li key={account.id}>
                 <Button
@@ -85,7 +89,7 @@ export function AccountPicker<T extends AccountPickerAccount>({
           </ul>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose}>{t('picker.cancel')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

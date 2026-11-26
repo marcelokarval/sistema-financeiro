@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
-  mapPrismaError,
+  mapPrismaErrorLocalized,
   parseCivilDateStart,
   parseFiniteNumber,
-  parseJsonBody,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 function parseDateValue(value: unknown): Date | null {
   if (typeof value !== "string") {
@@ -16,7 +22,8 @@ function parseDateValue(value: unknown): Date | null {
 }
 
 // GET /api/budgets - List all budget goals
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
     const budgetGoals = await db.budgetGoal.findMany({
       orderBy: { createdAt: "desc" },
@@ -27,17 +34,19 @@ export async function GET() {
     return NextResponse.json(budgetGoals);
   } catch (error) {
     console.error("Error fetching budget goals:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch budget goals" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.budgets.fetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/budgets - Create budget goal
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -53,21 +62,27 @@ export async function POST(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof name !== "string" || name.trim() === "") {
-      return NextResponse.json(
-        { error: "O nome da meta é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.budgets.nameRequired"),
+        400
       );
     }
 
     if (description !== undefined && description !== null && typeof description !== "string") {
-      return NextResponse.json({ error: "Descrição inválida" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidDescription"),
+        400
+      );
     }
 
     const parsedTarget = parsePositiveFiniteNumber(targetAmount);
     if (parsedTarget === null) {
-      return NextResponse.json(
-        { error: "O valor alvo deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.budgets.invalidTargetAmount"),
+        400
       );
     }
 
@@ -75,9 +90,10 @@ export async function POST(request: NextRequest) {
     if (currentAmount !== undefined && currentAmount !== null) {
       const parsed = parseFiniteNumber(currentAmount);
       if (parsed === null || parsed < 0) {
-        return NextResponse.json(
-          { error: "O valor atual deve ser um número válido não negativo" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.budgets.invalidCurrentAmount"),
+          400
         );
       }
       parsedCurrent = parsed;
@@ -86,7 +102,11 @@ export async function POST(request: NextRequest) {
     let resolvedCategoryId: string | null = null;
     if (categoryId !== undefined && categoryId !== null && categoryId !== "") {
       if (typeof categoryId !== "string" || categoryId.trim() === "") {
-        return NextResponse.json({ error: "Categoria inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "validation.invalidCategory"),
+          400
+        );
       }
       resolvedCategoryId = categoryId.trim();
     }
@@ -95,7 +115,11 @@ export async function POST(request: NextRequest) {
     if (startDate !== undefined && startDate !== null && startDate !== "") {
       const parsed = parseDateValue(startDate);
       if (!parsed) {
-        return NextResponse.json({ error: "Data inicial inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.budgets.invalidStartDate"),
+          400
+        );
       }
       resolvedStartDate = parsed;
     }
@@ -104,7 +128,11 @@ export async function POST(request: NextRequest) {
     if (endDate !== undefined && endDate !== null && endDate !== "") {
       const parsed = parseDateValue(endDate);
       if (!parsed) {
-        return NextResponse.json({ error: "Data final inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.budgets.invalidEndDate"),
+          400
+        );
       }
       resolvedEndDate = parsed;
     }
@@ -124,22 +152,26 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(budgetGoal, { status: 201 });
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, { fk: "Categoria não encontrada" });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      fk: translateApiMessage(locale, "crud.budgets.categoryNotFound"),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error creating budget goal:", error);
-    return NextResponse.json(
-      { error: "Failed to create budget goal" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.budgets.createFailed"),
+      500
     );
   }
 }
 
 // PUT /api/budgets - Update budget goal
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -158,30 +190,37 @@ export async function PUT(request: NextRequest) {
 
     const budgetId = typeof id === "string" ? id.trim() : "";
     if (!budgetId) {
-      return NextResponse.json(
-        { error: "O ID da meta é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.budgets.idRequired"),
+        400
       );
     }
 
     if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
-      return NextResponse.json(
-        { error: "O nome da meta é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.budgets.nameRequired"),
+        400
       );
     }
 
     if (description !== undefined && description !== null && typeof description !== "string") {
-      return NextResponse.json({ error: "Descrição inválida" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidDescription"),
+        400
+      );
     }
 
     let parsedTarget: number | undefined;
     if (targetAmount !== undefined) {
       const parsed = parsePositiveFiniteNumber(targetAmount);
       if (parsed === null) {
-        return NextResponse.json(
-          { error: "O valor alvo deve ser maior que zero" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.budgets.invalidTargetAmount"),
+          400
         );
       }
       parsedTarget = parsed;
@@ -191,9 +230,10 @@ export async function PUT(request: NextRequest) {
     if (currentAmount !== undefined) {
       const parsed = parseFiniteNumber(currentAmount);
       if (parsed === null || parsed < 0) {
-        return NextResponse.json(
-          { error: "O valor atual deve ser um número válido não negativo" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.budgets.invalidCurrentAmount"),
+          400
         );
       }
       parsedCurrent = parsed;
@@ -206,7 +246,11 @@ export async function PUT(request: NextRequest) {
       } else if (typeof categoryId === "string" && categoryId.trim() !== "") {
         resolvedCategoryId = categoryId.trim();
       } else {
-        return NextResponse.json({ error: "Categoria inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "validation.invalidCategory"),
+          400
+        );
       }
     }
 
@@ -214,7 +258,11 @@ export async function PUT(request: NextRequest) {
     if (startDate !== undefined) {
       const parsed = parseDateValue(startDate);
       if (!parsed) {
-        return NextResponse.json({ error: "Data inicial inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.budgets.invalidStartDate"),
+          400
+        );
       }
       resolvedStartDate = parsed;
     }
@@ -226,21 +274,30 @@ export async function PUT(request: NextRequest) {
       } else {
         const parsed = parseDateValue(endDate);
         if (!parsed) {
-          return NextResponse.json({ error: "Data final inválida" }, { status: 400 });
+          return apiErrorResponse(
+            "VALIDATION_ERROR",
+            translateApiMessage(locale, "crud.budgets.invalidEndDate"),
+            400
+          );
         }
         resolvedEndDate = parsed;
       }
     }
 
     if (isCompleted !== undefined && typeof isCompleted !== "boolean") {
-      return NextResponse.json({ error: "Flag de conclusão inválida" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidCompletedFlag"),
+        400
+      );
     }
 
     const existing = await db.budgetGoal.findUnique({ where: { id: budgetId } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Meta não encontrada" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.budgets.notFound"),
+        404
       );
     }
 
@@ -263,25 +320,27 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(budgetGoal);
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, {
-      fk: "Categoria não encontrada",
-      notFound: "Meta não encontrada",
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      fk: translateApiMessage(locale, "crud.budgets.categoryNotFound"),
+      notFound: translateApiMessage(locale, "crud.budgets.notFound"),
     });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error updating budget goal:", error);
-    return NextResponse.json(
-      { error: "Failed to update budget goal" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.budgets.updateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/budgets - Delete budget goal
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -290,32 +349,37 @@ export async function DELETE(request: NextRequest) {
     const budgetId = typeof id === "string" ? id.trim() : "";
 
     if (!budgetId) {
-      return NextResponse.json(
-        { error: "O ID da meta é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.budgets.idRequired"),
+        400
       );
     }
 
     const existing = await db.budgetGoal.findUnique({ where: { id: budgetId } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Meta não encontrada" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.budgets.notFound"),
+        404
       );
     }
 
     await db.budgetGoal.delete({ where: { id: budgetId } });
 
-    return NextResponse.json({ success: true, message: "Meta excluída com sucesso" });
+    return apiSuccessMessage(translateApiMessage(locale, "crud.budgets.deleted"));
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, { notFound: "Meta não encontrada" });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.budgets.notFound"),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error deleting budget goal:", error);
-    return NextResponse.json(
-      { error: "Failed to delete budget goal" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.budgets.deleteFailed"),
+      500
     );
   }
 }

@@ -1,0 +1,28 @@
+{
+  "title": "Assistente Financeiro IA",
+  "conversationAriaLabel": "Conversa",
+  "typing": "Preparando resposta…",
+  "welcomeMessage": "Olá! Sou seu assistente financeiro inteligente. Posso te ajudar com:\n\n• Análise dos seus gastos\n• Dicas de economia\n• Planejamento de metas\n• Estratégias de investimento\n\nDigite sua dúvida ou use uma das sugestões abaixo!",
+  "roles": {
+    "user": "Você",
+    "assistant": "Assistente"
+  },
+  "suggestions": {
+    "saveMore": "Como economizar mais?",
+    "analyzeExpenses": "Análise dos meus gastos",
+    "investmentGoal": "Meta de investimento",
+    "reduceExpenses": "Dicas para reduzir despesas"
+  },
+  "errors": {
+    "connectFailed": "Erro ao conectar com o assistente.",
+    "unprocessed": "Não consegui processar sua mensagem. Tente novamente.",
+    "prefix": "Erro: {message}",
+    "unexpected": "Erro: Ocorreu um erro inesperado. Tente novamente em instantes."
+  },
+  "composer": {
+    "suggestionsTitle": "Sugestões de perguntas",
+    "inputAriaLabel": "Sua dúvida financeira",
+    "inputPlaceholder": "Digite sua dúvida financeira...",
+    "sendAriaLabel": "Enviar mensagem"
+  }
+}

@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { normalizeRecurringToMonthly } from "@/lib/api-validation";
-
-const currencyFmt = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+import {
+  apiErrorResponse,
+  formatServerCurrencyBRL,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 interface FinancialInsight {
   id: string;
@@ -17,7 +20,10 @@ interface FinancialInsight {
 }
 
 // GET /api/insights — compute 10 financial insights
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const currencyFmt = (v: number) => formatServerCurrencyBRL(v, locale);
+
   try {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -128,14 +134,21 @@ export async function GET() {
 
     if (avgMonthlyExpense > 0) {
       const monthsCovered = totalBalance / avgMonthlyExpense;
+      const monthsFormatted = monthsCovered.toFixed(1);
+      const metricMonths = translateApiMessage(locale, "insights.emergencyFund.metricMonths", {
+        months: monthsFormatted,
+      });
+
       if (monthsCovered >= 6) {
         insights.push({
           id: "emergency-fund",
           type: "success",
           icon: "ShieldCheck",
-          title: "Reserva de emergência saudável",
-          description: `Sua reserva cobre aproximadamente ${monthsCovered.toFixed(1)} meses de gastos. Isso está acima do recomendado!`,
-          metric: `${monthsCovered.toFixed(1)} meses`,
+          title: translateApiMessage(locale, "insights.emergencyFund.healthyTitle"),
+          description: translateApiMessage(locale, "insights.emergencyFund.healthyDescription", {
+            months: monthsFormatted,
+          }),
+          metric: metricMonths,
           trend: "up",
         });
       } else if (monthsCovered >= 3) {
@@ -143,9 +156,11 @@ export async function GET() {
           id: "emergency-fund",
           type: "info",
           icon: "ShieldAlert",
-          title: "Reserva de emergência parcial",
-          description: `Sua reserva cobre aproximadamente ${monthsCovered.toFixed(1)} meses de gastos. O ideal é ter pelo menos 6 meses.`,
-          metric: `${monthsCovered.toFixed(1)} meses`,
+          title: translateApiMessage(locale, "insights.emergencyFund.partialTitle"),
+          description: translateApiMessage(locale, "insights.emergencyFund.partialDescription", {
+            months: monthsFormatted,
+          }),
+          metric: metricMonths,
           trend: "stable",
         });
       } else {
@@ -153,11 +168,13 @@ export async function GET() {
           id: "emergency-fund",
           type: "warning",
           icon: "ShieldAlert",
-          title: "Reserva de emergência baixa",
-          description: `Sua reserva cobre apenas ${monthsCovered.toFixed(1)} meses de gastos. Considere aumentar sua poupança para emergências.`,
-          metric: `${monthsCovered.toFixed(1)} meses`,
+          title: translateApiMessage(locale, "insights.emergencyFund.lowTitle"),
+          description: translateApiMessage(locale, "insights.emergencyFund.lowDescription", {
+            months: monthsFormatted,
+          }),
+          metric: metricMonths,
           trend: "down",
-          action: "Rever orçamento",
+          action: translateApiMessage(locale, "insights.emergencyFund.lowAction"),
         });
       }
     }
@@ -209,7 +226,8 @@ export async function GET() {
         if (percentIncrease > 20 && diff > biggestOverspendAmount) {
           biggestOverspendAmount = diff;
           biggestOverspendPercent = percentIncrease;
-          biggestOverspendCategory = categoryMap.get(catId)?.name || "Categoria";
+          biggestOverspendCategory =
+            categoryMap.get(catId)?.name || translateApiMessage(locale, "common.categoryFallback");
         }
       }
     }
@@ -219,11 +237,16 @@ export async function GET() {
         id: "category-overspend",
         type: "warning",
         icon: "AlertTriangle",
-        title: `Gastos acima da média em ${biggestOverspendCategory}`,
-        description: `Você gastou ${currencyFmt(biggestOverspendAmount)} a mais em ${biggestOverspendCategory} este mês comparado à sua média dos últimos 3 meses.`,
+        title: translateApiMessage(locale, "insights.categoryOverspend.title", {
+          category: biggestOverspendCategory,
+        }),
+        description: translateApiMessage(locale, "insights.categoryOverspend.description", {
+          amount: currencyFmt(biggestOverspendAmount),
+          category: biggestOverspendCategory,
+        }),
         metric: `+${biggestOverspendPercent.toFixed(0)}%`,
         trend: "up",
-        action: "Ver detalhes da categoria",
+        action: translateApiMessage(locale, "insights.categoryOverspend.action"),
       });
     }
 
@@ -233,25 +256,36 @@ export async function GET() {
     for (const card of cards) {
       if (card.creditLimit > 0) {
         const utilization = (card.currentBalance / card.creditLimit) * 100;
+        const utilizationStr = utilization.toFixed(0);
         if (utilization >= 90) {
           insights.push({
             id: `card-util-${card.id}`,
             type: "danger",
             icon: "CreditCard",
-            title: `Cartão ${card.name} com limite quase esgotado`,
-            description: `Seu cartão ${card.name} está com ${utilization.toFixed(0)}% do limite utilizado. Evite novas compras neste cartão.`,
-            metric: `${utilization.toFixed(0)}%`,
+            title: translateApiMessage(locale, "insights.cardUtil.criticalTitle", {
+              name: card.name,
+            }),
+            description: translateApiMessage(locale, "insights.cardUtil.criticalDescription", {
+              name: card.name,
+              utilization: utilizationStr,
+            }),
+            metric: `${utilizationStr}%`,
             trend: "up",
-            action: "Pagar fatura",
+            action: translateApiMessage(locale, "insights.cardUtil.criticalAction"),
           });
         } else if (utilization >= 70) {
           insights.push({
             id: `card-util-${card.id}`,
             type: "warning",
             icon: "CreditCard",
-            title: `Cartão ${card.name} com alto uso do limite`,
-            description: `Seu cartão ${card.name} está com ${utilization.toFixed(0)}% do limite utilizado. Fique atento aos próximos gastos.`,
-            metric: `${utilization.toFixed(0)}%`,
+            title: translateApiMessage(locale, "insights.cardUtil.highTitle", {
+              name: card.name,
+            }),
+            description: translateApiMessage(locale, "insights.cardUtil.highDescription", {
+              name: card.name,
+              utilization: utilizationStr,
+            }),
+            metric: `${utilizationStr}%`,
             trend: "up",
           });
         }
@@ -270,21 +304,26 @@ export async function GET() {
           id: "income-vs-expense",
           type: "success",
           icon: "TrendingUp",
-          title: "Receitas superaram despesas",
-          description: `Parabéns! Suas receitas superaram as despesas em ${surplusPercent}% este mês. Continue assim!`,
+          title: translateApiMessage(locale, "insights.incomeVsExpense.surplusTitle"),
+          description: translateApiMessage(locale, "insights.incomeVsExpense.surplusDescription", {
+            percent: surplusPercent,
+          }),
           metric: `+${currencyFmt(surplus)}`,
           trend: "up",
         });
       } else {
+        const deficitAmount = currencyFmt(Math.abs(surplus));
         insights.push({
           id: "income-vs-expense",
           type: "danger",
           icon: "TrendingDown",
-          title: "Despesas ultrapassaram receitas",
-          description: `Suas despesas ultrapassaram as receitas em ${currencyFmt(Math.abs(surplus))} este mês. Revise seus gastos.`,
-          metric: currencyFmt(Math.abs(surplus)),
+          title: translateApiMessage(locale, "insights.incomeVsExpense.deficitTitle"),
+          description: translateApiMessage(locale, "insights.incomeVsExpense.deficitDescription", {
+            amount: deficitAmount,
+          }),
+          metric: deficitAmount,
           trend: "down",
-          action: "Rever despesas",
+          action: translateApiMessage(locale, "insights.incomeVsExpense.deficitAction"),
         });
       }
     }
@@ -298,13 +337,27 @@ export async function GET() {
         (s, r) => s + normalizeRecurringToMonthly(r.amount, r.frequency),
         0
       );
+      const recurringNoun = translateApiMessage(
+        locale,
+        activeRecurringCount !== 1
+          ? "insights.recurringSummary.pluralNoun"
+          : "insights.recurringSummary.singularNoun"
+      );
+      const recurringAmount = currencyFmt(recurringTotal);
       insights.push({
         id: "recurring-summary",
         type: "info",
         icon: "Repeat",
-        title: `${activeRecurringCount} transaç${activeRecurringCount !== 1 ? 'ões' : 'ão'} recorrente${activeRecurringCount !== 1 ? 's' : ''}`,
-        description: `Você tem ${activeRecurringCount} transaç${activeRecurringCount !== 1 ? 'ões' : 'ão'} recorrente${activeRecurringCount !== 1 ? 's' : ''} que somam ${currencyFmt(recurringTotal)}/mês.`,
-        metric: currencyFmt(recurringTotal),
+        title: translateApiMessage(locale, "insights.recurringSummary.title", {
+          count: activeRecurringCount,
+          noun: recurringNoun,
+        }),
+        description: translateApiMessage(locale, "insights.recurringSummary.description", {
+          count: activeRecurringCount,
+          noun: recurringNoun,
+          amount: recurringAmount,
+        }),
+        metric: recurringAmount,
         trend: "stable",
       });
     }
@@ -346,7 +399,8 @@ export async function GET() {
         const percentChange = ((secondHalf - firstHalf) / firstHalf) * 100;
         if (percentChange > biggestTrendPercent) {
           biggestTrendPercent = percentChange;
-          biggestTrendCategory = categoryMap.get(catId)?.name || "Categoria";
+          biggestTrendCategory =
+            categoryMap.get(catId)?.name || translateApiMessage(locale, "common.categoryFallback");
           biggestTrendDirection = "up";
         }
       }
@@ -354,15 +408,21 @@ export async function GET() {
 
     if (biggestTrendCategory && biggestTrendPercent > 30) {
       const insightType = biggestTrendPercent > 60 ? "danger" : "warning";
+      const trendPercentStr = biggestTrendPercent.toFixed(0);
       insights.push({
         id: "category-trend",
         type: insightType,
         icon: "BarChart3",
-        title: `Gastos com ${biggestTrendCategory} em alta`,
-        description: `Os gastos com ${biggestTrendCategory} aumentaram aproximadamente ${biggestTrendPercent.toFixed(0)}% na última metade dos últimos 3 meses.`,
-        metric: `+${biggestTrendPercent.toFixed(0)}%`,
+        title: translateApiMessage(locale, "insights.categoryTrend.title", {
+          category: biggestTrendCategory,
+        }),
+        description: translateApiMessage(locale, "insights.categoryTrend.description", {
+          category: biggestTrendCategory,
+          percent: trendPercentStr,
+        }),
+        metric: `+${trendPercentStr}%`,
         trend: "up",
-        action: "Analisar gastos",
+        action: translateApiMessage(locale, "insights.categoryTrend.action"),
       });
     }
 
@@ -386,13 +446,20 @@ export async function GET() {
           id: `goal-${topGoal.id}`,
           type: progressValue >= 70 ? "success" : "info",
           icon: "Target",
-          title: `Meta "${topGoal.name}" está ${progress}% completa`,
-          description: remaining > 0
-            ? `Faltam ${currencyFmt(remaining)} para atingir a meta de ${currencyFmt(topGoal.targetAmount)}.`
-            : `Parabéns! Você atingiu a meta!`,
+          title: translateApiMessage(locale, "insights.goalProgress.title", {
+            name: topGoal.name,
+            progress,
+          }),
+          description:
+            remaining > 0
+              ? translateApiMessage(locale, "insights.goalProgress.remainingDescription", {
+                  remaining: currencyFmt(remaining),
+                  target: currencyFmt(topGoal.targetAmount),
+                })
+              : translateApiMessage(locale, "insights.goalProgress.completedDescription"),
           metric: `${progress}%`,
           trend: remaining > 0 ? "up" : "stable",
-          action: remaining > 0 ? "Contribuir agora" : undefined,
+          action: remaining > 0 ? translateApiMessage(locale, "insights.goalProgress.action") : undefined,
         });
       }
     }
@@ -401,13 +468,25 @@ export async function GET() {
     // 8. Bank accounts overview
     // ──────────────────────────────────────
     if (accounts.length > 0) {
+      const balanceFormatted = currencyFmt(totalBalance);
+      const isPlural = accounts.length !== 1;
       insights.push({
         id: "accounts-overview",
         type: "info",
         icon: "Wallet",
-        title: `${accounts.length} conta${accounts.length !== 1 ? "s" : ""} bancária${accounts.length !== 1 ? "s" : ""} ativa${accounts.length !== 1 ? "s" : ""}`,
-        description: `Saldo total de ${currencyFmt(totalBalance)} distribuído${accounts.length !== 1 ? "s" : ""} em ${accounts.length} conta${accounts.length !== 1 ? "s" : ""}.`,
-        metric: currencyFmt(totalBalance),
+        title: translateApiMessage(
+          locale,
+          isPlural ? "insights.accountsOverview.pluralTitle" : "insights.accountsOverview.singularTitle",
+          { count: accounts.length }
+        ),
+        description: translateApiMessage(
+          locale,
+          isPlural
+            ? "insights.accountsOverview.pluralDescription"
+            : "insights.accountsOverview.singularDescription",
+          { balance: balanceFormatted, count: accounts.length }
+        ),
+        metric: balanceFormatted,
         trend: "stable",
       });
     }
@@ -422,13 +501,18 @@ export async function GET() {
     if (prevMonthExpense > 0 && currentMonthExpense > 0) {
       const momChange = ((currentMonthExpense - prevMonthExpense) / prevMonthExpense) * 100;
       if (momChange > 0) {
+        const momPercentStr = momChange.toFixed(0);
         insights.push({
           id: "mom-expense",
           type: "warning",
           icon: "ArrowUpRight",
-          title: "Gastos aumentaram em relação ao mês anterior",
-          description: `Suas despesas subiram ${momChange.toFixed(0)}% em comparação com o mês passado (${currencyFmt(prevMonthExpense)} → ${currencyFmt(currentMonthExpense)}).`,
-          metric: `+${momChange.toFixed(0)}%`,
+          title: translateApiMessage(locale, "insights.momExpense.upTitle"),
+          description: translateApiMessage(locale, "insights.momExpense.upDescription", {
+            percent: momPercentStr,
+            previous: currencyFmt(prevMonthExpense),
+            current: currencyFmt(currentMonthExpense),
+          }),
+          metric: `+${momPercentStr}%`,
           trend: "up",
         });
       } else if (momChange < -10) {
@@ -436,8 +520,10 @@ export async function GET() {
           id: "mom-expense",
           type: "success",
           icon: "ArrowDownRight",
-          title: "Gastos reduzidos em relação ao mês anterior",
-          description: `Suas despesas caíram ${Math.abs(momChange).toFixed(0)}% em comparação com o mês passado. Ótimo trabalho!`,
+          title: translateApiMessage(locale, "insights.momExpense.downTitle"),
+          description: translateApiMessage(locale, "insights.momExpense.downDescription", {
+            percent: Math.abs(momChange).toFixed(0),
+          }),
           metric: `${momChange.toFixed(0)}%`,
           trend: "down",
         });
@@ -452,13 +538,27 @@ export async function GET() {
       const totalCardLimit = cards.reduce((s, c) => s + c.creditLimit, 0);
       if (totalCardLimit > 0) {
         const totalUtilization = (totalCardBalance / totalCardLimit) * 100;
+        const utilizationStr = totalUtilization.toFixed(0);
+        const cardNoun = translateApiMessage(
+          locale,
+          cards.length !== 1
+            ? "insights.cardDebtOverview.pluralCards"
+            : "insights.cardDebtOverview.singularCard"
+        );
         insights.push({
           id: "card-debt-overview",
           type: totalUtilization < 40 ? "success" : totalUtilization < 70 ? "info" : "warning",
           icon: "Landmark",
-          title: `Uso total do crédito: ${totalUtilization.toFixed(0)}%`,
-          description: `Você está utilizando ${currencyFmt(totalCardBalance)} de ${currencyFmt(totalCardLimit)} disponível em ${cards.length} cartão${cards.length !== 1 ? 'ões' : 'ão'}.`,
-          metric: `${totalUtilization.toFixed(0)}%`,
+          title: translateApiMessage(locale, "insights.cardDebtOverview.title", {
+            utilization: utilizationStr,
+          }),
+          description: translateApiMessage(locale, "insights.cardDebtOverview.description", {
+            balance: currencyFmt(totalCardBalance),
+            limit: currencyFmt(totalCardLimit),
+            count: cards.length,
+            cardNoun,
+          }),
+          metric: `${utilizationStr}%`,
           trend: totalUtilization < 40 ? "stable" : "up",
         });
       }
@@ -467,9 +567,6 @@ export async function GET() {
     return NextResponse.json(insights);
   } catch (error) {
     console.error("Error fetching insights:", error);
-    return NextResponse.json(
-      { error: "Erro ao gerar insights financeiros" },
-      { status: 500 }
-    );
+    return apiErrorResponse("INTERNAL_ERROR", translateApiMessage(locale, "insights.fetchFailed"), 500);
   }
 }

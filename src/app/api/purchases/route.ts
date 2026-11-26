@@ -1,16 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
 import {
   parseCivilDateStart,
   parseFiniteNumber,
-  parseJsonBody,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  hasExplicitLocaleSignal,
+  INTL_LOCALE_MAP,
+  resolveRequestLocale,
+  translateApiMessage,
+  type SupportedLocale,
+} from "@/lib/server-i18n";
 
 type OptionalIdResult =
   | { valid: true; value: string | null }
   | { valid: false };
+
+function purchaseError(
+  code: string,
+  messageKey: string,
+  legacyMessage: string,
+  status: number,
+  locale: SupportedLocale,
+  explicitLocale: boolean
+): NextResponse {
+  return apiErrorResponse(
+    code,
+    explicitLocale ? translateApiMessage(locale, messageKey) : legacyMessage,
+    status,
+    { includeCode: explicitLocale }
+  );
+}
 
 function parseOptionalId(value: unknown): OptionalIdResult {
   if (value === undefined || value === null) {
@@ -23,18 +48,29 @@ function parseOptionalId(value: unknown): OptionalIdResult {
   return { valid: true, value: trimmed || null };
 }
 
-async function validatePurchaseRelations(ids: {
-  cardId?: string | null;
-  accountId?: string | null;
-  categoryId?: string | null;
-}): Promise<NextResponse | null> {
+async function validatePurchaseRelations(
+  ids: {
+    cardId?: string | null;
+    accountId?: string | null;
+    categoryId?: string | null;
+  },
+  locale: SupportedLocale,
+  explicitLocale: boolean
+): Promise<NextResponse | null> {
   if (ids.cardId) {
     const card = await db.card.findUnique({
       where: { id: ids.cardId },
       select: { id: true },
     });
     if (!card) {
-      return NextResponse.json({ error: "Cartão não encontrado" }, { status: 400 });
+      return purchaseError(
+        "FOREIGN_KEY_ERROR",
+        "crud.purchases.cardNotFound",
+        "Cartão não encontrado",
+        400,
+        locale,
+        explicitLocale
+      );
     }
   }
   if (ids.accountId) {
@@ -43,7 +79,14 @@ async function validatePurchaseRelations(ids: {
       select: { id: true },
     });
     if (!account) {
-      return NextResponse.json({ error: "Conta não encontrada" }, { status: 400 });
+      return purchaseError(
+        "FOREIGN_KEY_ERROR",
+        "crud.purchases.accountNotFound",
+        "Conta não encontrada",
+        400,
+        locale,
+        explicitLocale
+      );
     }
   }
   if (ids.categoryId) {
@@ -52,7 +95,14 @@ async function validatePurchaseRelations(ids: {
       select: { id: true },
     });
     if (!category) {
-      return NextResponse.json({ error: "Categoria não encontrada" }, { status: 400 });
+      return purchaseError(
+        "FOREIGN_KEY_ERROR",
+        "crud.purchases.categoryNotFound",
+        "Categoria não encontrada",
+        400,
+        locale,
+        explicitLocale
+      );
     }
   }
   return null;
@@ -67,33 +117,56 @@ type NormalizedPurchaseItem = {
 
 function parsePurchaseItems(
   rawItems: unknown,
-  allowEmpty: boolean
+  allowEmpty: boolean,
+  locale: SupportedLocale,
+  explicitLocale: boolean
 ): { ok: true; items: NormalizedPurchaseItem[] } | { ok: false; error: string } {
+  const err = (key: string, legacy: string) =>
+    explicitLocale ? translateApiMessage(locale, key) : legacy;
+
   if (!Array.isArray(rawItems)) {
-    return { ok: false, error: "At least one purchase item is required" };
+    return {
+      ok: false,
+      error: err("crud.purchases.itemRequired", "At least one purchase item is required"),
+    };
   }
   if (!allowEmpty && rawItems.length === 0) {
-    return { ok: false, error: "At least one purchase item is required" };
+    return {
+      ok: false,
+      error: err("crud.purchases.itemRequired", "At least one purchase item is required"),
+    };
   }
 
   const normalized: NormalizedPurchaseItem[] = [];
   for (const rawItem of rawItems) {
     if (rawItem === null || typeof rawItem !== "object" || Array.isArray(rawItem)) {
-      return { ok: false, error: "Invalid purchase item" };
+      return {
+        ok: false,
+        error: err("crud.purchases.invalidItem", "Invalid purchase item"),
+      };
     }
     const item = rawItem as Record<string, unknown>;
     if (typeof item.name !== "string" || item.name.trim() === "") {
-      return { ok: false, error: "Purchase item name is required" };
+      return {
+        ok: false,
+        error: err("crud.purchases.itemNameRequired", "Purchase item name is required"),
+      };
     }
 
     const quantity = item.quantity === undefined ? 1 : parsePositiveFiniteNumber(item.quantity);
     if (quantity === null || !Number.isInteger(quantity)) {
-      return { ok: false, error: "Invalid purchase item quantity" };
+      return {
+        ok: false,
+        error: err("crud.purchases.invalidItemQuantity", "Invalid purchase item quantity"),
+      };
     }
 
     const unitPrice = item.unitPrice === undefined ? 0 : parseFiniteNumber(item.unitPrice);
     if (unitPrice === null || unitPrice < 0) {
-      return { ok: false, error: "Invalid purchase item unit price" };
+      return {
+        ok: false,
+        error: err("crud.purchases.invalidItemUnitPrice", "Invalid purchase item unit price"),
+      };
     }
 
     const totalPrice =
@@ -101,7 +174,10 @@ function parsePurchaseItems(
         ? unitPrice * quantity
         : parseFiniteNumber(item.totalPrice);
     if (totalPrice === null || totalPrice < 0) {
-      return { ok: false, error: "Invalid purchase item total price" };
+      return {
+        ok: false,
+        error: err("crud.purchases.invalidItemTotalPrice", "Invalid purchase item total price"),
+      };
     }
 
     normalized.push({
@@ -122,6 +198,9 @@ function parsePositiveInt(value: unknown): number | null {
 
 // GET /api/purchases - List purchases with items and relations
 export async function GET(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const explicitLocale = hasExplicitLocaleSignal(request);
+
   try {
     const { searchParams } = new URL(request.url);
 
@@ -129,9 +208,10 @@ export async function GET(request: NextRequest) {
     const merchant = searchParams.get("merchant");
 
     const where: Prisma.PurchaseWhereInput = {};
+    const intlLocale = INTL_LOCALE_MAP[locale];
 
     if (cardId) where.cardId = cardId;
-    const merchantFilter = merchant?.trim().toLocaleLowerCase("pt-BR");
+    const merchantFilter = merchant?.trim().toLocaleLowerCase(intlLocale);
 
     const purchases = await db.purchase.findMany({
       where,
@@ -146,27 +226,37 @@ export async function GET(request: NextRequest) {
     });
 
     // SQLite StringFilter does not support `mode: "insensitive"`, and SQLite LIKE
-    // is ASCII-only; filter in JS for consistent pt-BR case-insensitive matching.
+    // is ASCII-only; filter in JS for consistent locale-aware case-insensitive matching.
     const filteredPurchases = merchantFilter
       ? purchases.filter((p) =>
-          p.merchant.toLocaleLowerCase("pt-BR").includes(merchantFilter)
+          p.merchant.toLocaleLowerCase(intlLocale).includes(merchantFilter)
         )
       : purchases;
 
     return NextResponse.json(filteredPurchases);
   } catch (error) {
     console.error("Error fetching purchases:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch purchases" },
-      { status: 500 }
+    return purchaseError(
+      "INTERNAL_ERROR",
+      "crud.purchases.fetchFailed",
+      "Failed to fetch purchases",
+      500,
+      locale,
+      explicitLocale
     );
   }
 }
 
 // POST /api/purchases - Create purchase with items
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const explicitLocale = hasExplicitLocaleSignal(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, {
+      locale,
+      includeCode: explicitLocale,
+    });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -185,35 +275,51 @@ export async function POST(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof merchant !== "string" || merchant.trim() === "") {
-      return NextResponse.json(
-        { error: "Merchant name is required" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.merchantRequired",
+        "Merchant name is required",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
     const parsedTotalAmount = parsePositiveFiniteNumber(totalAmount);
     if (parsedTotalAmount === null) {
-      return NextResponse.json(
-        { error: "Valid total amount is required" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.validTotalRequired",
+        "Valid total amount is required",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
     let resolvedDate = new Date();
     if (date !== undefined && date !== null && date !== "") {
       if (typeof date !== "string" || parseCivilDateStart(date) === null) {
-        return NextResponse.json(
-          { error: "Data inválida" },
-          { status: 400 }
+        return purchaseError(
+          "VALIDATION_ERROR",
+          "validation.invalidDate",
+          "Data inválida",
+          400,
+          locale,
+          explicitLocale
         );
       }
       resolvedDate = new Date(date);
     }
 
     if (notes !== undefined && notes !== null && typeof notes !== "string") {
-      return NextResponse.json(
-        { error: "Observações inválidas" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "validation.invalidNotes",
+        "Observações inválidas",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
@@ -222,9 +328,13 @@ export async function POST(request: NextRequest) {
         ? 1
         : parsePositiveInt(installmentNumber);
     if (resolvedInstallmentNumber === null) {
-      return NextResponse.json(
-        { error: "Número da parcela inválido" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.invalidInstallmentNumber",
+        "Número da parcela inválido",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
@@ -233,35 +343,46 @@ export async function POST(request: NextRequest) {
         ? 1
         : parsePositiveInt(installmentTotal);
     if (resolvedInstallmentTotal === null) {
-      return NextResponse.json(
-        { error: "Total de parcelas inválido" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.invalidInstallmentTotal",
+        "Total de parcelas inválido",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
-    const parsedItems = parsePurchaseItems(items, false);
+    const parsedItems = parsePurchaseItems(items, false, locale, explicitLocale);
     if (!parsedItems.ok) {
-      return NextResponse.json(
-        { error: parsedItems.error },
-        { status: 400 }
-      );
+      return apiErrorResponse("VALIDATION_ERROR", parsedItems.error, 400, {
+        includeCode: explicitLocale,
+      });
     }
 
     const parsedCardId = parseOptionalId(cardId);
     const parsedAccountId = parseOptionalId(accountId);
     const parsedCategoryId = parseOptionalId(categoryId);
     if (!parsedCardId.valid || !parsedAccountId.valid || !parsedCategoryId.valid) {
-      return NextResponse.json(
-        { error: "Identificador de vínculo inválido" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "validation.invalidLinkId",
+        "Identificador de vínculo inválido",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
-    const relationError = await validatePurchaseRelations({
-      cardId: parsedCardId.value,
-      accountId: parsedAccountId.value,
-      categoryId: parsedCategoryId.value,
-    });
+    const relationError = await validatePurchaseRelations(
+      {
+        cardId: parsedCardId.value,
+        accountId: parsedAccountId.value,
+        categoryId: parsedCategoryId.value,
+      },
+      locale,
+      explicitLocale
+    );
     if (relationError) {
       return relationError;
     }
@@ -291,17 +412,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(purchase, { status: 201 });
   } catch (error) {
     console.error("Error creating purchase:", error);
-    return NextResponse.json(
-      { error: "Failed to create purchase" },
-      { status: 500 }
+    return purchaseError(
+      "INTERNAL_ERROR",
+      "crud.purchases.createFailed",
+      "Failed to create purchase",
+      500,
+      locale,
+      explicitLocale
     );
   }
 }
 
 // PUT /api/purchases - Update purchase
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const explicitLocale = hasExplicitLocaleSignal(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, {
+      locale,
+      includeCode: explicitLocale,
+    });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -321,25 +452,37 @@ export async function PUT(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof id !== "string" || id.trim() === "") {
-      return NextResponse.json(
-        { error: "Purchase id is required" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.idRequired",
+        "Purchase id is required",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
     if (merchant !== undefined && (typeof merchant !== "string" || merchant.trim() === "")) {
-      return NextResponse.json(
-        { error: "Merchant name is required" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.merchantRequired",
+        "Merchant name is required",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
     const parsedTotalAmount =
       totalAmount !== undefined ? parsePositiveFiniteNumber(totalAmount) : undefined;
     if (totalAmount !== undefined && parsedTotalAmount === null) {
-      return NextResponse.json(
-        { error: "Valid total amount is required" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.validTotalRequired",
+        "Valid total amount is required",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
@@ -348,9 +491,13 @@ export async function PUT(request: NextRequest) {
       if (date === null || date === "") {
         resolvedDate = new Date();
       } else if (typeof date !== "string" || parseCivilDateStart(date) === null) {
-        return NextResponse.json(
-          { error: "Data inválida" },
-          { status: 400 }
+        return purchaseError(
+          "VALIDATION_ERROR",
+          "validation.invalidDate",
+          "Data inválida",
+          400,
+          locale,
+          explicitLocale
         );
       } else {
         resolvedDate = new Date(date);
@@ -358,38 +505,49 @@ export async function PUT(request: NextRequest) {
     }
 
     if (notes !== undefined && typeof notes !== "string") {
-      return NextResponse.json(
-        { error: "Observações inválidas" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "validation.invalidNotes",
+        "Observações inválidas",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
     const parsedInstallmentNumber =
       installmentNumber !== undefined ? parsePositiveInt(installmentNumber) : undefined;
     if (installmentNumber !== undefined && parsedInstallmentNumber === null) {
-      return NextResponse.json(
-        { error: "Número da parcela inválido" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.invalidInstallmentNumber",
+        "Número da parcela inválido",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
     const parsedInstallmentTotal =
       installmentTotal !== undefined ? parsePositiveInt(installmentTotal) : undefined;
     if (installmentTotal !== undefined && parsedInstallmentTotal === null) {
-      return NextResponse.json(
-        { error: "Total de parcelas inválido" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.invalidInstallmentTotal",
+        "Total de parcelas inválido",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
     let parsedItems: NormalizedPurchaseItem[] | undefined;
     if (items !== undefined) {
-      const result = parsePurchaseItems(items, true);
+      const result = parsePurchaseItems(items, true, locale, explicitLocale);
       if (!result.ok) {
-        return NextResponse.json(
-          { error: result.error },
-          { status: 400 }
-        );
+        return apiErrorResponse("VALIDATION_ERROR", result.error, 400, {
+          includeCode: explicitLocale,
+        });
       }
       parsedItems = result.items;
     }
@@ -402,9 +560,13 @@ export async function PUT(request: NextRequest) {
       (parsedAccountId && !parsedAccountId.valid) ||
       (parsedCategoryId && !parsedCategoryId.valid)
     ) {
-      return NextResponse.json(
-        { error: "Identificador de vínculo inválido" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "validation.invalidLinkId",
+        "Identificador de vínculo inválido",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
@@ -413,17 +575,25 @@ export async function PUT(request: NextRequest) {
       include: { items: true },
     });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Purchase not found" },
-        { status: 404 }
+      return purchaseError(
+        "NOT_FOUND",
+        "crud.purchases.notFound",
+        "Purchase not found",
+        404,
+        locale,
+        explicitLocale
       );
     }
 
-    const relationError = await validatePurchaseRelations({
-      cardId: parsedCardId && parsedCardId.valid ? parsedCardId.value : null,
-      accountId: parsedAccountId && parsedAccountId.valid ? parsedAccountId.value : null,
-      categoryId: parsedCategoryId && parsedCategoryId.valid ? parsedCategoryId.value : null,
-    });
+    const relationError = await validatePurchaseRelations(
+      {
+        cardId: parsedCardId && parsedCardId.valid ? parsedCardId.value : null,
+        accountId: parsedAccountId && parsedAccountId.valid ? parsedAccountId.value : null,
+        categoryId: parsedCategoryId && parsedCategoryId.valid ? parsedCategoryId.value : null,
+      },
+      locale,
+      explicitLocale
+    );
     if (relationError) {
       return relationError;
     }
@@ -464,17 +634,27 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(purchase);
   } catch (error) {
     console.error("Error updating purchase:", error);
-    return NextResponse.json(
-      { error: "Failed to update purchase" },
-      { status: 500 }
+    return purchaseError(
+      "INTERNAL_ERROR",
+      "crud.purchases.updateFailed",
+      "Failed to update purchase",
+      500,
+      locale,
+      explicitLocale
     );
   }
 }
 
 // DELETE /api/purchases - Delete purchase (cascade deletes items)
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const explicitLocale = hasExplicitLocaleSignal(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, {
+      locale,
+      includeCode: explicitLocale,
+    });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -482,29 +662,45 @@ export async function DELETE(request: NextRequest) {
     const { id } = parsedBody.data;
 
     if (typeof id !== "string" || id.trim() === "") {
-      return NextResponse.json(
-        { error: "Purchase id is required" },
-        { status: 400 }
+      return purchaseError(
+        "VALIDATION_ERROR",
+        "crud.purchases.idRequired",
+        "Purchase id is required",
+        400,
+        locale,
+        explicitLocale
       );
     }
 
     const existing = await db.purchase.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Purchase not found" },
-        { status: 404 }
+      return purchaseError(
+        "NOT_FOUND",
+        "crud.purchases.notFound",
+        "Purchase not found",
+        404,
+        locale,
+        explicitLocale
       );
     }
 
     // PurchaseItem.purchase uses ON DELETE CASCADE in the database.
     await db.purchase.delete({ where: { id } });
 
-    return NextResponse.json({ success: true, message: "Purchase deleted" });
+    return apiSuccessMessage(
+      explicitLocale
+        ? translateApiMessage(locale, "crud.purchases.deleted")
+        : "Purchase deleted"
+    );
   } catch (error) {
     console.error("Error deleting purchase:", error);
-    return NextResponse.json(
-      { error: "Failed to delete purchase" },
-      { status: 500 }
+    return purchaseError(
+      "INTERNAL_ERROR",
+      "crud.purchases.deleteFailed",
+      "Failed to delete purchase",
+      500,
+      locale,
+      explicitLocale
     );
   }
 }

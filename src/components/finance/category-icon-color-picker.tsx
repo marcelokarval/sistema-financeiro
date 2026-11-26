@@ -21,6 +21,13 @@ import {
   Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSafeTranslations } from '@/i18n/provider';
+import {
+  CATEGORY_COLOR_KEYS,
+  CATEGORY_ICON_KEYS,
+  createFallbackTranslator,
+  PT_OPERATIONS_MESSAGES,
+} from './operations-i18n';
 
 const focusStyle = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
@@ -77,13 +84,23 @@ export function CategoryIconColorPicker({
   onIconChange,
   onColorChange,
 }: CategoryIconColorPickerProps) {
+  const t = createFallbackTranslator(useSafeTranslations('categories'), PT_OPERATIONS_MESSAGES.categories);
+  const resolveColorLabel = (hex: string, fallback: string) => {
+    const key = CATEGORY_COLOR_KEYS[hex as keyof typeof CATEGORY_COLOR_KEYS];
+    return key ? t(`colors.${key}`) : fallback;
+  };
+  const resolveIconLabel = (iconValue: string, fallback: string) => {
+    const key = CATEGORY_ICON_KEYS[iconValue as keyof typeof CATEGORY_ICON_KEYS];
+    return key ? t(`icons.${key}`) : fallback;
+  };
   const PreviewIcon = iconOptions.find((option) => option.value === icon)?.Icon ?? Tag;
-  const colorLabel = categoryColors.find((option) => option.value === color)?.label;
+  const matchedColor = categoryColors.find((option) => option.value === color);
+  const colorLabel = matchedColor ? resolveColorLabel(matchedColor.value, matchedColor.label) : undefined;
 
   return (
     <>
       <fieldset className="min-w-0 space-y-2">
-        <legend className="text-sm font-medium">Ícone</legend>
+        <legend className="text-sm font-medium">{t('picker.iconLegend')}</legend>
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
           {iconOptions.map((opt) => {
             const selected = icon === opt.value;
@@ -102,7 +119,7 @@ export function CategoryIconColorPicker({
                 )}
               >
                 <opt.Icon aria-hidden="true" className="size-4 shrink-0" />
-                <span className="min-w-0 [overflow-wrap:anywhere]">{opt.label}</span>
+                <span className="min-w-0 [overflow-wrap:anywhere]">{resolveIconLabel(opt.value, opt.label)}</span>
               </button>
             );
           })}
@@ -110,17 +127,18 @@ export function CategoryIconColorPicker({
       </fieldset>
 
       <fieldset className="min-w-0 space-y-2">
-        <legend className="text-sm font-medium">Cor</legend>
+        <legend className="text-sm font-medium">{t('picker.colorLegend')}</legend>
         <div className="flex flex-wrap gap-1">
           {categoryColors.map((c) => {
             const selected = color === c.value;
+            const label = resolveColorLabel(c.value, c.label);
             return (
               <button
                 key={c.value}
                 type="button"
-                aria-label={c.label}
+                aria-label={label}
                 aria-pressed={selected}
-                title={c.label}
+                title={label}
                 onClick={() => onColorChange(c.value)}
                 className={cn(
                   'grid size-11 shrink-0 place-items-center rounded-md border',
@@ -142,7 +160,7 @@ export function CategoryIconColorPicker({
       </fieldset>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium">Pré-visualização</p>
+        <p className="text-sm font-medium">{t('picker.previewTitle')}</p>
         <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
           <div
             aria-hidden="true"
@@ -151,14 +169,14 @@ export function CategoryIconColorPicker({
             <PreviewIcon className="size-4" />
           </div>
           <div className="min-w-0">
-            <p className="break-words text-sm font-semibold">{name || 'Nome da categoria'}</p>
+            <p className="break-words text-sm font-semibold">{name || t('picker.defaultName')}</p>
             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
               <span
                 aria-hidden="true"
                 className="size-2.5 shrink-0 rounded-full border border-border"
                 style={{ backgroundColor: color }}
               />
-              {type === 'INCOME' ? 'Receita' : 'Despesa'}
+              {type === 'INCOME' ? t('types.INCOME') : t('types.EXPENSE')}
               {colorLabel}
             </p>
           </div>

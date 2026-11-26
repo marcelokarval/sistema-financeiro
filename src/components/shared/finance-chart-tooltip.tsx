@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useSafeTranslations } from '@/i18n/provider';
 import { cn } from '@/lib/utils';
 
 export interface FinanceChartTooltipRow {
@@ -30,9 +31,11 @@ export function FinanceChartTooltip({
   rows,
   children,
   showValues = true,
-  maskedValue = 'R$ ••••••',
+  maskedValue,
   className,
 }: FinanceChartTooltipProps) {
+  const t = useSafeTranslations('shared');
+  const resolvedMaskedValue = maskedValue ?? (t.has('maskedValue') ? t('maskedValue') : 'R$ ••••••');
   if (!active) return null;
 
   const validRows = (rows ?? []).filter(
@@ -70,7 +73,7 @@ export function FinanceChartTooltip({
                 <span className="text-muted-foreground">{row.label}:</span>
               </div>
               <span className="font-mono font-semibold tabular-nums text-card-foreground">
-                {showValues ? row.value : (row.maskedValue ?? maskedValue)}
+                {showValues ? row.value : (row.maskedValue ?? resolvedMaskedValue)}
               </span>
             </div>
           ))}

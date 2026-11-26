@@ -335,6 +335,34 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
 import { BudgetGoalEditor } from './budget-goal-editor';
 import { MonthlyBudgetEditor } from './monthly-budget-editor';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function ptUseContext(ctx: React.Context<unknown>, locale: CanonicalLocale = 'pt') {
+  return ctx === AppIntlBridgeContext
+    ? { locale, messages: getMessagesForLocale(locale) }
+    : (ctx as unknown as { _currentValue?: unknown })._currentValue;
+}
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 type ViewElement = ReactElement<Record<string, any>>;
 const findElement = (node: ReactNode, matches: (element: ViewElement) => boolean): ViewElement | undefined => {
@@ -343,15 +371,15 @@ const findElement = (node: ReactNode, matches: (element: ViewElement) => boolean
     if (matches(child)) return child;
     let content = child.props.children;
     if (child.type === BudgetGoalEditor) {
-      content = BudgetGoalEditor((child as ReactElement<React.ComponentProps<typeof BudgetGoalEditor>>).props);
+      content = withPtIntlDispatcher(() => BudgetGoalEditor((child as ReactElement<React.ComponentProps<typeof BudgetGoalEditor>>).props));
     } else if (child.type === MonthlyBudgetEditor) {
-      content = MonthlyBudgetEditor((child as ReactElement<React.ComponentProps<typeof MonthlyBudgetEditor>>).props);
+      content = withPtIntlDispatcher(() => MonthlyBudgetEditor((child as ReactElement<React.ComponentProps<typeof MonthlyBudgetEditor>>).props));
     } else if (child.type === FinanceFormDialogShell) {
-      content = FinanceFormDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props);
+      content = withPtIntlDispatcher(() => FinanceFormDialogShell((child as ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props));
     } else if (child.type === BudgetUI.BudgetGoalsContent) {
-      content = BudgetUI.BudgetGoalsContent((child as ReactElement<React.ComponentProps<typeof BudgetUI.BudgetGoalsContent>>).props);
+      content = withPtIntlDispatcher(() => BudgetUI.BudgetGoalsContent((child as ReactElement<React.ComponentProps<typeof BudgetUI.BudgetGoalsContent>>).props));
     } else if (child.type === MonthlyBudgetUI.BudgetHeader) {
-      content = MonthlyBudgetUI.BudgetHeader((child as ReactElement<React.ComponentProps<typeof MonthlyBudgetUI.BudgetHeader>>).props);
+      content = withPtIntlDispatcher(() => MonthlyBudgetUI.BudgetHeader((child as ReactElement<React.ComponentProps<typeof MonthlyBudgetUI.BudgetHeader>>).props));
     }
     const nested = findElement(content, matches);
     if (nested) return nested;
@@ -404,6 +432,7 @@ async function exerciseWidget<T>(
         return callbacksState[idx].fn;
       },
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
       useEffect: (effect: () => void | (() => void), deps?: readonly unknown[]) => {
         const idx = effectIndex++;
         const prev = effectsState[idx];
@@ -449,24 +478,26 @@ test('BudgetGoalEditor adota FinanceFormDialogShell preservando retorno de foco,
   let fieldChanged = null as [string, string] | null;
   const onCloseAutoFocus = () => {};
   const onSubmit = async () => {};
-  const element = BudgetGoalEditor({
-    mode: 'edit',
-    open: true,
-    submitting: true,
-    form: {
-      name: 'Reserva',
-      description: 'Fundo de emergência',
-      targetAmount: '5000',
-      currentAmount: '1200',
-      categoryId: 'cat-1',
-      endDate: '2026-12-31',
-    },
-    categories: [{ id: 'cat-1', name: 'Moradia', color: '#8b5cf6' }],
-    onFieldChange: (field, value) => { fieldChanged = [field, value]; },
-    onOpenChange: (open) => { if (!open) cancelled++; },
-    onCloseAutoFocus,
-    onSubmit,
-  });
+  const element = withPtIntlDispatcher(() =>
+    BudgetGoalEditor({
+      mode: 'edit',
+      open: true,
+      submitting: true,
+      form: {
+        name: 'Reserva',
+        description: 'Fundo de emergência',
+        targetAmount: '5000',
+        currentAmount: '1200',
+        categoryId: 'cat-1',
+        endDate: '2026-12-31',
+      },
+      categories: [{ id: 'cat-1', name: 'Moradia', color: '#8b5cf6' }],
+      onFieldChange: (field, value) => { fieldChanged = [field, value]; },
+      onOpenChange: (open) => { if (!open) cancelled++; },
+      onCloseAutoFocus,
+      onSubmit,
+    }),
+  );
 
   expect(element.type).toBe(FinanceFormDialogShell);
   expect(element.props.closeLabel).toBeUndefined();
@@ -492,18 +523,20 @@ test('BudgetGoalEditor adota FinanceFormDialogShell preservando retorno de foco,
 test('MonthlyBudgetEditor adota FinanceFormDialogShell sem closeLabel extra, sem bloquear autoFocus padrão e com w-full nos triggers', () => {
   let closed = 0;
   const onSubmit = async () => {};
-  const createEl = MonthlyBudgetEditor({
-    mode: 'create',
-    open: true,
-    submitting: false,
-    fieldId: ':qa:',
-    form: { categoryId: '', amount: '', month: '11', year: '2026' },
-    categories: [{ id: 'cat-food', name: 'Alimentação', color: '#22c55e', icon: 'utensils' }],
-    years: ['2025', '2026', '2027'],
-    onFieldChange: () => {},
-    onOpenChange: (open) => { if (!open) closed++; },
-    onSubmit,
-  });
+  const createEl = withPtIntlDispatcher(() =>
+    MonthlyBudgetEditor({
+      mode: 'create',
+      open: true,
+      submitting: false,
+      fieldId: ':qa:',
+      form: { categoryId: '', amount: '', month: '11', year: '2026' },
+      categories: [{ id: 'cat-food', name: 'Alimentação', color: '#22c55e', icon: 'utensils' }],
+      years: ['2025', '2026', '2027'],
+      onFieldChange: () => {},
+      onOpenChange: (open) => { if (!open) closed++; },
+      onSubmit,
+    }),
+  );
 
   expect(createEl.type).toBe(FinanceFormDialogShell);
   expect(createEl.props.closeLabel).toBeUndefined();
@@ -516,18 +549,20 @@ test('MonthlyBudgetEditor adota FinanceFormDialogShell sem closeLabel extra, sem
   const disabledSubmit = findElement(createEl, (e) => e.props.onClick === onSubmit);
   expect(disabledSubmit?.props.disabled).toBe(true);
 
-  const editEl = MonthlyBudgetEditor({
-    mode: 'edit',
-    open: true,
-    submitting: false,
-    fieldId: ':qa:',
-    form: { categoryId: 'cat-food', amount: '500', month: '11', year: '2026' },
-    categories: [{ id: 'cat-food', name: 'Alimentação', color: '#22c55e', icon: 'utensils' }],
-    years: ['2025', '2026', '2027'],
-    onFieldChange: () => {},
-    onOpenChange: (open) => { if (!open) closed++; },
-    onSubmit,
-  });
+  const editEl = withPtIntlDispatcher(() =>
+    MonthlyBudgetEditor({
+      mode: 'edit',
+      open: true,
+      submitting: false,
+      fieldId: ':qa:',
+      form: { categoryId: 'cat-food', amount: '500', month: '11', year: '2026' },
+      categories: [{ id: 'cat-food', name: 'Alimentação', color: '#22c55e', icon: 'utensils' }],
+      years: ['2025', '2026', '2027'],
+      onFieldChange: () => {},
+      onOpenChange: (open) => { if (!open) closed++; },
+      onSubmit,
+    }),
+  );
   expect(findElement(editEl, (e) => e.props.onClick === onSubmit)?.props.disabled).toBe(false);
   findElement(editEl, (e) => e.type === Dialog)?.props.onOpenChange(false);
   expect(closed).toBe(1);
@@ -756,4 +791,33 @@ test('Task 1.3: MonthlyBudgetTracker handleDelete trata resposta 503 não-JSON c
       expect(requests.filter(([m, u]) => m === 'GET' && u.startsWith('/api/monthly-budgets')).length).toBe(initialGets);
     },
   );
+});
+
+test('renderiza orçamento, metas e saúde financeira em pt, es e en sem chaves cruas', () => {
+  const expected = {
+    pt: { monthlyTitle: 'Orçamento mensal', goals: 'Metas de orçamento' },
+    es: { monthlyTitle: 'Presupuesto mensual', goals: 'Metas de presupuesto' },
+    en: { monthlyTitle: 'Monthly budget', goals: 'Budget goals' },
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const budgetHtml = renderWithIntl(<MonthlyBudgetUI.MonthlyBudgetTracker showValues refreshCounter={0} />, locale);
+    expect(budgetHtml).toContain(expected[locale].monthlyTitle);
+    expect(budgetHtml).not.toContain('MISSING_MESSAGE');
+
+    const goalsHtml = renderWithIntl(
+      <BudgetUI.BudgetGoalsContent
+        goals={[]}
+        loading={false}
+        error={false}
+        onRetry={() => {}}
+        onCreate={() => {}}
+        onEdit={() => {}}
+        onDelete={() => {}}
+        onToggle={() => {}}
+      />,
+      locale,
+    );
+    expect(goalsHtml).toContain(expected[locale].goals);
+  }
 });

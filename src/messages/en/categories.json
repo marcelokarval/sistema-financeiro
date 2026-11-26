@@ -1,0 +1,107 @@
+{
+  "eyebrow": "Activity",
+  "title": "Categories",
+  "subtitle": "Organize your income and expenses.",
+  "loading": "Loading categories…",
+  "actions": {
+    "newCategory": "New category",
+    "retryList": "Retry refreshing list",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "errors": {
+    "nameRequired": "Enter the category name",
+    "save": "Error saving category",
+    "delete": "Error deleting category",
+    "refresh": "Could not refresh the category list."
+  },
+  "toasts": {
+    "updated": "Category updated!",
+    "created": "Category created!",
+    "deleted": "Category deleted!"
+  },
+  "types": {
+    "INCOME": "Income",
+    "EXPENSE": "Expense"
+  },
+  "summary": {
+    "ariaLabel": "Category totals",
+    "total": "Total categories",
+    "incomes": "Income",
+    "expenses": "Expenses",
+    "mostUsed": "Most used",
+    "emptyFallback": "—",
+    "recordsCaption": "{count, plural, one {# record} other {# records}}"
+  },
+  "list": {
+    "title": "Registered categories",
+    "filterAria": "Filter by type",
+    "filterAll": "All",
+    "filterIncome": "Income",
+    "filterExpense": "Expenses",
+    "emptyAll": "No categories registered. Create the first one to get started.",
+    "emptyIncome": "No income categories registered.",
+    "emptyExpense": "No expense categories registered.",
+    "txCount": "{count, plural, one {transaction} other {transactions}}",
+    "purchaseCount": "{count, plural, one {purchase} other {purchases}}",
+    "totalRecords": "{count, plural, one {# record} other {# records}} total",
+    "editAria": "Edit category: {name}",
+    "deleteAria": "Delete category: {name}"
+  },
+  "deleteDialog": {
+    "title": "Delete category?",
+    "description": "This action cannot be undone. Linked transactions and purchases will lose their category."
+  },
+  "editor": {
+    "closeLabel": "Close form",
+    "editTitle": "Edit category",
+    "createTitle": "New category",
+    "editDescription": "Update category details",
+    "createDescription": "Create a new category",
+    "cancel": "Cancel",
+    "update": "Update",
+    "create": "Create",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Food, Transport...",
+    "typeLabel": "Type"
+  },
+  "picker": {
+    "iconLegend": "Icon",
+    "colorLegend": "Color",
+    "previewTitle": "Preview",
+    "defaultName": "Category name"
+  },
+  "colors": {
+    "green": "Green",
+    "cyan": "Cyan",
+    "blue": "Blue",
+    "violet": "Violet",
+    "red": "Red",
+    "orange": "Orange",
+    "amber": "Amber",
+    "slate": "Slate gray",
+    "pink": "Pink",
+    "lime": "Lime green",
+    "purple": "Purple",
+    "lightGray": "Light gray"
+  },
+  "icons": {
+    "banknote": "Cash",
+    "laptop": "Laptop",
+    "trendingUp": "Investment",
+    "utensils": "Food",
+    "car": "Transport",
+    "heartPulse": "Health",
+    "graduationCap": "Education",
+    "gamepad2": "Entertainment",
+    "shoppingBag": "Shopping",
+    "receipt": "Bills",
+    "home": "Housing",
+    "moreHorizontal": "Other",
+    "tag": "Tag",
+    "gift": "Gift",
+    "plane": "Travel",
+    "baby": "Kids",
+    "dog": "Pet"
+  }
+}

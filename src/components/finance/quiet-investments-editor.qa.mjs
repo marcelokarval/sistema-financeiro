@@ -15,7 +15,7 @@ const source = fileURLToPath(import.meta.url);
 const view = join(dirname(source), 'investments-view.tsx');
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
-function installFixture(InvestmentsView, createElement, createRoot, Toaster) {
+function installFixture(InvestmentsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, Toaster) {
   const records = ['a', 'b'].map((id) => ({
     id, name: `Investimento ${id.toUpperCase()}`, type: 'CDB', investedAmount: 1200, currentBalance: 1350, yieldRate: 0,
   }));
@@ -77,8 +77,12 @@ function installFixture(InvestmentsView, createElement, createRoot, Toaster) {
   qa.mount = (theme) => {
     document.documentElement.classList.add(theme);
     createRoot(document.getElementById('root')).render(
-      createElement('main', { className: 'min-h-screen bg-background p-3', id: 'fixture' },
-        createElement(InvestmentsView), createElement(Toaster, { theme })),
+      createElement(
+        AppIntlProvider,
+        { locale: 'pt', messages: getMessagesForLocale('pt') },
+        createElement('main', { className: 'min-h-screen bg-background p-3', id: 'fixture' },
+          createElement(InvestmentsView), createElement(Toaster, { theme })),
+      ),
     );
   };
 }
@@ -416,8 +420,10 @@ try {
   assert(css.includes('--ds-focus') && css.includes('.bg-background'), 'CSS compilado sem tokens/utilitários');
 
   const entry = `import { InvestmentsView } from ${JSON.stringify(view)};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement } from 'react'; import { createRoot } from 'react-dom/client'; import { Toaster } from 'sonner';
-    (${installFixture.toString()})(InvestmentsView, createElement, createRoot, Toaster);`;
+    (${installFixture.toString()})(InvestmentsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, Toaster);`;
   async function htmlFor(label, original) {
     const bundle = await Bun.build({
       entrypoints: [source], target: 'browser', format: 'iife', minify: true,

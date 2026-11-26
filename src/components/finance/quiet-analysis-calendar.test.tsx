@@ -5,11 +5,11 @@ import ts from 'typescript';
 
 // Presentation and wiring contracts; browser interaction is verified separately.
 const widgets = [
-  ['financial-calendar', 'Calendário Financeiro', 'Resumo do intervalo', 'financial-calendar'],
-  ['networth-evolution', 'Evolução Patrimonial', 'Indicadores patrimoniais', 'networth-evolution'],
-  ['debt-overview', 'Visão de Dívidas', 'Composição das dívidas', 'debt-overview'],
-  ['transaction-analytics', 'Análise de Transações', 'Indicadores de transações', 'transaction-analysis-tabs'],
-  ['financial-reports', 'Relatórios Financeiros', 'Indicadores do relatório', 'financial-report-tabs'],
+  ['financial-calendar', 'Calendário Financeiro', "t('calendar.summaryAria')", 'financial-calendar'],
+  ['networth-evolution', 'Evolução Patrimonial', "t('networth.indicatorsAria')", 'networth-evolution'],
+  ['debt-overview', 'Visão de Dívidas', "t('debts.compositionAria')", 'debt-overview'],
+  ['transaction-analytics', 'Análise de Transações', "t('transactions.overview.indicatorsAria')", 'transaction-analysis-tabs'],
+  ['financial-reports', 'Relatórios Financeiros', "t('reports.indicatorsAria')", 'financial-report-tabs'],
 ] as const;
 
 function source(name: string) {
@@ -20,21 +20,21 @@ for (const [name, title, group, groupFile] of widgets) {
   test(`${title}: painel nomeado e grupo de dados sem ornamentação`, () => {
     const jsx = source(name);
     expect(jsx).toMatch(/<section aria-labelledby="[^"]+"/);
-    expect(source(groupFile)).toContain(`aria-label="${group}"`);
+    expect(source(groupFile)).toContain(`aria-label={${group}}`);
     expect(jsx).not.toMatch(/bg-gradient|card-glow|<motion\./);
     expect(source(groupFile)).not.toMatch(/bg-gradient|card-glow|<motion\./);
     expect(source(groupFile)).toMatch(/import \{ currencyFmt(?:, [^}]+)? \} from '@\/lib\/helpers';/);
   });
 }
 
-function hasControl(name: string, label: string, callback: string, attribute = 'onClick') {
+function hasControl(name: string, labelKey: string, callback: string, attribute = 'onClick') {
   const file = ts.createSourceFile(name + '.tsx', source(name), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let found = false;
   function visit(node: ts.Node) {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const attrs = new Map(node.attributes.properties.flatMap((p) => ts.isJsxAttribute(p)
         ? [[p.name.getText(file), p.initializer?.getText(file)]] as const : []));
-      if (attrs.get('aria-label') === JSON.stringify(label) && attrs.get(attribute) === callback) found = true;
+      if (attrs.get('aria-label') === `{${labelKey}}` && attrs.get(attribute) === callback) found = true;
     }
     ts.forEachChild(node, visit);
   }
@@ -43,17 +43,45 @@ function hasControl(name: string, label: string, callback: string, attribute = '
 }
 
 test('ações iconográficas mantêm seus callbacks e têm nome acessível', () => {
-  expect(hasControl('financial-calendar', 'Atualizar calendário', '{() => fetchData(activeDays)}')).toBe(true);
-  expect(hasControl('financial-calendar-grid', 'Mês anterior', '{() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}')).toBe(true);
-  expect(hasControl('financial-calendar-grid', 'Próximo mês', '{() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}')).toBe(true);
-  expect(hasControl('networth-evolution', 'Atualizar patrimônio', '{() => fetchData(selectedMonths)}')).toBe(true);
-  expect(hasControl('debt-overview', 'Atualizar dívidas', '{fetchData}')).toBe(true);
-  expect(hasControl('transaction-analytics', 'Atualizar análise', '{fetchData}')).toBe(true);
-  expect(hasControl('financial-reports', 'Atualizar relatórios', '{fetchReports}')).toBe(true);
+  expect(hasControl('financial-calendar', "t('calendar.refreshAria')", '{() => fetchData(activeDays)}')).toBe(true);
+  expect(hasControl('financial-calendar-grid', "t('calendar.prevMonthAria')", '{() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}')).toBe(true);
+  expect(hasControl('financial-calendar-grid', "t('calendar.nextMonthAria')", '{() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}')).toBe(true);
+  expect(hasControl('networth-evolution', "t('networth.refreshAria')", '{() => fetchData(selectedMonths)}')).toBe(true);
+  expect(hasControl('debt-overview', "t('debts.refreshAria')", '{fetchData}')).toBe(true);
+  expect(hasControl('transaction-analytics', "t('transactions.refreshAria')", '{fetchData}')).toBe(true);
+  expect(hasControl('financial-reports', "t('reports.refreshAria')", '{fetchReports}')).toBe(true);
 });
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function ptUseContext(ctx: React.Context<unknown>, locale: CanonicalLocale = 'pt') {
+  return ctx === AppIntlBridgeContext
+    ? { locale, messages: getMessagesForLocale(locale) }
+    : (ctx as unknown as { _currentValue?: unknown })._currentValue;
+}
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 import * as reports from './financial-reports';
 import * as analytics from './transaction-analytics';
 import * as networth from './networth-evolution';
@@ -236,7 +264,7 @@ function findButtonByText(node: unknown, label: string): { props: Record<string,
     return el as { props: Record<string, any> };
   }
   if (typeof el.type === 'function') {
-    const rendered = (el.type as (props: Record<string, any>) => unknown)(el.props ?? {});
+    const rendered = withPtIntlDispatcher(() => (el.type as (props: Record<string, any>) => unknown)(el.props ?? {}));
     const hit = findButtonByText(rendered, label);
     if (hit) return hit;
   }
@@ -283,6 +311,7 @@ function runWithReactHarness(renderComponent: () => React.ReactElement<Record<st
         return memos[i].value;
       },
       useDebugValue: () => {},
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
       useId: () => 'test-query-id',
       useSyncExternalStore: (_sub: unknown, getSnapshot: () => unknown) => getSnapshot(),
       useEffect(fn: () => void | (() => void), deps?: readonly unknown[]) {
@@ -352,14 +381,16 @@ test('QueryPanel distingue loading, error com Tentar novamente, empty e success 
   expect(errorHtml).not.toContain('Conteúdo não deve aparecer');
 
   const retryBtn = findButtonByText(
-    QueryPanel({
-      titleId: 'qp-test',
-      title: 'Painel sintético',
-      status: 'error',
-      errorMessage: 'Falha na consulta.',
-      onRetry: () => { retried++; },
-      children: null,
-    }),
+    withPtIntlDispatcher(() =>
+      QueryPanel({
+        titleId: 'qp-test',
+        title: 'Painel sintético',
+        status: 'error',
+        errorMessage: 'Falha na consulta.',
+        onRetry: () => { retried++; },
+        children: null,
+      }),
+    ),
     'Tentar novamente',
   );
   expect(retryBtn).toBeDefined();
@@ -730,19 +761,21 @@ test('NetworthEvolutionContent adota FinanceChartTooltip sem alterar séries, es
   expect(nwSrc).toContain("from '@/components/shared/finance-chart-tooltip'");
 
   const NetworthView = (networth as Record<string, any>).NetworthEvolutionContent;
-  const tree = NetworthView({
-    loading: false,
-    selectedMonths: 6,
-    onSelectMonths: () => {},
-    fetchData: () => {},
-    onRetry: () => {},
-    data: {
-      monthlyData: [
-        { month: 'jan', netWorth: 20000, assets: 25000, liabilities: 5000, changePercent: 5, changeAmount: 1000 },
-        { month: 'fev', netWorth: -5000, assets: 5000, liabilities: 10000, changePercent: -125, changeAmount: -25000 },
-      ],
-    },
-  });
+  const tree = withPtIntlDispatcher(() =>
+    NetworthView({
+      loading: false,
+      selectedMonths: 6,
+      onSelectMonths: () => {},
+      fetchData: () => {},
+      onRetry: () => {},
+      data: {
+        monthlyData: [
+          { month: 'jan', netWorth: 20000, assets: 25000, liabilities: 5000, changePercent: 5, changeAmount: 1000 },
+          { month: 'fev', netWorth: -5000, assets: 5000, liabilities: 10000, changePercent: -125, changeAmount: -25000 },
+        ],
+      },
+    }),
+  );
   const tooltipEl = findElementByType(tree, RechartsTooltip);
   expect(tooltipEl).toBeDefined();
   expect(tooltipEl?.props.content?.type).toBe((networth as Record<string, any>).NetworthEvolutionTooltip);
@@ -1000,7 +1033,7 @@ test('Task 0018: seções extraídas de dívidas, calendário, relatórios e an�
     const el = node as { type?: unknown; props?: Record<string, any> };
     if (el.props?.['aria-label'] === label && typeof el.props?.onClick === 'function') return el as { props: Record<string, any> };
     if (typeof el.type === 'function') {
-      const rendered = (el.type as (p: Record<string, any>) => unknown)(el.props ?? {});
+      const rendered = withPtIntlDispatcher(() => (el.type as (p: Record<string, any>) => unknown)(el.props ?? {}));
       const hit = findByAriaLabel(rendered, label);
       if (hit) return hit;
     }
@@ -1473,5 +1506,32 @@ test('Task 1.4: DebtOverview e FinancialReportsWidget limpam dado antigo em falh
       harness.cleanupAll();
       globalThis.fetch = originalFetch;
     }
+  }
+});
+
+test('renderiza relatórios, análises, patrimônio, dívidas e calendário em pt, es e en sem vazar chaves', () => {
+  const ReportView = (reports as Record<string, any>).FinancialReportsContent;
+  const AnalyticsView = (analytics as Record<string, any>).TransactionAnalyticsContent;
+  const NetworthView = (networth as Record<string, any>).NetworthEvolutionContent;
+  const DebtView = (debt as Record<string, any>).DebtOverviewContent;
+  const CalendarView = (calendar as Record<string, any>).FinancialCalendarContent;
+  const expected = {
+    pt: { retry: 'Tentar novamente', calendarTitle: 'Carregando calendário financeiro' },
+    es: { retry: 'Intentar de nuevo', calendarTitle: 'Cargando calendario financiero' },
+    en: { retry: 'Try again', calendarTitle: 'Loading financial calendar' },
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    for (const errHtml of [
+      renderWithIntl(<ReportView data={null} loading={false} activeTab="monthly" onTabChange={() => {}} onRetry={() => {}} />, locale),
+      renderWithIntl(<AnalyticsView data={null} loading={false} typeFilter="ALL" onTypeFilterChange={() => {}} activeTab="overview" onTabChange={() => {}} onRetry={() => {}} />, locale),
+      renderWithIntl(<NetworthView data={null} loading={false} selectedMonths={6} onSelectMonths={() => {}} onRetry={() => {}} />, locale),
+      renderWithIntl(<DebtView data={null} loading={false} onRetry={() => {}} />, locale),
+    ]) {
+      expect(errHtml).toContain(expected[locale].retry);
+      expect(errHtml).not.toContain('MISSING_MESSAGE');
+    }
+    const calHtml = renderWithIntl(<CalendarView loading onRetry={() => {}} />, locale);
+    expect(calHtml).toContain(expected[locale].calendarTitle);
   }
 });

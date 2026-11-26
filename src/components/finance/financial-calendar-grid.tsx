@@ -1,8 +1,7 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
-import { format, isSameMonth, isToday, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format, isSameMonth, isToday } from 'date-fns';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -18,7 +17,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FinanceRow } from '@/components/shared/finance-row';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { cn } from '@/lib/utils';
+import {
+  CALENDAR_DATE_FORMATS,
+  WEEKDAY_HEADER_KEYS,
+  getDateFnsLocale,
+  parseCivilDate,
+} from './analytics-i18n';
 
 export interface CalendarEvent {
   id: string;
@@ -53,8 +59,6 @@ export interface CalendarData {
   summary: CalendarSummary;
 }
 
-const WEEK_HEADERS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
 function CalendarDayCell({
   day,
   currentMonth,
@@ -68,21 +72,25 @@ function CalendarDayCell({
   isSelected: boolean;
   onSelectDate: (date: string | null) => void;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
+  const dateFnsLocale = getDateFnsLocale(locale);
+  const fullDateFmt = CALENDAR_DATE_FORMATS[locale].fullDate;
   const dateStr = format(day, 'yyyy-MM-dd');
   const inMonth = isSameMonth(day, currentMonth);
   const today = isToday(day);
   const activitySuffix = activity?.hasIncome && activity.hasExpense
-    ? ', receitas e despesas'
+    ? t('calendar.activity.both')
     : activity?.hasIncome
-      ? ', receitas'
+      ? t('calendar.activity.income')
       : activity?.hasExpense
-        ? ', despesas'
+        ? t('calendar.activity.expense')
         : '';
 
   return (
     <button
       type="button"
-      aria-label={`${format(day, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}${activitySuffix}`}
+      aria-label={`${format(day, fullDateFmt, { locale: dateFnsLocale })}${activitySuffix}`}
       aria-current={today ? 'date' : undefined}
       aria-pressed={isSelected}
       aria-disabled={!activity}
@@ -131,23 +139,27 @@ export function FinancialCalendarGrid({
   onSelectDate: (date: string | null) => void;
   setCurrentMonth: Dispatch<SetStateAction<Date>>;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
+  const dateFnsLocale = getDateFnsLocale(locale);
+
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 sm:p-4">
       <div className="flex items-center justify-between mb-3">
         <button
           type="button"
-          aria-label="Mês anterior"
+          aria-label={t('calendar.prevMonthAria')}
           onClick={() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
           className="grid size-9 place-items-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
         >
           <ChevronLeft className="w-4 h-4 text-muted-foreground" />
         </button>
         <span className="text-sm font-semibold capitalize">
-          {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+          {format(currentMonth, CALENDAR_DATE_FORMATS[locale].monthYear, { locale: dateFnsLocale })}
         </span>
         <button
           type="button"
-          aria-label="Próximo mês"
+          aria-label={t('calendar.nextMonthAria')}
           onClick={() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
           className="grid size-9 place-items-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
         >
@@ -156,9 +168,9 @@ export function FinancialCalendarGrid({
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-1">
-        {WEEK_HEADERS.map((day) => (
-          <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
-            {day}
+        {WEEKDAY_HEADER_KEYS.map((dayKey) => (
+          <div key={dayKey} className="text-center text-xs font-medium text-muted-foreground py-1">
+            {t(`calendar.weekdays.${dayKey}`)}
           </div>
         ))}
       </div>
@@ -180,7 +192,7 @@ export function FinancialCalendarGrid({
       </div>
 
       <p className="mt-3 border-t border-border pt-2 text-center text-xs text-muted-foreground">
-        + Receita · − Despesa · +/− Ambos
+        {t('calendar.legend')}
       </p>
     </div>
   );
@@ -226,6 +238,7 @@ function CalendarEventRow({
   event: CalendarEvent & { date?: string };
   selectedDate: string | null;
 }) {
+  const locale = useSafeLocale();
   const isIncome = event.amount > 0;
   const showDate = !selectedDate && Boolean(event.date);
 
@@ -262,7 +275,7 @@ function CalendarEventRow({
           )}
           {showDate && event.date && (
             <span className="text-xs text-muted-foreground">
-              {format(parseISO(event.date), 'dd/MM')}
+              {format(parseCivilDate(event.date), CALENDAR_DATE_FORMATS[locale].daySlashMonth)}
             </span>
           )}
         </div>
@@ -284,6 +297,10 @@ export function FinancialCalendarAgenda({
   filteredEvents: Array<CalendarEvent & { date?: string }>;
   onToday: () => void;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
+  const dateFnsLocale = getDateFnsLocale(locale);
+
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -291,12 +308,12 @@ export function FinancialCalendarAgenda({
           <CalendarDays className="w-4 h-4 text-muted-foreground" />
           <h4 id="calendar-agenda-heading" className="text-sm font-semibold">
             {selectedDate
-              ? format(parseISO(selectedDate), "EEEE, dd 'de' MMMM", { locale: ptBR })
-              : 'Todos os próximos eventos'}
+              ? format(parseCivilDate(selectedDate), CALENDAR_DATE_FORMATS[locale].dayMonthWeekday, { locale: dateFnsLocale })
+              : t('calendar.allUpcoming')}
           </h4>
           {selectedDate && (
             <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">
-              {selectedDayData?.events.length || 0} {selectedDayData?.events.length === 1 ? 'evento' : 'eventos'}
+              {t('calendar.eventsCount', { count: selectedDayData?.events.length || 0 })}
             </Badge>
           )}
         </div>
@@ -308,7 +325,7 @@ export function FinancialCalendarAgenda({
             onClick={onToday}
           >
             <CircleDot className="w-3 h-3 mr-1" />
-            Hoje
+            {t('calendar.today')}
           </Button>
         )}
       </div>
@@ -317,12 +334,12 @@ export function FinancialCalendarAgenda({
         {filteredEvents.length === 0 ? (
           <div key="empty" className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-sm font-medium text-muted-foreground">
-              {selectedDate ? 'Nenhum evento neste dia' : 'Nenhum evento nos próximos dias'}
+              {selectedDate ? t('calendar.emptyDayTitle') : t('calendar.emptyUpcomingTitle')}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {selectedDate
-                ? 'Este dia está livre de compromissos financeiros'
-                : 'Novos eventos aparecerão aqui automaticamente'}
+                ? t('calendar.emptyDaySubtitle')
+                : t('calendar.emptyUpcomingSubtitle')}
             </p>
           </div>
         ) : (

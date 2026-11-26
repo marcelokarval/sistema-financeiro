@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdvisorComposer } from '@/components/finance/advisor-composer';
+import { INTL_LOCALE } from '@/i18n/config';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 
 interface ChatMessage {
   id: string;
@@ -17,48 +19,46 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-const quickSuggestions = [
-  'Como economizar mais?',
-  'Análise dos meus gastos',
-  'Meta de investimento',
-  'Dicas para reduzir despesas',
-];
-
 function TypingIndicator() {
+  const t = useSafeTranslations('advisor');
+
   return (
     <p role="status" className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
       <Loader2 aria-hidden="true" className="size-3.5 motion-safe:animate-spin" />
-      Preparando resposta…
+      {t('typing')}
     </p>
   );
 }
 
 function MessageBubble({ message }: { message: ChatMessage }) {
+  const t = useSafeTranslations('advisor');
+  const locale = useSafeLocale();
   const isUser = message.role === 'user';
-  const timeStr = message.timestamp.toLocaleTimeString('pt-BR', {
+  const timeStr = message.timestamp.toLocaleTimeString(INTL_LOCALE[locale], {
     hour: '2-digit',
     minute: '2-digit',
   });
+  const content = message.id === 'welcome' ? t('welcomeMessage') : message.content;
 
   return (
     <article className={cn('rounded-md border px-3 py-2.5', isUser ? 'ml-5 border-border bg-muted' : 'mr-5 border-border bg-card')}>
       <header className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="text-xs font-semibold">{isUser ? 'Você' : 'Assistente'}</span>
+        <span className="text-xs font-semibold">{isUser ? t('roles.user') : t('roles.assistant')}</span>
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{timeStr}</span>
       </header>
-      <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">{message.content}</p>
+      <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">{content}</p>
     </article>
   );
 }
 
 export function AIAdvisor() {
+  const t = useSafeTranslations('advisor');
   const [isOpen, setIsOpen] = useState(true);
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: 'welcome',
       role: 'assistant',
-      content:
-        'Olá! Sou seu assistente financeiro inteligente. Posso te ajudar com:\n\n• Análise dos seus gastos\n• Dicas de economia\n• Planejamento de metas\n• Estratégias de investimento\n\nDigite sua dúvida ou use uma das sugestões abaixo!',
+      content: t('welcomeMessage'),
       timestamp: new Date(),
     },
   ]);
@@ -66,6 +66,12 @@ export function AIAdvisor() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const quickSuggestions = [
+    t('suggestions.saveMore'),
+    t('suggestions.analyzeExpenses'),
+    t('suggestions.investmentGoal'),
+    t('suggestions.reduceExpenses'),
+  ];
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -106,7 +112,7 @@ export function AIAdvisor() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.error || 'Erro ao conectar com o assistente.');
+        throw new Error(errorData?.error || t('errors.connectFailed'));
       }
 
       const data = await res.json();
@@ -114,7 +120,7 @@ export function AIAdvisor() {
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: data.response || 'Não consegui processar sua mensagem. Tente novamente.',
+        content: data.response || t('errors.unprocessed'),
         timestamp: new Date(),
       };
 
@@ -125,15 +131,15 @@ export function AIAdvisor() {
         role: 'assistant',
         content:
           error instanceof Error
-            ? `Erro: ${error.message}`
-            : 'Erro: Ocorreu um erro inesperado. Tente novamente em instantes.',
+            ? t('errors.prefix', { message: error.message })
+            : t('errors.unexpected'),
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, t]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -170,7 +176,7 @@ export function AIAdvisor() {
           className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-3 text-left hover:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--ds-focus) sm:px-4"
         >
           <Brain aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-          <span className="flex-1 text-sm font-semibold">Assistente Financeiro IA</span>
+          <span className="flex-1 text-sm font-semibold">{t('title')}</span>
           {isOpen ? <ChevronUp aria-hidden="true" className="size-4" /> : <ChevronDown aria-hidden="true" className="size-4" />}
         </button>
       </h3>
@@ -179,7 +185,7 @@ export function AIAdvisor() {
           <div
             ref={scrollRef}
             role="log"
-            aria-label="Conversa"
+            aria-label={t('conversationAriaLabel')}
             className="max-h-[min(24rem,36dvh)] space-y-2 overflow-y-auto bg-muted/30 px-3 py-3 sm:px-4"
           >
             {messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)}

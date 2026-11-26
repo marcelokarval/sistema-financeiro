@@ -10,25 +10,40 @@ import { AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dial
 import { FinanceConfirmationDialogShell } from '@/components/shared/finance-dialog-shell';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { QueryPanel } from '@/components/shared/query-panel';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { useKeyedMutationLock } from '@/hooks/use-keyed-mutation-lock';
 import { CardEditor, emptyCardForm, type CardFormDraft } from './card-editor';
+import {
+  CARD_BRAND_KEYS,
+  createFallbackTranslator,
+  PT_OPERATIONS_MESSAGES,
+} from './operations-i18n';
 
 const cardPanel = 'min-w-0 rounded-xl border border-border bg-card';
 const dialogSurface = 'max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none';
 
+function resolveCardBrand(brand: string, t: (key: string) => string): string {
+  return (CARD_BRAND_KEYS as readonly string[]).includes(brand) ? t(`brands.${brand}`) : brand;
+}
+
+function resolveCardType(type: string, t: (key: string) => string): string {
+  return type === 'CREDIT' || type === 'DEBIT' || type === 'BOTH' ? t(`types.${type}`) : type;
+}
+
 function CardUsage({ value, high }: { value: number; high: boolean }) {
+  const t = createFallbackTranslator(useSafeTranslations('cards'), PT_OPERATIONS_MESSAGES.cards);
   return (
     <div className="space-y-1">
       <p className="flex flex-wrap justify-between gap-x-2 text-xs text-muted-foreground">
-        <span>{high ? 'Uso elevado do limite' : 'Uso do limite'}</span>
+        <span>{high ? t('usage.high') : t('usage.normal')}</span>
         <span className="font-mono tabular-nums">{value.toFixed(0)}%</span>
       </p>
       <Progress
-        aria-label="Uso do limite"
+        aria-label={t('usage.normal')}
         value={value}
         className={cn('h-1.5 [&>div]:motion-reduce:transition-none', high && '[&>div]:bg-[var(--ds-accent-warning)]')}
       />
@@ -63,6 +78,8 @@ const usagePercent = (card: CardData) => (card.creditLimit > 0 ? (card.currentBa
 const isOverLimit = (card: CardData) => usagePercent(card) > 80;
 
 function CardPurchaseRow({ purchase, expanded, onToggle }: { purchase: Purchase; expanded: boolean; onToggle: () => void }) {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('cards'), PT_OPERATIONS_MESSAGES.cards);
   return (
     <li>
       <button
@@ -75,31 +92,31 @@ function CardPurchaseRow({ purchase, expanded, onToggle }: { purchase: Purchase;
         <span className="min-w-0 flex-1 basis-28">
           <span className="block wrap-anywhere text-sm font-medium">{purchase.merchant}</span>
           <span className="block wrap-anywhere text-xs text-muted-foreground">
-            {formatPurchaseDate(purchase.date)}{purchase.category && ` · ${purchase.category.name}`}
+            {formatPurchaseDate(purchase.date, 'date', locale)}{purchase.category && ` · ${purchase.category.name}`}
           </span>
         </span>
         <span className="flex min-w-0 items-center gap-2">
-          <span className="wrap-anywhere font-mono text-sm font-semibold tabular-nums">{currencyFmt(purchase.totalAmount)}</span>
+          <span className="wrap-anywhere font-mono text-sm font-semibold tabular-nums">{currencyFmt(purchase.totalAmount, locale)}</span>
           {expanded ? <ChevronUp aria-hidden="true" className="size-4 shrink-0" /> : <ChevronDown aria-hidden="true" className="size-4 shrink-0" />}
         </span>
       </button>
       <div id={`card-purchase-${purchase.id}`} hidden={!expanded} className="border-t border-border bg-muted/30 px-4 py-3">
         {expanded && (purchase.items?.length ? (
           <>
-            <p className="text-xs font-medium text-muted-foreground">Itens da compra ({purchase.items.length})</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('detail.purchaseItems', { count: purchase.items.length })}</p>
             <ul className="mt-2 divide-y divide-border">
               {purchase.items.map((item) => (
                 <li key={item.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 text-sm">
                   <span className="min-w-0 flex-1 basis-28 wrap-anywhere">{item.quantity}× {item.name}</span>
-                  <span className="wrap-anywhere font-mono text-xs tabular-nums">{currencyFmt(item.unitPrice)} un. · <strong>{currencyFmt(item.totalPrice)}</strong></span>
+                  <span className="wrap-anywhere font-mono text-xs tabular-nums">{t('detail.unitShort', { price: currencyFmt(item.unitPrice, locale) })} · <strong>{currencyFmt(item.totalPrice, locale)}</strong></span>
                 </li>
               ))}
             </ul>
             <div className="flex flex-wrap justify-between gap-1 border-t border-border pt-2 text-sm font-semibold">
-              <span>Total</span><span className="wrap-anywhere font-mono tabular-nums">{currencyFmt(purchase.totalAmount)}</span>
+              <span>{t('detail.total')}</span><span className="wrap-anywhere font-mono tabular-nums">{currencyFmt(purchase.totalAmount, locale)}</span>
             </div>
           </>
-        ) : <p className="text-sm text-muted-foreground">Nenhum item detalhado nesta compra.</p>)}
+        ) : <p className="text-sm text-muted-foreground">{t('detail.noItems')}</p>)}
       </div>
     </li>
   );
@@ -113,34 +130,36 @@ function CardRow({ card, copied, onOpen, onCopy, onEdit, onDelete }: {
   onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
   onDelete: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('cards'), PT_OPERATIONS_MESSAGES.cards);
   return (
     <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:gap-x-4">
-      <Button type="button" variant="ghost" aria-label={`Abrir cartão ${card.name}`} onClick={onOpen} data-card-detail={card.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left md:col-span-1">
+      <Button type="button" variant="ghost" aria-label={t('list.openCardAria', { name: card.name })} onClick={onOpen} data-card-detail={card.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left md:col-span-1">
         <CreditCard aria-hidden="true" className="size-5 text-muted-foreground" />
         <span className="min-w-0 wrap-anywhere">
           <span className="block font-semibold">{card.name}</span>
-          <span className="block text-xs text-muted-foreground">{card.brand}{card.flag && ` · ${card.flag}`} · <span className="font-mono">•••• •••• •••• {card.lastFourDigits}</span></span>
-          <span className="block text-xs text-muted-foreground">Fecha dia {card.closingDay} · Vence dia {card.dueDay}</span>
+          <span className="block text-xs text-muted-foreground">{resolveCardBrand(card.brand, t)}{card.flag && ` · ${card.flag}`} · <span className="font-mono">•••• •••• •••• {card.lastFourDigits}</span></span>
+          <span className="block text-xs text-muted-foreground">{t('list.cycleDates', { closingDay: card.closingDay, dueDay: card.dueDay })}</span>
         </span>
         <ChevronRight aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
       </Button>
       <div className="col-span-2 grid min-w-0 gap-1 md:col-span-1">
         <dl className="grid grid-cols-2 gap-2 text-xs">
-          <FinanceMetric variant="compact" label="Fatura atual" value={currencyFmt(card.currentBalance)} />
-          <FinanceMetric variant="compact" label="Disponível" value={currencyFmt(card.creditLimit - card.currentBalance)} />
+          <FinanceMetric variant="compact" label={t('list.currentBalance')} value={currencyFmt(card.currentBalance, locale)} />
+          <FinanceMetric variant="compact" label={t('list.available')} value={currencyFmt(card.creditLimit - card.currentBalance, locale)} />
         </dl>
         <CardUsage value={usagePercent(card)} high={isOverLimit(card)} />
       </div>
       <div className="col-span-2 flex flex-wrap items-center justify-between gap-1 md:col-span-1">
-        <span role="status" className="text-xs text-muted-foreground">{copied ? 'Copiado' : ''}</span>
+        <span role="status" className="text-xs text-muted-foreground">{copied ? t('list.copied') : ''}</span>
         <div className="ml-auto flex gap-1">
-          <Button variant="ghost" size="icon" aria-label={`Copiar número mascarado de ${card.name}`} onClick={onCopy}>
+          <Button variant="ghost" size="icon" aria-label={t('list.copyNumberAria', { name: card.name })} onClick={onCopy}>
             {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           </Button>
-          <Button variant="ghost" size="icon" aria-label={`Editar cartão ${card.name}`} onClick={onEdit}>
+          <Button variant="ghost" size="icon" aria-label={t('list.editCardAria', { name: card.name })} onClick={onEdit}>
             <Pencil aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label={`Excluir cartão ${card.name}`} onClick={onDelete} className="text-destructive hover:text-destructive">
+          <Button variant="ghost" size="icon" aria-label={t('list.deleteCardAria', { name: card.name })} onClick={onDelete} className="text-destructive hover:text-destructive">
             <Trash2 aria-hidden="true" />
           </Button>
         </div>
@@ -150,6 +169,8 @@ function CardRow({ card, copied, onOpen, onCopy, onEdit, onDelete }: {
 }
 
 export function CardsView() {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('cards'), PT_OPERATIONS_MESSAGES.cards);
   const storeSelectedCardId = useAppStore((state) => state.selectedCardId);
   const setStoreSelectedCardId = useAppStore((state) => state.setSelectedCardId);
   const newCardButton = useRef<HTMLButtonElement>(null);
@@ -239,7 +260,7 @@ export function CardsView() {
 
   const saveKey = editingCard ? `edit:${editingCard.id}` : 'create';
   const saveCard = async () => {
-    if (!form.name.trim()) { toast.error('Nome do cartão é obrigatório'); return; }
+    if (!form.name.trim()) { toast.error(t('errors.nameRequired')); return; }
     if (!tryAcquire(saveKey)) return;
     const opening = cardOpening.current;
     try {
@@ -249,11 +270,11 @@ export function CardsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingCard ? { id: editingCard.id, ...body } : body),
       });
-      if (!res.ok) { toast.error('Erro ao salvar cartão'); return; }
-      toast.success(editingCard ? 'Cartão atualizado!' : 'Cartão adicionado!');
+      if (!res.ok) { toast.error(t('errors.saveCard')); return; }
+      toast.success(editingCard ? t('toasts.cardUpdated') : t('toasts.cardAdded'));
       if (cardOpening.current === opening) setShowCardDialog(false);
       fetchCards();
-    } catch { toast.error('Erro ao salvar cartão'); } finally { release(saveKey); }
+    } catch { toast.error(t('errors.saveCard')); } finally { release(saveKey); }
   };
 
   const deleteCard = async (id: string) => {
@@ -262,14 +283,14 @@ export function CardsView() {
     const opening = deleteOpening.current;
     try {
       const res = await fetch('/api/cards', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-      if (!res.ok) { toast.error('Erro ao excluir cartão'); return; }
-      toast.success('Cartão excluído!');
+      if (!res.ok) { toast.error(t('errors.deleteCard')); return; }
+      toast.success(t('toasts.cardDeleted'));
       if (deleteOpening.current === opening) {
         dialogReturn.current = null;
         setShowDeleteDialog(null);
       }
       fetchCards();
-    } catch { toast.error('Erro ao excluir cartão'); } finally { release(key); }
+    } catch { toast.error(t('errors.deleteCard')); } finally { release(key); }
   };
 
   const copyNumber = (id: string, text: string) => {
@@ -298,7 +319,7 @@ export function CardsView() {
   if (loading) {
     return (
       <div role="status" className="space-y-4">
-        <p className="text-sm text-muted-foreground">Carregando cartões…</p>
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
         <Skeleton aria-hidden="true" className="h-24 rounded-xl motion-reduce:animate-none" />
         <Skeleton aria-hidden="true" className="h-40 rounded-xl motion-reduce:animate-none" />
       </div>
@@ -311,34 +332,35 @@ export function CardsView() {
       <div className="min-w-0 space-y-5">
         <header className="space-y-3">
           <Button ref={detailBack} variant="ghost" size="sm" onClick={closeCard}>
-            <ArrowLeft aria-hidden="true" /> Voltar para cartões
+            <ArrowLeft aria-hidden="true" /> {t('actions.backToCards')}
           </Button>
           <div>
-            <p className="wrap-anywhere text-sm text-muted-foreground">{selectedCard.type === 'CREDIT' ? 'Crédito' : 'Débito'} · {selectedCard.brand}{selectedCard.flag && ` · ${selectedCard.flag}`}</p>
+            <p className="wrap-anywhere text-sm text-muted-foreground">{resolveCardType(selectedCard.type, t)} · {resolveCardBrand(selectedCard.brand, t)}{selectedCard.flag && ` · ${selectedCard.flag}`}</p>
             <h2 className="wrap-anywhere text-2xl font-semibold tracking-tight">{selectedCard.name}</h2>
           </div>
         </header>
-        <dl aria-label="Posição do cartão" className={cn(cardPanel, 'grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0')}>
-          <FinanceMetric variant="cell" label="Fatura atual" value={currencyFmt(selectedCard.currentBalance)} />
-          <FinanceMetric variant="cell" label="Limite" value={currencyFmt(selectedCard.creditLimit)} />
-          <FinanceMetric variant="cell" label="Disponível" value={currencyFmt(selectedCard.creditLimit - selectedCard.currentBalance)} />
+        <dl aria-label={t('detail.positionAria')} className={cn(cardPanel, 'grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0')}>
+          <FinanceMetric variant="cell" label={t('detail.currentBalance')} value={currencyFmt(selectedCard.currentBalance, locale)} />
+          <FinanceMetric variant="cell" label={t('detail.limit')} value={currencyFmt(selectedCard.creditLimit, locale)} />
+          <FinanceMetric variant="cell" label={t('detail.available')} value={currencyFmt(selectedCard.creditLimit - selectedCard.currentBalance, locale)} />
         </dl>
-        <section aria-label="Dados do cartão" className={cn(cardPanel, 'space-y-3 p-4')}>
+        <section aria-label={t('detail.infoAria')} className={cn(cardPanel, 'space-y-3 p-4')}>
           <dl className="flex flex-wrap justify-between gap-x-6 gap-y-2 text-sm">
-            <div><dt className="text-muted-foreground">Número mascarado</dt><dd className="font-mono">•••• •••• •••• {selectedCard.lastFourDigits}</dd></div>
-            <div><dt className="text-muted-foreground">Fechamento</dt><dd>Dia {String(selectedCard.closingDay).padStart(2, '0')}</dd></div>
-            <div><dt className="text-muted-foreground">Vencimento</dt><dd>Dia {String(selectedCard.dueDay).padStart(2, '0')}</dd></div>
+            <div><dt className="text-muted-foreground">{t('detail.maskedNumber')}</dt><dd className="font-mono">•••• •••• •••• {selectedCard.lastFourDigits}</dd></div>
+            <div><dt className="text-muted-foreground">{t('detail.closing')}</dt><dd>{t('detail.day', { day: String(selectedCard.closingDay).padStart(2, '0') })}</dd></div>
+            <div><dt className="text-muted-foreground">{t('detail.due')}</dt><dd>{t('detail.day', { day: String(selectedCard.dueDay).padStart(2, '0') })}</dd></div>
           </dl>
           <CardUsage value={usagePercent(selectedCard)} high={isOverLimit(selectedCard)} />
         </section>
         <QueryPanel
           titleId="card-purchases"
-          title="Compras no cartão"
-          controls={<span className="text-xs text-muted-foreground">{purchases.length} {purchases.length === 1 ? 'compra' : 'compras'}</span>}
+          title={t('detail.purchasesTitle')}
+          controls={<span className="text-xs text-muted-foreground">{t('detail.purchaseCount', { count: purchases.length })}</span>}
           status={purchaseStatus}
-          loadingMessage="Carregando compras do cartão…"
-          errorMessage="Não foi possível carregar as compras do cartão."
-          emptyMessage="Nenhuma compra registrada neste cartão."
+          loadingMessage={t('detail.loadingPurchases')}
+          errorMessage={t('errors.loadPurchases')}
+          emptyMessage={t('detail.emptyPurchases')}
+          retryLabel={t('actions.retry')}
           onRetry={() => void fetchPurchases(selectedCard.id)}
           className="rounded-xl"
           contentClassName="space-y-0 p-0 sm:p-0"
@@ -357,29 +379,29 @@ export function CardsView() {
     <div className="min-w-0 space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Cartões</h2>
-          <p className="text-sm text-muted-foreground">Acompanhe faturas, limites e compras.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{t('title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Button ref={newCardButton} onClick={(event) => { dialogReturn.current = event.currentTarget; openNewCard(); }}>
-          <Plus aria-hidden="true" /> Novo cartão
+          <Plus aria-hidden="true" /> {t('actions.newCard')}
         </Button>
       </header>
       {cardsError && (
         <div role="alert" className={cn(cardPanel, 'flex flex-wrap items-center justify-between gap-2 p-4 text-sm')}>
-          <p className="text-destructive">Não foi possível carregar os cartões.</p>
-          <Button variant="outline" size="sm" onClick={() => void fetchCards()}>Tentar novamente</Button>
+          <p className="text-destructive">{t('errors.loadCards')}</p>
+          <Button variant="outline" size="sm" onClick={() => void fetchCards()}>{t('actions.retry')}</Button>
         </div>
       )}
-      <dl aria-label="Posição dos cartões" className={cn(cardPanel, 'grid grid-cols-2 divide-x divide-border')}>
-        <FinanceMetric variant="cell" label="Total em faturas" value={currencyFmt(cards.reduce((s, c) => s + c.currentBalance, 0))} />
-        <FinanceMetric variant="cell" label="Limite total" value={currencyFmt(cards.reduce((s, c) => s + c.creditLimit, 0))} />
+      <dl aria-label={t('summary.ariaLabel')} className={cn(cardPanel, 'grid grid-cols-2 divide-x divide-border')}>
+        <FinanceMetric variant="cell" label={t('summary.totalBalance')} value={currencyFmt(cards.reduce((s, c) => s + c.currentBalance, 0), locale)} />
+        <FinanceMetric variant="cell" label={t('summary.totalLimit')} value={currencyFmt(cards.reduce((s, c) => s + c.creditLimit, 0), locale)} />
       </dl>
       <section aria-labelledby="card-list" className={cardPanel}>
-        <h3 id="card-list" className="border-b border-border px-4 py-3 font-semibold">Cartões cadastrados</h3>
+        <h3 id="card-list" className="border-b border-border px-4 py-3 font-semibold">{t('list.title')}</h3>
         {cards.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-muted-foreground">Nenhum cartão cadastrado. Use “Novo cartão” para começar.</p>
+          <p className="px-4 py-6 text-sm text-muted-foreground">{t('list.empty')}</p>
         ) : (
-          <ul ref={cardList} aria-label="Cartões cadastrados" className="divide-y divide-border">
+          <ul ref={cardList} aria-label={t('list.title')} className="divide-y divide-border">
             {cards.map((card) => (
               <CardRow
                 key={card.id}
@@ -411,17 +433,17 @@ export function CardsView() {
         onOpenChange={() => setShowDeleteDialog(null)}
         onCloseAutoFocus={restoreDialogFocus}
         contentClassName={dialogSurface}
-        title="Excluir cartão?"
-        description="Esta ação não pode ser desfeita. O histórico de compras será preservado."
+        title={t('deleteDialog.title')}
+        description={t('deleteDialog.description')}
         footer={
           <>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               aria-disabled={pending.has(`delete:${showDeleteDialog}`)}
               onClick={(event) => { event.preventDefault(); if (showDeleteDialog) void deleteCard(showDeleteDialog); }}
               className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
             >
-              Excluir
+              {t('actions.delete')}
             </AlertDialogAction>
           </>
         }

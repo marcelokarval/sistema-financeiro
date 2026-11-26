@@ -21,7 +21,7 @@ const cardsViewPath = join(financeDir, 'cards-view.tsx');
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const hookPath = join(root, 'src/hooks/use-keyed-mutation-lock.ts');
 
-function installFixture(AccountsView, CardsView, createElement, createRoot, ThemeProvider, Toaster) {
+function installFixture(AccountsView, CardsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster) {
   const initialAccounts = ['a', 'b'].map((id) => ({
     id,
     name: `Conta ${id.toUpperCase()}`,
@@ -175,8 +175,12 @@ function installFixture(AccountsView, CardsView, createElement, createRoot, Them
       createElement(
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
-        viewElement,
-        createElement(Toaster),
+        createElement(
+          AppIntlProvider,
+          { locale: 'pt', messages: getMessagesForLocale('pt') },
+          viewElement,
+          createElement(Toaster),
+        ),
       ),
     );
   };
@@ -540,9 +544,11 @@ try {
 
   const entry = `import { AccountsView } from ${JSON.stringify(accountsViewPath)};
     import { CardsView } from ${JSON.stringify(cardsViewPath)};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement } from 'react'; import { createRoot } from 'react-dom/client';
     import { Toaster } from 'sonner'; import { ThemeProvider } from 'next-themes';
-    (${installFixture.toString()})(AccountsView, CardsView, createElement, createRoot, ThemeProvider, Toaster);`;
+    (${installFixture.toString()})(AccountsView, CardsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster);`;
 
   async function htmlFor(label, baselines) {
     const bundle = await Bun.build({

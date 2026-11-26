@@ -30,7 +30,7 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const installmentsViewPath = join(financeDir, 'installments-view.tsx');
 const savingsViewPath = join(financeDir, 'savings-view.tsx');
 
-function installFixture(InstallmentsView, SavingsView, createElement, createRoot, ThemeProvider, Toaster) {
+function installFixture(InstallmentsView, SavingsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster) {
   const initialPlans = ['a', 'b'].map((id) => ({
     id,
     description: `Plano ${id.toUpperCase()}`,
@@ -256,10 +256,14 @@ function installFixture(InstallmentsView, SavingsView, createElement, createRoot
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
         createElement(
-          'main',
-          { className: 'min-h-screen bg-background p-3', id: 'fixture' },
-          createElement(View),
-          createElement(Toaster, { theme }),
+          AppIntlProvider,
+          { locale: 'pt', messages: getMessagesForLocale('pt') },
+          createElement(
+            'main',
+            { className: 'min-h-screen bg-background p-3', id: 'fixture' },
+            createElement(View),
+            createElement(Toaster, { theme }),
+          ),
         ),
       ),
     );
@@ -858,11 +862,13 @@ try {
 
   const entry = `import { InstallmentsView } from ${JSON.stringify(installmentsViewPath)};
     import { SavingsView } from ${JSON.stringify(savingsViewPath)};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
     import { Toaster } from 'sonner';
-    (${installFixture.toString()})(InstallmentsView, SavingsView, createElement, createRoot, ThemeProvider, Toaster);`;
+    (${installFixture.toString()})(InstallmentsView, SavingsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster);`;
 
   async function htmlFor(label, useBaseline) {
     const intercepted = new Set();

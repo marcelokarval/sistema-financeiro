@@ -3,6 +3,8 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useSafeTranslations } from '@/i18n/provider';
+import { createFallbackTranslator, PT_OPERATIONS_MESSAGES } from './operations-i18n';
 
 export type AccountTransactionForm = {
   type: string;
@@ -24,6 +26,7 @@ type AccountTransactionFieldsProps = {
 const NO_CATEGORY = '__none__';
 
 export function AccountTransactionFields({ mode, value, onChange, categories }: AccountTransactionFieldsProps) {
+  const t = createFallbackTranslator(useSafeTranslations('accounts'), PT_OPERATIONS_MESSAGES.accounts);
   const editing = mode === 'edit';
   const prefix = editing ? 'edit-tx' : 'tx';
   const selectedCategory = editing ? value.categoryId || NO_CATEGORY : value.categoryId;
@@ -33,37 +36,37 @@ export function AccountTransactionFields({ mode, value, onChange, categories }: 
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor={`${prefix}-type`}>Tipo</Label>
+        <Label htmlFor={`${prefix}-type`}>{t('transactionFields.typeLabel')}</Label>
         <Select value={value.type} onValueChange={(type) => change('type', type)}>
           <SelectTrigger id={`${prefix}-type`}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="EXPENSE">Despesa</SelectItem>
-            <SelectItem value="INCOME">Receita</SelectItem>
+            <SelectItem value="EXPENSE">{t('transactionFields.expense')}</SelectItem>
+            <SelectItem value="INCOME">{t('transactionFields.income')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <div>
-        <Label htmlFor={`${prefix}-description`}>Descrição</Label>
+        <Label htmlFor={`${prefix}-description`}>{t('transactionFields.descriptionLabel')}</Label>
         <Input
           id={`${prefix}-description`}
           value={value.description}
           onChange={(event) => change('description', event.target.value)}
-          placeholder="Ex: Salário, Almoço..."
+          placeholder={t('transactionFields.descriptionPlaceholder')}
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-amount`}>Valor (R$)</Label>
+        <Label htmlFor={`${prefix}-amount`}>{t('transactionFields.amountLabel')}</Label>
         <Input
           id={`${prefix}-amount`}
           type="number"
           step="0.01"
           value={value.amount}
           onChange={(event) => change('amount', event.target.value)}
-          placeholder="0,00"
+          placeholder={t('transactionFields.amountPlaceholder')}
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-date`}>Data</Label>
+        <Label htmlFor={`${prefix}-date`}>{t('transactionFields.dateLabel')}</Label>
         <Input
           id={`${prefix}-date`}
           type="date"
@@ -72,14 +75,14 @@ export function AccountTransactionFields({ mode, value, onChange, categories }: 
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-category`}>Categoria</Label>
+        <Label htmlFor={`${prefix}-category`}>{t('transactionFields.categoryLabel')}</Label>
         <Select
           value={selectedCategory}
           onValueChange={changeCategory}
         >
-          <SelectTrigger id={`${prefix}-category`}><SelectValue placeholder="Selecione..." /></SelectTrigger>
+          <SelectTrigger id={`${prefix}-category`}><SelectValue placeholder={t('transactionFields.categoryPlaceholder')} /></SelectTrigger>
           <SelectContent>
-            {editing && <SelectItem value={NO_CATEGORY}>Nenhuma</SelectItem>}
+            {editing && <SelectItem value={NO_CATEGORY}>{t('transactionFields.noCategory')}</SelectItem>}
             {categories.filter((category) => category.type === value.type).map((category) => (
               <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
             ))}

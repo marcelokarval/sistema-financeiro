@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
-import { currencyFmt } from '@/lib/helpers';
-
-// ── Types ──────────────────────────────────────────────────────
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
+import { currencyFmt, dateFmt } from '@/lib/helpers';
+import { cn } from '@/lib/utils';
+import { INVESTMENT_TYPE_KEYS, SAVINGS_TYPE_KEYS } from './analytics-i18n';
 
 interface Summary {
   totalGoals: number;
@@ -66,32 +67,13 @@ interface DashboardData {
   investments: InvestmentItem[];
 }
 
-const INVESTMENT_TYPES: Record<string, { label: string }> = {
-  STOCK: { label: 'Ações' },
-  BOND: { label: 'Renda Fixa' },
-  FII: { label: 'FIIs' },
-  CDB: { label: 'CDB' },
-  LCI: { label: 'LCI' },
-  LCA: { label: 'LCA' },
-  TESOURO: { label: 'Tesouro' },
-  CRYPTO: { label: 'Cripto' },
-  ETF: { label: 'ETF' },
-  OTHER: { label: 'Outro' },
-};
+type ProgressLevelKey = 'excellent' | 'good' | 'inProgress' | 'start';
 
-const SAVINGS_TYPE_LABELS: Record<string, string> = {
-  SAVINGS: 'Poupança',
-  PIGGY_BANK: 'Porquinho',
-  CDI: 'Conta CDI',
-  INVESTMENT: 'Investimento',
-  EMERGENCY_FUND: 'Reserva',
-};
-
-function getProgressLabel(pct: number): string {
-  if (pct >= 90) return 'Excelente';
-  if (pct >= 60) return 'Bom';
-  if (pct >= 25) return 'Em andamento';
-  return 'Início';
+function getProgressLevelKey(value: number): ProgressLevelKey {
+  if (value >= 90) return 'excellent';
+  if (value >= 60) return 'good';
+  if (value >= 25) return 'inProgress';
+  return 'start';
 }
 
 interface CombinedGoal {
@@ -124,15 +106,26 @@ export function GoalCategoryLabel({ color, label }: { color: string | null; labe
 }
 
 export function GoalsProgress({ summary }: { summary: Summary }) {
+  const t = useSafeTranslations('goals');
+  const locale = useSafeLocale();
   const width = Math.min(100, Math.max(0, summary.overallProgress));
+  const summaryMetrics = [
+    [t('dashboard.progress.accumulated'), summary.totalCurrentAmount],
+    [t('dashboard.progress.targetTotal'), summary.totalTargetAmount],
+    [t('dashboard.progress.remaining'), Math.max(summary.totalTargetAmount - summary.totalCurrentAmount, 0)],
+  ] as const;
+
   return (
     <div className="space-y-2 rounded-md border border-border px-3 py-2.5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h3 className="text-sm font-medium">Progresso geral</h3>
-        <p className="text-xs">{getProgressLabel(summary.overallProgress)} · <span className={amount}>{Math.round(summary.overallProgress)}%</span></p>
+        <h3 className="text-sm font-medium">{t('dashboard.progress.title')}</h3>
+        <p className="text-xs">
+          {t(`dashboard.progress.levels.${getProgressLevelKey(summary.overallProgress)}`)} ·{' '}
+          <span className={amount}>{Math.round(summary.overallProgress)}%</span>
+        </p>
       </div>
       <FinanceProgress
-        label="Progresso geral das metas"
+        label={t('dashboard.progress.ariaLabel')}
         value={width}
         min={0}
         max={100}
@@ -141,11 +134,15 @@ export function GoalsProgress({ summary }: { summary: Summary }) {
         showHeader={false}
       />
       <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
-        {([['Acumulado', summary.totalCurrentAmount], ['Total alvo', summary.totalTargetAmount], ['Restante', Math.max(summary.totalTargetAmount - summary.totalCurrentAmount, 0)]] as const).map(([label, value]) => (
-          <FinanceMetric key={label} variant="compact" label={label} value={currencyFmt(value)} valueClassName="text-sm" />
+        {summaryMetrics.map(([label, value]) => (
+          <FinanceMetric key={label} variant="compact" label={label} value={currencyFmt(value, locale)} valueClassName="text-sm" />
         ))}
       </dl>
-      {summary.estimatedCompletion && <p className="text-xs text-muted-foreground">Previsão de conclusão: {summary.estimatedCompletion}</p>}
+      {summary.estimatedCompletion && (
+        <p className="text-xs text-muted-foreground">
+          {t('dashboard.progress.estimatedCompletion', { date: summary.estimatedCompletion })}
+        </p>
+      )}
     </div>
   );
 }
@@ -155,23 +152,28 @@ function CombinedGoalRow({ goal, isExpanded, onToggleExpand }: {
   isExpanded: boolean;
   onToggleExpand: (id: string) => void;
 }) {
+  const t = useSafeTranslations('goals');
+  const locale = useSafeLocale();
   const width = Math.min(100, Math.max(0, goal.progress));
+  const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
+  const deadline = goal.endDate || goal.targetDate;
+
   return (
     <li className="min-w-0 space-y-2 py-3">
       <Button variant="ghost" type="button" aria-expanded={isExpanded} onClick={() => onToggleExpand(goal.id)} className="h-auto min-h-9 w-full justify-between whitespace-normal px-2 py-1.5 text-left">
-        <span className="min-w-0 break-words">{goal.name}</span><ChevronDown aria-hidden="true" className={isExpanded ? 'rotate-180' : ''} />
+        <span className="min-w-0 break-words">{goal.name}</span><ChevronDown aria-hidden="true" className={cn(isExpanded && 'rotate-180')} />
       </Button>
       <div className="space-y-1.5 px-2 text-xs">
         <div className="flex flex-wrap justify-between gap-x-2">
           <p className="flex min-w-0 flex-wrap gap-x-2 gap-y-1 break-words">
-            <span>{goal.isCompleted ? 'Concluída' : 'Em andamento'}</span>
-            {goal.source === 'budget' && <span className="text-muted-foreground">Orçamento</span>}
+            <span>{goal.isCompleted ? t('dashboard.combined.completed') : t('dashboard.combined.inProgress')}</span>
+            {goal.source === 'budget' && <span className="text-muted-foreground">{t('dashboard.budgetTag')}</span>}
             {goal.categoryName && <GoalCategoryLabel color={goal.categoryColor} label={goal.categoryName} />}
           </p>
           <span className="font-mono tabular-nums">{Math.round(goal.progress)}%</span>
         </div>
         <FinanceProgress
-          label={`Progresso da meta ${goal.name}`}
+          label={t('dashboard.combined.progressAria', { name: goal.name })}
           value={width}
           min={0}
           max={100}
@@ -179,22 +181,27 @@ function CombinedGoalRow({ goal, isExpanded, onToggleExpand }: {
           valueText={`${Math.round(goal.progress)}%`}
           showHeader={false}
         />
-        <p className="break-words text-muted-foreground">Atual: {currencyFmt(goal.currentAmount)} · Alvo: {currencyFmt(goal.targetAmount)}</p>
+        <p className="break-words text-muted-foreground">
+          {t('dashboard.combined.currentAndTarget', {
+            current: currencyFmt(goal.currentAmount, locale),
+            target: currencyFmt(goal.targetAmount, locale),
+          })}
+        </p>
       </div>
       {isExpanded && (
         <dl className="grid grid-cols-2 gap-2 border-t border-border px-2 pt-2 text-xs sm:grid-cols-4">
-          <FinanceMetric variant="compact" label="Faltam" value={currencyFmt(Math.max(goal.targetAmount - goal.currentAmount, 0))} valueClassName="text-sm" />
+          <FinanceMetric variant="compact" label={t('dashboard.combined.remaining')} value={currencyFmt(remaining, locale)} valueClassName="text-sm" />
           {goal.monthlyContribution > 0 && (
             <FinanceMetric
               variant="compact"
-              label="Contribuição mensal"
-              value={`${currencyFmt(goal.monthlyContribution)}/mês`}
-              caption={Math.max(goal.targetAmount - goal.currentAmount, 0) > 0 ? `~${Math.ceil(Math.max(goal.targetAmount - goal.currentAmount, 0) / goal.monthlyContribution)} meses` : undefined}
+              label={t('dashboard.combined.monthlyContribution')}
+              value={t('dashboard.combined.perMonth', { value: currencyFmt(goal.monthlyContribution, locale) })}
+              caption={remaining > 0 ? t('dashboard.combined.approxMonths', { count: Math.ceil(remaining / goal.monthlyContribution) }) : undefined}
               valueClassName="text-sm"
             />
           )}
-          {goal.startDate && <div><dt className="text-muted-foreground">Início</dt><dd>{new Date(goal.startDate).toLocaleDateString('pt-BR')}</dd></div>}
-          {(goal.endDate || goal.targetDate) && <div><dt className="text-muted-foreground">Prazo</dt><dd>{new Date((goal.endDate || goal.targetDate)!).toLocaleDateString('pt-BR')}</dd></div>}
+          {goal.startDate && <div><dt className="text-muted-foreground">{t('dashboard.combined.startDate')}</dt><dd>{dateFmt(goal.startDate, locale)}</dd></div>}
+          {deadline && <div><dt className="text-muted-foreground">{t('dashboard.combined.deadline')}</dt><dd>{dateFmt(deadline, locale)}</dd></div>}
         </dl>
       )}
     </li>
@@ -202,17 +209,24 @@ function CombinedGoalRow({ goal, isExpanded, onToggleExpand }: {
 }
 
 function GoalInvestmentRow({ inv }: { inv: InvestmentItem }) {
-  const invType = INVESTMENT_TYPES[inv.type] || INVESTMENT_TYPES.OTHER;
+  const t = useSafeTranslations('goals');
+  const locale = useSafeLocale();
+  const typeKey = INVESTMENT_TYPE_KEYS[inv.type] || 'other';
   const isPositive = inv.returnRate >= 0;
   const profit = inv.currentAmount - inv.totalInvested;
   return (
     <li className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4">
-      <div className="min-w-0"><h3 className="break-words text-sm font-medium">{inv.name}</h3><p className="break-words text-xs text-muted-foreground">{invType.label}{inv.ticker && ` · ${inv.ticker}`}</p></div>
+      <div className="min-w-0">
+        <h3 className="break-words text-sm font-medium">{inv.name}</h3>
+        <p className="break-words text-xs text-muted-foreground">
+          {t(`dashboard.investmentTypes.${typeKey}`)}{inv.ticker && ` · ${inv.ticker}`}
+        </p>
+      </div>
       <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-        <FinanceMetric variant="compact" label="Valor atual" value={currencyFmt(inv.currentAmount)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label="Investido" value={currencyFmt(inv.totalInvested)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label="Resultado" value={`${profit >= 0 ? '+' : ''}${currencyFmt(profit)}`} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label="Retorno" value={`${isPositive ? '+' : ''}${inv.returnRate.toFixed(1)}%`} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('dashboard.investmentsList.currentValue')} value={currencyFmt(inv.currentAmount, locale)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('dashboard.investmentsList.invested')} value={currencyFmt(inv.totalInvested, locale)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('dashboard.investmentsList.result')} value={`${profit >= 0 ? '+' : ''}${currencyFmt(profit, locale)}`} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('dashboard.investmentsList.returnRate')} value={`${isPositive ? '+' : ''}${inv.returnRate.toFixed(1)}%`} valueClassName="text-sm" />
       </dl>
     </li>
   );
@@ -268,29 +282,35 @@ export function GoalsDashboardContent({
   onToggleExpand: (id: string) => void;
   onRetry: () => void;
 }) {
+  const t = useSafeTranslations('goals');
+  const locale = useSafeLocale();
+
   if (loading) {
     return (
-      <section data-qa="quiet-goals-dashboard" aria-label="Central de metas" aria-busy="true" className={panel}>
-        <h2 className="font-semibold">Central de metas</h2>
-        <p role="status" className="text-sm text-muted-foreground">Carregando metas…</p>
+      <section data-qa="quiet-goals-dashboard" aria-label={t('dashboard.title')} aria-busy="true" className={panel}>
+        <h2 className="font-semibold">{t('dashboard.title')}</h2>
+        <p role="status" className="text-sm text-muted-foreground">{t('dashboard.loading')}</p>
       </section>
     );
   }
   if (!data) {
     return (
-      <section data-qa="quiet-goals-dashboard" aria-label="Central de metas" className={panel}>
-        <h2 className="font-semibold">Central de metas</h2>
+      <section data-qa="quiet-goals-dashboard" aria-label={t('dashboard.title')} className={panel}>
+        <h2 className="font-semibold">{t('dashboard.title')}</h2>
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-          <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar a central de metas.</p>
-          <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={onRetry}>Tentar novamente</Button>
+          <p role="alert" className="text-sm text-muted-foreground">{t('dashboard.error')}</p>
+          <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={onRetry}>{t('common.retry')}</Button>
         </div>
       </section>
     );
   }
 
   const { summary, budgetGoals, savingsGoals, investments } = data;
+  const resolveSavingsLabel = (type: string) => {
+    const key = SAVINGS_TYPE_KEYS[type];
+    return key ? t(`dashboard.savingsTypes.${key}`) : type;
+  };
 
-  // Combine budget + savings goals sorted by progress ascending
   const combinedGoals: CombinedGoal[] = [
     ...budgetGoals.map((g) => ({
       id: g.id,
@@ -316,7 +336,7 @@ export function GoalsDashboardContent({
       isCompleted: g.isCompleted,
       currentAmount: g.currentAmount,
       targetAmount: g.targetAmount,
-      categoryName: SAVINGS_TYPE_LABELS[g.type] || g.type,
+      categoryName: resolveSavingsLabel(g.type),
       categoryColor: g.color,
       monthlyContribution: g.monthlyContribution,
       startDate: g.startDate,
@@ -326,43 +346,57 @@ export function GoalsDashboardContent({
     })),
   ].sort((a, b) => a.progress - b.progress);
 
-  // Latest 3 goals by creation date for overview
   const recentGoals = [
     ...budgetGoals.map((g) => ({ ...g, source: 'budget' as const })),
     ...savingsGoals.map((g) => ({ ...g, source: 'savings' as const })),
   ].slice(0, 3);
 
   const investmentResult = investments.reduce((s, i) => s + (i.currentAmount - i.totalInvested), 0);
+  const topMetrics = [
+    [t('dashboard.metrics.totalGoals'), summary.totalGoals],
+    [t('dashboard.metrics.inProgress'), summary.inProgressGoals],
+    [t('dashboard.metrics.completed'), summary.completedGoals],
+    [t('dashboard.metrics.totalAccumulated'), currencyFmt(summary.totalCurrentAmount, locale)],
+  ] as const;
+
   return (
-    <section data-qa="quiet-goals-dashboard" aria-label="Central de metas" className={panel}>
-      <header><h2 className="font-semibold">Central de metas</h2><p className="text-xs text-muted-foreground">Acompanhe seus objetivos financeiros</p></header>
+    <section data-qa="quiet-goals-dashboard" aria-label={t('dashboard.title')} className={panel}>
+      <header><h2 className="font-semibold">{t('dashboard.title')}</h2><p className="text-xs text-muted-foreground">{t('dashboard.subtitle')}</p></header>
       <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs sm:grid-cols-4">
-        {([['Total de metas', summary.totalGoals], ['Em progresso', summary.inProgressGoals], ['Concluídas', summary.completedGoals], ['Total acumulado', currencyFmt(summary.totalCurrentAmount)]] as const).map(([label, value]) => (
+        {topMetrics.map(([label, value]) => (
           <FinanceMetric key={label} variant="compact" label={label} value={value} valueClassName="text-sm" />
         ))}
       </dl>
       <Tabs defaultValue="overview" className="min-w-0">
-        <TabsList aria-label="Áreas da central de metas" className="grid h-auto w-full grid-cols-3">
-          <TabsTrigger value="overview" className="min-h-9 whitespace-normal text-center text-xs">Visão Geral</TabsTrigger>
-          <TabsTrigger value="goals" className="min-h-9 whitespace-normal text-center text-xs">Metas e Economias</TabsTrigger>
-          <TabsTrigger value="investments" className="min-h-9 whitespace-normal text-center text-xs">Investimentos</TabsTrigger>
+        <TabsList aria-label={t('dashboard.tabsAria')} className="grid h-auto w-full grid-cols-3">
+          <TabsTrigger value="overview" className="min-h-9 whitespace-normal text-center text-xs">{t('dashboard.tabs.overview')}</TabsTrigger>
+          <TabsTrigger value="goals" className="min-h-9 whitespace-normal text-center text-xs">{t('dashboard.tabs.goals')}</TabsTrigger>
+          <TabsTrigger value="investments" className="min-h-9 whitespace-normal text-center text-xs">{t('dashboard.tabs.investments')}</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="min-w-0 space-y-4 pt-2">
           <GoalsProgress summary={summary} />
-          <dl aria-label="Acumulado por grupo" className="grid grid-cols-2 gap-3 border-b border-border pb-3 text-xs sm:grid-cols-4">
-            <FinanceMetric variant="compact" label="Metas de orçamento" value={currencyFmt(budgetGoals.reduce((s, g) => s + g.currentAmount, 0))} caption={`${budgetGoals.length} meta${budgetGoals.length !== 1 ? 's' : ''}`} valueClassName="text-sm" />
-            <FinanceMetric variant="compact" label="Economias" value={currencyFmt(savingsGoals.reduce((s, g) => s + g.currentAmount, 0))} caption={`${savingsGoals.length} meta${savingsGoals.length !== 1 ? 's' : ''}`} valueClassName="text-sm" />
-            <FinanceMetric variant="compact" label="Investimentos" value={currencyFmt(investments.reduce((s, i) => s + i.currentAmount, 0))} caption={`${investments.length} investimento${investments.length !== 1 ? 's' : ''}`} valueClassName="text-sm" />
-            <FinanceMetric variant="compact" label="Resultado dos investimentos" value={currencyFmt(investmentResult)} valueClassName="text-sm" />
+          <dl aria-label={t('dashboard.groupsAria')} className="grid grid-cols-2 gap-3 border-b border-border pb-3 text-xs sm:grid-cols-4">
+            <FinanceMetric variant="compact" label={t('dashboard.groups.budgetGoals')} value={currencyFmt(budgetGoals.reduce((s, g) => s + g.currentAmount, 0), locale)} caption={t('dashboard.groups.goalsCount', { count: budgetGoals.length })} valueClassName="text-sm" />
+            <FinanceMetric variant="compact" label={t('dashboard.groups.savings')} value={currencyFmt(savingsGoals.reduce((s, g) => s + g.currentAmount, 0), locale)} caption={t('dashboard.groups.goalsCount', { count: savingsGoals.length })} valueClassName="text-sm" />
+            <FinanceMetric variant="compact" label={t('dashboard.groups.investments')} value={currencyFmt(investments.reduce((s, i) => s + i.currentAmount, 0), locale)} caption={t('dashboard.groups.investmentsCount', { count: investments.length })} valueClassName="text-sm" />
+            <FinanceMetric variant="compact" label={t('dashboard.groups.investmentResult')} value={currencyFmt(investmentResult, locale)} valueClassName="text-sm" />
           </dl>
           <div className="space-y-1">
-            <h3 className="text-sm font-medium">Metas recentes</h3>
-            {recentGoals.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p> : (
+            <h3 className="text-sm font-medium">{t('dashboard.recentTitle')}</h3>
+            {recentGoals.length === 0 ? <p className="text-sm text-muted-foreground">{t('dashboard.recentEmpty')}</p> : (
               <ul className="divide-y divide-border">
                 {recentGoals.map((goal) => (
                   <li key={goal.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,auto)] gap-3 py-2 text-sm">
-                    <div className="min-w-0"><p className="break-words font-medium">{goal.name}</p><p className="text-xs text-muted-foreground"><GoalCategoryLabel color={goal.source === 'budget' ? goal.categoryColor : goal.color} label={goal.source === 'budget' ? 'Meta de orçamento' : SAVINGS_TYPE_LABELS[goal.type] || 'Meta de poupança'} /></p></div>
-                    <div className="min-w-0 text-right"><p className={amount}>{currencyFmt(goal.currentAmount)}</p><p className="font-mono text-xs tabular-nums">{Math.round(goal.progress)}%</p></div>
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{goal.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        <GoalCategoryLabel
+                          color={goal.source === 'budget' ? goal.categoryColor : goal.color}
+                          label={goal.source === 'budget' ? t('dashboard.budgetGoalLabel') : (SAVINGS_TYPE_KEYS[goal.type] ? resolveSavingsLabel(goal.type) : t('dashboard.savingsGoalLabel'))}
+                        />
+                      </p>
+                    </div>
+                    <div className="min-w-0 text-right"><p className={amount}>{currencyFmt(goal.currentAmount, locale)}</p><p className="font-mono text-xs tabular-nums">{Math.round(goal.progress)}%</p></div>
                   </li>
                 ))}
               </ul>
@@ -370,7 +404,7 @@ export function GoalsDashboardContent({
           </div>
         </TabsContent>
         <TabsContent value="goals" className="min-w-0 pt-2">
-          {combinedGoals.length === 0 ? <p className="py-2 text-sm text-muted-foreground">Nenhuma meta encontrada. Crie metas de orçamento ou poupança para acompanhar aqui.</p> : (
+          {combinedGoals.length === 0 ? <p className="py-2 text-sm text-muted-foreground">{t('dashboard.combined.empty')}</p> : (
             <ul className="divide-y divide-border">
               {combinedGoals.map((goal) => (
                 <CombinedGoalRow
@@ -384,7 +418,7 @@ export function GoalsDashboardContent({
           )}
         </TabsContent>
         <TabsContent value="investments" className="min-w-0 pt-2">
-          {investments.length === 0 ? <p className="py-2 text-sm text-muted-foreground">Nenhum investimento. Comece a investir para acompanhar sua carteira aqui.</p> : (
+          {investments.length === 0 ? <p className="py-2 text-sm text-muted-foreground">{t('dashboard.investmentsList.empty')}</p> : (
             <ul className="divide-y divide-border">
               {investments.map((inv) => (
                 <GoalInvestmentRow key={inv.id} inv={inv} />

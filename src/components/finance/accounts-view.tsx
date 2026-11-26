@@ -34,39 +34,27 @@ import {
 import { toast } from 'sonner';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceRow } from '@/components/shared/finance-row';
-import { currencyFmt } from '@/lib/helpers';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
+import { currencyFmt, dateFmt } from '@/lib/helpers';
 import { purchaseDateForInput } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
 import { useKeyedMutationLock } from '@/hooks/use-keyed-mutation-lock';
+import {
+  ACCOUNT_COLORS,
+  ACCOUNT_TYPE_KEYS,
+  createFallbackTranslator,
+  PT_OPERATIONS_MESSAGES,
+} from './operations-i18n';
 import { AccountTransactionFields, type AccountTransactionForm } from './account-transaction-fields';
 import { AccountPicker } from './account-picker';
 import { AccountTransferDialog, type AccountTransferDraft } from './account-transfer-dialog';
 
 // ── Helpers ────────────────────────────────────────────────────────
-const dateFmt = (d: string) => {
-  try {
-    return new Date(d).toLocaleDateString('pt-BR');
-  } catch {
-    return d;
-  }
-};
-
 const typeIcons: Record<string, React.ElementType> = {
   CASH: Wallet,
   BANK: Landmark,
   DIGITAL_WALLET: Smartphone,
 };
-
-const typeLabels: Record<string, string> = {
-  CASH: 'Dinheiro',
-  BANK: 'Banco',
-  DIGITAL_WALLET: 'Carteira Digital',
-};
-
-const accountColors = [
-  ['#22c55e', 'Verde'], ['#3b82f6', 'Azul'], ['#8b5cf6', 'Roxo'], ['#06b6d4', 'Ciano'],
-  ['#f97316', 'Laranja'], ['#ef4444', 'Vermelho'], ['#ec4899', 'Rosa'],
-];
 
 const accountPanel = 'min-w-0 rounded-xl border border-border bg-card';
 const accountStrip = `${accountPanel} grid grid-cols-2 sm:grid-cols-4`;
@@ -135,6 +123,8 @@ type TransactionDraft = BoundTransactionDraft<AccountTransactionForm> & { sessio
 
 // ── Component ──────────────────────────────────────────────────────
 export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose: () => void; refreshCounter: number }) {
+  const locale = useSafeLocale();
+  const t = createFallbackTranslator(useSafeTranslations('accounts'), PT_OPERATIONS_MESSAGES.accounts);
   const newTransactionRequested = useAppStore((state) => state.newTransactionRequested);
   const clearNewTransactionRequest = useAppStore((state) => state.clearNewTransactionRequest);
   const storeSelectedAccountId = useAppStore((state) => state.selectedAccountId);
@@ -406,7 +396,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
   const saveKey = editingAccount ? `edit:${editingAccount.id}` : 'create';
   const saveAccount = async () => {
     if (!form.name.trim()) {
-      toast.error('Nome da conta é obrigatório');
+      toast.error(t('errors.accountNameRequired'));
       return;
     }
     if (!tryAcquire(saveKey)) return;
@@ -419,22 +409,22 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: editingAccount.id, ...body }),
         });
-        if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao atualizar conta'); return; }
-        toast.success('Conta atualizada!');
+        if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || t('errors.updateAccount')); return; }
+        toast.success(t('toasts.accountUpdated'));
       } else {
         const res = await fetch('/api/accounts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
-        if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao criar conta'); return; }
-        toast.success('Conta criada!');
+        if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || t('errors.createAccount')); return; }
+        toast.success(t('toasts.accountCreated'));
       }
       if (accountOpening.current === opening) setShowAccountDialog(false);
       fetchAccounts();
       fetchMonthlyStats();
     } catch {
-      toast.error('Erro ao salvar conta');
+      toast.error(t('errors.saveAccount'));
     } finally {
       release(saveKey);
     }
@@ -450,8 +440,8 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || 'Erro ao excluir conta'); return; }
-      toast.success('Conta excluída!');
+      if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error || t('errors.deleteAccount')); return; }
+      toast.success(t('toasts.accountDeleted'));
       if (deleteOpening.current === opening) {
         dialogReturn.current = null;
         setShowDeleteDialog(null);
@@ -461,7 +451,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       fetchAccounts();
       fetchMonthlyStats();
     } catch {
-      toast.error('Erro ao excluir conta');
+      toast.error(t('errors.deleteAccount'));
     } finally {
       release(key);
     }
@@ -473,12 +463,12 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     const eligible = transactionDraftForAccount(draft, selectedAccountId, confirmedAccounts.current);
     if (!eligible) return;
     if (!eligible.data.description.trim()) {
-      toast.error('Informe a descrição da transação');
+      toast.error(t('errors.descriptionRequired'));
       return;
     }
     const parsedAmount = parseFloat(eligible.data.amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Informe um valor maior que zero');
+      toast.error(t('errors.amountPositive'));
       return;
     }
     const key = `transaction:${eligible.accountId}`;
@@ -496,16 +486,16 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        toast.error('Erro ao registrar transação');
+        toast.error(t('errors.createTransaction'));
         return;
       }
-      toast.success('Transação registrada!');
+      toast.success(t('toasts.transactionCreated'));
       if (liveDraft.current?.session === draft.session) setDraft(null);
       setTransactionRefresh((current) => current + 1);
       fetchAccounts();
       fetchMonthlyStats();
     } catch {
-      toast.error('Erro ao registrar transação');
+      toast.error(t('errors.createTransaction'));
     } finally {
       release(key);
     }
@@ -527,12 +517,12 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
   const saveEditedTransaction = async () => {
     if (!editingTransaction || !selectedAccount) return;
     if (!editTxForm.description.trim()) {
-      toast.error('Informe a descrição da transação');
+      toast.error(t('errors.descriptionRequired'));
       return;
     }
     const parsedAmount = parseFloat(editTxForm.amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Informe um valor maior que zero');
+      toast.error(t('errors.amountPositive'));
       return;
     }
     const key = `tx-edit:${editingTransaction.id}`;
@@ -555,16 +545,16 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        toast.error(d.error || 'Erro ao atualizar transação');
+        toast.error(d.error || t('errors.updateTransaction'));
         return;
       }
-      toast.success('Transação atualizada!');
+      toast.success(t('toasts.transactionUpdated'));
       if (editTxOpening.current === opening) setEditingTransaction(null);
       setTransactionRefresh((current) => current + 1);
       fetchAccounts();
       fetchMonthlyStats();
     } catch {
-      toast.error('Erro ao atualizar transação');
+      toast.error(t('errors.updateTransaction'));
     } finally {
       release(key);
     }
@@ -582,16 +572,16 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        toast.error(d.error || 'Erro ao excluir transação');
+        toast.error(d.error || t('errors.deleteTransaction'));
         return;
       }
-      toast.success('Transação excluída!');
+      toast.success(t('toasts.transactionDeleted'));
       if (deleteTxOpening.current === opening) setDeletingTransaction(null);
       setTransactionRefresh((current) => current + 1);
       fetchAccounts();
       fetchMonthlyStats();
     } catch {
-      toast.error('Erro ao excluir transação');
+      toast.error(t('errors.deleteTransaction'));
     } finally {
       release(key);
     }
@@ -617,11 +607,11 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data?.error || 'Erro na transferência');
+        toast.error(data?.error || t('errors.transferFailed'));
         return;
       }
 
-      toast.success('Transferência realizada com sucesso!');
+      toast.success(t('toasts.transferSuccess'));
       if (transferOpening.current === opening) {
         setShowTransferDialog(false);
         setTransferForm({
@@ -636,7 +626,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       fetchMonthlyStats();
       setTransactionRefresh((current) => current + 1);
     } catch {
-      toast.error('Erro ao realizar transferência');
+      toast.error(t('errors.transferError'));
     } finally {
       release('transfer');
     }
@@ -696,10 +686,13 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
 
   const withChooser = (content: ReactNode) => <>{chooser}{content}</>;
 
+  const resolveAccountTypeLabel = (type: string) =>
+    (ACCOUNT_TYPE_KEYS as readonly string[]).includes(type) ? t(`accountTypes.${type}`) : type;
+
   if (loading) {
     return withChooser(
       <div role="status" className="space-y-4">
-        <p className="text-sm text-muted-foreground">Carregando contas…</p>
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
         <Skeleton aria-hidden="true" className="h-24 rounded-xl motion-reduce:animate-none" />
         <Skeleton aria-hidden="true" className="h-40 rounded-xl motion-reduce:animate-none" />
       </div>
@@ -711,38 +704,38 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       <div className="min-w-0 space-y-5">
         <header className="space-y-3">
           <Button ref={detailBack} variant="ghost" size="sm" onClick={() => setSelectedAccountId(null)}>
-            <ArrowLeft aria-hidden="true" /> Voltar para contas
+            <ArrowLeft aria-hidden="true" /> {t('actions.backToAccounts')}
           </Button>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm text-muted-foreground">{typeLabels[selectedAccount.type]}</p>
+              <p className="text-sm text-muted-foreground">{resolveAccountTypeLabel(selectedAccount.type)}</p>
               <h2 className="wrap-anywhere text-2xl font-semibold tracking-tight">{selectedAccount.name}</h2>
             </div>
-            <Button ref={transactionButton} onClick={() => openTransaction(selectedAccount.id)} aria-label="Nova transação">
-              <Plus aria-hidden="true" /> Nova transação
+            <Button ref={transactionButton} onClick={() => openTransaction(selectedAccount.id)} aria-label={t('actions.newTransaction')}>
+              <Plus aria-hidden="true" /> {t('actions.newTransaction')}
             </Button>
           </div>
         </header>
-        <dl aria-label="Posição da conta" className={accountStrip}>
-          <FinanceMetric variant="strip" label="Saldo atual" value={currencyFmt(selectedAccount.balance)} />
-          <FinanceMetric variant="strip" label="Receitas na lista" value={currencyFmt(accountStats.income)} />
-          <FinanceMetric variant="strip" label="Despesas na lista" value={currencyFmt(accountStats.expense)} />
-          <FinanceMetric variant="strip" label="Transações na lista" value={accountStats.count} />
+        <dl aria-label={t('detail.ariaLabel')} className={accountStrip}>
+          <FinanceMetric variant="strip" label={t('detail.currentBalance')} value={currencyFmt(selectedAccount.balance, locale)} />
+          <FinanceMetric variant="strip" label={t('detail.listIncome')} value={currencyFmt(accountStats.income, locale)} />
+          <FinanceMetric variant="strip" label={t('detail.listExpense')} value={currencyFmt(accountStats.expense, locale)} />
+          <FinanceMetric variant="strip" label={t('detail.listCount')} value={accountStats.count} />
         </dl>
 
         <section aria-labelledby="account-transactions" className={accountPanel}>
-          <h3 id="account-transactions" className="border-b border-border px-4 py-3 font-semibold">Transações</h3>
+          <h3 id="account-transactions" className="border-b border-border px-4 py-3 font-semibold">{t('detail.transactionsTitle')}</h3>
           {txLoading ? (
-            <p role="status" className="px-4 py-6 text-sm text-muted-foreground">Carregando transações…</p>
+            <p role="status" className="px-4 py-6 text-sm text-muted-foreground">{t('detail.loadingTransactions')}</p>
           ) : txError ? (
             <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm">
-              <p className="text-destructive">Não foi possível carregar as transações.</p>
+              <p className="text-destructive">{t('errors.loadTransactions')}</p>
               <Button variant="outline" size="sm" onClick={() => void fetchTransactions(selectedAccount.id)}>
-                Tentar novamente
+                {t('actions.retry')}
               </Button>
             </div>
           ) : transactions.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground">Nenhuma transação registrada.</p>
+            <p className="px-4 py-6 text-sm text-muted-foreground">{t('detail.emptyTransactions')}</p>
           ) : (
             <ul aria-labelledby="account-transactions" className="divide-y divide-border">
               {transactions.map((tx) => (
@@ -751,13 +744,13 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                   variant="default"
                   tone={tx.type === 'INCOME' ? 'positive' : 'negative'}
                   description={tx.description}
-                  metadata={`${tx.type === 'INCOME' ? 'Receita' : 'Despesa'} · ${dateFmt(tx.date)}${tx.category ? ` · ${tx.category.name}` : ''}`}
+                  metadata={`${tx.type === 'INCOME' ? t('detail.incomeType') : t('detail.expenseType')} · ${dateFmt(tx.date, locale)}${tx.category ? ` · ${tx.category.name}` : ''}`}
                   amount={tx.amount}
                 >
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Editar transação ${tx.description}`}
+                    aria-label={t('detail.editTransactionAria', { description: tx.description })}
                     onClick={(event) => { txActionOrigin.current = event.currentTarget; openEditTransaction(tx); }}
                   >
                     <Pencil aria-hidden="true" />
@@ -765,7 +758,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Excluir transação ${tx.description}`}
+                    aria-label={t('detail.deleteTransactionAria', { description: tx.description })}
                     className="text-destructive hover:text-destructive"
                     onClick={(event) => {
                       txActionOrigin.current = event.currentTarget;
@@ -796,9 +789,9 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
               }}
             >
               <DialogHeader>
-                <DialogTitle>Nova Transação</DialogTitle>
+                <DialogTitle>{t('transactionDialog.createTitle')}</DialogTitle>
                 <DialogDescription>
-                  Registrar nova transação em {selectedAccount.name}
+                  {t('transactionDialog.createDescription', { account: selectedAccount.name })}
                 </DialogDescription>
               </DialogHeader>
               <AccountTransactionFields mode="create" value={txForm} onChange={setTxForm} categories={categories} />
@@ -807,9 +800,9 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                   variant="outline"
                   onClick={closeTransaction}
                 >
-                  Cancelar
+                  {t('actions.cancel')}
                 </Button>
-                <Button aria-disabled={pending.has(`transaction:${selectedAccount.id}`)} onClick={saveTransaction}>Registrar</Button>
+                <Button aria-disabled={pending.has(`transaction:${selectedAccount.id}`)} onClick={saveTransaction}>{t('actions.register')}</Button>
               </DialogFooter>
             </DialogContent>
           )}
@@ -828,13 +821,13 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
               }}
             >
               <DialogHeader>
-                <DialogTitle>Editar Transação</DialogTitle>
-                <DialogDescription>Atualize os dados da transação em {selectedAccount.name}</DialogDescription>
+                <DialogTitle>{t('transactionDialog.editTitle')}</DialogTitle>
+                <DialogDescription>{t('transactionDialog.editDescription', { account: selectedAccount.name })}</DialogDescription>
               </DialogHeader>
               <AccountTransactionFields mode="edit" value={editTxForm} onChange={setEditTxForm} categories={categories} />
               <DialogFooter>
-                <Button variant="outline" onClick={() => { ++editTxOpening.current; setEditingTransaction(null); }}>Cancelar</Button>
-                <Button aria-disabled={pending.has(`tx-edit:${editingTransaction.id}`)} onClick={() => void saveEditedTransaction()}>Salvar</Button>
+                <Button variant="outline" onClick={() => { ++editTxOpening.current; setEditingTransaction(null); }}>{t('actions.cancel')}</Button>
+                <Button aria-disabled={pending.has(`tx-edit:${editingTransaction.id}`)} onClick={() => void saveEditedTransaction()}>{t('actions.save')}</Button>
               </DialogFooter>
             </DialogContent>
           )}
@@ -852,13 +845,13 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
             }}
           >
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir transação?</AlertDialogTitle>
+              <AlertDialogTitle>{t('transactionDialog.deleteTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta ação não pode ser desfeita e atualizará o saldo da conta {selectedAccount.name}.
+                {t('transactionDialog.deleteDescription', { account: selectedAccount.name })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>{t('actions.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 aria-disabled={deletingTransaction ? pending.has(`tx-delete:${deletingTransaction.id}`) : false}
                 onClick={(event) => {
@@ -867,7 +860,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                 }}
                 className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
               >
-                Excluir
+                {t('actions.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -880,58 +873,58 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     <div className="min-w-0 space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Contas</h2>
-          <p className="text-sm text-muted-foreground">Acompanhe seus saldos e movimentações.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{t('title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" aria-label="Transferir" onClick={(event) => { dialogReturn.current = event.currentTarget; setShowTransferDialog(true); }}>
-            <ArrowLeftRight aria-hidden="true" /> Transferir
+          <Button variant="outline" aria-label={t('actions.transfer')} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowTransferDialog(true); }}>
+            <ArrowLeftRight aria-hidden="true" /> {t('actions.transfer')}
           </Button>
           <Button ref={newAccountButton} onClick={(event) => { dialogReturn.current = event.currentTarget; openNewAccount(); }}>
-            <Plus aria-hidden="true" /> Nova conta
+            <Plus aria-hidden="true" /> {t('actions.newAccount')}
           </Button>
         </div>
       </header>
 
       {accountsLoadFailed && (
         <div className={`${accountPanel} flex flex-wrap items-center justify-between gap-2 p-4 text-sm`}>
-          <p role="alert">Não foi possível atualizar as contas.</p>
-          <Button variant="outline" size="sm" onClick={() => void fetchAccounts()}>Tentar novamente</Button>
+          <p role="alert">{t('errors.loadAccounts')}</p>
+          <Button variant="outline" size="sm" onClick={() => void fetchAccounts()}>{t('actions.retry')}</Button>
         </div>
       )}
       {(!accountsLoadFailed || accounts.length > 0) && (
         <>
-          <dl aria-label="Posição das contas" className={accountStrip}>
-            <FinanceMetric variant="strip" label="Saldo em contas" value={currencyFmt(summary.totalPatrimonio)} />
-            <FinanceMetric variant="strip" label="Receitas do mês" value={currencyFmt(monthIncome)} />
-            <FinanceMetric variant="strip" label="Despesas do mês" value={currencyFmt(monthExpense)} />
-            <FinanceMetric variant="strip" label="Total de contas" value={summary.accountCount} />
+          <dl aria-label={t('summary.ariaLabel')} className={accountStrip}>
+            <FinanceMetric variant="strip" label={t('summary.totalBalance')} value={currencyFmt(summary.totalPatrimonio, locale)} />
+            <FinanceMetric variant="strip" label={t('summary.monthIncome')} value={currencyFmt(monthIncome, locale)} />
+            <FinanceMetric variant="strip" label={t('summary.monthExpense')} value={currencyFmt(monthExpense, locale)} />
+            <FinanceMetric variant="strip" label={t('summary.totalAccounts')} value={summary.accountCount} />
           </dl>
           <section aria-labelledby="account-list" className={accountPanel}>
-            <h3 id="account-list" className="border-b border-border px-4 py-3 font-semibold">Contas cadastradas</h3>
+            <h3 id="account-list" className="border-b border-border px-4 py-3 font-semibold">{t('list.title')}</h3>
             {accounts.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-muted-foreground">Nenhuma conta cadastrada. Use “Nova conta” para começar.</p>
+              <p className="px-4 py-6 text-sm text-muted-foreground">{t('list.empty')}</p>
             ) : (
-              <ul ref={accountList} aria-label="Contas cadastradas" className="divide-y divide-border">
+              <ul ref={accountList} aria-label={t('list.title')} className="divide-y divide-border">
                 {accounts.map((acc) => {
                   const Icon = typeIcons[acc.type] || Wallet;
                   const txCount = acc._count?.transactions || 0;
                   return (
                     <li key={acc.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 px-4 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto] sm:gap-x-4">
-                      <Button type="button" variant="ghost" aria-label={`Abrir conta ${acc.name}`} onClick={() => { detailReturn.current = acc.id; openAccount(acc); }} data-account-detail={acc.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left sm:col-span-1">
+                      <Button type="button" variant="ghost" aria-label={t('list.openAccountAria', { name: acc.name })} onClick={() => { detailReturn.current = acc.id; openAccount(acc); }} data-account-detail={acc.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left sm:col-span-1">
                         <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
                         <span className="min-w-0 wrap-anywhere">
                           <span className="block font-semibold">{acc.name}</span>
-                          <span className="block text-xs text-muted-foreground">{typeLabels[acc.type]}{txCount > 0 && ` · ${txCount} ${txCount === 1 ? 'transação' : 'transações'}`}</span>
+                          <span className="block text-xs text-muted-foreground">{resolveAccountTypeLabel(acc.type)}{txCount > 0 && ` · ${t('list.transactionCount', { count: txCount })}`}</span>
                         </span>
                         <ChevronRight aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
                       </Button>
-                      <p className="wrap-anywhere font-mono text-sm font-semibold tabular-nums sm:text-right">{currencyFmt(acc.balance)}</p>
+                      <p className="wrap-anywhere font-mono text-sm font-semibold tabular-nums sm:text-right">{currencyFmt(acc.balance, locale)}</p>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" aria-label={`Editar conta ${acc.name}`} onClick={(event) => { dialogReturn.current = event.currentTarget; openEditAccount(acc); }}>
+                        <Button variant="ghost" size="icon" aria-label={t('list.editAccountAria', { name: acc.name })} onClick={(event) => { dialogReturn.current = event.currentTarget; openEditAccount(acc); }}>
                           <Pencil aria-hidden="true" />
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label={`Excluir conta ${acc.name}`} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowDeleteDialog(acc.id); }} className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" aria-label={t('list.deleteAccountAria', { name: acc.name })} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowDeleteDialog(acc.id); }} className="text-destructive hover:text-destructive">
                           <Trash2 aria-hidden="true" />
                         </Button>
                       </div>
@@ -952,25 +945,25 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
         }}>
           <DialogHeader>
             <DialogTitle>
-              {editingAccount ? 'Editar Conta' : 'Nova Conta'}
+              {editingAccount ? t('accountForm.editTitle') : t('accountForm.createTitle')}
             </DialogTitle>
             <DialogDescription>
               {editingAccount
-                ? 'Atualize os dados da conta'
-                : 'Preencha os dados da nova conta'}
+                ? t('accountForm.editDescription')
+                : t('accountForm.createDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="account-name">Nome</Label>
+              <Label htmlFor="account-name">{t('accountForm.nameLabel')}</Label>
               <Input id="account-name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Ex: Nubank, Carteira..."
+                placeholder={t('accountForm.namePlaceholder')}
               />
             </div>
             <div>
-              <Label htmlFor="account-type">Tipo</Label>
+              <Label htmlFor="account-type">{t('accountForm.typeLabel')}</Label>
               <Select
                 value={form.type}
                 onValueChange={(v) => setForm({ ...form, type: v })}
@@ -979,14 +972,14 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CASH">Dinheiro</SelectItem>
-                  <SelectItem value="BANK">Banco</SelectItem>
-                  <SelectItem value="DIGITAL_WALLET">Carteira Digital</SelectItem>
+                  {ACCOUNT_TYPE_KEYS.map((key) => (
+                    <SelectItem key={key} value={key}>{t(`accountTypes.${key}`)}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="account-balance">Saldo Inicial (R$)</Label>
+              <Label htmlFor="account-balance">{t('accountForm.balanceLabel')}</Label>
               <Input id="account-balance"
                 type="number"
                 step="0.01"
@@ -995,17 +988,17 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
               />
             </div>
             <div>
-              <p id="account-color" className="text-sm font-medium">Cor</p>
+              <p id="account-color" className="text-sm font-medium">{t('accountForm.colorLabel')}</p>
               <div role="group" aria-labelledby="account-color" className="mt-2 flex flex-wrap gap-2">
-                {accountColors.map(([c, name]) => (
+                {ACCOUNT_COLORS.map(({ value, key }) => (
                   <button
-                    key={c}
+                    key={value}
                     type="button"
-                    aria-label={name}
-                    aria-pressed={form.color === c}
+                    aria-label={t(`colors.${key}`)}
+                    aria-pressed={form.color === value}
                     className="size-8 rounded-full border border-border aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-foreground focus-visible:outline-ring"
-                    style={{ backgroundColor: c }}
-                    onClick={() => setForm({ ...form, color: c })}
+                    style={{ backgroundColor: value }}
+                    onClick={() => setForm({ ...form, color: value })}
                   />
                 ))}
               </div>
@@ -1016,10 +1009,10 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
               variant="outline"
               onClick={() => setShowAccountDialog(false)}
             >
-              Cancelar
+              {t('actions.cancel')}
             </Button>
             <Button aria-disabled={pending.has(saveKey)} onClick={saveAccount}>
-              {editingAccount ? 'Atualizar' : 'Criar'}
+              {editingAccount ? t('actions.update') : t('actions.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1043,14 +1036,13 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       >
         <AlertDialogContent className={dialogSurface} onCloseAutoFocus={restoreDialogFocus}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir conta?</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteAccountDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Todas as transações
-              vinculadas também serão removidas.
+              {t('deleteAccountDialog.description')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               aria-disabled={pending.has(`delete:${showDeleteDialog}`)}
               onClick={(event) => {
@@ -1059,7 +1051,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
               }}
               className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
             >
-              Excluir
+              {t('actions.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

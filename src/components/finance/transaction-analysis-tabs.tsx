@@ -17,8 +17,10 @@ import {
 } from '@/components/shared/finance-chart-tooltip';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt, dateFmt, shortCurrency } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import { DISTRIBUTION_COLORS, getIntlLocale } from './analytics-i18n';
 
 export interface OverviewData {
   totalTransactions: number;
@@ -44,14 +46,6 @@ export interface AnalyticsData {
   dailyPattern: DailyPatternItem[];
 }
 
-const DISTRIBUTION_COLORS = [
-  'var(--ds-chart-1)',
-  'var(--ds-chart-2)',
-  'var(--ds-chart-3)',
-  'var(--ds-chart-5)',
-  'var(--ds-chart-4)',
-];
-
 /** Recharts tooltip adapter for TransactionAnalytics weekday and hourly charts. */
 export function TransactionAnalyticsTooltip({
   active,
@@ -66,6 +60,8 @@ export function TransactionAnalyticsTooltip({
   mode: 'weekday' | 'hourly';
   showValues?: boolean;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   if (!active || !Array.isArray(payload) || payload.length === 0) return null;
 
   const rows: FinanceChartTooltipRow[] = payload.flatMap((entry) => {
@@ -76,17 +72,17 @@ export function TransactionAnalyticsTooltip({
     if (mode === 'weekday') {
       return [{
         key,
-        label: key === 'income' ? 'Receitas' : 'Despesas',
-        value: currencyFmt(entry.value),
+        label: key === 'income' ? t('transactions.series.income') : t('transactions.series.expense'),
+        value: currencyFmt(entry.value, locale),
         color: entry.color,
       }];
     }
     return [{
       key,
-      label: 'Transações',
+      label: t('transactions.tooltip.transactions'),
       value: String(entry.value),
       color: entry.color,
-      maskedValue: '•••',
+      maskedValue: t('transactions.tooltip.maskedCount'),
     }];
   });
 
@@ -104,6 +100,8 @@ function TransactionExtremeCard({
   titleClass: string;
   transaction: OverviewData['highestTransaction'];
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   return (
     <div className="min-w-0 border-t border-border pt-3">
       <div className="flex items-center gap-2 mb-3">
@@ -111,17 +109,17 @@ function TransactionExtremeCard({
       </div>
       {transaction ? (
         <div>
-          <p className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(transaction.amount)}</p>
+          <p className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(transaction.amount, locale)}</p>
           <p className="text-xs text-muted-foreground mt-1 truncate">{transaction.description}</p>
           <div className="flex items-center gap-2 mt-2">
             <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">
               {transaction.categoryName}
             </Badge>
-            <span className="text-xs text-muted-foreground">{dateFmt(transaction.date)}</span>
+            <span className="text-xs text-muted-foreground">{dateFmt(transaction.date, locale)}</span>
           </div>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">Nenhuma transação encontrada</p>
+        <p className="text-xs text-muted-foreground">{t('transactions.overview.noneFound')}</p>
       )}
     </div>
   );
@@ -129,19 +127,21 @@ function TransactionExtremeCard({
 
 /** Overview tab for TransactionAnalyticsContent using FinanceMetric. */
 export function TransactionOverviewTab({ overview }: { overview: OverviewData }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const statCards = [
-    { label: 'Total de Transações', value: overview.totalTransactions.toLocaleString('pt-BR') },
-    { label: 'Total de receitas', value: currencyFmt(overview.totalIncome) },
-    { label: 'Ticket Médio', value: currencyFmt(overview.averagePerTransaction) },
+    { label: t('transactions.overview.totalTransactions'), value: overview.totalTransactions.toLocaleString(getIntlLocale(locale)) },
+    { label: t('transactions.overview.totalIncome'), value: currencyFmt(overview.totalIncome, locale) },
+    { label: t('transactions.overview.avgTicket'), value: currencyFmt(overview.averagePerTransaction, locale) },
     {
-      label: 'Maior Transação',
-      value: overview.highestTransaction ? currencyFmt(overview.highestTransaction.amount) : '—',
+      label: t('transactions.overview.highestTransaction'),
+      value: overview.highestTransaction ? currencyFmt(overview.highestTransaction.amount, locale) : '—',
     },
   ];
 
   return (
     <TabsContent value="overview" className="mt-0 space-y-4">
-      <dl aria-label="Indicadores de transações" className="grid grid-cols-2 gap-3 border-y border-border py-3 lg:grid-cols-4">
+      <dl aria-label={t('transactions.overview.indicatorsAria')} className="grid grid-cols-2 gap-3 border-y border-border py-3 lg:grid-cols-4">
         {statCards.map((stat) => (
           <FinanceMetric
             key={stat.label}
@@ -155,12 +155,12 @@ export function TransactionOverviewTab({ overview }: { overview: OverviewData })
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <TransactionExtremeCard
-          title="Maior Transação"
+          title={t('transactions.overview.highestTransaction')}
           titleClass="text-[var(--obligation)]"
           transaction={overview.highestTransaction}
         />
         <TransactionExtremeCard
-          title="Menor Transação"
+          title={t('transactions.overview.lowestTransaction')}
           titleClass="text-primary"
           transaction={overview.lowestTransaction}
         />
@@ -171,7 +171,7 @@ export function TransactionOverviewTab({ overview }: { overview: OverviewData })
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-primary" />
-              <p className="text-xs font-semibold text-primary">Categoria Mais Frequente</p>
+              <p className="text-xs font-semibold text-primary">{t('transactions.overview.mostFrequentCategory')}</p>
             </div>
             <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 font-mono tabular-nums">
               {overview.mostFrequentCategory.count}x
@@ -186,7 +186,7 @@ export function TransactionOverviewTab({ overview }: { overview: OverviewData })
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold truncate">{overview.mostFrequentCategory.categoryName}</p>
                 <p className="text-sm font-semibold font-mono tabular-nums shrink-0 ml-2">
-                  {currencyFmt(overview.mostFrequentCategory.total)}
+                  {currencyFmt(overview.mostFrequentCategory.total, locale)}
                 </p>
               </div>
               <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
@@ -246,11 +246,13 @@ export function TransactionDistributionTab({
   maxDistCount: number;
   weekdayBreakdown: OverviewData['weekdayBreakdown'];
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   return (
     <TabsContent value="distribution" className="mt-0 space-y-5">
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Distribuição por Valor
+          {t('transactions.distribution.byAmountTitle')}
         </p>
         <div className="space-y-2.5">
           {amountDistribution.map((item, idx) => (
@@ -266,27 +268,27 @@ export function TransactionDistributionTab({
 
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Gastos por Dia da Semana
+          {t('transactions.distribution.byWeekdayTitle')}
         </p>
         <div className="h-52 min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weekdayBreakdown} barCategoryGap="15%">
               <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} tickFormatter={shortCurrency} width={50} />
+              <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} tickFormatter={(v) => shortCurrency(v, locale)} width={50} />
               <RechartsTooltip content={<TransactionAnalyticsTooltip mode="weekday" />} />
-              <Bar isAnimationActive={false} dataKey="income" name="income" stackId="a" fill="var(--ds-chart-1)" radius={[0, 0, 0, 0]} />
-              <Bar isAnimationActive={false} dataKey="expense" name="expense" stackId="a" fill="var(--ds-chart-4)" radius={[4, 4, 0, 0]} />
+              <Bar isAnimationActive={false} dataKey="income" name={t('transactions.series.income')} stackId="a" fill="var(--ds-chart-1)" radius={[0, 0, 0, 0]} />
+              <Bar isAnimationActive={false} dataKey="expense" name={t('transactions.series.expense')} stackId="a" fill="var(--ds-chart-4)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="flex items-center justify-center gap-4 mt-2">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm bg-[var(--money)]" />
-            <span className="text-xs text-muted-foreground">Receitas</span>
+            <span className="text-xs text-muted-foreground">{t('transactions.series.income')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm bg-[var(--debt)]" />
-            <span className="text-xs text-muted-foreground">Despesas</span>
+            <span className="text-xs text-muted-foreground">{t('transactions.series.expense')}</span>
           </div>
         </div>
       </div>
@@ -303,6 +305,8 @@ function TopMerchantRow({
   rank: number;
   maxMerchantTotal: number;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const pct = Math.max((merchant.total / maxMerchantTotal) * 100, 3);
 
   return (
@@ -314,13 +318,13 @@ function TopMerchantRow({
           <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 shrink-0">{merchant.category}</Badge>
         </div>
         <span className="text-sm font-semibold font-mono tabular-nums shrink-0 ml-2">
-          {currencyFmt(merchant.total)}
+          {currencyFmt(merchant.total, locale)}
         </span>
       </div>
       <div className="flex items-center gap-3">
         <FinanceProgress
-          label={`Participação de ${merchant.name}`}
-          ariaLabel={`Participação de ${merchant.name}`}
+          label={t('transactions.patterns.merchantShareAria', { name: merchant.name })}
+          ariaLabel={t('transactions.patterns.merchantShareAria', { name: merchant.name })}
           value={pct}
           showHeader={false}
           className="flex-1"
@@ -341,6 +345,7 @@ function MonthlyComparisonRow({
   item: MonthlyItem;
   prevNet: number | null;
 }) {
+  const locale = useSafeLocale();
   const netChange = prevNet !== null && prevNet !== 0
     ? ((m.net - prevNet) / Math.abs(prevNet)) * 100
     : null;
@@ -348,18 +353,18 @@ function MonthlyComparisonRow({
   return (
     <tr className="border-t border-border/30 hover:bg-muted/30 transition-colors">
       <td className="py-2.5 px-3 font-medium">{m.month}</td>
-      <td className="text-right py-2.5 px-3 font-mono tabular-nums text-[var(--money)]">{currencyFmt(m.income)}</td>
-      <td className="text-right py-2.5 px-3 font-mono tabular-nums text-[var(--debt)]">{currencyFmt(m.expense)}</td>
+      <td className="text-right py-2.5 px-3 font-mono tabular-nums text-[var(--money)]">{currencyFmt(m.income, locale)}</td>
+      <td className="text-right py-2.5 px-3 font-mono tabular-nums text-[var(--debt)]">{currencyFmt(m.expense, locale)}</td>
       <td
         className={cn(
           'text-right py-2.5 px-3 font-mono tabular-nums font-semibold',
           m.net >= 0 ? 'text-[var(--money)]' : 'text-[var(--debt)]',
         )}
       >
-        {currencyFmt(m.net)}
+        {currencyFmt(m.net, locale)}
       </td>
       <td className="text-right py-2.5 px-3 font-mono tabular-nums">{m.count}</td>
-      <td className="text-right py-2.5 px-3 font-mono tabular-nums">{currencyFmt(m.avgPerTx)}</td>
+      <td className="text-right py-2.5 px-3 font-mono tabular-nums">{currencyFmt(m.avgPerTx, locale)}</td>
       <td className="text-right py-2.5 px-3">
         {netChange !== null ? (
           <div className="inline-flex items-center gap-0.5">
@@ -392,13 +397,14 @@ export function TransactionPatternsTab({
   maxMerchantTotal: number;
   monthlyComparison: MonthlyItem[];
 }) {
+  const t = useSafeTranslations('analytics');
   return (
     <TabsContent value="patterns" className="mt-0 space-y-5">
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Clock className="w-3.5 h-3.5 text-muted-foreground" />
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Padrão Diário (por horário)
+            {t('transactions.patterns.dailyTitle')}
           </p>
         </div>
         <div className="h-48">
@@ -418,7 +424,7 @@ export function TransactionPatternsTab({
           <div className="flex items-center gap-2 mb-3">
             <Store className="w-3.5 h-3.5 text-muted-foreground" />
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Top 5 Estabelecimentos
+              {t('transactions.patterns.topMerchantsTitle')}
             </p>
           </div>
           <div className="space-y-2.5">
@@ -436,20 +442,20 @@ export function TransactionPatternsTab({
 
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Comparação Mensal
+          {t('transactions.patterns.monthlyComparisonTitle')}
         </p>
         <div className="rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Comparação mensal de transações">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t('transactions.patterns.monthlyComparisonAria')}>
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-muted/50">
-                  <th className="text-left py-2.5 px-3 font-semibold text-muted-foreground">Mês</th>
-                  <th className="text-right py-2.5 px-3 font-semibold text-[var(--money)]">Receitas</th>
-                  <th className="text-right py-2.5 px-3 font-semibold text-[var(--debt)]">Despesas</th>
-                  <th className="text-right py-2.5 px-3 font-semibold text-muted-foreground">Líquido</th>
-                  <th className="text-right py-2.5 px-3 font-semibold text-muted-foreground">Qtd</th>
-                  <th className="text-right py-2.5 px-3 font-semibold text-muted-foreground">Ticket</th>
-                  <th className="text-right py-2.5 px-3 font-semibold text-muted-foreground">Variação</th>
+                  <th className="text-left py-2.5 px-3 font-semibold text-muted-foreground">{t('transactions.patterns.columns.month')}</th>
+                  <th className="text-right py-2.5 px-3 font-semibold text-[var(--money)]">{t('transactions.patterns.columns.income')}</th>
+                  <th className="text-right py-2.5 px-3 font-semibold text-[var(--debt)]">{t('transactions.patterns.columns.expense')}</th>
+                  <th className="text-right py-2.5 px-3 font-semibold text-muted-foreground">{t('transactions.patterns.columns.net')}</th>
+                  <th className="text-right py-2.5 px-3 font-semibold text-muted-foreground">{t('transactions.patterns.columns.count')}</th>
+                  <th className="text-right py-2.5 px-3 font-semibold text-muted-foreground">{t('transactions.patterns.columns.ticket')}</th>
+                  <th className="text-right py-2.5 px-3 font-semibold text-muted-foreground">{t('transactions.patterns.columns.change')}</th>
                 </tr>
               </thead>
               <tbody>

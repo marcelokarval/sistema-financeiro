@@ -7,9 +7,34 @@ import { QuickStatsOverview } from './quick-stats-overview';
 import { SmartInsights } from './smart-insights';
 import { CashFlowForecast } from './cash-flow-forecast';
 import { SpendingTimeline } from './spending-timeline';
+import { ExpenseBreakdown } from './expense-breakdown';
 import * as expenses from './expense-breakdown';
-const { ExpenseBreakdown } = expenses;
 import { BalanceProjection } from './balance-projection';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) =>
+      ctx === AppIntlBridgeContext
+        ? { locale, messages: getMessagesForLocale(locale) }
+        : (ctx as unknown as { _currentValue?: unknown })._currentValue,
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 test.each([
   [QuickStatsOverview, 'Resumo rápido', 'Carregando indicadores'],
@@ -100,9 +125,11 @@ test('smart-insights conecta ação do insight à navegação da store e exibe e
 
   const Card = (smartInsights as Record<string, any>).InsightCard;
   expect(typeof Card).toBe('function');
-  const el = Card({
-    insight: { id: 'card-util-1', type: 'danger', icon: 'CreditCard', title: 'Cartão', description: 'Desc', action: 'Pagar fatura' },
-  });
+  const el = withPtIntlDispatcher(() =>
+    Card({
+      insight: { id: 'card-util-1', type: 'danger', icon: 'CreditCard', title: 'Cartão', description: 'Desc', action: 'Pagar fatura' },
+    }),
+  );
   const findButton = (node: any): any => {
     if (!node || typeof node !== 'object') return undefined;
     if (typeof node.props?.onClick === 'function') return node;
@@ -264,16 +291,18 @@ test('CashFlowForecastContent e BalanceProjectionContent adotam FinanceChartTool
   expect(typeof FinanceChartTooltip).toBe('function');
 
   const CashContent = (cashFlow as Record<string, any>).CashFlowForecastContent;
-  const cashTree = CashContent({
-    loading: false,
-    onRetry: () => {},
-    data: {
-      forecastMonths: [{ month: 'março', projectedIncome: 4200, projectedExpense: 4550, projectedNet: -350, confidence: 85 }],
-      topExpenseCategories: [],
-      riskAlerts: [],
-      trendDirection: 'declining',
-    },
-  });
+  const cashTree = withPtIntlDispatcher(() =>
+    CashContent({
+      loading: false,
+      onRetry: () => {},
+      data: {
+        forecastMonths: [{ month: 'março', projectedIncome: 4200, projectedExpense: 4550, projectedNet: -350, confidence: 85 }],
+        topExpenseCategories: [],
+        riskAlerts: [],
+        trendDirection: 'declining',
+      },
+    }),
+  );
   const cashTooltipNode = findTooltipNode(cashTree);
   expect(cashTooltipNode).toBeDefined();
   expect(cashTooltipNode?.props.content?.type).toBe((cashFlow as Record<string, any>).CashFlowForecastTooltip);
@@ -317,35 +346,37 @@ test('CashFlowForecastContent e BalanceProjectionContent adotam FinanceChartTool
   expect(cashMaskedHtml).not.toMatch(/4\.200|350/);
 
   const BalContent = (balanceProj as Record<string, any>).BalanceProjectionContent;
-  const balTree = BalContent({
-    loading: false,
-    selectedMonths: 6,
-    onSelectMonths: () => {},
-    onRetry: () => {},
-    data: {
-      accounts: [
-        {
-          accountId: 'acc-1',
-          accountName: 'Conta Corrente',
-          accountColor: '#0ea5e9',
-          accountType: 'CHECKING',
-          currentBalance: 1000,
-          projectedBalances: [1850.5],
-          avgMonthlyIncome: 2000,
-          avgMonthlyExpense: 1149.5,
-          monthlyNet: 850.5,
-          trend: 'up',
-        },
-      ],
-      monthLabels: ['abr/26'],
-      totalCurrentBalance: 1000,
-      totalProjected: 1850.5,
-      averageMonthlySavings: 850.5,
-      savingsRate: 42.5,
-      riskLevel: 'low',
-      months: 6,
-    },
-  });
+  const balTree = withPtIntlDispatcher(() =>
+    BalContent({
+      loading: false,
+      selectedMonths: 6,
+      onSelectMonths: () => {},
+      onRetry: () => {},
+      data: {
+        accounts: [
+          {
+            accountId: 'acc-1',
+            accountName: 'Conta Corrente',
+            accountColor: '#0ea5e9',
+            accountType: 'CHECKING',
+            currentBalance: 1000,
+            projectedBalances: [1850.5],
+            avgMonthlyIncome: 2000,
+            avgMonthlyExpense: 1149.5,
+            monthlyNet: 850.5,
+            trend: 'up',
+          },
+        ],
+        monthLabels: ['abr/26'],
+        totalCurrentBalance: 1000,
+        totalProjected: 1850.5,
+        averageMonthlySavings: 850.5,
+        savingsRate: 42.5,
+        riskLevel: 'low',
+        months: 6,
+      },
+    }),
+  );
   const balTooltipNode = findTooltipNode(balTree);
   expect(balTooltipNode).toBeDefined();
   expect(balTooltipNode?.props.content?.type).toBe((balanceProj as Record<string, any>).BalanceProjectionTooltip);
@@ -436,4 +467,40 @@ test('Task 0018: expense-breakdown adota FinanceChartTooltip e delega detalhes d
   );
   expect(maskedHtml).toContain('R$ ••••••');
   expect(maskedHtml).not.toContain('1.250');
+});
+
+test('renderiza CashFlowForecastContent, BalanceProjectionContent e SpendingTimelineContent em pt, es e en e oculta dígitos', () => {
+  const expected = {
+    pt: { emptyTimeline: 'Sem dados de movimentação para exibir.', retry: 'Tentar novamente' },
+    es: { emptyTimeline: 'Sin datos de movimientos para mostrar.', retry: 'Intentar de nuevo' },
+    en: { emptyTimeline: 'No activity data to display.', retry: 'Try again' },
+  } as const;
+  const CashContent = (cashFlow as Record<string, any>).CashFlowForecastContent;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const tlHtml = renderWithIntl(
+      <timeline.SpendingTimelineContent
+        data={[]}
+        loading={false}
+        error={false}
+        activeDays={30}
+        expandedDay={null}
+        onSelectDays={() => {}}
+        onToggleDay={() => {}}
+        onRetry={() => {}}
+      />,
+      locale,
+    );
+    expect(tlHtml).toContain(expected[locale].emptyTimeline);
+    expect(tlHtml).not.toContain('MISSING_MESSAGE');
+
+    const cashErrHtml = renderWithIntl(<CashContent loading={false} onRetry={() => {}} data={null} />, locale);
+    expect(cashErrHtml).toContain(expected[locale].retry);
+
+    const maskedTooltip = renderWithIntl(
+      <expenses.ExpenseBreakdownTooltip active showValues={false} payload={[{ name: 'Moradia', value: 1250 }]} />,
+      locale,
+    );
+    expect(maskedTooltip).not.toMatch(/1\.?250/);
+  }
 });

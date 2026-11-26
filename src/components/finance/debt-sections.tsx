@@ -15,8 +15,17 @@ import {
   type FinanceChartTooltipRow,
 } from '@/components/shared/finance-chart-tooltip';
 import { FinanceProgress } from '@/components/shared/finance-progress';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import {
+  DEBT_INSTALLMENT_TYPE_KEYS,
+  DEBT_RATIO_CONFIG,
+  DEBT_STATUS_BADGE_CONFIG,
+  PIE_COLORS,
+} from './analytics-i18n';
+
+export { PIE_COLORS };
 
 export interface CardDebt {
   id: string; name: string; brand: string; lastFourDigits: string;
@@ -44,63 +53,10 @@ export interface DebtsData {
 
 export type DebtSectionType = 'cards' | 'installments' | 'consortiums';
 
-export const PIE_COLORS = ['var(--ds-chart-4)', 'var(--ds-chart-3)', 'var(--ds-chart-2)'];
-
-const TYPE_LABELS: Record<string, string> = {
-  FINANCING: 'Financiamento',
-  CARD_INSTALLMENT: 'Parcelamento Cartão',
-  LOAN: 'Empréstimo',
-  PERSONAL: 'Empréstimo Pessoal',
-  RENTAL: 'Aluguel',
-};
-
-const STATUS_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
-  ACTIVE: { label: 'Ativo', className: 'bg-[var(--money)]/10 text-[var(--money)] border-[var(--money)]/20' },
-  OVERDUE: { label: 'Atrasado', className: 'bg-[var(--debt)]/10 text-[var(--debt)] border-[var(--debt)]/20' },
-  COMPLETED: { label: 'Concluído', className: 'bg-[var(--primary)]/10 text-primary border-[var(--primary)]/20' },
-  CONTEMPLATED: { label: 'Contemplado', className: 'bg-[var(--obligation)]/10 text-[var(--obligation)] border-[var(--obligation)]/20' },
-};
-
-const RATIO_CONFIG = {
-  critical: {
-    barColor: 'var(--ds-chart-4)',
-    indicatorClass: '[&>[data-slot=progress-indicator]]:bg-[var(--ds-chart-4)]',
-    bgClass: 'bg-[var(--debt)]/5 border-[var(--debt)]/20',
-    textClass: 'text-[var(--debt)]',
-    iconBg: 'bg-[var(--debt)]/10',
-    label: 'Crítico',
-    recommendation:
-      'Suas dívidas comprometem mais de 30% da sua renda. Considere renegociar taxas, priorizar a quitação de cartões e evitar novas dívidas.',
-  },
-  warning: {
-    barColor: 'var(--ds-chart-2)',
-    indicatorClass: '[&>[data-slot=progress-indicator]]:bg-[var(--ds-chart-2)]',
-    bgClass: 'bg-[var(--obligation)]/5 border-[var(--obligation)]/20',
-    textClass: 'text-[var(--obligation)]',
-    iconBg: 'bg-[var(--obligation)]/10',
-    label: 'Atenção',
-    recommendation:
-      'Suas dívidas estão entre 15% e 30% da sua renda. Mantenha o controle, evite novas aquisições e priorize o pagamento antecipado.',
-  },
-  healthy: {
-    barColor: 'var(--ds-chart-1)',
-    indicatorClass: '[&>[data-slot=progress-indicator]]:bg-[var(--ds-chart-1)]',
-    bgClass: 'bg-[var(--money)]/5 border-[var(--money)]/20',
-    textClass: 'text-[var(--money)]',
-    iconBg: 'bg-[var(--money)]/10',
-    label: 'Saudável',
-    recommendation:
-      'Ótimo! Suas dívidas estão abaixo de 15% da sua renda. Continue com esse controle financeiro e mantenha o equilíbrio.',
-  },
-} as const;
-
-function typeLabel(type: string) {
-  return TYPE_LABELS[type] || type;
-}
-
 function DebtStatusBadge({ status }: { status: string }) {
-  const c = STATUS_BADGE_CONFIG[status] || STATUS_BADGE_CONFIG.ACTIVE;
-  return <Badge className={cn('text-xs px-2 py-0 border', c.className)}>{c.label}</Badge>;
+  const t = useSafeTranslations('analytics');
+  const c = DEBT_STATUS_BADGE_CONFIG[status] || DEBT_STATUS_BADGE_CONFIG.ACTIVE;
+  return <Badge className={cn('text-xs px-2 py-0 border', c.className)}>{t(`debts.status.${c.labelKey}`)}</Badge>;
 }
 
 /** Recharts tooltip adapter for debt composition chart using FinanceChartTooltip. */
@@ -113,6 +69,7 @@ export function DebtChartTooltip({
   payload?: Array<{ name?: string; value?: unknown; payload?: { fill?: string } }>;
   showValues?: boolean;
 }) {
+  const locale = useSafeLocale();
   if (!active || !Array.isArray(payload) || payload.length === 0) return null;
 
   const rows: FinanceChartTooltipRow[] = payload.flatMap((entry, idx) => {
@@ -122,7 +79,7 @@ export function DebtChartTooltip({
     return [{
       key: `${entry.name}-${idx}`,
       label: entry.name,
-      value: currencyFmt(entry.value),
+      value: currencyFmt(entry.value, locale),
       color: entry.payload?.fill,
     }];
   });
@@ -148,6 +105,7 @@ export function DebtTypeToggleButton({
   ringClass: string;
   onClick: () => void;
 }) {
+  const locale = useSafeLocale();
   return (
     <div>
       <button
@@ -174,7 +132,7 @@ export function DebtTypeToggleButton({
         </div>
         <p className="col-start-1 row-start-1 text-sm font-medium">{label}</p>
         <p className="col-span-2 text-sm font-mono font-semibold tabular-nums">
-          {currencyFmt(amount)}
+          {currencyFmt(amount, locale)}
         </p>
       </button>
     </div>
@@ -189,8 +147,10 @@ export function DebtIncomeRatioCard({
   ratio: number;
   monthlyIncome: number;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const ratioLevel = ratio > 30 ? 'critical' : ratio > 15 ? 'warning' : 'healthy';
-  const currentRatio = RATIO_CONFIG[ratioLevel];
+  const currentRatio = DEBT_RATIO_CONFIG[ratioLevel];
   const clampedRatio = Math.min(Math.max(ratio, 0), 100);
 
   return (
@@ -202,19 +162,19 @@ export function DebtIncomeRatioCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <p className={cn('text-sm font-semibold', currentRatio.textClass)}>
-              Comprometimento de Renda
+              {t('debts.ratio.title')}
             </p>
             <Badge className={cn('text-xs px-2 py-0 border', currentRatio.bgClass, currentRatio.textClass)}>
-              {currentRatio.label}
+              {t(`debts.ratio.${currentRatio.labelKey}`)}
             </Badge>
           </div>
           <p className={cn('text-xs leading-relaxed mb-3', currentRatio.textClass)}>
-            {currentRatio.recommendation}
+            {t(`debts.ratio.${currentRatio.recommendationKey}`)}
           </p>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground font-medium">
-                Endividamento / Renda mensal
+                {t('debts.ratio.subtitle')}
               </span>
               <span className={cn('font-mono text-xs font-semibold tabular-nums', currentRatio.textClass)}>
                 {ratio.toFixed(1)}%
@@ -232,8 +192,8 @@ export function DebtIncomeRatioCard({
                 style={{ left: '30%' }}
               />
               <FinanceProgress
-                label="Endividamento / Renda mensal"
-                ariaLabel="Comprometimento de renda com dívidas"
+                label={t('debts.ratio.subtitle')}
+                ariaLabel={t('debts.ratio.ariaLabel')}
                 value={Math.round(clampedRatio)}
                 min={0}
                 max={100}
@@ -254,9 +214,9 @@ export function DebtIncomeRatioCard({
             </div>
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span>Renda mensal:</span>
+            <span>{t('debts.ratio.monthlyIncome')}</span>
             <span className="font-mono font-semibold tabular-nums text-foreground">
-              {currencyFmt(monthlyIncome)}
+              {currencyFmt(monthlyIncome, locale)}
             </span>
           </div>
         </div>
@@ -270,6 +230,7 @@ function DebtSectionShell({
 }: {
   icon: ReactNode; title: string; countLabel: string; amount: number; amountClass: string; children: ReactNode;
 }) {
+  const locale = useSafeLocale();
   return (
     <div className="overflow-hidden">
       <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -278,7 +239,7 @@ function DebtSectionShell({
           <span className="text-xs font-semibold">{title}</span>
           <Badge variant="secondary" className="text-xs px-1.5 py-0">{countLabel}</Badge>
           <Badge className={cn('font-mono text-xs tabular-nums px-2 py-0 border', amountClass)}>
-            {currencyFmt(amount)}
+            {currencyFmt(amount, locale)}
           </Badge>
         </div>
         <div className="divide-y divide-border/40 max-h-96 overflow-y-auto">{children}</div>
@@ -288,6 +249,8 @@ function DebtSectionShell({
 }
 
 function DebtCardRow({ card }: { card: CardDebt }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const clampedUtilization = Math.round(Math.min(100, Math.max(0, card.utilizationRate)));
   const indicatorClass = card.utilizationRate > 80
     ? '[&>[data-slot=progress-indicator]]:bg-[var(--ds-chart-4)]'
@@ -306,20 +269,20 @@ function DebtCardRow({ card }: { card: CardDebt }) {
             <span className="font-mono text-xs tabular-nums text-muted-foreground">****{card.lastFourDigits}</span>
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
-            <span className="font-mono text-xs tabular-nums text-[var(--debt)] font-semibold">{currencyFmt(card.currentBalance)}</span>
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">Limite: {currencyFmt(card.creditLimit)}</span>
-            <span className="text-xs text-muted-foreground">Vencimento: dia {card.dueDay}</span>
+            <span className="font-mono text-xs tabular-nums text-[var(--debt)] font-semibold">{currencyFmt(card.currentBalance, locale)}</span>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">{t('debts.cardRow.limit', { amount: currencyFmt(card.creditLimit, locale) })}</span>
+            <span className="text-xs text-muted-foreground">{t('debts.cardRow.dueDay', { day: card.dueDay })}</span>
           </div>
           <div className="mt-1.5 flex items-center gap-2">
             <FinanceProgress
-              label={`Uso do limite do cartão ${card.name}`}
-              ariaLabel={`Uso do limite do cartão ${card.name}`}
+              label={t('debts.cardRow.limitUsageAria', { name: card.name })}
+              ariaLabel={t('debts.cardRow.limitUsageAria', { name: card.name })}
               value={clampedUtilization}
               showHeader={false}
               className="flex-1 max-w-[120px]"
               trackClassName={cn('h-1.5 bg-muted', indicatorClass)}
             />
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">{card.utilizationRate.toFixed(0)}% usado</span>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">{t('debts.cardRow.usedPct', { pct: card.utilizationRate.toFixed(0) })}</span>
           </div>
         </div>
       </div>
@@ -350,6 +313,8 @@ function DebtPlanRow({
   progressLabel: string;
   progressValue: number;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   return (
     <div className="px-4 py-3 hover:bg-muted/30">
       <div className="flex items-center gap-3">
@@ -362,13 +327,13 @@ function DebtPlanRow({
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
             <span className="font-mono text-xs tabular-nums text-[var(--obligation)] font-semibold">
-              Restante: {currencyFmt(remaining)}
+              {t('debts.planRow.remaining', { amount: currencyFmt(remaining, locale) })}
             </span>
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
-              {paidInstallments}/{installmentCount} parcelas
+              {t('debts.planRow.installmentsCount', { paid: paidInstallments, total: installmentCount })}
             </span>
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
-              {currencyFmt(monthlyValue)}/mês
+              {t('debts.planRow.perMonth', { amount: currencyFmt(monthlyValue, locale) })}
             </span>
             {extraMeta && <span className="font-mono text-xs tabular-nums text-muted-foreground">{extraMeta}</span>}
           </div>
@@ -381,7 +346,7 @@ function DebtPlanRow({
               className="flex-1 max-w-[160px]"
               trackClassName="h-1.5 bg-muted [&>[data-slot=progress-indicator]]:bg-[var(--obligation)]"
             />
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">{progressValue}% pago</span>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">{t('debts.planRow.paidPct', { pct: progressValue })}</span>
           </div>
         </div>
       </div>
@@ -397,12 +362,18 @@ export function DebtExpandedSection({
   expandedType: string | null;
   data: DebtsData;
 }) {
+  const t = useSafeTranslations('analytics');
+  const resolveTypeLabel = (type: string) => {
+    const key = DEBT_INSTALLMENT_TYPE_KEYS[type];
+    return key ? t(`debts.types.${key}`) : type;
+  };
+
   if (expandedType === 'cards' && data.cards.length > 0) {
     return (
       <DebtSectionShell
         icon={<CreditCard className="w-4 h-4 text-[var(--debt)]" />}
-        title="Cartões de Crédito"
-        countLabel={`${data.cards.length} cartão(ões)`}
+        title={t('debts.categories.cards')}
+        countLabel={t('debts.counts.cards', { count: data.cards.length })}
         amount={data.cardDebt}
         amountClass="bg-[var(--debt)]/10 text-[var(--debt)] border-[var(--debt)]/20"
       >
@@ -417,8 +388,8 @@ export function DebtExpandedSection({
     return (
       <DebtSectionShell
         icon={<CalendarClock className="w-4 h-4 text-[var(--obligation)]" />}
-        title="Parcelamentos"
-        countLabel={`${data.installments.length} plano(s)`}
+        title={t('debts.categories.installments')}
+        countLabel={t('debts.counts.plans', { count: data.installments.length })}
         amount={data.installmentDebt}
         amountClass="bg-[var(--obligation)]/10 text-[var(--obligation)] border-[var(--obligation)]/20"
       >
@@ -427,13 +398,13 @@ export function DebtExpandedSection({
             key={ip.id}
             description={ip.description}
             status={ip.status}
-            badgeLabel={typeLabel(ip.type)}
+            badgeLabel={resolveTypeLabel(ip.type)}
             remaining={ip.remaining}
             paidInstallments={ip.paidInstallments}
             installmentCount={ip.installmentCount}
             monthlyValue={ip.monthlyValue}
-            extraMeta={ip.interestRate > 0 ? `Juros: ${ip.interestRate}% a.m.` : undefined}
-            progressLabel={`Progresso do parcelamento ${ip.description}`}
+            extraMeta={ip.interestRate > 0 ? t('debts.planRow.interestRate', { rate: ip.interestRate }) : undefined}
+            progressLabel={t('debts.planRow.installmentProgressAria', { description: ip.description })}
             progressValue={ip.installmentCount > 0 ? Math.round((ip.paidInstallments / ip.installmentCount) * 100) : 0}
           />
         ))}
@@ -445,8 +416,8 @@ export function DebtExpandedSection({
     return (
       <DebtSectionShell
         icon={<Building2 className="w-4 h-4 text-[var(--obligation)]" />}
-        title="Consórcios"
-        countLabel={`${data.consortiums.length} consórcio(s)`}
+        title={t('debts.categories.consortiums')}
+        countLabel={t('debts.counts.consortiums', { count: data.consortiums.length })}
         amount={data.consortiumDebt}
         amountClass="bg-[var(--obligation)]/10 text-[var(--obligation)] border-[var(--obligation)]/20"
       >
@@ -459,8 +430,8 @@ export function DebtExpandedSection({
             paidInstallments={c.paidInstallments}
             installmentCount={c.installmentCount}
             monthlyValue={c.monthlyPayment}
-            extraMeta={c.administrator ? `Adm: ${c.administrator}` : undefined}
-            progressLabel={`Progresso do consórcio ${c.description}`}
+            extraMeta={c.administrator ? t('debts.planRow.administrator', { name: c.administrator }) : undefined}
+            progressLabel={t('debts.planRow.consortiumProgressAria', { description: c.description })}
             progressValue={Math.round(Math.min(100, Math.max(0, c.progress)))}
           />
         ))}

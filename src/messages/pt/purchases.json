@@ -1,0 +1,89 @@
+{
+  "eyebrow": "Movimentação",
+  "title": "Compras",
+  "subtitle": "Acompanhe os gastos e os itens de cada compra.",
+  "loading": "Carregando compras…",
+  "actions": {
+    "newPurchase": "Nova compra",
+    "retryList": "Tentar atualizar lista",
+    "retryOptions": "Tentar novamente",
+    "cancel": "Cancelar",
+    "delete": "Excluir"
+  },
+  "errors": {
+    "merchantRequired": "Informe o estabelecimento",
+    "itemsRequired": "Adicione ao menos um item",
+    "save": "Erro ao salvar compra",
+    "delete": "Erro ao excluir compra",
+    "refresh": "Não foi possível atualizar a lista de compras.",
+    "options": "Não foi possível carregar cartões ou categorias."
+  },
+  "toasts": {
+    "updated": "Compra atualizada!",
+    "created": "Compra registrada!",
+    "deleted": "Compra excluída!"
+  },
+  "summary": {
+    "ariaLabel": "Totais de compras",
+    "totalSpent": "Total das compras",
+    "avgPurchase": "Valor médio por compra",
+    "merchants": "Estabelecimentos",
+    "items": "Itens comprados"
+  },
+  "records": {
+    "title": "Registros de compras",
+    "searchLabel": "Buscar por estabelecimento ou cartão",
+    "searchPlaceholder": "Estabelecimento ou cartão",
+    "foundCount": "{count, plural, one {# compra encontrada} other {# compras encontradas}}",
+    "resultsTotalPrefix": "Total dos resultados:",
+    "emptySearch": "Nenhuma compra corresponde à busca.",
+    "empty": "Nenhuma compra registrada.",
+    "itemCount": "{count, plural, one {# item} other {# itens}}",
+    "toggleItemsAria": "Itens da compra: {merchant}",
+    "editAria": "Editar compra: {merchant}",
+    "deleteAria": "Excluir compra: {merchant}",
+    "itemsHeading": "Itens da compra ({count})",
+    "unitShort": "{price} / un.",
+    "purchaseTotal": "Total da compra",
+    "notesPrefix": "Observações: {notes}"
+  },
+  "ranking": {
+    "title": "Estabelecimentos com mais gastos",
+    "subtitle": "Considera todas as compras, sem aplicar a busca.",
+    "purchaseCount": "{count, plural, one {# compra} other {# compras}}"
+  },
+  "deleteDialog": {
+    "title": "Excluir compra?",
+    "description": "Esta ação não pode ser desfeita. Todos os itens da compra serão removidos."
+  },
+  "editor": {
+    "closeLabel": "Fechar formulário",
+    "editTitle": "Editar compra",
+    "createTitle": "Nova compra",
+    "description": "Registre os detalhes da compra com todos os itens",
+    "totalPrefix": "Total: {amount}",
+    "cancel": "Cancelar",
+    "update": "Atualizar",
+    "register": "Registrar",
+    "merchantLabel": "Estabelecimento",
+    "merchantPlaceholder": "Ex: Carrefour, Amazon...",
+    "cardLabel": "Cartão",
+    "selectPlaceholder": "Selecione…",
+    "noCard": "Nenhum cartão",
+    "categoryLabel": "Categoria",
+    "noCategory": "Nenhuma categoria",
+    "dateLabel": "Data",
+    "notesLabel": "Observações (opcional)",
+    "notesPlaceholder": "Notas adicionais..."
+  },
+  "itemsEditor": {
+    "legend": "Itens da compra",
+    "itemGroupAria": "Item {index}",
+    "itemNameLabel": "Nome do item",
+    "quantityLabel": "Quantidade",
+    "unitPriceLabel": "Preço unitário",
+    "subtotalPrefix": "Subtotal: {amount}",
+    "removeItemAria": "Remover item {index}",
+    "addItem": "Adicionar item"
+  }
+}

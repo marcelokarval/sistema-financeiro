@@ -18,6 +18,34 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceRow } from '@/components/shared/finance-row';
 import { QueryPanel } from '@/components/shared/query-panel';
+import { renderWithIntl } from '@/test-utils/intl';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
+
+function ptUseContext(ctx: React.Context<unknown>, locale: CanonicalLocale = 'pt') {
+  return ctx === AppIntlBridgeContext
+    ? { locale, messages: getMessagesForLocale(locale) }
+    : (ctx as unknown as { _currentValue?: unknown })._currentValue;
+}
+
+function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  internals.H = {
+    useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+    useId: () => 'test-id',
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (cb: unknown) => cb,
+  };
+  try {
+    return fn();
+  } finally {
+    internals.H = previous;
+  }
+}
 
 function markup(file: string) {
   const source = ts.createSourceFile(file, new TextDecoder().decode(readFile(file)), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -44,8 +72,8 @@ const accountView = markup('accounts-view.tsx');
 const cardView = markup('cards-view.tsx');
 
 for (const [name, nodes, summary, records] of [
-  ['Contas', accountView, 'Posição das contas', 'Contas cadastradas'],
-  ['Cartões', cardView, 'Posição dos cartões', 'Cartões cadastrados'],
+  ['Contas', accountView, "t('summary.ariaLabel')", "t('list.title')"],
+  ['Cartões', cardView, "t('summary.ariaLabel')", "t('list.title')"],
 ] as const) {
   test(`${name}: faixa de indicadores antes dos registros`, () => {
     const strip = nodes.findIndex((node) => node.tagName.getText() === 'dl' && attribute(node, 'aria-label')?.getText().includes(summary));
@@ -57,11 +85,11 @@ for (const [name, nodes, summary, records] of [
 }
 
 test('Contas: detalhe e ações de cada conta têm botão e nome', () => {
-  expect(namedAction(accountView, 'openAccount(acc)', 'Abrir conta')).toBe(true);
-  expect(namedAction(accountView, 'openEditAccount(acc)', 'Editar conta')).toBe(true);
-  expect(namedAction(accountView, 'setShowDeleteDialog(acc.id)', 'Excluir conta')).toBe(true);
-  expect(namedAction(accountView, 'openTransaction(selectedAccount.id)', 'Nova transação')).toBe(true);
-  expect(namedAction(accountView, 'setShowTransferDialog(true)', 'Transferir')).toBe(true);
+  expect(namedAction(accountView, 'openAccount(acc)', "t('list.openAccountAria'")).toBe(true);
+  expect(namedAction(accountView, 'openEditAccount(acc)', "t('list.editAccountAria'")).toBe(true);
+  expect(namedAction(accountView, 'setShowDeleteDialog(acc.id)', "t('list.deleteAccountAria'")).toBe(true);
+  expect(namedAction(accountView, 'openTransaction(selectedAccount.id)', "t('actions.newTransaction')")).toBe(true);
+  expect(namedAction(accountView, 'setShowTransferDialog(true)', "t('actions.transfer')")).toBe(true);
 });
 
 test('Cartões: detalhe, cópia, edição, exclusão e expansor de compra têm controles acessíveis', async () => {
@@ -120,18 +148,18 @@ test('Contas consome selectedAccountId da store, trata erro/loading de transaç�
   const source = await Bun.file(new URL('accounts-view.tsx', import.meta.url)).text();
   expect(source).toContain('selectedAccountId');
   expect(source).toContain('setSelectedAccountId');
-  expect(source).toContain('Carregando transações');
-  expect(source).toContain('Não foi possível carregar as transações');
+  expect(source).toContain("t('detail.loadingTransactions')");
+  expect(source).toContain("t('errors.loadTransactions')");
 });
 
 test('Cartões consome selectedCardId da store, trata loading/erro/retry e valida nome do cartão', async () => {
   const source = await Bun.file(new URL('cards-view.tsx', import.meta.url)).text();
   expect(source).toContain('selectedCardId');
   expect(source).toContain('setSelectedCardId');
-  expect(source).toContain('Não foi possível carregar os cartões');
-  expect(source).toContain('Não foi possível carregar as compras do cartão');
-  expect(source).toContain('Carregando compras do cartão');
-  expect(source).toContain('Nome do cartão é obrigatório');
+  expect(source).toContain("t('errors.loadCards')");
+  expect(source).toContain("t('errors.loadPurchases')");
+  expect(source).toContain("t('detail.loadingPurchases')");
+  expect(source).toContain("t('errors.nameRequired')");
 });
 
 const qaAccounts = ['a', 'b'].map((id) => ({
@@ -174,7 +202,7 @@ function find(node: ReactNode, match: (element: Element) => boolean): Element | 
         || child.type === FinanceConfirmationDialogShell
         || child.type === QueryPanel
       ) {
-        expanded = (child.type as (props: Element['props']) => ReactNode)(child.props);
+        expanded = withPtIntlDispatcher(() => (child.type as (props: Element['props']) => ReactNode)(child.props));
       }
     }
     const nested = find(expanded, match);
@@ -231,6 +259,8 @@ async function exerciseAccounts(onRun: (testbed: {
         return callbacks[i].fn;
       },
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useDebugValue: () => {},
       useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
       useEffect(fn: () => void, deps?: readonly unknown[]) {
@@ -412,7 +442,7 @@ for (const { mode, id, title, opener, submit, method } of variants) {
       }
       writeFor('A', opener, a);
       required(dialog(), buttonNamed('Cancelar')).props.onClick();
-      required(render(), (node) => node.props.onClick && React.Children.toArray(node.props.children).includes(' Voltar para contas')).props.onClick();
+      required(render(), (node) => node.props.onClick && React.Children.toArray(node.props.children).includes('Voltar para contas')).props.onClick();
       required(render(), nameIs('Abrir conta Conta B')).props.onClick();
       render();
       await settle();
@@ -553,6 +583,8 @@ async function exerciseCards(onRun: (testbed: {
         return callbacks[i].fn;
       },
       useMemo: (factory: () => unknown) => factory(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useId: () => 'test-id',
       useDebugValue: () => {},
       useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
       useEffect(fn: () => void, deps?: readonly unknown[]) {
@@ -788,7 +820,7 @@ test('Cartões: trava síncrona em POST/PUT/DELETE, chaves distintas, liberaçã
     const purB = heldResponse();
     answerPurchases((url) => (url.endsWith('=a') ? purA.promise : purB.promise));
     required(render(), nameIs('Abrir cartão Cartão A')).props.onClick();
-    required(render(), (node) => node.props.onClick && React.Children.toArray(node.props.children).includes(' Voltar para cartões')).props.onClick();
+    required(render(), (node) => node.props.onClick && React.Children.toArray(node.props.children).includes('Voltar para cartões')).props.onClick();
     required(render(), nameIs('Abrir cartão Cartão B')).props.onClick();
     purB.resolve(Response.json([{ id: 'pb', merchant: 'Compra B Vigente', totalAmount: 25, date: '2026-01-15', items: [] }]));
     await settle();
@@ -869,31 +901,35 @@ test('CardEditor adota FinanceFormDialogShell, alterna variantes criar/editar e 
     flag: 'Banco X',
   };
 
-  const createTree = CardEditor({
-    mode: 'create',
-    open: true,
-    pending: false,
-    form: baseForm,
-    onFieldChange: (field, value) => changes.push([field, value]),
-    onOpenChange,
-    onCloseAutoFocus,
-    onSubmit,
-  });
+  const createTree = withPtIntlDispatcher(() =>
+    CardEditor({
+      mode: 'create',
+      open: true,
+      pending: false,
+      form: baseForm,
+      onFieldChange: (field, value) => changes.push([field, value]),
+      onOpenChange,
+      onCloseAutoFocus,
+      onSubmit,
+    }),
+  );
   expect(createTree.type).toBe(FinanceFormDialogShell);
   expect(createTree.props.title).toBe('Novo Cartão');
   expect(find(createTree, byId('card-limit'))).toBeDefined();
   expect(find(createTree, buttonNamed('Adicionar'))?.props['aria-disabled']).toBe(false);
 
-  const editDebitTree = CardEditor({
-    mode: 'edit',
-    open: true,
-    pending: true,
-    form: { ...baseForm, type: 'DEBIT' },
-    onFieldChange: (field, value) => changes.push([field, value]),
-    onOpenChange,
-    onCloseAutoFocus,
-    onSubmit,
-  });
+  const editDebitTree = withPtIntlDispatcher(() =>
+    CardEditor({
+      mode: 'edit',
+      open: true,
+      pending: true,
+      form: { ...baseForm, type: 'DEBIT' },
+      onFieldChange: (field, value) => changes.push([field, value]),
+      onOpenChange,
+      onCloseAutoFocus,
+      onSubmit,
+    }),
+  );
   expect(editDebitTree.type).toBe(FinanceFormDialogShell);
   expect(editDebitTree.props.title).toBe('Editar Cartão');
   expect(find(editDebitTree, byId('card-limit'))).toBeUndefined();
@@ -919,7 +955,7 @@ test('Cartões adota QueryPanel e FinanceConfirmationDialogShell, e isola falha/
     expect(required(tree, (node) => node.props.role === 'status' && node.props.children === 'Carregando compras do cartão…')).toBeDefined();
 
     // Troca para Cartão B enquanto Cartão A ainda carrega.
-    required(tree, (node) => node.props.onClick && React.Children.toArray(node.props.children).includes(' Voltar para cartões')).props.onClick();
+    required(tree, (node) => node.props.onClick && React.Children.toArray(node.props.children).includes('Voltar para cartões')).props.onClick();
     required(render(), nameIs('Abrir cartão Cartão B')).props.onClick();
     tree = render();
     expect(find(tree, (node) => node.type === QueryPanel && node.props.status === 'loading')).toBeDefined();
@@ -950,17 +986,19 @@ test('AccountPicker preserva showCloseButton={false}, estados loading/erro/vazio
   let closed = 0;
   const onCloseAutoFocus = () => {};
 
-  const listPicker = AccountPicker({
-    open: true,
-    loading: false,
-    loadFailed: false,
-    accounts: qaAccounts,
-    onRetry: () => { retried++; },
-    onCreateAccount: () => { created++; },
-    onSelectAccount: (acc) => { selectedId = acc.id; },
-    onClose: () => { closed++; },
-    onCloseAutoFocus,
-  });
+  const listPicker = withPtIntlDispatcher(() =>
+    AccountPicker({
+      open: true,
+      loading: false,
+      loadFailed: false,
+      accounts: qaAccounts,
+      onRetry: () => { retried++; },
+      onCreateAccount: () => { created++; },
+      onSelectAccount: (acc) => { selectedId = acc.id; },
+      onClose: () => { closed++; },
+      onCloseAutoFocus,
+    }),
+  );
   expect(listPicker.type).toBe(Dialog);
   const content = find(listPicker, (e) => e.type === DialogContent);
   expect(content?.props.showCloseButton).toBe(false);
@@ -968,31 +1006,35 @@ test('AccountPicker preserva showCloseButton={false}, estados loading/erro/vazio
   required(listPicker, (e) => e.props.onClick && !!find(e.props.children, (c) => c.props.children === 'Conta B')).props.onClick();
   expect(selectedId).toBe('b');
 
-  const errorPicker = AccountPicker({
-    open: true,
-    loading: false,
-    loadFailed: true,
-    accounts: [],
-    onRetry: () => { retried++; },
-    onCreateAccount: () => { created++; },
-    onSelectAccount: () => {},
-    onClose: () => { closed++; },
-    onCloseAutoFocus,
-  });
+  const errorPicker = withPtIntlDispatcher(() =>
+    AccountPicker({
+      open: true,
+      loading: false,
+      loadFailed: true,
+      accounts: [],
+      onRetry: () => { retried++; },
+      onCreateAccount: () => { created++; },
+      onSelectAccount: () => {},
+      onClose: () => { closed++; },
+      onCloseAutoFocus,
+    }),
+  );
   required(errorPicker, buttonNamed('Tentar novamente')).props.onClick();
   expect(retried).toBe(1);
 
-  const emptyPicker = AccountPicker({
-    open: true,
-    loading: false,
-    loadFailed: false,
-    accounts: [],
-    onRetry: () => {},
-    onCreateAccount: () => { created++; },
-    onSelectAccount: () => {},
-    onClose: () => {},
-    onCloseAutoFocus,
-  });
+  const emptyPicker = withPtIntlDispatcher(() =>
+    AccountPicker({
+      open: true,
+      loading: false,
+      loadFailed: false,
+      accounts: [],
+      onRetry: () => {},
+      onCreateAccount: () => { created++; },
+      onSelectAccount: () => {},
+      onClose: () => {},
+      onCloseAutoFocus,
+    }),
+  );
   required(emptyPicker, buttonNamed('Cadastrar conta')).props.onClick();
   expect(created).toBe(1);
 
@@ -1005,22 +1047,24 @@ test('AccountTransferDialog adota FinanceFormDialogShell, filtra origem/destino 
   const onCloseAutoFocus = () => {};
   const onSubmit = async () => {};
   const changes: [string, string][] = [];
-  const element = AccountTransferDialog({
-    open: true,
-    pending: true,
-    form: {
-      fromAccountId: 'a',
-      toAccountId: '',
-      amount: '50',
-      date: '2026-05-01',
-      description: 'Reserva',
-    },
-    accounts: qaAccounts,
-    onFieldChange: (field, value) => changes.push([field, value]),
-    onOpenChange,
-    onCloseAutoFocus,
-    onSubmit,
-  });
+  const element = withPtIntlDispatcher(() =>
+    AccountTransferDialog({
+      open: true,
+      pending: true,
+      form: {
+        fromAccountId: 'a',
+        toAccountId: '',
+        amount: '50',
+        date: '2026-05-01',
+        description: 'Reserva',
+      },
+      accounts: qaAccounts,
+      onFieldChange: (field, value) => changes.push([field, value]),
+      onOpenChange,
+      onCloseAutoFocus,
+      onSubmit,
+    }),
+  );
 
   expect(element.type).toBe(FinanceFormDialogShell);
   expect(element.props.onOpenChange).toBe(onOpenChange);
@@ -1147,4 +1191,33 @@ test('Task 1.3: AccountsView saveTransfer trata resposta 503 não-JSON com Erro 
     expect(writes(calls)).toHaveLength(1);
     expect(calls.filter(({ method }) => method === 'GET').length).toBe(initialGets);
   });
+});
+
+test('renderiza AccountsView, CardsView e showValues=false sem vazar dígitos em pt, es e en', () => {
+  const expected = {
+    pt: { accountsLoading: 'Carregando contas…', cardsLoading: 'Carregando cartões…', available: 'Disponível' },
+    es: { accountsLoading: 'Cargando cuentas…', cardsLoading: 'Cargando tarjetas…', available: 'Disponible' },
+    en: { accountsLoading: 'Loading accounts…', cardsLoading: 'Loading cards…', available: 'Available' },
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const accountsHtml = renderWithIntl(<AccountsView refreshCounter={0} onLaunchClose={() => {}} />, locale);
+    expect(accountsHtml).toContain(expected[locale].accountsLoading);
+    expect(accountsHtml).not.toContain('MISSING_MESSAGE');
+
+    const cardsHtml = renderWithIntl(<CardsView />, locale);
+    expect(cardsHtml).toContain(expected[locale].cardsLoading);
+    expect(cardsHtml).not.toContain('MISSING_MESSAGE');
+
+    const maskedHtml = renderWithIntl(
+      <dl>
+        <FinanceMetric variant="compact" label={expected[locale].available} value="R$ 1.200,00" showValues={false} ariaLabel={`${expected[locale].available} R$ 1.200,00`} />
+      </dl>,
+      locale,
+    );
+    expect(maskedHtml).not.toMatch(/1\.?200/);
+    for (const [, label] of maskedHtml.matchAll(/aria-label="([^"]*)"/g)) {
+      expect(label).not.toMatch(/\d/);
+    }
+  }
 });

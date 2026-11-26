@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { enUS, es, ptBR, type Locale } from 'date-fns/locale';
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -13,12 +13,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { QueryPanel } from '@/components/shared/query-panel';
+import type { CanonicalLocale } from '@/i18n/config';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 
-const relativeTime = (d: string) => {
+const DATE_FNS_LOCALE: Record<CanonicalLocale, Locale> = {
+  pt: ptBR,
+  es,
+  en: enUS,
+};
+
+const relativeTime = (d: string, locale: CanonicalLocale) => {
   try {
-    return formatDistanceToNow(parseISO(d), { addSuffix: true, locale: ptBR });
+    return formatDistanceToNow(parseISO(d), { addSuffix: true, locale: DATE_FNS_LOCALE[locale] });
   } catch {
     return d;
   }
@@ -34,27 +42,27 @@ interface NotificationItem {
   date: string;
 }
 
-const kindConfig: Record<NotificationKind, { icon: typeof ArrowUpRight; label: string; textClass: string }> = {
+const kindConfig: Record<NotificationKind, { icon: typeof ArrowUpRight; textClass: string }> = {
   income: {
     icon: ArrowUpRight,
-    label: 'Receita',
     textClass: 'text-(--ds-accent-positive)',
   },
   expense: {
     icon: ArrowDownRight,
-    label: 'Despesa',
     textClass: 'text-(--ds-accent-danger)',
   },
   purchase: {
     icon: ShoppingBag,
-    label: 'Compra',
     textClass: 'text-muted-foreground',
   },
 };
 
 export function NotificationList({ notifications }: { notifications: NotificationItem[] }) {
+  const t = useSafeTranslations('notifications');
+  const locale = useSafeLocale();
+
   return (
-    <ul aria-label="Atividade recente" className="divide-y divide-border px-4">
+    <ul aria-label={t('listAriaLabel')} className="divide-y divide-border px-4">
       {notifications.map((notif) => {
         const config = kindConfig[notif.kind];
         const Icon = config.icon;
@@ -64,11 +72,11 @@ export function NotificationList({ notifications }: { notifications: Notificatio
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{notif.description}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {config.label} · <time dateTime={notif.date}>{relativeTime(notif.date)}</time>
+                {t(`kinds.${notif.kind}`)} · <time dateTime={notif.date}>{relativeTime(notif.date, locale)}</time>
               </p>
             </div>
             <span className="whitespace-nowrap font-mono text-xs font-medium tabular-nums sm:text-sm">
-              {currencyFmt(notif.amount)}
+              {currencyFmt(notif.amount, locale)}
             </span>
           </li>
         );
@@ -85,6 +93,7 @@ interface NotificationPanelProps {
 }
 
 export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
+  const t = useSafeTranslations('notifications');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -182,33 +191,34 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
         title={
           <span className="flex items-center gap-2">
             <Bell aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            Notificações
+            {t('title')}
           </span>
         }
         subtitle={
           <>
-            Atividade recente
+            {t('subtitle')}
             {!loading && !error && notifications.length > 0 && (
               <span className="font-mono tabular-nums">
-                {unreadCount > 0 ? ` · ${unreadCount} nova${unreadCount !== 1 ? 's' : ''}` : ' · Todas lidas'}
+                {' · '}
+                {unreadCount > 0 ? t('unreadCount', { count: unreadCount }) : t('allRead')}
               </span>
             )}
           </>
         }
         controls={
           <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={onClose}>
-            Fechar
+            {t('close')}
           </Button>
         }
         status={status}
-        loadingMessage="Carregando atividades…"
-        errorMessage="Não foi possível carregar as notificações."
-        retryLabel="Tentar novamente"
+        loadingMessage={t('loading')}
+        errorMessage={t('error')}
+        retryLabel={t('retry')}
         onRetry={() => void fetchNotifications()}
         emptyContent={
           <div role="status" className="py-3">
-            <p className="text-sm font-medium">Nenhuma notificação</p>
-            <p className="mt-1 text-xs text-muted-foreground">Suas atividades financeiras aparecerão aqui.</p>
+            <p className="text-sm font-medium">{t('emptyTitle')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('emptySubtitle')}</p>
           </div>
         }
         className="rounded-none border-0"
@@ -220,7 +230,7 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
         <footer className="border-t border-border bg-muted/40 px-3 py-2">
           <Button variant="ghost" size="sm" className="w-full text-xs" onClick={markAllRead}>
             <BookOpen aria-hidden="true" className="size-3.5" />
-            Ler tudo
+            {t('markAllRead')}
           </Button>
         </footer>
       </QueryPanel>

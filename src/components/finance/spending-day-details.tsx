@@ -1,7 +1,6 @@
 'use client';
 
-import { format, isToday, isYesterday, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format, isToday, isYesterday } from 'date-fns';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -11,8 +10,14 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { FinanceRow } from '@/components/shared/finance-row';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import {
+  CALENDAR_DATE_FORMATS,
+  getDateFnsLocale,
+  parseCivilDate,
+} from './analytics-i18n';
 
 export interface TimelineItem {
   type: 'transaction' | 'purchase';
@@ -31,17 +36,6 @@ export interface TimelineDay {
   items: TimelineItem[];
 }
 
-function formatDateHeader(dateStr: string) {
-  try {
-    const d = parseISO(dateStr);
-    if (isToday(d)) return 'Hoje';
-    if (isYesterday(d)) return 'Ontem';
-    return format(d, "EEE, dd 'de' MMMM", { locale: ptBR });
-  } catch {
-    return dateStr;
-  }
-}
-
 /** Mini daily net balance bar chart for SpendingTimelineContent. */
 export function SpendingTimelineChart({
   chartData,
@@ -50,9 +44,11 @@ export function SpendingTimelineChart({
   chartData: TimelineDay[];
   maxAbsNet: number;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   return (
     <div className="border-b border-border pb-3">
-      <p className="mb-2 text-xs font-medium">Saldo líquido por dia</p>
+      <p className="mb-2 text-xs font-medium">{t('timeline.chartTitle')}</p>
       <div className="flex items-end justify-center gap-[3px] sm:gap-1 h-20">
         <div className="flex items-end justify-center gap-[3px] sm:gap-1 h-full w-full">
           {chartData.map((day) => {
@@ -68,7 +64,7 @@ export function SpendingTimelineChart({
                 key={day.date}
                 style={{ height: `${height}%`, minHeight: '3px' }}
                 className={cn('flex-1 max-w-[14px] rounded-t-sm', color)}
-                title={`${day.date}: ${currencyFmt(day.net)}${day.count === 0 ? ' · Sem atividade' : ''}`}
+                title={`${day.date}: ${currencyFmt(day.net, locale)}${day.count === 0 ? t('timeline.noActivitySuffix') : ''}`}
               />
             );
           })}
@@ -78,15 +74,15 @@ export function SpendingTimelineChart({
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-sm bg-[var(--ds-accent-positive)]" />
-          <span className="text-xs text-muted-foreground">Positivo</span>
+          <span className="text-xs text-muted-foreground">{t('timeline.legend.positive')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-sm bg-[var(--ds-accent-danger)]" />
-          <span className="text-xs text-muted-foreground">Negativo</span>
+          <span className="text-xs text-muted-foreground">{t('timeline.legend.negative')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-sm bg-muted-foreground/15" />
-          <span className="text-xs text-muted-foreground">Sem atividade</span>
+          <span className="text-xs text-muted-foreground">{t('timeline.legend.noActivity')}</span>
         </div>
       </div>
     </div>
@@ -149,8 +145,21 @@ export function SpendingTimelineDayRow({
   isExpanded: boolean;
   onToggleDay: (date: string) => void;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const hasItems = day.count > 0;
   const isNetPositive = day.net >= 0;
+
+  let formattedHeader = day.date;
+  let parsedDay: Date | null = null;
+  try {
+    parsedDay = parseCivilDate(day.date);
+    if (isToday(parsedDay)) formattedHeader = t('timeline.today');
+    else if (isYesterday(parsedDay)) formattedHeader = t('timeline.yesterday');
+    else formattedHeader = format(parsedDay, CALENDAR_DATE_FORMATS[locale].shortDayMonthWeekday, { locale: getDateFnsLocale(locale) });
+  } catch {
+    formattedHeader = day.date;
+  }
 
   return (
     <li>
@@ -174,27 +183,27 @@ export function SpendingTimelineDayRow({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold capitalize">
-                {formatDateHeader(day.date)}
+                {formattedHeader}
               </span>
-              {isToday(parseISO(day.date)) && (
+              {parsedDay && isToday(parsedDay) && (
                 <Badge className="text-xs px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/20">
-                  Atual
+                  {t('timeline.currentBadge')}
                 </Badge>
               )}
             </div>
             {hasItems ? (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2">
                 <span className="text-xs text-muted-foreground">
-                  {day.count} {day.count === 1 ? 'movimento' : 'movimentos'}
+                  {t('timeline.movementsCount', { count: day.count })}
                 </span>
                 {day.income > 0 && (
                   <span className="font-mono text-xs tabular-nums text-[var(--ds-accent-positive)] font-medium">
-                    +{currencyFmt(day.income)}
+                    +{currencyFmt(day.income, locale)}
                   </span>
                 )}
                 {day.expense > 0 && (
                   <span className="font-mono text-xs tabular-nums text-[var(--ds-accent-danger)] font-medium">
-                    -{currencyFmt(day.expense)}
+                    -{currencyFmt(day.expense, locale)}
                   </span>
                 )}
               </div>
@@ -203,7 +212,7 @@ export function SpendingTimelineDayRow({
                 <div className="w-4 h-4 rounded-full bg-muted/50 flex items-center justify-center">
                   <Minus className="w-2.5 h-2.5 text-muted-foreground/40" />
                 </div>
-                <p className="text-xs text-muted-foreground">Sem movimentações</p>
+                <p className="text-xs text-muted-foreground">{t('timeline.noMovements')}</p>
               </div>
             )}
           </div>
@@ -219,7 +228,7 @@ export function SpendingTimelineDayRow({
                 )}
               >
                 {isNetPositive ? '+' : ''}
-                {currencyFmt(day.net)}
+                {currencyFmt(day.net, locale)}
               </span>
             </div>
             <ChevronDown className={cn('w-4 h-4 text-muted-foreground', isExpanded && 'rotate-180')} />

@@ -33,7 +33,7 @@ const budgetPath = join(financeDir, 'monthly-budget-tracker.tsx');
 const budgetEditorPath = join(financeDir, 'monthly-budget-editor.tsx');
 const shellPath = join(root, 'src/components/shared/finance-dialog-shell.tsx');
 
-function installFixture(BudgetGoalsWidget, MonthlyBudgetTracker, createElement, createRoot, ThemeProvider, Toaster) {
+function installFixture(BudgetGoalsWidget, MonthlyBudgetTracker, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster) {
   const initialGoals = [
     {
       id: 'g-a',
@@ -216,13 +216,17 @@ function installFixture(BudgetGoalsWidget, MonthlyBudgetTracker, createElement, 
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
         createElement(
-          'main',
-          { className: 'min-h-screen bg-background p-3', id: 'fixture' },
-          createElement(Widget),
-          domain === 'goals'
-            ? createElement('button', { type: 'button', id: 'qa-surviving-control', className: 'mt-2 text-xs' }, 'Controle sobrevivente')
-            : null,
-          createElement(Toaster, { theme }),
+          AppIntlProvider,
+          { locale: 'pt', messages: getMessagesForLocale('pt') },
+          createElement(
+            'main',
+            { className: 'min-h-screen bg-background p-3', id: 'fixture' },
+            createElement(Widget),
+            domain === 'goals'
+              ? createElement('button', { type: 'button', id: 'qa-surviving-control', className: 'mt-2 text-xs' }, 'Controle sobrevivente')
+              : null,
+            createElement(Toaster, { theme }),
+          ),
         ),
       ),
     );
@@ -789,11 +793,13 @@ try {
 
   const entry = `import { BudgetGoalsWidget } from ${JSON.stringify(goalsPath)};
     import { MonthlyBudgetTracker } from ${JSON.stringify(budgetPath)};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
     import { Toaster } from 'sonner';
-    (${installFixture.toString()})(BudgetGoalsWidget, MonthlyBudgetTracker, createElement, createRoot, ThemeProvider, Toaster);`;
+    (${installFixture.toString()})(BudgetGoalsWidget, MonthlyBudgetTracker, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster);`;
 
   async function htmlFor(label, useBaseline) {
     let interceptedGoals = false;

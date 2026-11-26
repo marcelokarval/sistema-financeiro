@@ -1,4 +1,10 @@
 import { NextResponse } from 'next/server';
+import {
+  apiErrorResponse,
+  resolveRequestLocale,
+  translateApiMessage,
+  type SupportedLocale,
+} from '@/lib/server-i18n';
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const ISO_DATETIME_PREFIX_PATTERN = /^(\d{4})-(\d{2})-(\d{2})[T ]\d{2}:\d{2}/;
@@ -69,45 +75,78 @@ function clampDayInMonth(year: number, month: number, dueDay: number): Date {
   return new Date(resolvedYear, resolvedMonth, safeDay);
 }
 
-/**
- * Faz parsing seguro de corpo JSON esperando um objeto plano (não nulo e não array).
- */
-export async function parseJsonBody<T extends Record<string, unknown> = Record<string, unknown>>(
-  request: Request,
-  errorMessage = 'Corpo da requisição JSON inválido.'
-): Promise<{ ok: true; data: T } | { ok: false; response: NextResponse }> {
+async function readPlainJsonObject<T extends Record<string, unknown>>(
+  request: Request
+): Promise<{ ok: true; data: T } | { ok: false }> {
   let rawText: string;
   try {
     rawText = await request.text();
   } catch {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: errorMessage }, { status: 400 }),
-    };
+    return { ok: false };
   }
 
   if (!rawText.trim()) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: errorMessage }, { status: 400 }),
-    };
+    return { ok: false };
   }
 
   try {
     const parsed: unknown = JSON.parse(rawText);
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return {
-        ok: false,
-        response: NextResponse.json({ error: errorMessage }, { status: 400 }),
-      };
+      return { ok: false };
     }
     return { ok: true, data: parsed as T };
   } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * Faz parsing seguro de corpo JSON esperando um objeto plano (não nulo e não array).
+ * Mantém corpo legado `{ error }` por default; use `options.includeCode` ou `parseJsonBodyLocalized` para incluir `code`.
+ */
+export async function parseJsonBody<T extends Record<string, unknown> = Record<string, unknown>>(
+  request: Request,
+  errorMessage = 'Corpo da requisição JSON inválido.',
+  options?: { includeCode?: boolean }
+): Promise<{ ok: true; data: T } | { ok: false; response: NextResponse }> {
+  const parsed = await readPlainJsonObject<T>(request);
+  if (!parsed.ok) {
     return {
       ok: false,
-      response: NextResponse.json({ error: errorMessage }, { status: 400 }),
+      response: apiErrorResponse('INVALID_JSON', errorMessage, 400, {
+        includeCode: options?.includeCode ?? false,
+      }),
     };
   }
+  return parsed;
+}
+
+/**
+ * Faz parsing seguro de corpo JSON resolvendo o idioma da requisição e padronizando erro `{ error, code }`.
+ */
+export async function parseJsonBodyLocalized<
+  T extends Record<string, unknown> = Record<string, unknown>,
+>(
+  request: Request,
+  options?: { locale?: SupportedLocale; errorMessage?: string; includeCode?: boolean }
+): Promise<
+  | { ok: true; data: T; locale: SupportedLocale }
+  | { ok: false; response: NextResponse; locale: SupportedLocale }
+> {
+  const locale = options?.locale ?? resolveRequestLocale(request);
+  const parsed = await readPlainJsonObject<T>(request);
+  if (!parsed.ok) {
+    const message =
+      options?.errorMessage ?? translateApiMessage(locale, 'validation.invalidJson');
+    return {
+      ok: false,
+      locale,
+      response: apiErrorResponse('INVALID_JSON', message, 400, {
+        includeCode: options?.includeCode ?? true,
+      }),
+    };
+  }
+  return { ok: true, data: parsed.data, locale };
 }
 
 /**
@@ -115,27 +154,51 @@ export async function parseJsonBody<T extends Record<string, unknown> = Record<s
  */
 export function mapPrismaError(
   error: unknown,
-  messages?: { fk?: string; notFound?: string }
+  messages?: { fk?: string; notFound?: string },
+  options?: { includeCode?: boolean }
 ): NextResponse | null {
   if (typeof error !== 'object' || error === null || !('code' in error)) {
     return null;
   }
 
+  const includeCode = options?.includeCode ?? false;
   const code = (error as { code?: unknown }).code;
   if (code === 'P2003') {
-    return NextResponse.json(
-      { error: messages?.fk ?? 'Referência inválida.' },
-      { status: 400 }
-    );
+    return apiErrorResponse('FOREIGN_KEY_ERROR', messages?.fk ?? 'Referência inválida.', 400, {
+      includeCode,
+    });
   }
   if (code === 'P2025') {
-    return NextResponse.json(
-      { error: messages?.notFound ?? 'Registro não encontrado.' },
-      { status: 404 }
-    );
+    return apiErrorResponse('NOT_FOUND', messages?.notFound ?? 'Registro não encontrado.', 404, {
+      includeCode,
+    });
   }
 
   return null;
+}
+
+/**
+ * Mapeia erros conhecidos do Prisma (P2003 -> 400, P2025 -> 404) com mensagens localizadas e `{ error, code }`.
+ */
+export function mapPrismaErrorLocalized(
+  error: unknown,
+  localeOrRequest?: SupportedLocale | Request,
+  messages?: { fk?: string; notFound?: string },
+  options?: { includeCode?: boolean }
+): NextResponse | null {
+  const locale =
+    typeof localeOrRequest === 'string'
+      ? localeOrRequest
+      : resolveRequestLocale(localeOrRequest);
+
+  return mapPrismaError(
+    error,
+    {
+      fk: messages?.fk ?? translateApiMessage(locale, 'errors.foreignKey'),
+      notFound: messages?.notFound ?? translateApiMessage(locale, 'errors.notFound'),
+    },
+    { includeCode: options?.includeCode ?? true }
+  );
 }
 
 /**

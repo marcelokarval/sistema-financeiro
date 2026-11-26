@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
-  mapPrismaError,
+  mapPrismaErrorLocalized,
   parseFiniteNumber,
-  parseJsonBody,
+  parseJsonBodyLocalized,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 const CARD_TYPES = new Set(["CREDIT", "DEBIT"]);
 const CARD_BRANDS = new Set(["VISA", "MASTERCARD", "ELO", "AMEX", "HIPER"]);
@@ -18,7 +24,8 @@ function parseDayOfMonth(value: unknown): number | null {
 }
 
 // GET /api/cards - List all cards with purchase count
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
     const cards = await db.card.findMany({
       orderBy: { createdAt: "desc" },
@@ -31,17 +38,19 @@ export async function GET() {
     return NextResponse.json(cards);
   } catch (error) {
     console.error("Error fetching cards:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch cards" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.cards.fetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/cards - Create card
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -61,9 +70,10 @@ export async function POST(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof name !== "string" || name.trim() === "") {
-      return NextResponse.json(
-        { error: "Card name is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.nameRequired"),
+        400
       );
     }
 
@@ -72,27 +82,40 @@ export async function POST(request: NextRequest) {
         ? String(lastFourDigits).trim()
         : "";
     if (!digitsStr) {
-      return NextResponse.json(
-        { error: "Last four digits are required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.lastFourRequired"),
+        400
       );
     }
 
     const resolvedType = type === undefined || type === null ? "CREDIT" : type;
     if (typeof resolvedType !== "string" || !CARD_TYPES.has(resolvedType)) {
-      return NextResponse.json({ error: "Invalid card type" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.invalidType"),
+        400
+      );
     }
 
     const resolvedBrand = brand === undefined || brand === null ? "VISA" : brand;
     if (typeof resolvedBrand !== "string" || !CARD_BRANDS.has(resolvedBrand)) {
-      return NextResponse.json({ error: "Invalid card brand" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.invalidBrand"),
+        400
+      );
     }
 
     let resolvedLimit = 0;
     if (creditLimit !== undefined && creditLimit !== null) {
       const parsed = parseFiniteNumber(creditLimit);
       if (parsed === null || parsed < 0) {
-        return NextResponse.json({ error: "Invalid credit limit" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.cards.invalidLimit"),
+          400
+        );
       }
       resolvedLimit = parsed;
     }
@@ -101,7 +124,11 @@ export async function POST(request: NextRequest) {
     if (currentBalance !== undefined && currentBalance !== null) {
       const parsed = parseFiniteNumber(currentBalance);
       if (parsed === null) {
-        return NextResponse.json({ error: "Invalid current balance" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.cards.invalidBalance"),
+          400
+        );
       }
       resolvedBalance = parsed;
     }
@@ -109,29 +136,43 @@ export async function POST(request: NextRequest) {
     const resolvedClosingDay =
       closingDay !== undefined && closingDay !== null ? parseDayOfMonth(closingDay) : 1;
     if (resolvedClosingDay === null) {
-      return NextResponse.json(
-        { error: "Closing day must be an integer between 1 and 31" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.invalidClosingDay"),
+        400
       );
     }
 
     const resolvedDueDay =
       dueDay !== undefined && dueDay !== null ? parseDayOfMonth(dueDay) : 10;
     if (resolvedDueDay === null) {
-      return NextResponse.json(
-        { error: "Due day must be an integer between 1 and 31" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.invalidDueDay"),
+        400
       );
     }
 
     if (color !== undefined && color !== null && typeof color !== "string") {
-      return NextResponse.json({ error: "Invalid color" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidColor"),
+        400
+      );
     }
     if (flag !== undefined && flag !== null && typeof flag !== "string") {
-      return NextResponse.json({ error: "Invalid flag" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.invalidFlag"),
+        400
+      );
     }
     if (isActive !== undefined && typeof isActive !== "boolean") {
-      return NextResponse.json({ error: "Invalid isActive flag" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidActiveFlag"),
+        400
+      );
     }
 
     const card = await db.card.create({
@@ -152,22 +193,24 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(card, { status: 201 });
   } catch (error) {
-    const prismaResponse = mapPrismaError(error);
+    const prismaResponse = mapPrismaErrorLocalized(error, locale);
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error creating card:", error);
-    return NextResponse.json(
-      { error: "Failed to create card" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.cards.createFailed"),
+      500
     );
   }
 }
 
 // PUT /api/cards - Update card
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -189,22 +232,35 @@ export async function PUT(request: NextRequest) {
 
     const cardId = typeof id === "string" ? id.trim() : "";
     if (!cardId) {
-      return NextResponse.json(
-        { error: "Card id is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.idRequired"),
+        400
       );
     }
 
     if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
-      return NextResponse.json({ error: "Card name is required" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.nameRequired"),
+        400
+      );
     }
 
     if (type !== undefined && (typeof type !== "string" || !CARD_TYPES.has(type))) {
-      return NextResponse.json({ error: "Invalid card type" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.invalidType"),
+        400
+      );
     }
 
     if (brand !== undefined && (typeof brand !== "string" || !CARD_BRANDS.has(brand))) {
-      return NextResponse.json({ error: "Invalid card brand" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.invalidBrand"),
+        400
+      );
     }
 
     let resolvedDigits: string | undefined;
@@ -214,9 +270,10 @@ export async function PUT(request: NextRequest) {
           ? String(lastFourDigits).trim()
           : "";
       if (!digitsStr) {
-        return NextResponse.json(
-          { error: "Last four digits are required" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.cards.lastFourRequired"),
+          400
         );
       }
       resolvedDigits = digitsStr.slice(-4);
@@ -226,7 +283,11 @@ export async function PUT(request: NextRequest) {
     if (creditLimit !== undefined) {
       const parsed = parseFiniteNumber(creditLimit);
       if (parsed === null || parsed < 0) {
-        return NextResponse.json({ error: "Invalid credit limit" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.cards.invalidLimit"),
+          400
+        );
       }
       resolvedLimit = parsed;
     }
@@ -235,7 +296,11 @@ export async function PUT(request: NextRequest) {
     if (currentBalance !== undefined) {
       const parsed = parseFiniteNumber(currentBalance);
       if (parsed === null) {
-        return NextResponse.json({ error: "Invalid current balance" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.cards.invalidBalance"),
+          400
+        );
       }
       resolvedBalance = parsed;
     }
@@ -244,9 +309,10 @@ export async function PUT(request: NextRequest) {
     if (closingDay !== undefined) {
       const parsed = parseDayOfMonth(closingDay);
       if (parsed === null) {
-        return NextResponse.json(
-          { error: "Closing day must be an integer between 1 and 31" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.cards.invalidClosingDay"),
+          400
         );
       }
       resolvedClosingDay = parsed;
@@ -256,27 +322,44 @@ export async function PUT(request: NextRequest) {
     if (dueDay !== undefined) {
       const parsed = parseDayOfMonth(dueDay);
       if (parsed === null) {
-        return NextResponse.json(
-          { error: "Due day must be an integer between 1 and 31" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.cards.invalidDueDay"),
+          400
         );
       }
       resolvedDueDay = parsed;
     }
 
     if (color !== undefined && typeof color !== "string") {
-      return NextResponse.json({ error: "Invalid color" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidColor"),
+        400
+      );
     }
     if (flag !== undefined && typeof flag !== "string") {
-      return NextResponse.json({ error: "Invalid flag" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.invalidFlag"),
+        400
+      );
     }
     if (isActive !== undefined && typeof isActive !== "boolean") {
-      return NextResponse.json({ error: "Invalid isActive flag" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidActiveFlag"),
+        400
+      );
     }
 
     const existing = await db.card.findUnique({ where: { id: cardId } });
     if (!existing) {
-      return NextResponse.json({ error: "Card not found" }, { status: 404 });
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.cards.notFound"),
+        404
+      );
     }
 
     const card = await db.card.update({
@@ -298,22 +381,26 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(card);
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, { notFound: "Card not found" });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.cards.notFound"),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error updating card:", error);
-    return NextResponse.json(
-      { error: "Failed to update card" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.cards.updateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/cards - Delete card
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -322,29 +409,37 @@ export async function DELETE(request: NextRequest) {
     const cardId = typeof id === "string" ? id.trim() : "";
 
     if (!cardId) {
-      return NextResponse.json(
-        { error: "Card id is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.cards.idRequired"),
+        400
       );
     }
 
     const existing = await db.card.findUnique({ where: { id: cardId } });
     if (!existing) {
-      return NextResponse.json({ error: "Card not found" }, { status: 404 });
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.cards.notFound"),
+        404
+      );
     }
 
     await db.card.delete({ where: { id: cardId } });
 
-    return NextResponse.json({ success: true, message: "Card deleted" });
+    return apiSuccessMessage(translateApiMessage(locale, "crud.cards.deleted"));
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, { notFound: "Card not found" });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.cards.notFound"),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error deleting card:", error);
-    return NextResponse.json(
-      { error: "Failed to delete card" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.cards.deleteFailed"),
+      500
     );
   }
 }

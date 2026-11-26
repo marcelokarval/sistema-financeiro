@@ -1,0 +1,85 @@
+{
+  "candidate": "f80e772c867eec5af4dab08ef29cb855554edf671d568164447a8f9620ead197",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "rg -n \"pt-BR|ptBR\" src/components/{shared,finance}/... && ls src/messages/{pt,es,en}/{shared,dashboard,notifications,advisor}.json",
+        "outcome": "expected_failure",
+        "details": "Exit 2: 12 message files absent and hardcoded pt-BR/ptBR found in ai-advisor.tsx:38, dashboard-view.tsx:25, notification-panel.tsx:5,21, upcoming-bills.tsx:27 (#362)."
+      },
+      "green": {
+        "command": "bun --no-env-file test ./src/lib/purchase-date.test.ts ./src/components/shared/ui-helpers.test.tsx && bun --no-env-file run arch:check",
+        "outcome": "passed",
+        "details": "15 passed with 80 assertions (opt-in SQLite test deferred to test:sqlite), arch:check clean across 79 files with 6 baseline identities, eslint clean, filtered tsc clean, and JSON key parity across shared (5), dashboard (118), notifications (15), advisor (18) (#362)."
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "ls -la src/components/finance/analytics-i18n.ts src/messages/{pt,es,en}/{goals,analytics}.json && rg -n \"pt-BR|ptBR|toLocale|Intl\\.\" src/components/finance/",
+        "outcome": "expected_failure",
+        "details": "Exit 2: analytics-i18n.ts and 6 goals/analytics JSON files absent; hardcoded locale formatting detected in 8 modules (#365)."
+      },
+      "green": {
+        "command": "bun --no-env-file run lint && bun --no-env-file run arch:check",
+        "outcome": "passed",
+        "details": "eslint clean, arch:check clean across 79 files with 6 baseline identities, filtered tsc clean, all 25 files <= 500 lines (max 476 in transaction-analysis-tabs.tsx), and JSON key parity for goals (285) and analytics (259) (#365, #371)."
+      }
+    },
+    {
+      "id": "1.3",
+      "plan": "1.3",
+      "red": {
+        "command": "ls -la src/components/finance/operations-i18n.ts src/messages/{pt,es,en}/{accounts,cards,purchases,categories,receipts}.json && rg -n \"pt-BR|ptBR\" src/components/finance/",
+        "outcome": "expected_failure",
+        "details": "Exit 1: operations-i18n.ts and 15 JSON files absent; hardcoded pt-BR in accounts-view.tsx:48, receipt-fields.ts:71, receipt-generator.tsx:58 (#364)."
+      },
+      "green": {
+        "command": "bun --no-env-file run lint && bun --no-env-file run arch:check && bun --no-env-file test ./src/lib/purchase-date.test.ts",
+        "outcome": "passed",
+        "details": "purchase-date.test.ts 13 passed with 69 assertions (opt-in SQLite test verified in test:sqlite), arch:check clean with 6 baseline identities, eslint and filtered tsc clean, all target files <= 500 lines, and JSON key parity across accounts (117), cards (84), purchases (69), categories (83), receipts (52) (#364)."
+      }
+    },
+    {
+      "id": "1.4",
+      "plan": "1.4",
+      "red": {
+        "command": "rg -n \"pt-BR|ptBR|useSafeTranslations|useSafeLocale|next-intl\" src/components/finance/ && ls -la src/components/finance/portfolio-i18n.ts src/messages/pt/{investments,installments,consortiums,savings,recurring}.json",
+        "outcome": "expected_failure",
+        "details": "Exit 2: portfolio-i18n.ts and 15 JSON files absent; recurring-transactions.tsx:18 used hardcoded pt-BR and zero useSafeTranslations/useSafeLocale usage (#363)."
+      },
+      "green": {
+        "command": "bun --no-env-file run lint && bun --no-env-file run arch:check",
+        "outcome": "passed",
+        "details": "arch:check clean with 6 baseline identities, eslint and filtered tsc clean, recurring-transactions.tsx at 471 lines (<= 500), and JSON key parity across investments (140), installments (96), consortiums (120), savings (116), recurring (69) (#363, #372)."
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "ls -la src/components/finance/quiet-i18n.qa.mjs && bun --no-env-file test src/components/finance/",
+        "outcome": "expected_failure",
+        "details": "Exit 1: quiet-i18n.qa.mjs absent and bun test src/components/finance/ reported 75 pass and 256 rejections across 15 files before 16-namespace wiring and IntlTestWrapper migration (#380)."
+      },
+      "green": {
+        "command": "bun --no-env-file run check && bun --no-env-file run test:sqlite && DATABASE_URL=\"file:/tmp/ci-v2-inert.db\" bun --no-env-file run build && bwrap Playwright QA suite (15 .qa.mjs runners)",
+        "outcome": "passed",
+        "details": "check passed (tsc clean, eslint clean, arch:check clean with 6 baseline identities, bun test 611 passed across 64 files, test:scripts 72 passed), test:sqlite 60 passed across 6 bwrap runs, standalone build compiled 41/41 pages, and all 15 .qa.mjs runners passed in bwrap sandbox across pt/es/en (#380, #388)."
+      }
+    }
+  ],
+  "structural": {
+    "command": "bun --no-env-file run check && bun --no-env-file run test:sqlite",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-w2-10 (#388) — independent zero-write audit over pre-commit 201892831291e7f53c2e70b575a90fdb05a058a6639c4389120c75b1ca5d6db0 committed intact in 4354d08b3887f81fa86afc3e8b250b24678fa2dc",
+    "status": "pass",
+    "candidate": "f80e772c867eec5af4dab08ef29cb855554edf671d568164447a8f9620ead197"
+  },
+  "unresolved": []
+}

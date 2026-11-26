@@ -1,0 +1,107 @@
+{
+  "eyebrow": "Movimentação",
+  "title": "Categorias",
+  "subtitle": "Organize suas receitas e despesas.",
+  "loading": "Carregando categorias…",
+  "actions": {
+    "newCategory": "Nova categoria",
+    "retryList": "Tentar atualizar lista",
+    "cancel": "Cancelar",
+    "delete": "Excluir"
+  },
+  "errors": {
+    "nameRequired": "Informe o nome da categoria",
+    "save": "Erro ao salvar categoria",
+    "delete": "Erro ao excluir categoria",
+    "refresh": "Não foi possível atualizar a lista de categorias."
+  },
+  "toasts": {
+    "updated": "Categoria atualizada!",
+    "created": "Categoria criada!",
+    "deleted": "Categoria excluída!"
+  },
+  "types": {
+    "INCOME": "Receita",
+    "EXPENSE": "Despesa"
+  },
+  "summary": {
+    "ariaLabel": "Totais de categorias",
+    "total": "Total de categorias",
+    "incomes": "Receitas",
+    "expenses": "Despesas",
+    "mostUsed": "Mais usada",
+    "emptyFallback": "—",
+    "recordsCaption": "{count, plural, one {# registro} other {# registros}}"
+  },
+  "list": {
+    "title": "Categorias cadastradas",
+    "filterAria": "Filtrar por tipo",
+    "filterAll": "Todas",
+    "filterIncome": "Receitas",
+    "filterExpense": "Despesas",
+    "emptyAll": "Nenhuma categoria cadastrada. Crie a primeira para começar.",
+    "emptyIncome": "Nenhuma categoria de receita cadastrada.",
+    "emptyExpense": "Nenhuma categoria de despesa cadastrada.",
+    "txCount": "{count, plural, one {transação} other {transações}}",
+    "purchaseCount": "{count, plural, one {compra} other {compras}}",
+    "totalRecords": "{count, plural, one {# registro} other {# registros}} no total",
+    "editAria": "Editar categoria: {name}",
+    "deleteAria": "Excluir categoria: {name}"
+  },
+  "deleteDialog": {
+    "title": "Excluir categoria?",
+    "description": "Esta ação não pode ser desfeita. Transações e compras vinculadas perderão a categoria."
+  },
+  "editor": {
+    "closeLabel": "Fechar formulário",
+    "editTitle": "Editar categoria",
+    "createTitle": "Nova categoria",
+    "editDescription": "Atualize os dados da categoria",
+    "createDescription": "Crie uma nova categoria",
+    "cancel": "Cancelar",
+    "update": "Atualizar",
+    "create": "Criar",
+    "nameLabel": "Nome",
+    "namePlaceholder": "Ex: Alimentação, Transporte...",
+    "typeLabel": "Tipo"
+  },
+  "picker": {
+    "iconLegend": "Ícone",
+    "colorLegend": "Cor",
+    "previewTitle": "Pré-visualização",
+    "defaultName": "Nome da categoria"
+  },
+  "colors": {
+    "green": "Verde",
+    "cyan": "Ciano",
+    "blue": "Azul",
+    "violet": "Violeta",
+    "red": "Vermelho",
+    "orange": "Laranja",
+    "amber": "Âmbar",
+    "slate": "Cinza ardósia",
+    "pink": "Rosa",
+    "lime": "Verde-lima",
+    "purple": "Roxo",
+    "lightGray": "Cinza claro"
+  },
+  "icons": {
+    "banknote": "Dinheiro",
+    "laptop": "Laptop",
+    "trendingUp": "Investimento",
+    "utensils": "Alimentação",
+    "car": "Transporte",
+    "heartPulse": "Saúde",
+    "graduationCap": "Educação",
+    "gamepad2": "Entretenimento",
+    "shoppingBag": "Compras",
+    "receipt": "Contas",
+    "home": "Moradia",
+    "moreHorizontal": "Outros",
+    "tag": "Tag",
+    "gift": "Presente",
+    "plane": "Viagem",
+    "baby": "Filhos",
+    "dog": "Pet"
+  }
+}

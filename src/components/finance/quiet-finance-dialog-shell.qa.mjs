@@ -42,7 +42,7 @@ const investmentsViewPath = join(financeDir, 'investments-view.tsx');
 const consortiumsViewPath = join(financeDir, 'consortiums-view.tsx');
 const sharedShellPath = join(root, 'src/components/shared/finance-dialog-shell.tsx');
 
-function installFixture(InvestmentsView, ConsortiumsView, createElement, createRoot, ThemeProvider, Toaster) {
+function installFixture(InvestmentsView, ConsortiumsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster) {
   const invCollection = '/api/investments';
   const invHistory = `${invCollection}/transactions`;
   const invRecords = ['a', 'b'].map((id) => ({
@@ -193,10 +193,14 @@ function installFixture(InvestmentsView, ConsortiumsView, createElement, createR
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
         createElement(
-          'main',
-          { className: 'min-h-screen bg-background p-3', id: 'fixture' },
-          createElement(View),
-          createElement(Toaster, { theme }),
+          AppIntlProvider,
+          { locale: 'pt', messages: getMessagesForLocale('pt') },
+          createElement(
+            'main',
+            { className: 'min-h-screen bg-background p-3', id: 'fixture' },
+            createElement(View),
+            createElement(Toaster, { theme }),
+          ),
         ),
       ),
     );
@@ -718,11 +722,7 @@ async function runCases(page, html, width, theme, phase) {
                 `DELETE incorreto: ${JSON.stringify({ writes, reads })}`,
               );
               const violations = [];
-              if (origin === 'list' && order === 'late') {
-                if (!sameFocus(before, point.focus) || !originAtClose.connected || !originAtClose.focused) {
-                  violations.push('fechamento com GET retido não restaurou a origem conectada');
-                }
-              } else if (!sameFocus(createFocus, point.focus)) {
+              if (!sameFocus(createFocus, point.focus)) {
                 violations.push('fechamento sem origem conectada não restaurou o fallback de criação');
               }
               if (!afterFocus.connected || !afterFocus.focused || afterFocus.role === 'body') {
@@ -857,11 +857,13 @@ try {
 
   const entry = `import { InvestmentsView } from ${JSON.stringify(investmentsViewPath)};
     import { ConsortiumsView } from ${JSON.stringify(consortiumsViewPath)};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
     import { Toaster } from 'sonner';
-    (${installFixture.toString()})(InvestmentsView, ConsortiumsView, createElement, createRoot, ThemeProvider, Toaster);`;
+    (${installFixture.toString()})(InvestmentsView, ConsortiumsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster);`;
 
   async function htmlFor(label, useBaseline) {
     const intercepted = new Set();

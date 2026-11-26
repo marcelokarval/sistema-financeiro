@@ -101,4 +101,57 @@ describe("POST, PUT e DELETE /api/accounts - validação JSON e domínio", () =>
     expect(updated.type).toBe("DIGITAL_WALLET");
     expect(updated.balance).toBe(-25.5);
   });
+
+  test("retorna erros e mensagens localizadas com code e X-Error-Code em pt, es e en", async () => {
+    const ptErr = await POST(
+      new NextRequest("http://localhost/api/accounts", {
+        method: "POST",
+        body: JSON.stringify({ name: " " }),
+      })
+    );
+    expect(ptErr.status).toBe(400);
+    expect(ptErr.headers.get("X-Error-Code")).toBe("VALIDATION_ERROR");
+    expect(await ptErr.json()).toEqual({
+      error: "Nome da conta é obrigatório",
+      code: "VALIDATION_ERROR",
+    });
+
+    const esJsonErr = await POST(
+      new NextRequest("http://localhost/api/accounts?locale=es", {
+        method: "POST",
+        body: "{bad",
+      })
+    );
+    expect(esJsonErr.status).toBe(400);
+    expect(esJsonErr.headers.get("X-Error-Code")).toBe("INVALID_JSON");
+    expect(await esJsonErr.json()).toEqual({
+      error: "Cuerpo de la solicitud JSON inválido.",
+      code: "INVALID_JSON",
+    });
+
+    const enMissing = await PUT(
+      new NextRequest("http://localhost/api/accounts?locale=en", {
+        method: "PUT",
+        body: JSON.stringify({ id: "acc-missing", name: "Updated" }),
+      })
+    );
+    expect(enMissing.status).toBe(404);
+    expect(enMissing.headers.get("X-Error-Code")).toBe("NOT_FOUND");
+    expect(await enMissing.json()).toEqual({
+      error: "Account not found",
+      code: "NOT_FOUND",
+    });
+
+    const esDel = await DELETE(
+      new NextRequest("http://localhost/api/accounts?locale=es", {
+        method: "DELETE",
+        body: JSON.stringify({ id: "acc-1" }),
+      })
+    );
+    expect(esDel.status).toBe(200);
+    expect(await esDel.json()).toEqual({
+      success: true,
+      message: "Cuenta eliminada correctamente",
+    });
+  });
 });

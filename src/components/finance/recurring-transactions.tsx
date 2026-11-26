@@ -4,7 +4,9 @@ import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { Plus, Pencil, Trash2, RotateCcw, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, dateFmt } from '@/lib/helpers';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
+import { RECURRING_FREQUENCY_MAP } from './portfolio-i18n';
 import {
   RecurringTransactionEditor,
   type RecurringTransactionDraft,
@@ -12,22 +14,6 @@ import {
 import { RecurringDeleteConfirmation } from './recurring-delete-confirmation';
 
 const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)] motion-reduce:transition-none';
-
-const dateFmt = (d: string) => {
-  try {
-    return new Date(d).toLocaleDateString('pt-BR');
-  } catch {
-    return d;
-  }
-};
-
-const frequencyLabels: Record<string, string> = {
-  WEEKLY: 'Semanal',
-  BIWEEKLY: 'Quinzenal',
-  MONTHLY: 'Mensal',
-  QUARTERLY: 'Trimestral',
-  YEARLY: 'Anual',
-};
 
 interface RecurringTransaction {
   id: string;
@@ -88,94 +74,97 @@ export function RecurringPanel({
   recurring, loading, error = false, processing, activeCount, inactiveCount, monthlyIncome, monthlyTotal,
   openNew, processRecurring, openEdit, requestDelete, toggleActive, onRetry,
 }: RecurringPanelProps) {
+  const t = useSafeTranslations('recurring');
+  const locale = useSafeLocale();
   const headingId = useId();
   const listId = useId();
   return (
     <section aria-labelledby={headingId} className="min-w-0 space-y-4" data-testid="quiet-recurring">
       <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          <h3 id={headingId} className="text-lg font-semibold tracking-tight">Transações recorrentes</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Acompanhe lançamentos programados e gerencie suas próximas datas.</p>
+          <h3 id={headingId} className="text-lg font-semibold tracking-tight">{t('title')}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         {!loading && (
           <div className="flex flex-wrap gap-2">
             <Button onClick={openNew} className={focusClass} data-recurring-create="">
-              <Plus aria-hidden="true" /> Nova transação recorrente
+              <Plus aria-hidden="true" /> {t('actions.newRecurring')}
             </Button>
             <Button variant="outline" onClick={processRecurring} disabled={processing} className={focusClass}>
-              <RotateCcw aria-hidden="true" /> {processing ? 'Processando…' : 'Processar'}
+              <RotateCcw aria-hidden="true" /> {processing ? t('actions.processing') : t('actions.process')}
             </Button>
           </div>
         )}
       </header>
       {loading ? (
         <p role="status" className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-          Carregando recorrências…
+          {t('loading')}
         </p>
       ) : error ? (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
           <p role="alert" className="text-sm text-muted-foreground">
-            Não foi possível carregar as transações recorrentes.
+            {t('errors.loadList')}
           </p>
           <Button variant="outline" size="sm" className="min-h-9" onClick={onRetry}>
-            Tentar novamente
+            {t('actions.retry')}
           </Button>
         </div>
       ) : (
         <>
-          <dl aria-label="Resumo das recorrências" className="grid grid-cols-2 gap-px rounded-xl border border-border bg-border sm:grid-cols-3">
+          <dl aria-label={t('summary.ariaLabel')} className="grid grid-cols-2 gap-px rounded-xl border border-border bg-border sm:grid-cols-3">
             <div className="min-w-0 rounded-tl-xl bg-card p-3 sm:rounded-bl-xl sm:p-4">
-              <dt className="text-xs text-muted-foreground">Receitas ativas</dt>
-              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{currencyFmt(monthlyIncome)}</dd>
+              <dt className="text-xs text-muted-foreground">{t('summary.activeIncome')}</dt>
+              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{currencyFmt(monthlyIncome, locale)}</dd>
             </div>
             <div className="min-w-0 rounded-tr-xl bg-card p-3 sm:rounded-none sm:p-4">
-              <dt className="text-xs text-muted-foreground">Despesas ativas</dt>
-              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{currencyFmt(monthlyTotal)}</dd>
+              <dt className="text-xs text-muted-foreground">{t('summary.activeExpenses')}</dt>
+              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{currencyFmt(monthlyTotal, locale)}</dd>
             </div>
             <div className="col-span-2 rounded-b-xl bg-card p-3 sm:col-span-1 sm:rounded-none sm:rounded-r-xl sm:p-4">
-              <dt className="text-xs text-muted-foreground">Ativas / pausadas</dt>
+              <dt className="text-xs text-muted-foreground">{t('summary.activePaused')}</dt>
               <dd className="mt-1 font-mono text-base font-semibold tabular-nums">{activeCount} / {inactiveCount}</dd>
             </div>
           </dl>
           <section aria-labelledby={listId} className="min-w-0 rounded-xl border border-border bg-card">
             <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-4 py-3">
-              <h4 id={listId} className="text-sm font-semibold">Recorrências cadastradas</h4>
-              <p className="text-xs tabular-nums text-muted-foreground">{recurring.length} {recurring.length === 1 ? 'registro' : 'registros'}</p>
+              <h4 id={listId} className="text-sm font-semibold">{t('list.title')}</h4>
+              <p className="text-xs tabular-nums text-muted-foreground">{t('list.count', { count: recurring.length })}</p>
             </header>
             {recurring.length === 0 ? (
               <div className="px-4 py-6">
-                <p className="text-sm font-medium">Nenhuma transação recorrente</p>
-                <p className="mt-1 text-sm text-muted-foreground">Use Nova transação recorrente para cadastrar um lançamento programado.</p>
+                <p className="text-sm font-medium">{t('list.emptyTitle')}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t('list.emptySubtitle')}</p>
               </div>
             ) : (
               <ul role="list" className="divide-y divide-border">
                 {recurring.map((entry) => {
                   const isIncome = entry.type === 'INCOME';
-                  const toggleLabel = entry.isActive ? 'Pausar' : 'Ativar';
+                  const toggleLabel = entry.isActive ? t('actions.pause') : t('actions.activate');
+                  const freqKey = RECURRING_FREQUENCY_MAP[entry.frequency];
                   return (
                     <li key={entry.id} className="grid min-w-0 grid-cols-2 items-start gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(8rem,auto)_minmax(7rem,auto)_auto] lg:items-center">
                       <div className="col-span-2 min-w-0 lg:col-span-1">
                         <p className="break-words text-sm font-semibold">{entry.description}</p>
                         <p className="mt-0.5 break-words text-xs text-muted-foreground">
-                          {[isIncome ? 'Receita' : 'Despesa', frequencyLabels[entry.frequency] || entry.frequency, entry.category?.name, entry.account?.name, entry.card && `${entry.card.name} ****${entry.card.lastFourDigits}`].filter(Boolean).join(' · ')}
+                          {[isIncome ? t('types.INCOME') : t('types.EXPENSE'), freqKey ? t(freqKey) : entry.frequency, entry.category?.name, entry.account?.name, entry.card && `${entry.card.name} ****${entry.card.lastFourDigits}`].filter(Boolean).join(' · ')}
                         </p>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Próxima data</p>
-                        <time className="block break-words text-sm tabular-nums" dateTime={entry.nextDate}>{dateFmt(entry.nextDate)}</time>
+                        <p className="text-xs text-muted-foreground">{t('list.nextDate')}</p>
+                        <time className="block break-words text-sm tabular-nums" dateTime={entry.nextDate}>{dateFmt(entry.nextDate, locale)}</time>
                       </div>
                       <div className="min-w-0 text-right">
-                        <p className="break-words font-mono text-sm font-semibold tabular-nums">{isIncome ? '+' : '-'}{currencyFmt(entry.amount)}</p>
-                        <p className="text-xs text-muted-foreground">{entry.isActive ? 'Ativa' : 'Pausada'}</p>
+                        <p className="break-words font-mono text-sm font-semibold tabular-nums">{isIncome ? '+' : '-'}{currencyFmt(entry.amount, locale)}</p>
+                        <p className="text-xs text-muted-foreground">{entry.isActive ? t('list.statusActive') : t('list.statusPaused')}</p>
                       </div>
                       <div className="col-span-2 flex flex-wrap items-center gap-1 lg:col-span-1 lg:justify-end">
-                        <Button variant="outline" size="sm" aria-label={`${toggleLabel} ${entry.description}`} onClick={() => toggleActive(entry)} className={focusClass}>
+                        <Button variant="outline" size="sm" aria-label={t('actions.toggleAriaLabel', { action: toggleLabel, description: entry.description })} onClick={() => toggleActive(entry)} className={focusClass}>
                           {entry.isActive ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />} {toggleLabel}
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label={`Editar ${entry.description}`} title="Editar" onClick={(event) => openEdit(entry, event)} className={focusClass}>
+                        <Button variant="ghost" size="icon" aria-label={t('actions.editAriaLabel', { description: entry.description })} title={t('actions.edit')} onClick={(event) => openEdit(entry, event)} className={focusClass}>
                           <Pencil aria-hidden="true" />
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label={`Excluir ${entry.description}`} title="Excluir" onClick={(event) => requestDelete(entry.id, event)} className={focusClass}>
+                        <Button variant="ghost" size="icon" aria-label={t('actions.deleteAriaLabel', { description: entry.description })} title={t('actions.delete')} onClick={(event) => requestDelete(entry.id, event)} className={focusClass}>
                           <Trash2 aria-hidden="true" />
                         </Button>
                       </div>
@@ -192,6 +181,7 @@ export function RecurringPanel({
 }
 
 export function RecurringTransactionsWidget() {
+  const t = useSafeTranslations('recurring');
   const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -324,10 +314,10 @@ export function RecurringTransactionsWidget() {
         body: JSON.stringify({ id: r.id, isActive: !r.isActive }),
       });
       if (!response.ok) throw new Error('Falha ao alterar status');
-      toast.success(r.isActive ? 'Transação pausada' : 'Transação ativada');
+      toast.success(r.isActive ? t('toast.paused') : t('toast.activated'));
       fetchRecurring();
     } catch {
-      toast.error('Erro ao alterar status');
+      toast.error(t('errors.toggleStatus'));
     }
   };
 
@@ -335,7 +325,7 @@ export function RecurringTransactionsWidget() {
     const opening = formOpening.current;
     if (submittingRef.current) return;
     if (!form.description.trim() || !form.amount || parseFloat(form.amount) <= 0) {
-      toast.error('Preencha descrição e valor corretamente');
+      toast.error(t('errors.validation'));
       return;
     }
 
@@ -360,7 +350,7 @@ export function RecurringTransactionsWidget() {
           body: JSON.stringify({ id: editing.id, ...body }),
         });
         if (!response.ok) throw new Error('Falha ao atualizar recorrência');
-        toast.success('Transação recorrente atualizada!');
+        toast.success(t('toast.updated'));
       } else {
         const response = await fetch('/api/recurring', {
           method: 'POST',
@@ -368,7 +358,7 @@ export function RecurringTransactionsWidget() {
           body: JSON.stringify(body),
         });
         if (!response.ok) throw new Error('Falha ao criar recorrência');
-        toast.success('Transação recorrente criada!');
+        toast.success(t('toast.created'));
       }
       if (formOpening.current === opening) {
         formOpening.current = null;
@@ -376,7 +366,7 @@ export function RecurringTransactionsWidget() {
       }
       fetchRecurring();
     } catch {
-      toast.error('Erro ao salvar transação recorrente');
+      toast.error(t('errors.save'));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -394,7 +384,7 @@ export function RecurringTransactionsWidget() {
         body: JSON.stringify({ id }),
       });
       if (!response.ok) throw new Error('Falha ao excluir recorrência');
-      toast.success('Transação recorrente excluída!');
+      toast.success(t('toast.deleted'));
       if (deleteOpening.current === opening) {
         deleteOpening.current = null;
         returnFocus.current = null;
@@ -402,7 +392,7 @@ export function RecurringTransactionsWidget() {
       }
       fetchRecurring();
     } catch {
-      toast.error('Erro ao excluir');
+      toast.error(t('errors.delete'));
     } finally {
       pendingDeletes.current.delete(id);
     }
@@ -414,13 +404,13 @@ export function RecurringTransactionsWidget() {
       const res = await fetch('/api/recurring/process', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || 'Processamento concluído');
+        toast.success(data.message || t('toast.processed'));
         fetchRecurring();
       } else {
-        toast.error(data.error || 'Erro ao processar');
+        toast.error(data.error || t('errors.process'));
       }
     } catch {
-      toast.error('Erro ao processar transações');
+      toast.error(t('errors.processTransactions'));
     } finally {
       setProcessing(false);
     }

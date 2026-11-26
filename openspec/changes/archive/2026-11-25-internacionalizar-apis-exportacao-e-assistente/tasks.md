@@ -1,0 +1,6 @@
+## 1. Internacionalização de APIs, Exportação e Assistente
+
+- [x] 1.1 Criar fundação server-side de i18n em `src/lib/server-i18n.ts`, catálogos `src/messages/{pt,es,en}/api.json` e padronização de erros com `code` em `src/lib/api-validation.ts`
+- [x] 1.2 Internacionalizar rotas analíticas, séries temporais, calendário, metas, faturas, recibo, linha do tempo e dívidas (`dashboard`, `quick-stats`, `networth`, `reports`, `balance-projection`, `expense-breakdown`, `transaction-analytics`, `financial-calendar`, `goals-dashboard`, `upcoming-bills`, `receipt`, `timeline`, `debts`) com default `'pt'` e chaves ISO aditivas
+- [x] 1.3 Internacionalizar rotas narrativas (`insights`, `forecast`, `achievements`, `savings-challenge`) mantendo `BRL` contábil e retrocompatibilidade `'pt'`
+- [x] 1.4 Internacionalizar `/api/export`, `/api/advisor` e padronizar erros com `code` nas rotas CRUD (`purchases`, `accounts`, `budgets`, `monthly-budgets`, `cards`, `categories`, `transfer`, `transactions`, `installments`, `installments/pay`, `consortiums`, `consortiums/installments`, `savings`, `savings/deposit`, `recurring`, `recurring/process`, `investments`, `investments/transactions`) preservando integralmente as suítes `test:sqlite`

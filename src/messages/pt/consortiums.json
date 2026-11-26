@@ -1,0 +1,150 @@
+{
+  "title": "Consórcios",
+  "subtitle": "Acompanhe parcelas, pagamentos e assembleias.",
+  "loading": "Carregando consórcios…",
+  "loadingInstallments": "Carregando parcelas…",
+  "status": {
+    "ACTIVE": "Ativo",
+    "COMPLETED": "Concluído",
+    "CANCELLED": "Cancelado",
+    "CONTEMPLATED": "Contemplado"
+  },
+  "installmentStatus": {
+    "PAID": "Paga",
+    "PENDING": "Pendente",
+    "OVERDUE": "Vencida"
+  },
+  "filters": {
+    "ariaLabel": "Filtrar consórcios por situação",
+    "ALL": "Todos",
+    "ACTIVE": "Ativos",
+    "COMPLETED": "Concluídos",
+    "CANCELLED": "Cancelados",
+    "CONTEMPLATED": "Contemplados"
+  },
+  "actions": {
+    "newConsortium": "Novo consórcio",
+    "backToConsortiums": "Voltar aos consórcios",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "retry": "Tentar novamente",
+    "openAriaLabel": "Abrir consórcio {description}",
+    "editAriaLabel": "Editar consórcio {description}",
+    "deleteAriaLabel": "Excluir consórcio {description}",
+    "markPaid": "Marcar como paga",
+    "markPaidAriaLabel": "Marcar parcela {number} como paga"
+  },
+  "errors": {
+    "loadList": "Não foi possível carregar os consórcios.",
+    "loadInstallments": "Não foi possível carregar as parcelas. Volte e abra o consórcio novamente.",
+    "create": "Erro ao criar consórcio",
+    "update": "Erro ao atualizar consórcio",
+    "delete": "Erro ao excluir consórcio",
+    "markPaid": "Erro ao marcar parcela",
+    "markPaidError": "Erro ao marcar parcela como paga"
+  },
+  "toast": {
+    "created": "Consórcio criado com sucesso!",
+    "updated": "Consórcio atualizado!",
+    "deleted": "Consórcio excluído!",
+    "installmentPaid": "Parcela marcada como paga!"
+  },
+  "summary": {
+    "ariaLabel": "Resumo de consórcios",
+    "totalInConsortiums": "Total em consórcios",
+    "totalPaid": "Total pago",
+    "remainingAmount": "Valor restante",
+    "overallProgress": "Progresso geral"
+  },
+  "list": {
+    "title": "Consórcios cadastrados",
+    "showingCount": "{shown} de {total, plural, one {# consórcio} other {# consórcios}}",
+    "emptyAllTitle": "Nenhum consórcio cadastrado",
+    "emptyAllSubtitle": "Use Novo consórcio para começar.",
+    "emptyFilteredTitle": "Nenhum consórcio encontrado",
+    "emptyFilteredSubtitle": "Altere o filtro para ver mais resultados.",
+    "ariaLabel": "Consórcios cadastrados",
+    "group": "Grupo {group}",
+    "quota": "Cota {quota}",
+    "paidInstallmentsMonthly": "{paid}/{total} parcelas pagas · <mono>{monthly}</mono>/mês",
+    "nextAssembly": "Próxima assembleia: {date}"
+  },
+  "progress": {
+    "label": "Progresso do financiamento",
+    "ariaLabel": "Progresso do financiamento de {description}",
+    "valueText": "{percent}% · {funded} de {total}"
+  },
+  "detail": {
+    "summaryAriaLabel": "Resumo do consórcio",
+    "totalAmount": "Valor total",
+    "fundedAmount": "Valor financiado",
+    "monthlyPayment": "Parcela mensal",
+    "paidInstallments": "Parcelas pagas",
+    "installmentsTitle": "Parcelas",
+    "paidOf": "{paid} de {total} pagas",
+    "emptyInstallments": "Nenhuma parcela encontrada",
+    "installmentsAriaLabel": "Parcelas do consórcio",
+    "installmentLabel": "Parcela {number}",
+    "dueDate": "Vencimento: {date}",
+    "paidOn": "Paga em {date}",
+    "assembliesTitle": "Assembleias e cadastro",
+    "assembliesAttended": "Assembleias assistidas",
+    "nextAssembly": "Próxima assembleia",
+    "notScheduled": "Não agendada",
+    "administrator": "Administradora",
+    "startDate": "Data de início"
+  },
+  "createDialog": {
+    "title": "Novo Consórcio",
+    "description": "Preencha os dados do novo consórcio",
+    "descriptionLabel": "Descrição do Bem",
+    "descriptionPlaceholder": "Ex: Honda Civic 2024",
+    "groupLabel": "Grupo",
+    "groupPlaceholder": "Ex: 0123",
+    "quotaLabel": "Cota",
+    "quotaPlaceholder": "Ex: 0042",
+    "administratorLabel": "Administradora",
+    "administratorPlaceholder": "Ex: Banco do Brasil, Santander...",
+    "totalAmountLabel": "Valor Total (R$)",
+    "monthlyPaymentLabel": "Parcela Mensal (R$)",
+    "decimalPlaceholder": "0,00",
+    "installmentCountLabel": "Total de Parcelas",
+    "installmentCountPlaceholder": "Ex: 120",
+    "startDateLabel": "Data de Início",
+    "nextAssemblyLabel": "Próxima Assembleia",
+    "categoryLabel": "Categoria",
+    "categoryPlaceholder": "Selecione...",
+    "accountLabel": "Conta Vinculada",
+    "accountNone": "Nenhuma",
+    "cancel": "Cancelar",
+    "submit": "Criar Consórcio"
+  },
+  "editor": {
+    "title": "Editar Consórcio",
+    "description": "Atualize as informações de assembleia do consórcio",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "nextAssemblyLabel": "Próxima Data de Assembleia",
+    "assembliesAttendedLabel": "Assembleias Assistidas"
+  },
+  "delete": {
+    "title": "Excluir Consórcio",
+    "descriptionDetail": "Tem certeza que deseja excluir o consórcio \"{description}\"? Esta ação não pode ser desfeita.",
+    "descriptionList": "Tem certeza que deseja excluir este consórcio? Esta ação não pode ser desfeita e todas as parcelas associadas serão removidas.",
+    "cancel": "Cancelar",
+    "confirm": "Excluir"
+  },
+  "payment": {
+    "title": "Marcar Parcela como Paga",
+    "description": "Parcela {number} — {amount}",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar Pagamento",
+    "paidDateLabel": "Data do Pagamento",
+    "notesLabel": "Observações",
+    "notesPlaceholder": "Nota opcional...",
+    "assemblySection": "Informações da Assembleia (opcional)",
+    "assemblyDateLabel": "Data da Assembleia",
+    "assemblyResultLabel": "Resultado da Assembleia",
+    "assemblyResultPlaceholder": "Ex: Contemplado na assembleia..."
+  }
+}

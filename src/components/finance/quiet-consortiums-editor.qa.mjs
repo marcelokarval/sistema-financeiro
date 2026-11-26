@@ -14,7 +14,7 @@ const source = fileURLToPath(import.meta.url);
 const view = join(dirname(source), 'consortiums-view.tsx');
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
-function installFixture(ConsortiumsView, createElement, createRoot, ThemeProvider, Toaster, toast) {
+function installFixture(ConsortiumsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster, toast) {
   const collection = '/api/consortiums';
   const records = ['a', 'b'].map((id) => ({
     id, description: `Cota ${id.toUpperCase()}`, group: '9', quota: id, administrator: 'Administradora sintética',
@@ -96,7 +96,8 @@ function installFixture(ConsortiumsView, createElement, createRoot, ThemeProvide
     qa.rootInstance = createRoot(document.getElementById('root'));
     qa.rootInstance.render(createElement(ThemeProvider,
       { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
-      createElement(ConsortiumsView), createElement(Toaster)));
+      createElement(AppIntlProvider, { locale: 'pt', messages: getMessagesForLocale('pt') },
+        createElement(ConsortiumsView), createElement(Toaster))));
   };
   qa.focus = (node = document.activeElement) => ({
     role: node?.getAttribute('role') || (node?.tagName === 'BUTTON' ? 'button' :
@@ -346,9 +347,11 @@ try {
   const { css } = await postcss([tailwind({ base: root })]).process(await readFile(cssFile, 'utf8'), { from: cssFile, map: false });
   assert(css.includes('--ds-focus') && css.includes('.bg-background'));
   const entry = `import { ConsortiumsView } from ${JSON.stringify(view)};
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { createElement } from 'react'; import { createRoot } from 'react-dom/client';
     import { Toaster, toast } from 'sonner'; import { ThemeProvider } from 'next-themes';
-    (${installFixture.toString()})(ConsortiumsView, createElement, createRoot, ThemeProvider, Toaster, toast);`;
+    (${installFixture.toString()})(ConsortiumsView, AppIntlProvider, getMessagesForLocale, createElement, createRoot, ThemeProvider, Toaster, toast);`;
   async function htmlFor(label, original) {
     const bundle = await Bun.build({ entrypoints: [source], target: 'browser', format: 'iife', minify: true,
       define: { 'process.env.NODE_ENV': '"production"' },

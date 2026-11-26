@@ -2,6 +2,7 @@
 
 import { AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { FinanceConfirmationDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeTranslations } from '@/i18n/provider';
 
 export interface InstallmentDeleteConfirmationProps {
   open: boolean;
@@ -23,26 +24,23 @@ export function InstallmentDeleteConfirmation({
   onCloseAutoFocus,
   onConfirm,
 }: InstallmentDeleteConfirmationProps) {
+  const t = useSafeTranslations('installments');
+
   return (
     <FinanceConfirmationDialogShell
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
       contentClassName="motion-reduce:animate-none"
-      title="Excluir plano"
+      title={t('delete.title')}
       description={
-        planDescription === undefined ? (
-          'Tem certeza que deseja excluir este plano? Esta ação não pode ser desfeita.'
-        ) : (
-          <>
-            Tem certeza que deseja excluir o plano &quot;{planDescription}&quot;? Esta ação
-            não pode ser desfeita.
-          </>
-        )
+        planDescription === undefined
+          ? t('delete.descriptionGeneric')
+          : t('delete.descriptionNamed', { description: planDescription })
       }
       footer={
         <>
-          <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>{t('delete.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             disabled={deleting}
             aria-disabled={actionDisabled}
@@ -52,7 +50,7 @@ export function InstallmentDeleteConfirmation({
             }}
             className="bg-destructive text-[var(--ds-destructive-fg)] hover:bg-destructive hover:underline"
           >
-            Excluir
+            {t('delete.confirm')}
           </AlertDialogAction>
         </>
       }

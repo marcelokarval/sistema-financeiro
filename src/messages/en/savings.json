@@ -1,0 +1,144 @@
+{
+  "title": "Savings Boxes",
+  "subtitle": "Track your savings goals and investments.",
+  "loading": "Loading savings…",
+  "actions": {
+    "newGoal": "New goal",
+    "retry": "Try again",
+    "deposit": "Deposit",
+    "depositAriaLabel": "Deposit into {name}",
+    "moreActionsAriaLabel": "More actions for {name}",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "filters": {
+    "ariaLabel": "Filter goals by type",
+    "ALL": "All",
+    "SAVINGS": "Savings",
+    "PIGGY_BANK": "Piggy Bank",
+    "CDI": "CDI",
+    "EMERGENCY_FUND": "Emergency",
+    "INVESTMENT": "Investment"
+  },
+  "types": {
+    "SAVINGS": "Savings",
+    "PIGGY_BANK": "Piggy Bank",
+    "CDI": "CDI Account",
+    "INVESTMENT": "Investment",
+    "EMERGENCY_FUND": "Emergency Fund"
+  },
+  "summary": {
+    "ariaLabel": "Savings summary",
+    "totalAccumulated": "Total accumulated",
+    "percentOfTargets": "{percent}% of total targets",
+    "totalGoals": "Total goals",
+    "inProgress": "{count} in progress",
+    "completedGoals": "Completed goals",
+    "percentAchieved": "{percent}% achieved",
+    "monthlyContribution": "Monthly contribution",
+    "monthlyPlannedNote": "Planned monthly total"
+  },
+  "list": {
+    "title": "Registered goals",
+    "showingCount": "{shown} of {total, plural, one {# goal} other {# goals}}",
+    "loadError": "Could not load savings goals.",
+    "emptyFilteredTitle": "No {type} goals",
+    "emptyFilteredSubtitle": "Change the filter or create a goal of this type.",
+    "emptyAllTitle": "No savings goals registered",
+    "emptyAllSubtitle": "Use New goal to start saving.",
+    "ariaLabel": "Registered goals"
+  },
+  "row": {
+    "completed": "Completed",
+    "linkedAccount": "Linked account: {name}",
+    "monthlyContribution": "{amount}/mo",
+    "noMonthlyContribution": "No monthly contribution",
+    "targetDate": "Target date: {date}",
+    "yieldRate": "{rate}% p.a.",
+    "accumulated": "Accumulated",
+    "target": "Target",
+    "progressLabel": "Goal progress",
+    "progressAriaLabel": "Progress for goal {name}",
+    "progressValueText": "{percent}% · {current} of {target}",
+    "remaining": "{amount} remaining"
+  },
+  "errors": {
+    "nameRequired": "Goal name is required",
+    "targetPositive": "Target amount must be greater than zero",
+    "saveGoal": "Error saving goal",
+    "deleteGoal": "Error deleting goal",
+    "depositAmountInvalid": "Enter a valid deposit amount",
+    "depositError": "Error making deposit",
+    "connection": "Connection error"
+  },
+  "toast": {
+    "goalUpdated": "Goal updated successfully!",
+    "goalCreated": "Goal created successfully!",
+    "goalDeleted": "Goal deleted successfully!",
+    "depositSuccess": "Deposit of {amount} completed!"
+  },
+  "delete": {
+    "title": "Delete savings goal?",
+    "description": "This action cannot be undone. All deposit history will be lost.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  },
+  "editor": {
+    "createTitle": "New Savings Goal",
+    "editTitle": "Edit Goal",
+    "createDescription": "Set a financial goal to start saving.",
+    "editDescription": "Update your savings goal details.",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "saveChanges": "Save Changes",
+    "createGoal": "Create Goal",
+    "nameLabel": "Goal name *",
+    "namePlaceholder": "e.g., Travel, New car...",
+    "typeLabel": "Type *",
+    "colorLabel": "Color",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Describe your goal (optional)",
+    "targetLabel": "Target amount (BRL) *",
+    "currentLabel": "Current amount (BRL)",
+    "monthlyLabel": "Monthly contribution (BRL)",
+    "yieldLabel": "Yield (% p.a.)",
+    "decimalPlaceholder": "0.00",
+    "targetDateLabel": "Target date",
+    "accountLabel": "Linked account",
+    "accountNone": "None",
+    "types": {
+      "SAVINGS": "Savings",
+      "PIGGY_BANK": "Piggy Bank",
+      "CDI": "CDI Account",
+      "INVESTMENT": "Investment",
+      "EMERGENCY_FUND": "Emergency"
+    },
+    "colors": {
+      "emerald": "Emerald",
+      "sky": "Sky blue",
+      "violet": "Violet",
+      "amber": "Amber",
+      "coral": "Coral",
+      "cyan": "Cyan",
+      "indigo": "Indigo",
+      "pink": "Pink",
+      "teal": "Teal",
+      "lime": "Lime"
+    }
+  },
+  "contribution": {
+    "title": "Deposit",
+    "descriptionWithGoal": "Add an amount to goal \"{name}\". Current: {amount}",
+    "descriptionFallback": "Add an amount to the selected goal.",
+    "cancel": "Cancel",
+    "submitting": "Depositing...",
+    "submit": "Deposit",
+    "linkedAccountLabel": "Linked account: {account}",
+    "linkedAccountFallback": "Account linked to goal",
+    "accountNone": "None",
+    "amountLabel": "Deposit amount (BRL) *",
+    "amountPlaceholder": "0.00",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "e.g., Bonus, Monthly savings..."
+  }
+}

@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { parseCivilDateEnd, parseCivilDateStart } from "@/lib/api-validation";
-import { formatPurchaseDate } from "@/lib/purchase-date";
-import { Prisma } from "@prisma/client";
+import {
+  apiErrorResponse,
+  formatServerDate,
+  formatServerNumber,
+  formatServerPurchaseDate,
+  resolveRequestLocale,
+  translateApiMessage,
+  type SupportedLocale,
+} from "@/lib/server-i18n";
 
 // GET /api/export?type=transactions|purchases|accounts&format=csv&startDate=...&endDate=...
 export async function GET(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const { searchParams } = new URL(request.url);
 
@@ -16,41 +26,46 @@ export async function GET(request: NextRequest) {
 
     // Validate type
     if (type !== "transactions" && type !== "purchases" && type !== "accounts") {
-      return NextResponse.json(
-        { error: "Tipo de exportação inválido. Use: transactions, purchases ou accounts" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "export.invalidType"),
+        400
       );
     }
 
     // Validate format
     if (format !== "csv") {
-      return NextResponse.json(
-        { error: "Formato inválido. Use: csv" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "export.invalidFormat"),
+        400
       );
     }
 
     // Build date filter
     const parsedStart = startDate ? parseCivilDateStart(startDate) : null;
     if (startDate && parsedStart === null) {
-      return NextResponse.json(
-        { error: "Data inicial inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "export.invalidStartDate"),
+        400
       );
     }
 
     const parsedEnd = endDate ? parseCivilDateEnd(endDate) : null;
     if (endDate && parsedEnd === null) {
-      return NextResponse.json(
-        { error: "Data final inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "export.invalidEndDate"),
+        400
       );
     }
 
     if (parsedStart && parsedEnd && parsedStart > parsedEnd) {
-      return NextResponse.json(
-        { error: "Intervalo de datas inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "export.invalidDateRange"),
+        400
       );
     }
 
@@ -81,29 +96,29 @@ export async function GET(request: NextRequest) {
         });
 
         const headers = [
-          "ID",
-          "Tipo",
-          "Valor (R$)",
-          "Descrição",
-          "Data",
-          "Categoria",
-          "Conta",
-          "Cartão",
+          translateApiMessage(locale, "export.headers.transactions.id"),
+          translateApiMessage(locale, "export.headers.transactions.type"),
+          translateApiMessage(locale, "export.headers.transactions.amount"),
+          translateApiMessage(locale, "export.headers.transactions.description"),
+          translateApiMessage(locale, "export.headers.transactions.date"),
+          translateApiMessage(locale, "export.headers.transactions.category"),
+          translateApiMessage(locale, "export.headers.transactions.account"),
+          translateApiMessage(locale, "export.headers.transactions.card"),
         ];
 
         const rows = transactions.map((t) => [
           t.id,
-          translateTransactionType(t.type),
-          formatCurrency(t.amount),
+          translateTransactionType(t.type, locale),
+          formatCurrency(t.amount, locale),
           t.description,
-          formatDate(t.date),
+          formatServerDate(t.date, locale, "date"),
           t.category?.name ?? "",
           t.account?.name ?? "",
           t.card ? `${t.card.name} (****${t.card.lastFourDigits})` : "",
         ]);
 
         csvContent = buildCsv(headers, rows);
-        filename = "transacoes.csv";
+        filename = translateApiMessage(locale, "export.filenames.transactions");
         break;
       }
 
@@ -122,28 +137,26 @@ export async function GET(request: NextRequest) {
         });
 
         const headers = [
-          "ID",
-          "Estabelecimento",
-          "Valor Total (R$)",
-          "Data",
-          "Cartão",
-          "Qtd. Itens",
-          "Parcela",
+          translateApiMessage(locale, "export.headers.purchases.id"),
+          translateApiMessage(locale, "export.headers.purchases.merchant"),
+          translateApiMessage(locale, "export.headers.purchases.totalAmount"),
+          translateApiMessage(locale, "export.headers.purchases.date"),
+          translateApiMessage(locale, "export.headers.purchases.card"),
+          translateApiMessage(locale, "export.headers.purchases.itemsCount"),
+          translateApiMessage(locale, "export.headers.purchases.installment"),
         ];
 
         const rows = purchases.map((p) => {
-          let installmentInfo = "";
-          if (p.installmentTotal > 1) {
-            installmentInfo = `${p.installmentNumber}/${p.installmentTotal}`;
-          } else {
-            installmentInfo = "À vista";
-          }
+          const installmentInfo =
+            p.installmentTotal > 1
+              ? `${p.installmentNumber}/${p.installmentTotal}`
+              : translateApiMessage(locale, "common.inFull");
 
           return [
             p.id,
             p.merchant,
-            formatCurrency(p.totalAmount),
-            formatPurchaseDate(p.date),
+            formatCurrency(p.totalAmount, locale),
+            formatServerPurchaseDate(p.date, locale, "date"),
             p.card ? `${p.card.name} (****${p.card.lastFourDigits})` : "",
             String(p.items.length),
             installmentInfo,
@@ -151,7 +164,7 @@ export async function GET(request: NextRequest) {
         });
 
         csvContent = buildCsv(headers, rows);
-        filename = "compras.csv";
+        filename = translateApiMessage(locale, "export.filenames.purchases");
         break;
       }
 
@@ -161,29 +174,23 @@ export async function GET(request: NextRequest) {
         });
 
         const headers = [
-          "ID",
-          "Nome",
-          "Tipo",
-          "Saldo (R$)",
-          "Ativa",
+          translateApiMessage(locale, "export.headers.accounts.id"),
+          translateApiMessage(locale, "export.headers.accounts.name"),
+          translateApiMessage(locale, "export.headers.accounts.type"),
+          translateApiMessage(locale, "export.headers.accounts.balance"),
+          translateApiMessage(locale, "export.headers.accounts.active"),
         ];
-
-        const typeLabels: Record<string, string> = {
-          CASH: "Dinheiro",
-          BANK: "Banco",
-          DIGITAL_WALLET: "Carteira Digital",
-        };
 
         const rows = accounts.map((a) => [
           a.id,
           a.name,
-          typeLabels[a.type] ?? a.type,
-          formatCurrency(a.balance),
-          a.isActive ? "Sim" : "Não",
+          translateAccountType(a.type, locale),
+          formatCurrency(a.balance, locale),
+          translateApiMessage(locale, a.isActive ? "common.yes" : "common.no"),
         ]);
 
         csvContent = buildCsv(headers, rows);
-        filename = "contas.csv";
+        filename = translateApiMessage(locale, "export.filenames.accounts");
         break;
       }
     }
@@ -201,9 +208,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Erro ao exportar dados:", error);
-    return NextResponse.json(
-      { error: "Falha ao exportar dados" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "export.fetchFailed"),
+      500
     );
   }
 }
@@ -231,25 +239,23 @@ function escapeCsv(value: string): string {
   return neutralized;
 }
 
-function formatDate(date: Date): string {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-}
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", {
+function formatCurrency(value: number, locale: SupportedLocale): string {
+  return formatServerNumber(value, locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
 
-function translateTransactionType(type: string): string {
-  const labels: Record<string, string> = {
-    INCOME: "Receita",
-    EXPENSE: "Despesa",
-    TRANSFER: "Transferência",
-  };
-  return labels[type] ?? type;
+function translateTransactionType(type: string, locale: SupportedLocale): string {
+  if (type === "INCOME" || type === "EXPENSE" || type === "TRANSFER") {
+    return translateApiMessage(locale, `export.transactionTypes.${type}`);
+  }
+  return type;
+}
+
+function translateAccountType(type: string, locale: SupportedLocale): string {
+  if (type === "CASH" || type === "BANK" || type === "DIGITAL_WALLET") {
+    return translateApiMessage(locale, `export.accountTypes.${type}`);
+  }
+  return type;
 }

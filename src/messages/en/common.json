@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "title": "FinanceApp - Smart Financial Management",
+    "description": "Complete financial management system with accounts, cards, and purchases control"
+  },
+  "loading": {
+    "app": "Loading FinanceApp…"
+  },
+  "common": {
+    "dataUpdated": "Data updated",
+    "retry": "Try again",
+    "brandName": "FinanceApp"
+  },
+  "languageSwitcher": {
+    "label": "Select language",
+    "currentLanguage": "Current language: {language}",
+    "menuLabel": "Available languages"
+  }
+}

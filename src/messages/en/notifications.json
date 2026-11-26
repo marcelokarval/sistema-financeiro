@@ -1,0 +1,19 @@
+{
+  "title": "Notifications",
+  "subtitle": "Recent activity",
+  "unreadCount": "{count, plural, one {# new} other {# new}}",
+  "allRead": "All read",
+  "close": "Close",
+  "loading": "Loading activity…",
+  "error": "Could not load notifications.",
+  "retry": "Try again",
+  "emptyTitle": "No notifications",
+  "emptySubtitle": "Your financial activity will appear here.",
+  "markAllRead": "Mark all as read",
+  "listAriaLabel": "Recent activity",
+  "kinds": {
+    "income": "Income",
+    "expense": "Expense",
+    "purchase": "Purchase"
+  }
+}

@@ -8,16 +8,21 @@ import {
   endOfWeek,
   eachDayOfInterval,
   format,
-  parseISO,
 } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FinanceMetric } from '@/components/shared/finance-metric';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import {
+  CALENDAR_DATE_FORMATS,
+  CALENDAR_FILTER_DAYS,
+  getDateFnsLocale,
+  parseCivilDate,
+} from './analytics-i18n';
 import {
   FinancialCalendarAgenda,
   FinancialCalendarGrid,
@@ -25,15 +30,10 @@ import {
   type CalendarEvent,
 } from './financial-calendar-grid';
 
-const FILTER_OPTIONS = [
-  { label: '7 dias', days: 7 },
-  { label: '30 dias', days: 30 },
-  { label: '90 dias', days: 90 },
-] as const;
-
 function LoadingSkeleton() {
+  const t = useSafeTranslations('analytics');
   return (
-    <Card role="status" aria-label="Carregando calendário financeiro" className="min-w-0 gap-3 rounded-xl border-border bg-card py-4 shadow-none">
+    <Card role="status" aria-label={t('calendar.loadingAria')} className="min-w-0 gap-3 rounded-xl border-border bg-card py-4 shadow-none">
       <CardHeader className="px-4 sm:px-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex min-w-0 items-center gap-2">
@@ -165,6 +165,11 @@ export function FinancialCalendarContent({
   onToday: () => void;
   fetchData: (days: number) => void;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
+  const dateFnsLocale = getDateFnsLocale(locale);
+  const dateFormats = CALENDAR_DATE_FORMATS[locale];
+
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -211,13 +216,13 @@ export function FinancialCalendarContent({
       <section aria-labelledby="financial-calendar-heading" className="min-w-0">
         <Card className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
           <CardHeader className="px-4 sm:px-5">
-            <h3 id="financial-calendar-heading" className="text-base font-semibold">Calendário Financeiro</h3>
+            <h3 id="financial-calendar-heading" className="text-base font-semibold">{t('calendar.title')}</h3>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3 px-4 sm:px-5">
-            <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar o calendário financeiro.</p>
+            <p role="alert" className="text-sm text-muted-foreground">{t('calendar.error')}</p>
             <Button variant="outline" size="sm" className="min-h-9" onClick={() => fetchData(activeDays)}>
               <RefreshCw aria-hidden="true" className="size-3.5" />
-              Tentar novamente
+              {t('common.retry')}
             </Button>
           </CardContent>
         </Card>
@@ -234,33 +239,33 @@ export function FinancialCalendarContent({
         <CardHeader className="px-4 sm:px-5">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="min-w-0">
-              <h3 id="financial-calendar-heading" className="text-base font-semibold">Calendário Financeiro</h3>
+              <h3 id="financial-calendar-heading" className="text-base font-semibold">{t('calendar.title')}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Próximos pagamentos e receitas
+                {t('calendar.subtitle')}
               </p>
             </div>
-            <div role="group" aria-label="Intervalo do calendário" className="flex flex-wrap items-center gap-1.5">
-              {FILTER_OPTIONS.map((opt) => (
+            <div role="group" aria-label={t('calendar.rangeAria')} className="flex flex-wrap items-center gap-1.5">
+              {CALENDAR_FILTER_DAYS.map((days) => (
                 <button
-                  key={opt.days}
+                  key={days}
                   type="button"
-                  aria-pressed={activeDays === opt.days}
-                  onClick={() => onSelectDays(opt.days)}
+                  aria-pressed={activeDays === days}
+                  onClick={() => onSelectDays(days)}
                   className={cn(
                     'min-h-9 px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-                    activeDays === opt.days
+                    activeDays === days
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                 >
-                  {opt.label}
+                  {t('calendar.filterDays', { count: days })}
                 </button>
               ))}
               <Button
                 variant="outline"
                 size="icon"
                 className="size-9 ml-1"
-                aria-label="Atualizar calendário"
+                aria-label={t('calendar.refreshAria')}
                 onClick={() => fetchData(activeDays)}
               >
                 <RefreshCw className="size-4" />
@@ -270,24 +275,24 @@ export function FinancialCalendarContent({
         </CardHeader>
 
         <CardContent className="min-w-0 space-y-4 px-4 sm:px-5">
-          <dl aria-label="Resumo do intervalo" className="grid grid-cols-1 gap-x-4 gap-y-2 border-y border-border py-3 sm:grid-cols-2 xl:grid-cols-5">
-            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label="Contas a pagar" value={summary.totalBills} />
-            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label="Despesas do intervalo" value={currencyFmt(summary.totalExpense)} />
-            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label="Receitas do intervalo" value={currencyFmt(summary.totalIncome)} />
+          <dl aria-label={t('calendar.summaryAria')} className="grid grid-cols-1 gap-x-4 gap-y-2 border-y border-border py-3 sm:grid-cols-2 xl:grid-cols-5">
+            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label={t('calendar.metrics.billsToPay')} value={summary.totalBills} />
+            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label={t('calendar.metrics.intervalExpense')} value={currencyFmt(summary.totalExpense, locale)} />
+            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label={t('calendar.metrics.intervalIncome')} value={currencyFmt(summary.totalIncome, locale)} />
             <FinanceMetric
               variant="compact"
               className={metricClass}
               valueClassName="text-sm"
-              label="Próximo pagamento"
-              value={summary.nextPaymentDate ? format(parseISO(summary.nextPaymentDate), 'dd MMM', { locale: ptBR }) : '—'}
+              label={t('calendar.metrics.nextPayment')}
+              value={summary.nextPaymentDate ? format(parseCivilDate(summary.nextPaymentDate), dateFormats.dayShortMonth, { locale: dateFnsLocale }) : '—'}
             />
             {summary.upcomingBiggestExpense && (
               <FinanceMetric
                 variant="compact"
                 className={metricClass}
                 valueClassName="text-sm"
-                label="Maior despesa prevista"
-                value={currencyFmt(summary.upcomingBiggestExpense.amount)}
+                label={t('calendar.metrics.biggestExpense')}
+                value={currencyFmt(summary.upcomingBiggestExpense.amount, locale)}
               />
             )}
           </dl>

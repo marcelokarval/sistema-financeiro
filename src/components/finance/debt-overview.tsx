@@ -13,27 +13,30 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from 'recharts';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import { PIE_COLORS } from './analytics-i18n';
 import {
   DebtChartTooltip,
   DebtExpandedSection,
   DebtIncomeRatioCard,
   DebtTypeToggleButton,
-  PIE_COLORS,
   type DebtsData,
 } from './debt-sections';
 
 export { DebtChartTooltip } from './debt-sections';
 
 function DonutCenterLabel({ total }: { total: number }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
       <p className="font-mono text-lg sm:text-xl font-semibold tabular-nums text-foreground">
-        {currencyFmt(total)}
+        {currencyFmt(total, locale)}
       </p>
       <p className="text-xs sm:text-xs text-muted-foreground font-medium">
-        Total em Dívidas
+        {t('debts.totalInDebts')}
       </p>
     </div>
   );
@@ -48,6 +51,7 @@ function DebtCompositionChart({
   totalDebt: number;
   pieData: Array<{ name: string; value: number }>;
 }) {
+  const t = useSafeTranslations('analytics');
   return (
     <div className="relative mx-auto h-52 w-full max-w-64 lg:order-last">
       {hasDebt ? (
@@ -77,7 +81,7 @@ function DebtCompositionChart({
             <PieChart>
               <Pie
                 isAnimationActive={false}
-                data={[{ name: 'Sem dívidas', value: 1 }]}
+                data={[{ name: t('debts.noDebts'), value: 1 }]}
                 cx="50%"
                 cy="50%"
                 innerRadius="55%"
@@ -96,8 +100,9 @@ function DebtCompositionChart({
 }
 
 function DebtLoadingSkeleton() {
+  const t = useSafeTranslations('analytics');
   return (
-    <Card role="status" aria-label="Carregando visão de dívidas" className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
+    <Card role="status" aria-label={t('debts.loadingAria')} className="min-w-0 gap-3 rounded-lg border-border bg-card py-4 shadow-none">
       <CardHeader className="px-4 sm:px-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -203,6 +208,8 @@ export function DebtOverviewContent({
   fetchData?: () => void;
   onRetry?: () => void;
 }) {
+  const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const handleRetry = onRetry ?? fetchData;
 
   if (loading) return <DebtLoadingSkeleton />;
@@ -213,11 +220,11 @@ export function DebtOverviewContent({
         <CardContent className="space-y-3 px-4 py-4 text-sm">
           <Activity className="w-10 h-10 text-muted-foreground" />
           <p role="alert" className="text-sm text-muted-foreground">
-            Não foi possível carregar o painel de dívidas.
+            {t('debts.error')}
           </p>
           <Button variant="outline" size="sm" className="min-h-9" onClick={handleRetry}>
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-            Tentar novamente
+            {t('common.retry')}
           </Button>
         </CardContent>
       </Card>
@@ -227,9 +234,9 @@ export function DebtOverviewContent({
   const hasDebt = data.totalDebt > 0;
   const pieData = hasDebt
     ? [
-        { name: 'Cartões', value: data.cardDebt },
-        { name: 'Parcelas', value: data.installmentDebt },
-        { name: 'Consórcios', value: data.consortiumDebt },
+        { name: t('debts.pie.cards'), value: data.cardDebt },
+        { name: t('debts.pie.installments'), value: data.installmentDebt },
+        { name: t('debts.pie.consortiums'), value: data.consortiumDebt },
       ].filter((d) => d.value > 0)
     : [];
 
@@ -239,9 +246,9 @@ export function DebtOverviewContent({
         <CardHeader className="px-4 sm:px-5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="min-w-0">
-              <h3 id="debt-overview-heading" className="text-base font-semibold">Painel de Dívidas</h3>
+              <h3 id="debt-overview-heading" className="text-base font-semibold">{t('debts.title')}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Acompanhe todas as suas obrigações financeiras
+                {t('debts.subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -254,13 +261,13 @@ export function DebtOverviewContent({
                 )}
               >
                 <TrendingDown className="w-3.5 h-3.5 mr-1.5" />
-                {currencyFmt(data.totalDebt)}
+                {currencyFmt(data.totalDebt, locale)}
               </Badge>
               <Button
                 variant="outline"
                 size="icon"
                 className="size-9"
-                aria-label="Atualizar dívidas"
+                aria-label={t('debts.refreshAria')}
                 onClick={fetchData}
               >
                 <RefreshCw className="w-4 h-4" />
@@ -270,12 +277,12 @@ export function DebtOverviewContent({
         </CardHeader>
         <CardContent className="min-w-0 space-y-5 px-4 sm:px-5">
           <div>
-            <div role="group" aria-label="Composição das dívidas" className="grid min-w-0 items-center gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <div role="group" aria-label={t('debts.compositionAria')} className="grid min-w-0 items-center gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
               <DebtCompositionChart hasDebt={hasDebt} totalDebt={data.totalDebt} pieData={pieData} />
 
               <div className="min-w-0 divide-y divide-border border-y border-border">
                 <DebtTypeToggleButton
-                  label="Cartões de Crédito"
+                  label={t('debts.categories.cards')}
                   count={data.cards.length}
                   amount={data.cardDebt}
                   expanded={expandedType === 'cards'}
@@ -283,7 +290,7 @@ export function DebtOverviewContent({
                   onClick={() => onToggleExpand('cards')}
                 />
                 <DebtTypeToggleButton
-                  label="Parcelamentos"
+                  label={t('debts.categories.installments')}
                   count={data.installments.length}
                   amount={data.installmentDebt}
                   expanded={expandedType === 'installments'}
@@ -291,7 +298,7 @@ export function DebtOverviewContent({
                   onClick={() => onToggleExpand('installments')}
                 />
                 <DebtTypeToggleButton
-                  label="Consórcios"
+                  label={t('debts.categories.consortiums')}
                   count={data.consortiums.length}
                   amount={data.consortiumDebt}
                   expanded={expandedType === 'consortiums'}

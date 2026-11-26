@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { normalizeRecurringToMonthly } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 // GET /api/forecast?months=3 — Cash flow forecast based on historical patterns + recurring transactions
 export async function GET(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const { searchParams } = request.nextUrl;
     const monthsParam = searchParams.get("months");
@@ -13,9 +22,10 @@ export async function GET(request: NextRequest) {
       const trimmed = monthsParam.trim();
       const parsed = /^\d+$/.test(trimmed) ? Number.parseInt(trimmed, 10) : NaN;
       if (isNaN(parsed) || parsed < 1 || parsed > 6) {
-        return NextResponse.json(
-          { error: "O parâmetro 'months' deve ser um número entre 1 e 6." },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "forecast.invalidMonths"),
+          400
         );
       }
       forecastMonths = parsed;
@@ -122,7 +132,7 @@ export async function GET(request: NextRequest) {
         if (!categoryTotals[catId]) {
           const cat = categories.find((c) => c.id === catId);
           categoryTotals[catId] = {
-            name: cat?.name || "Outros",
+            name: cat?.name || translateApiMessage(locale, "forecast.otherCategory"),
             color: cat?.color || "#6b7280",
             total: 0,
           };
@@ -156,6 +166,7 @@ export async function GET(request: NextRequest) {
     // ─── Forecast calculation ────────────────────────────────────────
     const forecastMonthsData: {
       month: string;
+      monthKey: string;
       projectedIncome: number;
       projectedExpense: number;
       projectedNet: number;
@@ -164,7 +175,7 @@ export async function GET(request: NextRequest) {
 
     for (let i = 1; i <= forecastMonths; i++) {
       const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
-      const monthLabel = targetDate.toLocaleString("pt-BR", {
+      const monthLabel = formatServerMonthLabel(targetDate, locale, {
         month: "long",
         year: "numeric",
       });
@@ -191,6 +202,7 @@ export async function GET(request: NextRequest) {
 
       forecastMonthsData.push({
         month: monthLabel,
+        monthKey: toMonthKey(targetDate),
         projectedIncome: Math.round(projIncome * 100) / 100,
         projectedExpense: Math.round(projExpense * 100) / 100,
         projectedNet: Math.round(projNet * 100) / 100,
@@ -202,15 +214,11 @@ export async function GET(request: NextRequest) {
     const riskAlerts: string[] = [];
 
     if (avgExpense > avgIncome * 0.9) {
-      riskAlerts.push(
-        "Suas despesas estão acima de 90% da sua receita média. Risco de déficit."
-      );
+      riskAlerts.push(translateApiMessage(locale, "forecast.riskAlerts.highExpenseRatio"));
     }
 
     if (avgIncome - avgExpense < 0) {
-      riskAlerts.push(
-        "Seu saldo médio mensal é negativo. Revise seus gastos urgentemente."
-      );
+      riskAlerts.push(translateApiMessage(locale, "forecast.riskAlerts.negativeBalance"));
     }
 
     // Check if expenses have been trending up recently
@@ -227,7 +235,9 @@ export async function GET(request: NextRequest) {
           ((recentAvgExpense - olderAvgExpense) / olderAvgExpense) * 100;
         if (expenseIncrease > 10) {
           riskAlerts.push(
-            `Gastos gerais estão ${Math.round(expenseIncrease)}% acima da média dos meses anteriores.`
+            translateApiMessage(locale, "forecast.riskAlerts.overallExpenseUp", {
+              percent: Math.round(expenseIncrease),
+            })
           );
         }
       }
@@ -259,7 +269,10 @@ export async function GET(request: NextRequest) {
             ((recentCatAvg - olderCatAvg) / olderCatAvg) * 100;
           if (catIncrease > 15) {
             riskAlerts.push(
-              `Gastos com ${cat.name} estão ${Math.round(catIncrease)}% acima da média dos últimos 3 meses.`
+              translateApiMessage(locale, "forecast.riskAlerts.categoryExpenseUp", {
+                category: cat.name,
+                percent: Math.round(catIncrease),
+              })
             );
           }
         }
@@ -270,9 +283,7 @@ export async function GET(request: NextRequest) {
     if (avgIncome > 0) {
       const savingsRate = ((avgIncome - avgExpense) / avgIncome) * 100;
       if (savingsRate < 10 && savingsRate > 0) {
-        riskAlerts.push(
-          "Sua taxa de poupança está abaixo de 10%. Considere reduzir gastos desnecessários."
-        );
+        riskAlerts.push(translateApiMessage(locale, "forecast.riskAlerts.lowSavingsRate"));
       }
     }
 
@@ -305,9 +316,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error generating forecast:", error);
-    return NextResponse.json(
-      { error: "Erro ao gerar previsão de fluxo de caixa." },
-      { status: 500 }
-    );
+    return apiErrorResponse("INTERNAL_ERROR", translateApiMessage(locale, "forecast.fetchFailed"), 500);
   }
 }

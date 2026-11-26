@@ -1,11 +1,6 @@
+import { INTL_LOCALE, normalizeLocale } from '@/i18n/config';
+
 const dateOnly = /^\d{4}-\d{2}-\d{2}$/;
-const receiptDateTime = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-});
 
 export function civilPurchaseDate(value: string | Date, date = new Date(value)): string | undefined {
   if (typeof value === 'string' && dateOnly.test(value)) return value;
@@ -30,13 +25,36 @@ export function purchaseDateForSave(input: string, original?: string): string {
   return original && input === purchaseDateForInput(original) ? original : input;
 }
 
-export function formatPurchaseDate(value: string | Date, style: 'date' | 'receipt' = 'date'): string {
+export function formatPurchaseDate(
+  value: string | Date,
+  style: 'date' | 'receipt' = 'date',
+  locale?: string,
+): string {
+  const intlLocale = INTL_LOCALE[normalizeLocale(locale)];
   const date = new Date(value);
   const civil = civilPurchaseDate(value, date);
   if (civil) {
-    const [year, month, day] = civil.split('-');
-    return `${day}/${month}/${year}`;
+    return new Intl.DateTimeFormat(intlLocale, {
+      timeZone: 'UTC',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(new Date(`${civil}T00:00:00.000Z`));
   }
 
-  return style === 'receipt' ? receiptDateTime.format(date) : date.toLocaleDateString('pt-BR');
+  if (style === 'receipt') {
+    return new Intl.DateTimeFormat(intlLocale, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  }
+
+  return new Intl.DateTimeFormat(intlLocale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
 }

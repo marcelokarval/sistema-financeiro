@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Building2, CalendarClock, CreditCard, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { INTL_LOCALE } from '@/i18n/config';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { observeQuery, type QueryResult, type SettledQuery } from './dashboard-query';
@@ -24,17 +26,9 @@ interface UpcomingBillsData {
 }
 
 const icons = { installment: CalendarClock, consortium: Building2, card: CreditCard, recurring: RefreshCw };
-const dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
 const smallText = 'text-xs leading-relaxed text-muted-foreground';
 const moneyClass = 'font-mono tabular-nums tracking-tight';
 const disclosure = 'cursor-pointer rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring';
-
-function dayLabel(days: number) {
-  if (days < 0) return `${Math.abs(days)} dia(s) de atraso`;
-  if (days === 0) return 'Hoje';
-  if (days === 1) return 'Amanhã';
-  return `Em ${days} dias`;
-}
 
 export function UpcomingBills({ showValues = true, refreshCounter = 0 }: { showValues?: boolean; refreshCounter?: number } = {}) {
   const [request, setRequest] = useState(0);
@@ -45,9 +39,9 @@ export function UpcomingBills({ showValues = true, refreshCounter = 0 }: { showV
 
   useEffect(() => observeQuery(async (signal) => {
     const response = await fetch('/api/upcoming-bills', { signal });
-    if (!response.ok) throw new Error('Vencimentos indisponíveis');
+    if (!response.ok) throw new Error(`Upcoming bills unavailable (${response.status})`);
     const data: UpcomingBillsData = await response.json();
-    if (!Array.isArray(data?.bills) || !data.summary) throw new Error('Dados de vencimentos inválidos');
+    if (!Array.isArray(data?.bills) || !data.summary) throw new Error('Invalid upcoming bills data');
     return data;
   }, (result) => setSettled({ key, result })), [key]);
 
@@ -55,32 +49,36 @@ export function UpcomingBills({ showValues = true, refreshCounter = 0 }: { showV
 }
 
 export function UpcomingBillsPanel({ query, refresh, showValues }: { query: QueryResult<UpcomingBillsData>; refresh: () => void; showValues: boolean }) {
-  const money = (value: number) => showValues ? currencyFmt(value) : 'R$ ••••••';
+  const t = useSafeTranslations('dashboard');
+  const tShared = useSafeTranslations('shared');
+  const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
+  const money = (value: number) => showValues ? currencyFmt(value, locale) : maskedValue;
   const bills = query.status === 'ready' ? query.data.bills : [];
   const groups = [
-    { label: 'Atrasados', bills: bills.filter((bill) => bill.status === 'overdue') },
-    { label: 'Próximos (urgentes)', bills: bills.filter((bill) => bill.status === 'urgent') },
-    { label: 'Este mês', bills: bills.filter((bill) => bill.status !== 'later') },
+    { key: 'overdue', label: t('upcomingBills.groups.overdue'), bills: bills.filter((bill) => bill.status === 'overdue') },
+    { key: 'urgent', label: t('upcomingBills.groups.urgent'), bills: bills.filter((bill) => bill.status === 'urgent') },
+    { key: 'thisMonth', label: t('upcomingBills.groups.thisMonth'), bills: bills.filter((bill) => bill.status !== 'later') },
   ];
 
   return (
-    <section aria-label="Próximos vencimentos" className="h-full min-w-0 rounded-lg border border-border bg-card p-4 sm:p-5">
+    <section aria-label={t('upcomingBills.title')} className="h-full min-w-0 rounded-lg border border-border bg-card p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold sm:text-base">Próximos vencimentos</h2>
-          <p className={cn(smallText, 'mt-1')}>Atrasados e próximos 30 dias · independente do período do resumo.</p>
+          <h2 className="text-sm font-semibold sm:text-base">{t('upcomingBills.title')}</h2>
+          <p className={cn(smallText, 'mt-1')}>{t('upcomingBills.subtitle')}</p>
         </div>
-        <Button variant="ghost" size="icon" className="shrink-0" aria-label="Atualizar vencimentos" onClick={refresh}><RefreshCw aria-hidden="true" /></Button>
+        <Button variant="ghost" size="icon" className="shrink-0" aria-label={t('upcomingBills.refreshAriaLabel')} onClick={refresh}><RefreshCw aria-hidden="true" /></Button>
       </div>
-      {query.status === 'loading' && <p role="status" className={cn(smallText, 'mt-4')}>Carregando vencimentos…</p>}
-      {query.status === 'error' && <div className="mt-4 space-y-2"><p role="alert" className="text-sm text-destructive">Não foi possível carregar os próximos pagamentos.</p><Button size="sm" variant="outline" onClick={refresh}>Tentar novamente</Button></div>}
+      {query.status === 'loading' && <p role="status" className={cn(smallText, 'mt-4')}>{t('upcomingBills.loading')}</p>}
+      {query.status === 'error' && <div className="mt-4 space-y-2"><p role="alert" className="text-sm text-destructive">{t('upcomingBills.error')}</p><Button size="sm" variant="outline" onClick={refresh}>{t('retry')}</Button></div>}
       {query.status === 'ready' && (
         <>
-          {query.data.bills.length === 0 ? <p className={cn(smallText, 'mt-4')}>Nenhum pagamento pendente no recorte.</p> : (
+          {query.data.bills.length === 0 ? <p className={cn(smallText, 'mt-4')}>{t('upcomingBills.empty')}</p> : (
             <BillList bills={query.data.bills} money={money} />
           )}
           {groups.filter((group) => group.bills.length > 0).map((group) => (
-            <details key={group.label} className="mt-2 border-t border-border pt-2">
+            <details key={group.key} className="mt-2 border-t border-border pt-2">
               <summary className={cn(disclosure, 'flex flex-wrap items-baseline justify-between gap-x-2')}>
                 <span>{group.label} ({group.bills.length})</span>
                 <span className={moneyClass}>{money(group.bills.reduce((sum, bill) => sum + bill.amount, 0))}</span>
@@ -89,14 +87,14 @@ export function UpcomingBillsPanel({ query, refresh, showValues }: { query: Quer
             </details>
           ))}
           <details className="mt-3 border-t border-border pt-3">
-            <summary className={disclosure}>Totais de vencimentos</summary>
+            <summary className={disclosure}>{t('upcomingBills.totals.summary')}</summary>
             <dl className="mt-2 grid gap-2 text-xs">
               {([
-                ['Até o fim da semana, incluindo atrasados', query.data.summary.thisWeek],
-                ['Até o fim do mês, incluindo atrasados', query.data.summary.thisMonth],
-                ['Atrasados e próximos 30 dias', { count: query.data.bills.length, amount: query.data.summary.totalAmount }],
-              ] as const).map(([label, total]) => (
-                <div key={label} className="flex flex-wrap justify-between gap-x-2">
+                ['thisWeek', t('upcomingBills.totals.thisWeek'), query.data.summary.thisWeek],
+                ['thisMonth', t('upcomingBills.totals.thisMonth'), query.data.summary.thisMonth],
+                ['next30Days', t('upcomingBills.totals.next30Days'), { count: query.data.bills.length, amount: query.data.summary.totalAmount }],
+              ] as const).map(([key, label, total]) => (
+                <div key={key} className="flex flex-wrap justify-between gap-x-2">
                   <dt className={smallText}>{label} ({total.count})</dt>
                   <dd className={moneyClass}>{money(total.amount)}</dd>
                 </div>
@@ -110,6 +108,16 @@ export function UpcomingBillsPanel({ query, refresh, showValues }: { query: Quer
 }
 
 function BillList({ bills, money }: { bills: Bill[]; money: (amount: number) => string }) {
+  const t = useSafeTranslations('dashboard');
+  const locale = useSafeLocale();
+  const billDateFmt = new Intl.DateTimeFormat(INTL_LOCALE[locale], { day: '2-digit', month: 'short' });
+  const dayLabel = (days: number) => {
+    if (days < 0) return t('upcomingBills.days.overdue', { count: Math.abs(days) });
+    if (days === 0) return t('upcomingBills.days.today');
+    if (days === 1) return t('upcomingBills.days.tomorrow');
+    return t('upcomingBills.days.inDays', { count: days });
+  };
+
   return (
     <ul className="mt-3 max-h-64 divide-y divide-border overflow-y-auto">
       {bills.map((bill) => {
@@ -121,7 +129,7 @@ function BillList({ bills, money }: { bills: Bill[]; money: (amount: number) => 
               <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="break-words text-sm font-medium">{bill.title}</p>
-                <p className={smallText}>{bill.source} · {dateFmt.format(new Date(bill.dueDate))}</p>
+                <p className={smallText}>{bill.source} · {billDateFmt.format(new Date(bill.dueDate))}</p>
                 <p className={cn('text-xs', state)}>{dayLabel(bill.daysUntilDue)}</p>
               </div>
             </div>

@@ -116,4 +116,32 @@ describe("GET /api/dashboard - filtro de data civil", () => {
       expect(res.status).toBe(400);
     }
   });
+
+  test("emite monthKey em monthlyTrend e formata rótulos e erros para en e es", async () => {
+    const reqEn = new NextRequest("http://localhost/api/dashboard?from=2026-11-01&to=2026-11-30&locale=en");
+    const resEn = await GET(reqEn);
+    expect(resEn.status).toBe(200);
+    const dataEn = await resEn.json();
+    expect(dataEn.monthlyTrend).toHaveLength(1);
+    expect(dataEn.monthlyTrend[0].monthKey).toBe("2026-11");
+    expect(dataEn.monthlyTrend[0].month).toContain("Nov");
+
+    const invalidEn = await GET(new NextRequest("http://localhost/api/dashboard?from=abc&locale=en"));
+    expect(invalidEn.status).toBe(400);
+    expect(invalidEn.headers.get("X-Error-Code")).toBe("INVALID_DATE_FORMAT");
+    expect(await invalidEn.json()).toEqual({
+      error: "Invalid dates. Use YYYY-MM-DD format.",
+      code: "INVALID_DATE_FORMAT",
+    });
+
+    const rangeEs = await GET(
+      new NextRequest("http://localhost/api/dashboard?from=2026-11-26&to=2026-11-25&locale=es")
+    );
+    expect(rangeEs.status).toBe(400);
+    expect(rangeEs.headers.get("X-Error-Code")).toBe("INVALID_DATE_RANGE");
+    expect(await rangeEs.json()).toEqual({
+      error: "Rango de fechas inválido: 'from' debe ser anterior o igual a 'to'.",
+      code: "INVALID_DATE_RANGE",
+    });
+  });
 });

@@ -11,21 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
-
-const MONTH_OPTIONS = [
-  { value: '1', label: 'Janeiro' },
-  { value: '2', label: 'Fevereiro' },
-  { value: '3', label: 'Março' },
-  { value: '4', label: 'Abril' },
-  { value: '5', label: 'Maio' },
-  { value: '6', label: 'Junho' },
-  { value: '7', label: 'Julho' },
-  { value: '8', label: 'Agosto' },
-  { value: '9', label: 'Setembro' },
-  { value: '10', label: 'Outubro' },
-  { value: '11', label: 'Novembro' },
-  { value: '12', label: 'Dezembro' },
-] as const;
+import { useSafeTranslations } from '@/i18n/provider';
+import { MONTH_NUMBER_KEYS } from './analytics-i18n';
 
 export interface MonthlyBudgetDraft {
   categoryId: string;
@@ -71,6 +58,7 @@ export function MonthlyBudgetEditor({
   onCloseAutoFocus = defaultCloseAutoFocus,
   onSubmit,
 }: MonthlyBudgetEditorProps) {
+  const t = useSafeTranslations('goals');
   const isEditing = mode === 'edit';
 
   return (
@@ -79,8 +67,8 @@ export function MonthlyBudgetEditor({
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
       contentClassName="sm:max-w-[420px]"
-      title={isEditing ? 'Editar Orçamento' : 'Novo Orçamento'}
-      description="Informe a categoria, o valor e o período do limite."
+      title={isEditing ? t('monthlyBudget.editor.editTitle') : t('monthlyBudget.editor.createTitle')}
+      description={t('monthlyBudget.editor.description')}
       footer={
         <>
           <Button
@@ -88,26 +76,30 @@ export function MonthlyBudgetEditor({
             onClick={() => onOpenChange(false)}
             disabled={submitting}
           >
-            Cancelar
+            {t('monthlyBudget.editor.cancel')}
           </Button>
           <Button
             onClick={onSubmit}
             disabled={submitting || !form.categoryId || !form.amount}
           >
-            {submitting ? 'Salvando...' : isEditing ? 'Atualizar' : 'Criar'}
+            {submitting
+              ? t('monthlyBudget.editor.saving')
+              : isEditing
+                ? t('monthlyBudget.editor.update')
+                : t('monthlyBudget.editor.create')}
           </Button>
         </>
       }
     >
       <div className="space-y-4 py-2">
         <div className="space-y-2">
-          <Label htmlFor={`${fieldId}-category`}>Categoria</Label>
+          <Label htmlFor={`${fieldId}-category`}>{t('monthlyBudget.editor.category')}</Label>
           <Select
             value={form.categoryId}
             onValueChange={(value) => onFieldChange('categoryId', value)}
           >
             <SelectTrigger id={`${fieldId}-category`} className="w-full">
-              <SelectValue placeholder="Selecione uma categoria" />
+              <SelectValue placeholder={t('monthlyBudget.editor.categoryPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {categories.map((cat) => (
@@ -126,11 +118,11 @@ export function MonthlyBudgetEditor({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor={`${fieldId}-amount`}>Valor do Limite (R$)</Label>
+          <Label htmlFor={`${fieldId}-amount`}>{t('monthlyBudget.editor.limitAmount')}</Label>
           <Input
             id={`${fieldId}-amount`}
             type="number"
-            placeholder="0,00"
+            placeholder={t('monthlyBudget.editor.amountPlaceholder')}
             step="0.01"
             min="0"
             value={form.amount}
@@ -140,7 +132,7 @@ export function MonthlyBudgetEditor({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor={`${fieldId}-month`}>Mês</Label>
+            <Label htmlFor={`${fieldId}-month`}>{t('monthlyBudget.editor.month')}</Label>
             <Select
               value={form.month}
               onValueChange={(value) => onFieldChange('month', value)}
@@ -149,16 +141,16 @@ export function MonthlyBudgetEditor({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {MONTH_OPTIONS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
+                {MONTH_NUMBER_KEYS.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {t(`months.${m}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor={`${fieldId}-year`}>Ano</Label>
+            <Label htmlFor={`${fieldId}-year`}>{t('monthlyBudget.editor.year')}</Label>
             <Select
               value={form.year}
               onValueChange={(value) => onFieldChange('year', value)}

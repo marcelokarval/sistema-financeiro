@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createTranslator } from 'next-intl';
 import {
   ArrowLeftRight,
   ArrowUpRight,
@@ -9,6 +10,7 @@ import {
   CalendarClock,
   Wallet,
   CreditCard,
+  Search,
   ShoppingBag,
   Tag,
   TrendingUp,
@@ -21,7 +23,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search } from 'lucide-react';
+import { DEFAULT_LOCALE, normalizeLocale, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
 import type { ViewType } from '@/lib/store';
@@ -59,23 +63,19 @@ export function searchDestination(type: string): ViewType | undefined {
     : undefined;
 }
 
-const cardTypeLabels: Record<string, string> = {
-  CREDIT: 'Crédito',
-  DEBIT: 'Débito',
-  BOTH: 'Crédito e Débito',
-};
-
-const accountTypeLabels: Record<string, string> = {
-  CASH: 'Dinheiro',
-  BANK: 'Banco',
-  DIGITAL_WALLET: 'Carteira Digital',
-};
-
-const categoryTypeLabels: Record<string, string> = {
-  INCOME: 'Receita',
-  EXPENSE: 'Despesa',
-  BOTH: 'Ambos',
-};
+const KNOWN_CARD_TYPES = new Set(['CREDIT', 'DEBIT', 'BOTH']);
+const KNOWN_ACCOUNT_TYPES = new Set(['CASH', 'BANK', 'DIGITAL_WALLET']);
+const KNOWN_CATEGORY_TYPES = new Set(['INCOME', 'EXPENSE', 'BOTH']);
+const SEARCH_GROUP_KEYS = [
+  'transactions',
+  'purchases',
+  'accounts',
+  'cards',
+  'categories',
+  'investments',
+  'installments',
+  'consortiums',
+] as const;
 
 interface GlobalSearchProps {
   isOpen: boolean;
@@ -153,79 +153,97 @@ export async function requestGlobalSearch(
   }
 }
 
-export function buildSearchResults(rawData: Record<string, any[]>, query: string): SearchResult[] {
+export interface BuildSearchResultsOptions {
+  locale?: CanonicalLocale | string;
+  t?: (key: any, values?: any) => string;
+}
+
+export function buildSearchResults(
+  rawData: Record<string, any[]>,
+  query: string,
+  options?: BuildSearchResultsOptions,
+): SearchResult[] {
+  const locale = normalizeLocale(options?.locale ?? DEFAULT_LOCALE);
+  const t = options?.t ?? createTranslator({
+    locale,
+    messages: getMessagesForLocale(locale),
+    namespace: 'shell.globalSearch',
+  });
   const q = query.trim().toLowerCase();
   const results: SearchResult[] = [];
 
-  for (const t of rawData.transactions ?? []) {
-    const txDate = formatPurchaseDate(t.date);
-    const searchable = `${t.description || ''} ${t.category?.name || ''} ${t.type || ''} ${txDate}`.toLowerCase();
+  for (const tx of rawData.transactions ?? []) {
+    const txDate = formatPurchaseDate(tx.date, 'date', locale);
+    const searchable = `${tx.description || ''} ${tx.category?.name || ''} ${tx.type || ''} ${txDate}`.toLowerCase();
     if (q && !searchable.includes(q)) continue;
 
-    const isTransfer = t.type === 'TRANSFER';
-    const isIn = t.type === 'INCOME';
+    const isTransfer = tx.type === 'TRANSFER';
+    const isIn = tx.type === 'INCOME';
     results.push({
-      id: t.id,
+      id: tx.id,
       type: 'transactions',
-      label: t.description || 'Sem descrição',
+      label: tx.description || t('fallbacks.noDescription'),
       secondary: isTransfer
-        ? `${currencyFmt(t.amount)} · Transferência · ${txDate}`
-        : `${isIn ? '+' : '-'}${currencyFmt(t.amount)} · ${txDate}`,
+        ? `${currencyFmt(tx.amount, locale)} · ${t('labels.transfer')} · ${txDate}`
+        : `${isIn ? '+' : '-'}${currencyFmt(tx.amount, locale)} · ${txDate}`,
       icon: isTransfer ? ArrowLeftRight : isIn ? ArrowUpRight : ArrowDownRight,
       iconTone: isTransfer ? 'text-muted-foreground' : isIn ? 'text-(--ds-accent-positive)' : 'text-(--ds-accent-danger)',
-      meta: t.accountId ? { accountId: t.accountId } : undefined,
+      meta: tx.accountId ? { accountId: tx.accountId } : undefined,
     });
   }
 
   for (const p of rawData.purchases ?? []) {
-    const date = formatPurchaseDate(p.date);
+    const date = formatPurchaseDate(p.date, 'date', locale);
     const searchable = `${p.merchant || ''} ${p.card?.name || ''} ${p.category?.name || ''} ${date}`.toLowerCase();
     if (q && !searchable.includes(q)) continue;
 
     results.push({
       id: p.id,
       type: 'purchases',
-      label: p.merchant || 'Sem estabelecimento',
-      secondary: `${currencyFmt(p.totalAmount)} · ${date}${p.card ? ` · ${p.card.name}` : ''}`,
+      label: p.merchant || t('fallbacks.noMerchant'),
+      secondary: `${currencyFmt(p.totalAmount, locale)} · ${date}${p.card ? ` · ${p.card.name}` : ''}`,
       icon: ShoppingBag,
     });
   }
 
   for (const a of rawData.accounts ?? []) {
-    const searchable = `${a.name || ''} ${accountTypeLabels[a.type] || ''} ${currencyFmt(a.balance)}`.toLowerCase();
+    const typeLabel = KNOWN_ACCOUNT_TYPES.has(a.type) ? t(`accountTypes.${a.type}`) : a.type;
+    const searchable = `${a.name || ''} ${typeLabel || ''} ${currencyFmt(a.balance, locale)}`.toLowerCase();
     if (q && !searchable.includes(q)) continue;
 
     results.push({
       id: a.id,
       type: 'accounts',
-      label: a.name || 'Sem nome',
-      secondary: `${currencyFmt(a.balance)} · ${accountTypeLabels[a.type] || a.type}`,
+      label: a.name || t('fallbacks.noName'),
+      secondary: `${currencyFmt(a.balance, locale)} · ${typeLabel}`,
       icon: Wallet,
     });
   }
 
   for (const c of rawData.cards ?? []) {
-    const searchable = `${c.name || ''} ${c.brand || ''} ${c.lastFourDigits || ''} ${cardTypeLabels[c.type] || ''}`.toLowerCase();
+    const typeLabel = KNOWN_CARD_TYPES.has(c.type) ? t(`cardTypes.${c.type}`) : c.type;
+    const searchable = `${c.name || ''} ${c.brand || ''} ${c.lastFourDigits || ''} ${typeLabel || ''}`.toLowerCase();
     if (q && !searchable.includes(q)) continue;
 
     results.push({
       id: c.id,
       type: 'cards',
-      label: `${c.name || 'Cartão'} · •••• ${c.lastFourDigits || '0000'}`,
-      secondary: `${cardTypeLabels[c.type] || c.type} · ${c.brand || ''} · Fatura: ${currencyFmt(c.currentBalance || 0)}`,
+      label: `${c.name || t('fallbacks.cardDefault')} · •••• ${c.lastFourDigits || '0000'}`,
+      secondary: `${typeLabel} · ${c.brand || ''} · ${t('labels.statement', { amount: currencyFmt(c.currentBalance || 0, locale) })}`,
       icon: CreditCard,
     });
   }
 
   for (const cat of rawData.categories ?? []) {
-    const searchable = `${cat.name || ''} ${categoryTypeLabels[cat.type] || ''}`.toLowerCase();
+    const typeLabel = KNOWN_CATEGORY_TYPES.has(cat.type) ? t(`categoryTypes.${cat.type}`) : cat.type;
+    const searchable = `${cat.name || ''} ${typeLabel || ''}`.toLowerCase();
     if (q && !searchable.includes(q)) continue;
 
     results.push({
       id: cat.id,
       type: 'categories',
-      label: cat.name || 'Sem nome',
-      secondary: categoryTypeLabels[cat.type] || cat.type,
+      label: cat.name || t('fallbacks.noName'),
+      secondary: typeLabel,
       icon: Tag,
     });
   }
@@ -238,8 +256,8 @@ export function buildSearchResults(rawData: Record<string, any[]>, query: string
     results.push({
       id: inv.id,
       type: 'investments',
-      label: inv.name || 'Sem nome',
-      secondary: `${currencyFmt(inv.currentBalance || 0)}${details ? ` · ${details}` : ''}`,
+      label: inv.name || t('fallbacks.noName'),
+      secondary: `${currencyFmt(inv.currentBalance || 0, locale)}${details ? ` · ${details}` : ''}`,
       icon: TrendingUp,
     });
   }
@@ -253,8 +271,8 @@ export function buildSearchResults(rawData: Record<string, any[]>, query: string
     results.push({
       id: ins.id,
       type: 'installments',
-      label: ins.description || 'Sem descrição',
-      secondary: `${currencyFmt(ins.monthlyValue || 0)}/mês · ${paid}/${count}${ins.card?.name ? ` · ${ins.card.name}` : ''}`,
+      label: ins.description || t('fallbacks.noDescription'),
+      secondary: `${t('labels.perMonth', { amount: currencyFmt(ins.monthlyValue || 0, locale) })} · ${paid}/${count}${ins.card?.name ? ` · ${ins.card.name}` : ''}`,
       icon: CalendarClock,
     });
   }
@@ -263,14 +281,15 @@ export function buildSearchResults(rawData: Record<string, any[]>, query: string
     const searchable = `${con.description || ''} ${con.group || ''} ${con.quota || ''} ${con.administrator || ''} ${con.status || ''}`.toLowerCase();
     if (q && !searchable.includes(q)) continue;
 
-    const details = [con.administrator, con.group && con.quota ? `Grupo ${con.group} · Cota ${con.quota}` : con.group || con.quota]
-      .filter(Boolean)
-      .join(' · ');
+    const groupQuota = con.group && con.quota
+      ? t('labels.groupQuota', { group: con.group, quota: con.quota })
+      : con.group || con.quota;
+    const details = [con.administrator, groupQuota].filter(Boolean).join(' · ');
     results.push({
       id: con.id,
       type: 'consortiums',
-      label: con.description || 'Sem descrição',
-      secondary: `${currencyFmt(con.totalAmount || 0)}${details ? ` · ${details}` : ''}`,
+      label: con.description || t('fallbacks.noDescription'),
+      secondary: `${currencyFmt(con.totalAmount || 0, locale)}${details ? ` · ${details}` : ''}`,
       icon: Building2,
     });
   }
@@ -279,6 +298,8 @@ export function buildSearchResults(rawData: Record<string, any[]>, query: string
 }
 
 export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
+  const locale = useSafeLocale();
+  const t = useSafeTranslations('shell.globalSearch');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -329,22 +350,21 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
     }
   }, [isOpen]);
 
-  const flatResults = useMemo<SearchResult[]>(() => buildSearchResults(rawData, query), [rawData, query]);
+  const flatResults = useMemo<SearchResult[]>(
+    () => buildSearchResults(rawData, query, { locale, t }),
+    [rawData, query, locale, t],
+  );
 
   const groupedResults = useMemo<SearchGroup[]>(() => {
     const groups: SearchGroup[] = [];
-    const order = ['transactions', 'purchases', 'accounts', 'cards', 'categories', 'investments', 'installments', 'consortiums'];
-
-    for (const key of order) {
-      const meta = searchGroupMeta[key];
+    for (const key of SEARCH_GROUP_KEYS) {
       const results = flatResults.filter((r) => r.type === key);
-      if (results.length > 0) {
-        groups.push({ key, title: meta.title, results });
+      if (results.length > 0 && searchGroupMeta[key]) {
+        groups.push({ key, title: t(`groups.${key}`), results });
       }
     }
-
     return groups;
-  }, [flatResults]);
+  }, [flatResults, t]);
 
   useEffect(() => {
     setActiveIndex((index) => Number.isInteger(index) ? Math.max(0, Math.min(index, flatResults.length - 1)) : 0);
@@ -356,7 +376,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => handleSearchKeyDown(e, { results: flatResults, activeIndex, setActiveIndex, onSelect, onClose }),
-    [flatResults, activeIndex, onSelect, onClose]
+    [flatResults, activeIndex, onSelect, onClose],
   );
 
   useEffect(() => {
@@ -378,19 +398,19 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
             className="flex max-h-[80dvh] min-w-0 flex-col transition-opacity duration-150 motion-reduce:transition-none"
           >
             <header className="shrink-0 border-b border-border px-4 pb-3 pt-4 sm:px-5">
-              <DialogTitle className="pr-8 text-base">Busca Global</DialogTitle>
+              <DialogTitle className="pr-8 text-base">{t('title')}</DialogTitle>
               <DialogDescription className="mt-1.5 pr-6 text-xs">
-                Transações, compras, contas, cartões, categorias, investimentos, parcelas e consórcios
+                {t('description')}
               </DialogDescription>
               <div className="relative mt-3">
                 <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   ref={inputRef}
-                  aria-label="Buscar nas finanças"
+                  aria-label={t('inputAriaLabel')}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Digite um termo de busca…"
+                  placeholder={t('placeholder')}
                   className="h-10 rounded-md bg-background pl-9"
                 />
               </div>
@@ -400,13 +420,13 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
               <div ref={listRef}>
                 {error && !loading && (
                   <div role="alert" className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5 text-xs sm:px-5">
-                    <span className="text-destructive">Não foi possível carregar todos os dados da busca.</span>
+                    <span className="text-destructive">{t('loadError')}</span>
                     <button
                       type="button"
                       onClick={() => void fetchAll()}
                       className="rounded border border-border bg-card px-2 py-1 font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-(--ds-focus)"
                     >
-                      Tentar novamente
+                      {t('retry')}
                     </button>
                   </div>
                 )}
@@ -427,11 +447,11 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
             {flatResults.length > 0 && (
               <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground sm:px-5">
                 <span className="tabular-nums">
-                  {flatResults.length} resultado{flatResults.length !== 1 ? 's' : ''}
+                  {t('resultCount', { count: flatResults.length })}
                 </span>
                 <div className="flex gap-3">
-                  <span><kbd className="rounded border border-border px-1 font-mono">↑↓</kbd> Navegar</span>
-                  <span><kbd className="rounded border border-border px-1 font-mono">↵</kbd> Selecionar</span>
+                  <span><kbd className="rounded border border-border px-1 font-mono">↑↓</kbd> {t('navigateHint')}</span>
+                  <span><kbd className="rounded border border-border px-1 font-mono">↵</kbd> {t('selectHint')}</span>
                 </div>
               </footer>
             )}

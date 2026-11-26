@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
+import { useSafeTranslations } from '@/i18n/provider';
 
 export interface BudgetGoalDraft {
   name: string;
@@ -53,6 +54,7 @@ export function BudgetGoalEditor({
   onCloseAutoFocus,
   onSubmit,
 }: BudgetGoalEditorProps) {
+  const t = useSafeTranslations('goals');
   const isEditing = mode === 'edit';
 
   return (
@@ -61,26 +63,26 @@ export function BudgetGoalEditor({
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
       contentClassName="max-h-[85dvh] overflow-y-auto sm:max-w-md"
-      title={isEditing ? 'Editar Meta' : 'Nova Meta de Orçamento'}
+      title={isEditing ? t('budgetGoals.editor.editTitle') : t('budgetGoals.editor.createTitle')}
       description={
         isEditing
-          ? 'Atualize os dados da sua meta de orçamento.'
-          : 'Defina um objetivo financeiro para acompanhar seu progresso.'
+          ? t('budgetGoals.editor.editDescription')
+          : t('budgetGoals.editor.createDescription')
       }
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancelar
+            {t('budgetGoals.editor.cancel')}
           </Button>
           <Button onClick={onSubmit} disabled={submitting} className="gap-1.5">
             {submitting ? (
-              <>Salvando...</>
+              <>{t('budgetGoals.editor.saving')}</>
             ) : isEditing ? (
-              'Salvar Alterações'
+              t('budgetGoals.editor.saveChanges')
             ) : (
               <>
                 <Plus className="w-4 h-4" />
-                Criar Meta
+                {t('budgetGoals.editor.createSubmit')}
               </>
             )}
           </Button>
@@ -89,20 +91,20 @@ export function BudgetGoalEditor({
     >
       <div className="space-y-4 py-2">
         <div className="space-y-2">
-          <Label htmlFor="goal-name">Nome da meta *</Label>
+          <Label htmlFor="goal-name">{t('budgetGoals.editor.fields.name')}</Label>
           <Input
             id="goal-name"
-            placeholder="Ex: Reserva de emergência"
+            placeholder={t('budgetGoals.editor.fields.namePlaceholder')}
             value={form.name}
             onChange={(e) => onFieldChange('name', e.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="goal-desc">Descrição</Label>
+          <Label htmlFor="goal-desc">{t('budgetGoals.editor.fields.description')}</Label>
           <Textarea
             id="goal-desc"
-            placeholder="Descreva sua meta (opcional)"
+            placeholder={t('budgetGoals.editor.fields.descriptionPlaceholder')}
             value={form.description}
             onChange={(e) => onFieldChange('description', e.target.value)}
             rows={2}
@@ -111,25 +113,25 @@ export function BudgetGoalEditor({
 
         <div className="grid gap-3 min-[400px]:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="goal-target">Valor alvo (R$) *</Label>
+            <Label htmlFor="goal-target">{t('budgetGoals.editor.fields.targetAmount')}</Label>
             <Input
               id="goal-target"
               type="number"
               min="0.01"
               step="0.01"
-              placeholder="0,00"
+              placeholder={t('budgetGoals.editor.fields.amountPlaceholder')}
               value={form.targetAmount}
               onChange={(e) => onFieldChange('targetAmount', e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="goal-current">Valor atual (R$)</Label>
+            <Label htmlFor="goal-current">{t('budgetGoals.editor.fields.currentAmount')}</Label>
             <Input
               id="goal-current"
               type="number"
               min="0"
               step="0.01"
-              placeholder="0,00"
+              placeholder={t('budgetGoals.editor.fields.amountPlaceholder')}
               value={form.currentAmount}
               onChange={(e) => onFieldChange('currentAmount', e.target.value)}
             />
@@ -138,16 +140,16 @@ export function BudgetGoalEditor({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="goal-category">Categoria</Label>
+            <Label htmlFor="goal-category">{t('budgetGoals.editor.fields.category')}</Label>
             <Select
               value={form.categoryId}
               onValueChange={(val) => onFieldChange('categoryId', val)}
             >
               <SelectTrigger id="goal-category" className="w-full min-w-0">
-                <SelectValue placeholder="Selecionar..." />
+                <SelectValue placeholder={t('budgetGoals.editor.fields.categoryPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Nenhuma</SelectItem>
+                <SelectItem value="none">{t('budgetGoals.editor.fields.categoryNone')}</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.name}
@@ -157,7 +159,7 @@ export function BudgetGoalEditor({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="goal-end">Data limite</Label>
+            <Label htmlFor="goal-end">{t('budgetGoals.editor.fields.endDate')}</Label>
             <Input
               id="goal-end"
               type="date"

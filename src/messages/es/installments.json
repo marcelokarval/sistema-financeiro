@@ -1,0 +1,126 @@
+{
+  "title": "Cuotas y financiamientos",
+  "subtitle": "Sigue tus planes y pagos",
+  "loading": "Cargando planes…",
+  "loadingEntries": "Cargando cuotas…",
+  "planTypes": {
+    "FINANCING": "Financiamiento",
+    "CARD_INSTALLMENT": "Pago en cuotas con tarjeta",
+    "LOAN": "Préstamo",
+    "PERSONAL": "Préstamo Personal",
+    "RENTAL": "Alquiler"
+  },
+  "planStatus": {
+    "ACTIVE": "Activo",
+    "COMPLETED": "Completado",
+    "CANCELLED": "Cancelado",
+    "OVERDUE": "Vencido"
+  },
+  "installmentStatus": {
+    "PAID": "Pagado",
+    "PENDING": "Pendiente",
+    "OVERDUE": "Vencido"
+  },
+  "filters": {
+    "ariaLabel": "Filtrar planes por estado",
+    "ALL": "Todos",
+    "ACTIVE": "Activos",
+    "COMPLETED": "Completados",
+    "OVERDUE": "Vencidos"
+  },
+  "empty": {
+    "ALL": "No hay planes registrados. Usa “Nuevo plan” para comenzar.",
+    "ACTIVE": "No hay planes activos.",
+    "COMPLETED": "No hay planes completados.",
+    "OVERDUE": "No hay planes vencidos."
+  },
+  "actions": {
+    "newPlan": "Nuevo plan",
+    "backToPlans": "Volver a planes",
+    "deletePlan": "Eliminar plan",
+    "retry": "Intentar de nuevo",
+    "openAriaLabel": "Abrir plan: {description}"
+  },
+  "errors": {
+    "loadPlans": "No fue posible cargar los planes.",
+    "loadPlanDetail": "No fue posible cargar los detalles del plan.",
+    "createPlan": "Error al crear el plan",
+    "deletePlan": "Error al eliminar el plan",
+    "payInstallment": "Error al registrar el pago"
+  },
+  "toast": {
+    "planCreated": "¡Plan creado con éxito!",
+    "planDeleted": "¡Plan eliminado!",
+    "installmentPaid": "¡Cuota marcada como pagada!"
+  },
+  "summary": {
+    "ariaLabel": "Resumen de planes",
+    "remainingAmount": "Valor restante",
+    "remainingNote": "Saldo deudor total",
+    "totalFinanced": "Total financiado",
+    "planCount": "{count, plural, one {# plan en total} other {# planes en total}}",
+    "totalPaid": "Total pagado",
+    "overdueInstallments": "Cuotas vencidas",
+    "attentionNeeded": "Atención necesaria",
+    "noOverdue": "Sin retrasos"
+  },
+  "portfolio": {
+    "sectionTitle": "Planes",
+    "totalLabel": "Total",
+    "perMonth": "{amount}/mes · {count}x",
+    "paidOf": "{paid} de {total} pagadas · {percent}%",
+    "overdueCount": "{count, plural, one {# vencida} other {# vencidas}}",
+    "nextDue": "Próximo vencimiento: {date}"
+  },
+  "detail": {
+    "summaryAriaLabel": "Resumen del plan",
+    "remainingAmount": "Valor restante",
+    "totalFinanced": "Total financiado",
+    "paidAmount": "Valor pagado",
+    "nextDue": "Próximo vencimiento",
+    "progressTitle": "Progreso del pago",
+    "paidOf": "{paid} de {total} pagadas · {percent}%",
+    "interestDetails": "Tasa de interés: <strong>{rate}%</strong> · Cuota mensual: <mono>{monthly}</mono> · Inicio: <strong>{startDate}</strong>"
+  },
+  "entries": {
+    "title": "Cuotas",
+    "empty": "No se encontraron cuotas. Las cuotas se generarán automáticamente.",
+    "label": "Cuota {number} de {total}",
+    "dueDate": "Vencimiento: {date}",
+    "paidOn": "Pagada el {date}",
+    "payAriaLabel": "Pagar cuota {number} de {total}",
+    "paying": "Pagando…",
+    "pay": "Pagar"
+  },
+  "editor": {
+    "closeLabel": "Cerrar formulario",
+    "title": "Nuevo Plan de Cuotas",
+    "description": "Registra un nuevo financiamiento, préstamo o compra en cuotas",
+    "cancel": "Cancelar",
+    "creating": "Creando…",
+    "create": "Crear Plan",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Ej: Financiamiento del Apartamento...",
+    "typeLabel": "Tipo",
+    "totalAmountLabel": "Valor Total (R$)",
+    "decimalPlaceholder": "0,00",
+    "countLabel": "Nº de Cuotas",
+    "countPlaceholder": "12",
+    "monthlyValueLabel": "Valor de la Cuota (R$)",
+    "monthlyValuePlaceholder": "Autocalculado",
+    "monthlyValueHint": "Calculado automáticamente como valor total ÷ cuotas",
+    "interestRateLabel": "Tasa de Interés (% anual)",
+    "startDateLabel": "Fecha de Inicio",
+    "cardLabel": "Tarjeta (opcional)",
+    "cardPlaceholder": "Ninguna tarjeta",
+    "categoryLabel": "Categoría",
+    "categoryPlaceholder": "Selecciona..."
+  },
+  "delete": {
+    "title": "Eliminar plan",
+    "descriptionGeneric": "¿Seguro que deseas eliminar este plan? Esta acción no se puede deshacer.",
+    "descriptionNamed": "¿Seguro que deseas eliminar el plan \"{description}\"? Esta acción no se puede deshacer.",
+    "cancel": "Cancelar",
+    "confirm": "Eliminar"
+  }
+}
