@@ -1,6 +1,6 @@
 # FinanceApp — Sistema Financeiro Pessoal
 
-Aplicação web (SPA) em **pt-BR / BRL** para gestão financeira doméstica, construída com **Next.js 16**, **TypeScript**, **Prisma (SQLite)** e o sistema visual **Quiet Financial OS** (temas escuro e claro).
+Aplicação web (SPA) multilíngue em **Português (`pt`, padrão), Espanhol (`es`) e Inglês (`en`)** com moeda contábil fixa em **BRL** (sem conversão cambial fictícia) para gestão financeira doméstica, construída com **Next.js 16**, **TypeScript**, **Prisma (SQLite)** e o sistema visual **Quiet Financial OS** (temas escuro e claro).
 
 Repositório: [`marcelokarval/sistema-financeiro`](https://github.com/marcelokarval/sistema-financeiro)
 
@@ -21,16 +21,18 @@ O FinanceApp centraliza controle de fluxo de caixa, cartões, compras detalhadas
 9. **Caixinhas** (`savings`) — Metas de economia e reservas com depósitos e cálculo de progresso.
 
 Recursos transversais disponíveis no cabeçalho e sob demanda:
+- **Seletor de idiomas (`pt`, `es`, `en`)** com bandeiras SVG ([`public/locale-flags/`](public/locale-flags/)) no cabeçalho e na navegação móvel, persistindo a preferência no cookie `NEXT_LOCALE` (com fallback por `Accept-Language`, padrão `pt`).
 - **Busca global (`Ctrl/⌘ K`)** com navegação direta para registros e destinos.
 - **Painel de notificações** e alternância de tema **Escuro / Claro**.
-- **Exportação CSV** via `/api/export`.
-- **Assistente financeiro (opcional)** sob demanda via `/api/advisor`.
+- **Exportação CSV localizada** via `/api/export` (`?locale=pt|es|en`, cookie `NEXT_LOCALE` ou `Accept-Language`) com proteção contra formula injection.
+- **Assistente financeiro (opcional)** sob demanda via `/api/advisor`, com respostas e contexto financeiro sanitizado localizados em `pt`, `es` ou `en` mantendo `BRL`.
 
 ---
 
 ## Stack Real do Projeto
 
 - **Framework & UI:** Next.js `16.1.1` (App Router, saída `standalone`), React `19`, TypeScript `5`
+- **Internacionalização (i18n):** `next-intl` `4.7.0` sem URL routing (cookie `NEXT_LOCALE` + `Accept-Language`, catálogos estáticos em [`src/messages/`](src/messages/), [`src/i18n/`](src/i18n/) e [`src/lib/server-i18n.ts`](src/lib/server-i18n.ts) nas APIs), com moeda contábil fixa em `BRL`
 - **Estilização & Componentes:** Tailwind CSS v4, shadcn/ui (Radix UI), tokens `--ds-*` (`docs/reference/design-system.premium-theme.css`), Lucide Icons, Sonner e utilitário `cn()` (`src/lib/utils.ts`)
 - **Estado & Gráficos:** Zustand (`src/lib/store.ts`) e Recharts (`2.15.4`)
 - **Persistência:** Prisma `6.11.1` + SQLite (`prisma/schema.prisma`)

@@ -9,6 +9,8 @@
 
 ```
 sistema-financeiro/
+├── public/
+│   └── locale-flags/       # Bandeiras SVG do seletor de idiomas (pt.svg, es.svg, en.svg)
 ├── src/
 │   ├── app/
 │   │   ├── api/            # Rotas API (uma subpasta por recurso)
@@ -20,7 +22,10 @@ sistema-financeiro/
 │   │   ├── shared/         # Primitivos financeiros compartilhados
 │   │   └── ui/             # Componentes shadcn/ui (NÃO editar manualmente)
 │   ├── hooks/              # Hooks React customizados
-│   └── lib/                # store.ts (Zustand), db.ts (Prisma), helpers.ts, utils.ts (cn), api-validation.ts
+│   ├── i18n/               # Fundação next-intl sem URL routing (config, messages, types, request, provider)
+│   ├── lib/                # store.ts (Zustand), db.ts (Prisma), helpers.ts, server-i18n.ts, utils.ts (cn), api-validation.ts
+│   ├── messages/           # Catálogos JSON por idioma (pt/, es/, en/ — domínios UI + api.json)
+│   └── test-utils/         # Helpers de teste (intl.tsx: IntlTestWrapper, renderWithIntl)
 ├── prisma/
 │   ├── schema.prisma       # Schema SQLite
 │   └── seed.ts             # Massa opcional para desenvolvimento/demo
@@ -43,6 +48,7 @@ sistema-financeiro/
 - Novo componente de negócio → `src/components/finance/<kebab-case>.tsx`
 - Componente financeiro compartilhado → `src/components/shared/<kebab-case>.tsx`
 - Nova rota API → `src/app/api/<recurso>/route.ts`
+- Mensagens i18n (`pt`, `es`, `en`) → `src/messages/{pt,es,en}/<namespace>.json` (com registro em `src/i18n/{messages,types}.ts`)
 - Mudanças planejadas e specs → `openspec/changes/<change>/` (`schema: superpowers-bridge`)
 - Capturas de QA → `download/` (nunca na raiz)
 - Artefatos temporários → `.tmp/` (ignorado pelo Git)
@@ -63,12 +69,12 @@ sistema-financeiro/
   import { useRealtime } from '@/hooks/use-realtime';
   ```
 - **Componentes e UI:**
-  - Widgets e views em `src/components/finance/` usam `'use client'`, estado de navegação via `src/lib/store.ts` e moeda formatada com `currencyFmt()`.
+  - Widgets e views em `src/components/finance/` usam `'use client'`, estado de navegação via `src/lib/store.ts` e moeda formatada com `currencyFmt(v, locale)` (mantendo `BRL` fixo).
   - Compose classes condicionais com `cn()` (`@/lib/utils`). **VETO a `raw-conditional-class-name`** (template literal em `className` com ternária de strings), verificado por `bun --no-env-file run arch:check`.
   - **VETO a `framer-motion`**: proibido importar `framer-motion` em `src/`.
   - **NÃO** hardcode cores hex/oklch nos componentes; preserve o import de `docs/reference/design-system.premium-theme.css` em `src/app/globals.css` e use variáveis Tailwind / `--ds-*`.
   - **NÃO** edite componentes em `src/components/ui/` manualmente — use a CLI do shadcn.
-  - Mantenha UI em **pt-BR**, moeda em **BRL** e verifique **dark mode e light mode**.
+  - **Internacionalização (i18n) e Moeda:** suporte multilíngue obrigatório em **pt** (padrão), **es** e **en**, sem roteamento por URL (`NEXT_LOCALE` + `Accept-Language`). Nos componentes de `src/components/shared/` e `src/components/finance/`, use `useSafeTranslations` e `useSafeLocale` de `@/i18n/provider` (nunca hooks crus de `next-intl`, garantindo fallback seguro em `'pt'` fora de provider); nas rotas API use `src/lib/server-i18n.ts`; nos testes use `IntlTestWrapper` / `renderWithIntl` de `@/test-utils/intl`; mantenha moeda contábil fixa em **BRL** (sem conversão cambial) e verifique **dark mode e light mode**.
 
 ---
 
