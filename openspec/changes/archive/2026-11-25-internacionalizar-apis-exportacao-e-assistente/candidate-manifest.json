@@ -1,0 +1,244 @@
+{
+  "paths": [
+    {
+      "path": "src/lib/server-i18n.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/server-i18n.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/api-validation.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/lib/api-validation.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/messages/pt/api.json",
+      "state": "present"
+    },
+    {
+      "path": "src/messages/es/api.json",
+      "state": "present"
+    },
+    {
+      "path": "src/messages/en/api.json",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/dashboard/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/dashboard/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/quick-stats/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/networth/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/networth/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/reports/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/balance-projection/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/balance-projection/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/expense-breakdown/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/transaction-analytics/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/financial-calendar/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/financial-calendar/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/goals-dashboard/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/upcoming-bills/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/upcoming-bills/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/receipt/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/receipt/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/timeline/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/debts/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/insights/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/insights/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/forecast/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/forecast/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/achievements/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/achievements/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/savings-challenge/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/savings-challenge/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/export/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/export/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/advisor/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/advisor/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/purchases/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/purchases/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/accounts/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/accounts/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/budgets/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/budgets/route.test.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/monthly-budgets/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/cards/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/categories/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/transfer/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/transactions/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/installments/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/installments/pay/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/consortiums/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/consortiums/installments/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/savings/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/savings/deposit/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/recurring/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/recurring/process/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/investments/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/investments/transactions/route.ts",
+      "state": "present"
+    },
+    {
+      "path": "src/app/api/crud-i18n.test.ts",
+      "state": "present"
+    }
+  ]
+}

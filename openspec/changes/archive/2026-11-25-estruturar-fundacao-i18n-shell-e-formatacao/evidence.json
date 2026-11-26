@@ -1,0 +1,71 @@
+{
+  "candidate": "8c00e49e5412384f1e700a587767d76f02323d3501873c9ed028be9d9996ed04",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun --no-env-file test ./src/i18n/invariants.test.ts",
+        "outcome": "expected_failure",
+        "details": "Exit 1: Cannot find module './config' from src/i18n/invariants.test.ts prior to implementation."
+      },
+      "green": {
+        "command": "bun --no-env-file test ./src/i18n/invariants.test.ts && bun --no-env-file run check",
+        "outcome": "passed",
+        "details": "invariants.test.ts 6 passed with 857 assertions; full check passed (tsc clean, eslint clean, arch:check clean, bun test 597 passed, test:scripts 72 passed)."
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bun --no-env-file test ./src/lib/purchase-date.test.ts",
+        "outcome": "expected_failure",
+        "details": "Exit 1: 10 passed and 3 rejected in currencyFmt(1234.56, 'es'), dateFmt('2026-11-19', 'en') and formatPurchaseDate('2026-11-19T01:15:00Z', 'date', 'en')."
+      },
+      "green": {
+        "command": "TZ=UTC bun --no-env-file test ./src/lib/purchase-date.test.ts && TZ=America/Bahia bun --no-env-file test ./src/lib/purchase-date.test.ts && bun --no-env-file run test:sqlite",
+        "outcome": "passed",
+        "details": "Passed in both UTC and America/Bahia timezones; test:sqlite passed across all isolated suites (purchase-date UTC 14/14, purchase-date America/Bahia 14/14, plus 4 API suites)."
+      }
+    },
+    {
+      "id": "1.3",
+      "plan": "1.3",
+      "red": {
+        "command": "bun --no-env-file test ./src/components/finance/language-switcher.test.tsx",
+        "outcome": "expected_failure",
+        "details": "Exit 1: Cannot find module '@/components/shared/locale-flag-icon' prior to implementation."
+      },
+      "green": {
+        "command": "bun --no-env-file test ./src/components/finance/language-switcher.test.tsx && bun --no-env-file run arch:check",
+        "outcome": "passed",
+        "details": "language-switcher.test.tsx 7 passed with 71 assertions; arch:check passed across 79 files with 6 baseline entries and clean AST status."
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "bun --no-env-file test ./src/components/finance/quiet-navigation.test.tsx",
+        "outcome": "expected_failure",
+        "details": "Exit 1: 14 passed and 2 rejected in new es/en scenarios for Sidebar and SearchResults prior to shell migration."
+      },
+      "green": {
+        "command": "bun --no-env-file run check && bwrap Playwright QA suite (4 .qa.mjs runners)",
+        "outcome": "passed",
+        "details": "Full check passed (597 bun test passed, 72 test:scripts passed, tsc/eslint/arch:check clean); bwrap Playwright QA passed across all 4 runners (54, 102, 96, 42 scenarios across 6 cells)."
+      }
+    }
+  ],
+  "structural": {
+    "command": "bun --no-env-file run check && bun --no-env-file run test:sqlite",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-w1-10 (#343) and verifier-w1-r2-10 (#355) — independent zero-write audit over pre-commit c574b0db6c04e1180ddbd73a7293499e99253c8e14d2f670ee2b1b87e7644c3f committed intact in d4ff60b96d982dabd0babbbb184a473b87a516ac",
+    "status": "pass",
+    "candidate": "8c00e49e5412384f1e700a587767d76f02323d3501873c9ed028be9d9996ed04"
+  },
+  "unresolved": []
+}
