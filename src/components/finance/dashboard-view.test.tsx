@@ -112,18 +112,27 @@ test('mantém recorte e estado inicial dos dois widgets independentes', () => {
 test('restaura os agrupamentos expansíveis com os mesmos totais e critérios do painel anterior', () => {
   const fixture = (
     [
-    { id: 'atrasado', title: 'Conta vencida', amount: 16.75, status: 'overdue', daysUntilDue: -1 },
-    { id: 'urgente', title: 'Conta urgente', amount: 27.50, status: 'urgent', daysUntilDue: 3 },
-    { id: 'proximo', title: 'Conta próxima', amount: 43.25, status: 'upcoming', daysUntilDue: 6 },
-    { id: 'depois', title: 'Conta posterior', amount: 70, status: 'later', daysUntilDue: 9 },
-  ] as const).map((bill) => ({ ...bill, type: 'card' as const, dueDate: '2026-01-03', source: 'Cartão sintético' }));
-  const data = { bills: fixture, summary: { thisWeek: { count: 2, amount: 44.25 }, thisMonth: { count: 4, amount: 157.50 }, totalAmount: 157.50 } };
-  const render = (showValues: boolean) => renderToStaticMarkup(<UpcomingBillsPanel query={{ status: 'ready', data }} refresh={() => {}} showValues={showValues} />);
+    { id: 'atrasado', title: 'Conta vencida', amount: 16.75, status: 'overdue', daysUntilDue: -1, dueDate: '2026-01-03' },
+    { id: 'urgente', title: 'Conta urgente', amount: 27.50, status: 'urgent', daysUntilDue: 3, dueDate: '2026-01-01' },
+    { id: 'proximo', title: 'Conta próxima', amount: 43.25, status: 'upcoming', daysUntilDue: 6, dueDate: '2026-01-18' },
+    { id: 'depois', title: 'Conta posterior', amount: 70, status: 'later', daysUntilDue: 9, dueDate: '2026-01-25' },
+    { id: 'proximo-mes', title: 'Conta mês seguinte', amount: 90, status: 'later', daysUntilDue: 25, dueDate: '2026-02-05' },
+  ] as const).map((bill) => ({ ...bill, type: 'card' as const, source: 'Cartão sintético' }));
+  const data = { bills: fixture, summary: { thisWeek: { count: 2, amount: 44.25 }, thisMonth: { count: 4, amount: 157.50 }, totalAmount: 247.50 } };
+  const refDate = new Date(2026, 0, 15);
+  const render = (showValues: boolean, customBills = fixture) => renderToStaticMarkup(
+    <UpcomingBillsPanel
+      query={{ status: 'ready', data: { ...data, bills: customBills } }}
+      refresh={() => {}}
+      showValues={showValues}
+      referenceDate={refDate}
+    />,
+  );
   const markup = render(true);
   for (const [label, count, amount, members] of [
     ['Atrasados', 1, 16.75, ['Conta vencida']],
     ['Próximos (urgentes)', 1, 27.50, ['Conta urgente']],
-    ['Este mês', 3, 87.50, ['Conta vencida', 'Conta urgente', 'Conta próxima']],
+    ['Este mês', 3, 140.75, ['Conta urgente', 'Conta próxima', 'Conta posterior']],
   ] as const) {
     const details = Array.from(markup.matchAll(/<details[^>]*>(.*?)<\/details>/g), (match) => match[1]);
     const group = details.find((detail) => detail.includes(`${label} (${count})`));
@@ -132,7 +141,10 @@ test('restaura os agrupamentos expansíveis com os mesmos totais e critérios do
     for (const bill of fixture) expect(group?.includes(bill.title)).toBe((members as readonly string[]).includes(bill.title));
   }
   expect(markup).toContain('Conta posterior');
-  expect(render(false)).not.toContain(currencyFmt(87.50));
+  expect(render(false)).not.toContain(currencyFmt(140.75));
+
+  const overdueOnlyMarkup = render(true, [fixture[0], fixture[4]]);
+  expect(overdueOnlyMarkup).not.toContain('Este mês (');
 });
 
 test('mantém a ação Novo limite e a nova tentativa após erro na leitura do orçamento', () => {
@@ -190,9 +202,47 @@ test('encaminha o sinal realtime aos painéis sem remontá-los e limita a remont
   for (const name of ['FinancialHealthScore', 'FinancialReportsWidget', 'RecurringTransactionsWidget', 'BudgetGoalsWidget']) {
     expect(find(first, name)?.key).toBe(`${name}-1`);
     expect(find(second, name)?.key).toBe(`${name}-2`);
+    expect(find(first, name)?.props.showValues).toBe(false);
+    expect(find(second, name)?.props.showValues).toBe(false);
   }
   expect(second.find(({ type }) => type === 'details')?.key).toBeNull();
   expect(second).toContain(children);
+
+  const visibleNodes = withPtIntlDispatcher(() =>
+    visit(DashboardContent({ query: { status: 'ready', data }, showValues: true, retry: () => {}, children, refreshCounter: 1 })),
+  );
+  for (const name of ['FinancialHealthScore', 'FinancialReportsWidget', 'RecurringTransactionsWidget', 'BudgetGoalsWidget']) {
+    expect(find(visibleNodes, name)?.props.showValues).toBe(true);
+  }
+});
+
+test('page.tsx e dashboard-view.tsx conectam showValues via useAppStore, min-w-0 e refetch por locale', () => {
+  const pageSrc = readFileSync(new URL('../../app/page.tsx', import.meta.url), 'utf8');
+  expect(pageSrc).toContain('className="min-w-0 space-y-4"');
+  expect(pageSrc).toContain('useAppStore((state) => state.showValues)');
+  for (const widget of [
+    'QuickStatsOverview',
+    'SmartInsights',
+    'CashFlowForecast',
+    'SpendingTimeline',
+    'SavingsChallenge',
+    'ExpenseBreakdown',
+    'BalanceProjection',
+    'FinancialCalendar',
+    'NetworthEvolution',
+    'DebtOverview',
+    'TransactionAnalytics',
+    'GoalsDashboard',
+    'ReceiptGenerator',
+    'AchievementBadges',
+  ]) {
+    expect(pageSrc).toMatch(new RegExp(`<${widget}[^>]*showValues=\\{showValues\\}`));
+  }
+
+  const dashSrc = readFileSync(new URL('./dashboard-view.tsx', import.meta.url), 'utf8');
+  expect(dashSrc).toContain('useAppStore((state) => state.showValues)');
+  expect(dashSrc).toContain('useAppStore((state) => state.toggleShowValues)');
+  expect(dashSrc).toContain('[request, refreshCounter, locale]');
 });
 
 test('RecentTransactions aplica tokens semânticos positivos e negativos junto com símbolo monetário', () => {

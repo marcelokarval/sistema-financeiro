@@ -12,6 +12,7 @@ interface AppState {
   selectedConsortiumId: string | null;
   sidebarOpen: boolean;
   aiAssistantVisible: boolean;
+  showValues: boolean;
   newTransactionRequested: boolean;
   newGoalRequested: boolean;
 
@@ -30,6 +31,8 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   toggleAiAssistant: () => void;
   setAiAssistantVisible: (visible: boolean) => void;
+  setShowValues: (show: boolean) => void;
+  toggleShowValues: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -42,6 +45,7 @@ export const useAppStore = create<AppState>((set) => ({
   selectedConsortiumId: null,
   sidebarOpen: false,
   aiAssistantVisible: false,
+  showValues: true,
   newTransactionRequested: false,
   newGoalRequested: false,
 
@@ -60,4 +64,6 @@ export const useAppStore = create<AppState>((set) => ({
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleAiAssistant: () => set((state) => ({ aiAssistantVisible: !state.aiAssistantVisible })),
   setAiAssistantVisible: (visible) => set({ aiAssistantVisible: visible }),
+  setShowValues: (show) => set({ showValues: show }),
+  toggleShowValues: () => set((state) => ({ showValues: !state.showValues })),
 }));

@@ -17,6 +17,7 @@ import * as globalSearchModule from './global-search';
 import { searchDestination, type SearchResultType } from './global-search';
 import { QuickActions } from './quick-actions';
 import * as pageModule from '@/app/page';
+import { getServerSnapshot } from '@/hooks/use-realtime';
 import { renderWithIntl } from '@/test-utils/intl';
 
 const noop = () => {};
@@ -38,6 +39,25 @@ describe('navegação e shell transversal Quiet Financial OS', () => {
     expect(expanded).toContain('aria-label="Recarregar"');
     expect(collapsed).toContain('aria-label="Recarregar"');
     expect(expanded).not.toMatch(/bg-gradient|glass-card|card-glow/);
+
+    const navStartExpanded = expanded.indexOf('<nav');
+    const navStartCollapsed = collapsed.indexOf('<nav');
+    expect(expanded.indexOf('aria-label="Recarregar"')).toBeLessThan(navStartExpanded);
+    expect(expanded.indexOf('aria-label="Recolher navegação"')).toBeLessThan(navStartExpanded);
+    expect(collapsed.indexOf('aria-label="Recarregar"')).toBeLessThan(navStartCollapsed);
+    expect(collapsed.indexOf('aria-label="Expandir navegação"')).toBeLessThan(navStartCollapsed);
+    expect(collapsed.indexOf('Tempo real indisponível')).toBeGreaterThan(navStartCollapsed);
+  });
+
+  test('useRealtime getServerSnapshot devolve referência cacheada e estável entre chamadas', () => {
+    const first = getServerSnapshot();
+    const second = getServerSnapshot();
+    expect(first).toBe(second);
+    expect(first).toEqual({
+      isConnected: false,
+      refreshCounter: 0,
+      lastEvent: null,
+    });
   });
 
   test('MobileNav renderiza 4 atalhos principais e botão Mais', () => {

@@ -27,13 +27,15 @@ import {
 
 export { DebtChartTooltip } from './debt-sections';
 
-function DonutCenterLabel({ total }: { total: number }) {
+function DonutCenterLabel({ total, showValues = true }: { total: number; showValues?: boolean }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
       <p className="font-mono text-lg sm:text-xl font-semibold tabular-nums text-foreground">
-        {currencyFmt(total, locale)}
+        {showValues ? currencyFmt(total, locale) : maskedValue}
       </p>
       <p className="text-xs sm:text-xs text-muted-foreground font-medium">
         {t('debts.totalInDebts')}
@@ -46,10 +48,12 @@ function DebtCompositionChart({
   hasDebt,
   totalDebt,
   pieData,
+  showValues = true,
 }: {
   hasDebt: boolean;
   totalDebt: number;
   pieData: Array<{ name: string; value: number }>;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
   return (
@@ -72,7 +76,7 @@ function DebtCompositionChart({
                 <Cell key={`cell-${index}`} fill={PIE_COLORS[index]} className="stroke-0" />
               ))}
             </Pie>
-            <RechartsTooltip content={<DebtChartTooltip />} />
+            <RechartsTooltip content={<DebtChartTooltip showValues={showValues} />} />
           </PieChart>
         </ResponsiveContainer>
       ) : (
@@ -94,7 +98,7 @@ function DebtCompositionChart({
           </ResponsiveContainer>
         </div>
       )}
-      <DonutCenterLabel total={totalDebt} />
+      <DonutCenterLabel total={totalDebt} showValues={showValues} />
     </div>
   );
 }
@@ -163,7 +167,8 @@ export function currentDebtOverview(
   return settled?.request === request ? settled.result : { status: 'loading' };
 }
 
-export function DebtOverview() {
+export function DebtOverview({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [request, setRequest] = useState<DebtOverviewRequest>(() => ({}));
   const [settled, setSettled] = useState<DebtOverviewResult | null>(null);
   const [expandedType, setExpandedType] = useState<string | null>(null);
@@ -176,10 +181,11 @@ export function DebtOverview() {
   }, []);
 
   useEffect(() => {
+    void locale;
     const controller = new AbortController();
     void requestDebtOverview(request, controller.signal, setSettled);
     return () => controller.abort();
-  }, [request]);
+  }, [request, locale]);
 
   return (
     <DebtOverviewContent
@@ -189,6 +195,7 @@ export function DebtOverview() {
       onToggleExpand={(type) => setExpandedType((prev) => (prev === type ? null : type))}
       fetchData={fetchData}
       onRetry={fetchData}
+      showValues={showValues}
     />
   );
 }
@@ -200,6 +207,7 @@ export function DebtOverviewContent({
   onToggleExpand,
   fetchData,
   onRetry,
+  showValues = true,
 }: {
   data: DebtsData | null;
   loading: boolean;
@@ -207,9 +215,12 @@ export function DebtOverviewContent({
   onToggleExpand: (type: string) => void;
   fetchData?: () => void;
   onRetry?: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   const handleRetry = onRetry ?? fetchData;
 
   if (loading) return <DebtLoadingSkeleton />;
@@ -261,7 +272,7 @@ export function DebtOverviewContent({
                 )}
               >
                 <TrendingDown className="w-3.5 h-3.5 mr-1.5" />
-                {currencyFmt(data.totalDebt, locale)}
+                {showValues ? currencyFmt(data.totalDebt, locale) : maskedValue}
               </Badge>
               <Button
                 variant="outline"
@@ -278,7 +289,7 @@ export function DebtOverviewContent({
         <CardContent className="min-w-0 space-y-5 px-4 sm:px-5">
           <div>
             <div role="group" aria-label={t('debts.compositionAria')} className="grid min-w-0 items-center gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-              <DebtCompositionChart hasDebt={hasDebt} totalDebt={data.totalDebt} pieData={pieData} />
+              <DebtCompositionChart hasDebt={hasDebt} totalDebt={data.totalDebt} pieData={pieData} showValues={showValues} />
 
               <div className="min-w-0 divide-y divide-border border-y border-border">
                 <DebtTypeToggleButton
@@ -288,6 +299,7 @@ export function DebtOverviewContent({
                   expanded={expandedType === 'cards'}
                   ringClass="ring-2 ring-[var(--debt)]/30"
                   onClick={() => onToggleExpand('cards')}
+                  showValues={showValues}
                 />
                 <DebtTypeToggleButton
                   label={t('debts.categories.installments')}
@@ -296,6 +308,7 @@ export function DebtOverviewContent({
                   expanded={expandedType === 'installments'}
                   ringClass="ring-2 ring-[var(--obligation)]/30"
                   onClick={() => onToggleExpand('installments')}
+                  showValues={showValues}
                 />
                 <DebtTypeToggleButton
                   label={t('debts.categories.consortiums')}
@@ -304,14 +317,15 @@ export function DebtOverviewContent({
                   expanded={expandedType === 'consortiums'}
                   ringClass="ring-2 ring-[var(--obligation)]/30"
                   onClick={() => onToggleExpand('consortiums')}
+                  showValues={showValues}
                 />
               </div>
             </div>
           </div>
 
-          <DebtIncomeRatioCard ratio={data.debtToIncomeRatio} monthlyIncome={data.monthlyIncome} />
+          <DebtIncomeRatioCard ratio={data.debtToIncomeRatio} monthlyIncome={data.monthlyIncome} showValues={showValues} />
 
-          <DebtExpandedSection expandedType={expandedType} data={data} />
+          <DebtExpandedSection expandedType={expandedType} data={data} showValues={showValues} />
 
           {hasDebt && (
             <div className="flex items-center justify-center gap-5 flex-wrap">
@@ -321,7 +335,7 @@ export function DebtOverviewContent({
                   <div key={entry.name} className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
                     <span className="text-xs text-muted-foreground">{entry.name}</span>
-                    <span className="font-mono text-xs font-semibold tabular-nums">{pct}%</span>
+                    <span className="font-mono text-xs font-semibold tabular-nums">{showValues ? `${pct}%` : '•••'}</span>
                   </div>
                 );
               })}

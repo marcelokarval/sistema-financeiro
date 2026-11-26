@@ -62,6 +62,7 @@ interface RecurringPanelProps {
   inactiveCount: number;
   monthlyIncome: number;
   monthlyTotal: number;
+  showValues?: boolean;
   openNew: (event: React.MouseEvent<HTMLButtonElement>) => void;
   processRecurring: () => void;
   openEdit: (entry: RecurringTransaction, event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -71,11 +72,14 @@ interface RecurringPanelProps {
 }
 
 export function RecurringPanel({
-  recurring, loading, error = false, processing, activeCount, inactiveCount, monthlyIncome, monthlyTotal,
+  recurring, loading, error = false, processing, activeCount, inactiveCount, monthlyIncome, monthlyTotal, showValues = true,
   openNew, processRecurring, openEdit, requestDelete, toggleActive, onRetry,
 }: RecurringPanelProps) {
   const t = useSafeTranslations('recurring');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
+  const money = (value: number) => (showValues ? currencyFmt(value, locale) : maskedValue);
   const headingId = useId();
   const listId = useId();
   return (
@@ -114,11 +118,11 @@ export function RecurringPanel({
           <dl aria-label={t('summary.ariaLabel')} className="grid grid-cols-2 gap-px rounded-xl border border-border bg-border sm:grid-cols-3">
             <div className="min-w-0 rounded-tl-xl bg-card p-3 sm:rounded-bl-xl sm:p-4">
               <dt className="text-xs text-muted-foreground">{t('summary.activeIncome')}</dt>
-              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{currencyFmt(monthlyIncome, locale)}</dd>
+              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{money(monthlyIncome)}</dd>
             </div>
             <div className="min-w-0 rounded-tr-xl bg-card p-3 sm:rounded-none sm:p-4">
               <dt className="text-xs text-muted-foreground">{t('summary.activeExpenses')}</dt>
-              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{currencyFmt(monthlyTotal, locale)}</dd>
+              <dd className="mt-1 break-words font-mono text-base font-semibold tabular-nums">{money(monthlyTotal)}</dd>
             </div>
             <div className="col-span-2 rounded-b-xl bg-card p-3 sm:col-span-1 sm:rounded-none sm:rounded-r-xl sm:p-4">
               <dt className="text-xs text-muted-foreground">{t('summary.activePaused')}</dt>
@@ -154,7 +158,7 @@ export function RecurringPanel({
                         <time className="block break-words text-sm tabular-nums" dateTime={entry.nextDate}>{dateFmt(entry.nextDate, locale)}</time>
                       </div>
                       <div className="min-w-0 text-right">
-                        <p className="break-words font-mono text-sm font-semibold tabular-nums">{isIncome ? '+' : '-'}{currencyFmt(entry.amount, locale)}</p>
+                        <p className="break-words font-mono text-sm font-semibold tabular-nums">{showValues ? `${isIncome ? '+' : '-'}${currencyFmt(entry.amount, locale)}` : maskedValue}</p>
                         <p className="text-xs text-muted-foreground">{entry.isActive ? t('list.statusActive') : t('list.statusPaused')}</p>
                       </div>
                       <div className="col-span-2 flex flex-wrap items-center gap-1 lg:col-span-1 lg:justify-end">
@@ -180,8 +184,9 @@ export function RecurringPanel({
   );
 }
 
-export function RecurringTransactionsWidget() {
+export function RecurringTransactionsWidget({ showValues = true }: { showValues?: boolean } = {}) {
   const t = useSafeTranslations('recurring');
+  const locale = useSafeLocale();
   const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -259,9 +264,10 @@ export function RecurringTransactionsWidget() {
   }, []);
 
   useEffect(() => {
+    void locale;
     fetchRecurring();
     fetchLookups();
-  }, [fetchRecurring, fetchLookups]);
+  }, [fetchRecurring, fetchLookups, locale]);
 
   // ── Computed ─────────────────────────────────────────────────────
   const activeCount = recurring.filter((r) => r.isActive).length;
@@ -427,6 +433,7 @@ export function RecurringTransactionsWidget() {
         inactiveCount={inactiveCount}
         monthlyIncome={monthlyIncome}
         monthlyTotal={monthlyTotal}
+        showValues={showValues}
         processRecurring={processRecurring}
         openNew={(event) => { returnFocus.current = event.currentTarget; openNew(); }}
         openEdit={(entry, event) => { returnFocus.current = event.currentTarget; openEdit(entry); }}

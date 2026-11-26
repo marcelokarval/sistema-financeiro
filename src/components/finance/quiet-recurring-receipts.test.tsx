@@ -1052,3 +1052,111 @@ test('renderiza RecurringPanel, ReceiptWorkspace, buildReceiptFields e buildRece
     expect(printHtml).toContain(expected[locale].totalUpper);
   }
 });
+
+test('RecurringPanel e ReceiptWorkspace ocultam dígitos, sinais e valores dos itens com showValues=false e refazem fetch por locale', async () => {
+  const maskedRecurringHtml = renderToStaticMarkup(
+    <RecurringPanel
+      recurring={entries}
+      loading={false}
+      processing={false}
+      activeCount={2}
+      inactiveCount={1}
+      monthlyIncome={200}
+      monthlyTotal={125.4}
+      showValues={false}
+      openNew={noop}
+      processRecurring={noop}
+      openEdit={noop}
+      requestDelete={noop}
+      toggleActive={noop}
+    />,
+  );
+  expect(maskedRecurringHtml).toContain('R$ ••••••');
+  expect(maskedRecurringHtml).not.toMatch(/125,40|200,00|800,00|\+R\$|-R\$/);
+
+  const maskedReceiptHtml = renderToStaticMarkup(
+    <ReceiptWorkspace
+      receiptType="purchase"
+      setReceiptType={noop}
+      receiptId="p1"
+      setReceiptId={noop}
+      receiptData={purchase}
+      error={null}
+      isLoading={false}
+      copied={false}
+      showValues={false}
+      records={[{ id: 'p1', label: 'Loja sintética · R$ 42,50' }]}
+      generateReceipt={noop}
+      handlePrint={noop}
+      handleDownload={noop}
+      handleCopy={noop}
+    />,
+  );
+  expect(maskedReceiptHtml).toContain('R$ ••••••');
+  expect(maskedReceiptHtml).not.toMatch(/42,50|21,25/);
+
+  const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previousDispatcher = internals.H;
+  const originalFetch = globalThis.fetch;
+  let activeLocale: CanonicalLocale = 'pt';
+  const requested: string[] = [];
+  const states: unknown[] = [];
+  const refs: Array<{ current: unknown }> = [];
+  const callbacks: Array<{ deps?: readonly unknown[]; fn: unknown }> = [];
+  const effects: Array<{ deps?: readonly unknown[]; cleanup?: () => void }> = [];
+  const sameDeps = (a?: readonly unknown[], b?: readonly unknown[]) =>
+    Boolean(a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i])));
+
+  const renderRecurring = () => {
+    let s = 0, r = 0, c = 0, e = 0;
+    const pending: Array<{ idx: number; fn: () => void | (() => void); deps?: readonly unknown[] }> = [];
+    internals.H = {
+      useState(initial: unknown) {
+        const i = s++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useRef: (v: unknown) => (refs[r++] ??= { current: v }),
+      useId: () => 'test-rec-id',
+      useCallback: (fn: unknown, deps?: readonly unknown[]) => {
+        const i = c++;
+        if (!callbacks[i] || !sameDeps(callbacks[i].deps, deps)) callbacks[i] = { deps, fn };
+        return callbacks[i].fn;
+      },
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, activeLocale),
+      useMemo: (f: () => unknown) => f(),
+      useEffect: (fn: () => void | (() => void), deps?: readonly unknown[]) => {
+        const i = e++;
+        if (!effects[i] || !sameDeps(effects[i].deps, deps)) pending.push({ idx: i, fn, deps });
+      },
+    };
+    const tree = RecurringTransactionsWidget({ showValues: true });
+    for (const item of pending) {
+      effects[item.idx]?.cleanup?.();
+      const cleanup = item.fn();
+      effects[item.idx] = { deps: item.deps, cleanup: typeof cleanup === 'function' ? cleanup : undefined };
+    }
+    return tree;
+  };
+
+  try {
+    globalThis.fetch = (async (url: string) => {
+      requested.push(String(url));
+      return Response.json([]);
+    }) as typeof fetch;
+
+    renderRecurring();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(requested.filter((u) => u === '/api/recurring')).toHaveLength(1);
+
+    activeLocale = 'en';
+    renderRecurring();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(requested.filter((u) => u === '/api/recurring')).toHaveLength(2);
+    expect(requested.every((u) => !u.includes('locale='))).toBe(true);
+  } finally {
+    effects.forEach((entry) => entry?.cleanup?.());
+    internals.H = previousDispatcher;
+    globalThis.fetch = originalFetch;
+  }
+});

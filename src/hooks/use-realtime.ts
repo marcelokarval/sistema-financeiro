@@ -80,12 +80,18 @@ function subscribeRealtime(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
+const SERVER_SNAPSHOT = {
+  isConnected: false,
+  refreshCounter: 0,
+  lastEvent: null as RealtimeEvent | null,
+};
+
 function getSnapshot() {
   return realtimeState;
 }
 
-function getServerSnapshot() {
-  return { isConnected: false, refreshCounter: 0, lastEvent: null };
+export function getServerSnapshot() {
+  return SERVER_SNAPSHOT;
 }
 
 export function useRealtime(options?: UseRealtimeOptions): UseRealtimeReturn {

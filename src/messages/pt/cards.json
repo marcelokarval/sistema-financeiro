@@ -36,7 +36,10 @@
     "copied": "Copiado",
     "cycleDates": "Fecha dia {closingDay} · Vence dia {dueDay}",
     "currentBalance": "Fatura atual",
-    "available": "Disponível"
+    "available": "Disponível",
+    "debitSubtitle": "Modalidade débito",
+    "debitMode": "Débito à vista",
+    "debitNoCredit": "Movimentação vinculada ao saldo da conta"
   },
   "usage": {
     "high": "Uso elevado do limite",
@@ -49,6 +52,8 @@
     "available": "Disponível",
     "infoAria": "Dados do cartão",
     "maskedNumber": "Número mascarado",
+    "type": "Tipo",
+    "debitNotice": "Cartão na modalidade débito: compras registradas diretamente sem ciclo de crédito.",
     "closing": "Fechamento",
     "due": "Vencimento",
     "day": "Dia {day}",

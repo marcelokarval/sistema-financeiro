@@ -34,9 +34,15 @@ function ReceiptFieldValue({ field, categoryColor }: {
   }
 }
 
-export function ReceiptPreview({ fields }: { fields: ReceiptFields }) {
+export function ReceiptPreview({ fields, showValues = true }: { fields: ReceiptFields; showValues?: boolean }) {
   const t = createFallbackTranslator(useSafeTranslations('receipts'), PT_OPERATIONS_MESSAGES.receipts);
+  const tShared = useSafeTranslations('shared');
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   const { rows, categoryColor, items, notes, receiptNumber, issuedDate, total } = fields;
+  const maskUnits = (units: string) => {
+    const qtyMatch = /^(\d+x)\s+/.exec(units);
+    return qtyMatch ? `${qtyMatch[1]} ${maskedValue}` : maskedValue;
+  };
 
   return (
     <div className="space-y-4 text-sm leading-relaxed [overflow-wrap:anywhere]">
@@ -88,10 +94,12 @@ export function ReceiptPreview({ fields }: { fields: ReceiptFields }) {
                 <div className="flex-1 min-w-0 pr-2">
                   <span className="block">{item.name}</span>
                   <span className="text-muted-foreground text-xs">
-                    {item.units}
+                    {showValues ? item.units : maskUnits(item.units)}
                   </span>
                 </div>
-                <span className="min-w-0 text-right font-mono font-semibold tabular-nums">{item.total.display}</span>
+                <span className="min-w-0 text-right font-mono font-semibold tabular-nums">
+                  {showValues ? item.total.display : maskedValue}
+                </span>
               </div>
             ))}
           </div>
@@ -114,7 +122,7 @@ export function ReceiptPreview({ fields }: { fields: ReceiptFields }) {
       <div className="flex items-start justify-between gap-3 py-1">
         <span className="text-sm font-semibold">{t('document.totalUpper')}</span>
         <span className="min-w-0 text-right font-mono text-lg font-semibold tabular-nums">
-          {total.display}
+          {showValues ? total.display : maskedValue}
         </span>
       </div>
 

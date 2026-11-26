@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CANONICAL_LOCALES, LOCALE_COOKIE, LOCALE_METADATA } from '@/i18n/config';
+import { AppIntlBridgeContext, AppIntlProvider, AppLocaleSwitchContext, useSafeLocale } from '@/i18n/provider';
 import { renderWithIntl } from '@/test-utils/intl';
 import { LocaleFlagIcon } from '@/components/shared/locale-flag-icon';
 import {
@@ -151,6 +152,99 @@ describe('LanguageSwitcher acessível e Quiet Financial OS', () => {
       expect(src).not.toContain('framer-motion');
       expect(src).not.toMatch(/className=\{`[^`]*\?\s*['"][^'"]*['"]\s*:\s*['"][^'"]*['"][^`]*`\}/);
       expect(src).toContain('cn(');
+    }
+  });
+
+  test('AppIntlProvider aplica troca otimista imediata mantendo override por prop e LanguageSwitcher sinaliza isPending', () => {
+    const internals = (React as unknown as {
+      __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+    }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const prevDispatcher = internals.H;
+    const prevDoc = globalThis.document;
+    const fakeDoc = { cookie: '', documentElement: { lang: 'pt-BR' } };
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: fakeDoc });
+
+    const states: unknown[] = [];
+    const memos: Array<{ deps?: readonly unknown[]; value: unknown }> = [];
+    const callbacks: Array<{ deps?: readonly unknown[]; fn: unknown }> = [];
+    const effects: Array<{ deps?: readonly unknown[] }> = [];
+    const sameDeps = (a?: readonly unknown[], b?: readonly unknown[]) =>
+      Boolean(a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i])));
+
+    function runProvider(propLocale: string) {
+      let s = 0;
+      let m = 0;
+      let c = 0;
+      let e = 0;
+      const pendingEffects: Array<{ idx: number; fn: () => void | (() => void); deps?: readonly unknown[] }> = [];
+      internals.H = {
+        useState(initial: unknown) {
+          const i = s++;
+          if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+          return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+        },
+        useContext: (ctx: React.Context<unknown>) => (ctx as unknown as { _currentValue?: unknown })._currentValue,
+        useMemo(factory: () => unknown, deps?: readonly unknown[]) {
+          const i = m++;
+          if (!memos[i] || !sameDeps(memos[i].deps, deps)) memos[i] = { deps, value: factory() };
+          return memos[i].value;
+        },
+        useCallback(fn: unknown, deps?: readonly unknown[]) {
+          const i = c++;
+          if (!callbacks[i] || !sameDeps(callbacks[i].deps, deps)) callbacks[i] = { deps, fn };
+          return callbacks[i].fn;
+        },
+        useEffect(fn: () => void | (() => void), deps?: readonly unknown[]) {
+          const i = e++;
+          if (!effects[i] || !sameDeps(effects[i].deps, deps)) pendingEffects.push({ idx: i, fn, deps });
+        },
+      };
+      const el = AppIntlProvider({ locale: propLocale, children: <span /> }) as React.ReactElement<Record<string, any>>;
+      for (const item of pendingEffects) {
+        effects[item.idx] = { deps: item.deps };
+        item.fn();
+      }
+      return el;
+    }
+
+    try {
+      const first = runProvider('pt');
+      const switchProvider = first.props.children as React.ReactElement<Record<string, any>>;
+      const bridgeProvider = switchProvider.props.children as React.ReactElement<Record<string, any>>;
+      expect(bridgeProvider.props.value.locale).toBe('pt');
+      expect(fakeDoc.documentElement.lang).toBe('pt-BR');
+
+      switchProvider.props.value.setOptimisticLocale('en');
+      expect(fakeDoc.documentElement.lang).toBe('en-US');
+
+      const optimisticTree = runProvider('pt');
+      const optimisticBridge = (optimisticTree.props.children as React.ReactElement<Record<string, any>>).props.children as React.ReactElement<Record<string, any>>;
+      expect(optimisticBridge.props.value.locale).toBe('en');
+
+      const propOverrideTree = runProvider('es');
+      const overrideBridge = (propOverrideTree.props.children as React.ReactElement<Record<string, any>>).props.children as React.ReactElement<Record<string, any>>;
+      expect(overrideBridge.props.value.locale).toBe('es');
+      expect(fakeDoc.documentElement.lang).toBe('es-ES');
+
+      const idleHtml = renderToStaticMarkup(
+        <AppLocaleSwitchContext.Provider value={{ setOptimisticLocale: () => {}, isPending: false }}>
+          <LanguageSwitcher variant="compact" />
+        </AppLocaleSwitchContext.Provider>,
+      );
+      expect(idleHtml).not.toContain('aria-busy="true"');
+      expect(idleHtml).not.toContain('animate-spin');
+
+      const pendingHtml = renderToStaticMarkup(
+        <AppLocaleSwitchContext.Provider value={{ setOptimisticLocale: () => {}, isPending: true }}>
+          <LanguageSwitcher variant="compact" />
+        </AppLocaleSwitchContext.Provider>,
+      );
+      expect(pendingHtml).toContain('aria-busy="true"');
+      expect(pendingHtml).toContain('motion-reduce:animate-none');
+      expect(useSafeLocale()).toBe('pt');
+    } finally {
+      internals.H = prevDispatcher;
+      Object.defineProperty(globalThis, 'document', { configurable: true, value: prevDoc });
     }
   });
 });

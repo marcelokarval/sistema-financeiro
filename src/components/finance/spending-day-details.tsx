@@ -40,12 +40,16 @@ export interface TimelineDay {
 export function SpendingTimelineChart({
   chartData,
   maxAbsNet,
+  showValues = true,
 }: {
   chartData: TimelineDay[];
   maxAbsNet: number;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   return (
     <div className="border-b border-border pb-3">
       <p className="mb-2 text-xs font-medium">{t('timeline.chartTitle')}</p>
@@ -64,7 +68,7 @@ export function SpendingTimelineChart({
                 key={day.date}
                 style={{ height: `${height}%`, minHeight: '3px' }}
                 className={cn('flex-1 max-w-[14px] rounded-t-sm', color)}
-                title={`${day.date}: ${currencyFmt(day.net, locale)}${day.count === 0 ? t('timeline.noActivitySuffix') : ''}`}
+                title={`${day.date}: ${showValues ? currencyFmt(day.net, locale) : maskedValue}${day.count === 0 ? t('timeline.noActivitySuffix') : ''}`}
               />
             );
           })}
@@ -89,7 +93,7 @@ export function SpendingTimelineChart({
   );
 }
 
-function SpendingDayItems({ date, items }: { date: string; items: TimelineItem[] }) {
+function SpendingDayItems({ date, items, showValues = true }: { date: string; items: TimelineItem[]; showValues?: boolean }) {
   return (
     <div className="border-t border-border/40 bg-muted/20">
       <ul className="space-y-1.5 p-3 sm:p-4">
@@ -107,6 +111,7 @@ function SpendingDayItems({ date, items }: { date: string; items: TimelineItem[]
                 </Badge>
               }
               amount={txItem.amount}
+              showValues={showValues}
               leading={
                 <div
                   className={cn(
@@ -140,13 +145,17 @@ export function SpendingTimelineDayRow({
   day,
   isExpanded,
   onToggleDay,
+  showValues = true,
 }: {
   day: TimelineDay;
   isExpanded: boolean;
   onToggleDay: (date: string) => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   const hasItems = day.count > 0;
   const isNetPositive = day.net >= 0;
 
@@ -198,12 +207,12 @@ export function SpendingTimelineDayRow({
                 </span>
                 {day.income > 0 && (
                   <span className="font-mono text-xs tabular-nums text-[var(--ds-accent-positive)] font-medium">
-                    +{currencyFmt(day.income, locale)}
+                    {showValues ? `+${currencyFmt(day.income, locale)}` : maskedValue}
                   </span>
                 )}
                 {day.expense > 0 && (
                   <span className="font-mono text-xs tabular-nums text-[var(--ds-accent-danger)] font-medium">
-                    -{currencyFmt(day.expense, locale)}
+                    {showValues ? `-${currencyFmt(day.expense, locale)}` : maskedValue}
                   </span>
                 )}
               </div>
@@ -227,8 +236,7 @@ export function SpendingTimelineDayRow({
                   isNetPositive ? 'text-[var(--ds-accent-positive)]' : 'text-[var(--ds-accent-danger)]',
                 )}
               >
-                {isNetPositive ? '+' : ''}
-                {currencyFmt(day.net, locale)}
+                {showValues ? `${isNetPositive ? '+' : ''}${currencyFmt(day.net, locale)}` : maskedValue}
               </span>
             </div>
             <ChevronDown className={cn('w-4 h-4 text-muted-foreground', isExpanded && 'rotate-180')} />
@@ -236,7 +244,7 @@ export function SpendingTimelineDayRow({
         )}
       </button>
 
-      {isExpanded && hasItems && <SpendingDayItems date={day.date} items={day.items} />}
+      {isExpanded && hasItems && <SpendingDayItems date={day.date} items={day.items} showValues={showValues} />}
     </li>
   );
 }

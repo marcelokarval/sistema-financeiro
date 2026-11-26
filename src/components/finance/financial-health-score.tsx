@@ -184,21 +184,25 @@ interface DashboardData {
 
 const panel = 'min-w-0 space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5';
 
-export function HealthBreakdown({ data }: { data: DashboardData }) {
+export function HealthBreakdown({ data, showValues = true }: { data: DashboardData; showValues?: boolean }) {
   const t = useSafeTranslations('goals');
   const locale = useSafeLocale();
   const { total: score, breakdown } = calculateScore(data);
+  const maskedValue = t('maskedValue');
+  const money = (v: number) => (showValues ? currencyFmt(v, locale) : maskedValue);
   const scoreLabel = t(`health.scoreLabels.${getScoreLabelKey(score)}`);
   const savingsLabel = breakdown.savingsDetail.key === 'savingsRate'
-    ? t('health.details.savingsRate', { rate: breakdown.savingsDetail.rate })
+    ? t('health.details.savingsRate', { rate: showValues ? breakdown.savingsDetail.rate : '•••' })
     : t('health.details.noIncome');
   const creditLabel = breakdown.creditDetail.key === 'creditUsed'
-    ? t('health.details.creditUsed', { rate: breakdown.creditDetail.rate })
+    ? t('health.details.creditUsed', { rate: showValues ? breakdown.creditDetail.rate : '•••' })
     : t('health.details.noCards');
-  const diversificationLabel = t('health.details.accountsCount', { count: breakdown.accountCount });
-  const netWorthLabel = currencyFmt(breakdown.netWorth, locale);
+  const diversificationLabel = showValues
+    ? t('health.details.accountsCount', { count: breakdown.accountCount })
+    : '•••';
+  const netWorthLabel = money(breakdown.netWorth);
   const trendLabel = breakdown.trendDetail.key === 'expensesLower' || breakdown.trendDetail.key === 'expensesHigher'
-    ? t(`health.details.${breakdown.trendDetail.key}`, { pct: breakdown.trendDetail.pct })
+    ? t(`health.details.${breakdown.trendDetail.key}`, { pct: showValues ? breakdown.trendDetail.pct : '•••' })
     : t(`health.details.${breakdown.trendDetail.key}`);
 
   const criteria = [
@@ -219,8 +223,8 @@ export function HealthBreakdown({ data }: { data: DashboardData }) {
             <p className="text-xs">{scoreLabel}</p>
           </div>
           <p className="font-mono text-2xl font-semibold tabular-nums">
-            {score}
-            <span className="text-sm text-muted-foreground">{t('health.scoreMaxUnit')}</span>
+            {showValues ? score : '•••'}
+            {showValues && <span className="text-sm text-muted-foreground">{t('health.scoreMaxUnit')}</span>}
           </p>
           <FinanceProgress
             label={t('health.scoreProgressLabel')}
@@ -228,14 +232,14 @@ export function HealthBreakdown({ data }: { data: DashboardData }) {
             min={0}
             max={100}
             unit={t('health.pointsUnit')}
-            valueText={t('health.scoreValueText', { score, label: scoreLabel })}
+            valueText={showValues ? t('health.scoreValueText', { score, label: scoreLabel }) : '•••'}
             showHeader={false}
           />
         </div>
         <dl aria-label={t('health.monthlySummaryAria')} className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 sm:border-l sm:border-border sm:pl-4">
-          <FinanceMetric variant="compact" label={t('health.monthlyIncome')} value={currencyFmt(data.monthIncome, locale)} valueClassName="text-sm" />
-          <FinanceMetric variant="compact" label={t('health.monthlyExpense')} value={currencyFmt(data.monthExpense, locale)} valueClassName="text-sm" />
-          <FinanceMetric variant="compact" label={balance >= 0 ? t('health.monthlyBalance') : t('health.monthlyDeficit')} value={currencyFmt(balance, locale)} valueClassName="text-sm" />
+          <FinanceMetric variant="compact" label={t('health.monthlyIncome')} value={currencyFmt(data.monthIncome, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
+          <FinanceMetric variant="compact" label={t('health.monthlyExpense')} value={currencyFmt(data.monthExpense, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
+          <FinanceMetric variant="compact" label={balance >= 0 ? t('health.monthlyBalance') : t('health.monthlyDeficit')} value={currencyFmt(balance, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
         </dl>
       </div>
       <div>
@@ -246,7 +250,7 @@ export function HealthBreakdown({ data }: { data: DashboardData }) {
               <dt className="break-words">{label}</dt>
               <dd className="col-start-1 row-start-2 break-words text-xs text-muted-foreground sm:col-start-2 sm:row-start-1">{detail}</dd>
               <dd className="col-start-2 row-start-1 whitespace-nowrap font-mono text-xs tabular-nums sm:col-start-3">
-                {t('health.pointsFraction', { points, maxPoints })}
+                {showValues ? t('health.pointsFraction', { points, maxPoints }) : '•••'}
               </dd>
               <dd aria-hidden="true" className="col-span-full">
                 <FinanceProgress
@@ -255,6 +259,7 @@ export function HealthBreakdown({ data }: { data: DashboardData }) {
                   min={0}
                   max={maxPoints}
                   unit={t('health.pointsUnit')}
+                  valueText={showValues ? undefined : '•••'}
                   showHeader={false}
                   trackClassName="h-1"
                 />
@@ -267,7 +272,8 @@ export function HealthBreakdown({ data }: { data: DashboardData }) {
   );
 }
 
-export function FinancialHealthScore() {
+export function FinancialHealthScore({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -285,19 +291,24 @@ export function FinancialHealthScore() {
     }
   }, []);
 
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  useEffect(() => {
+    void locale;
+    fetchDashboard();
+  }, [fetchDashboard, locale]);
 
-  return <FinancialHealthContent data={data} loading={loading} onRetry={fetchDashboard} />;
+  return <FinancialHealthContent data={data} loading={loading} onRetry={fetchDashboard} showValues={showValues} />;
 }
 
 export function FinancialHealthContent({
   data,
   loading,
   onRetry,
+  showValues = true,
 }: {
   data: DashboardData | null;
   loading: boolean;
   onRetry: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('goals');
   return (
@@ -312,7 +323,7 @@ export function FinancialHealthContent({
             <p role="alert" className="text-sm text-muted-foreground">{t('health.error')}</p>
             <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={onRetry}>{t('common.retry')}</Button>
           </div>
-        ) : <HealthBreakdown data={data} />}
+        ) : <HealthBreakdown data={data} showValues={showValues} />}
     </section>
   );
 }

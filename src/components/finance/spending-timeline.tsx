@@ -48,7 +48,8 @@ export function currentSpendingTimeline(
   return settled?.request === request ? settled.result : { status: 'loading' };
 }
 
-export function SpendingTimeline() {
+export function SpendingTimeline({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [request, setRequest] = useState<SpendingTimelineRequest>({ days: 30 });
   const [settled, setSettled] = useState<SpendingTimelineResult | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
@@ -58,10 +59,11 @@ export function SpendingTimeline() {
   const error = query.status === 'error';
 
   useEffect(() => {
+    void locale;
     const controller = new AbortController();
     void requestSpendingTimeline(request, controller.signal, setSettled);
     return () => controller.abort();
-  }, [request]);
+  }, [request, locale]);
 
   return (
     <SpendingTimelineContent
@@ -75,6 +77,7 @@ export function SpendingTimeline() {
       }}
       onToggleDay={(date) => setExpandedDay((prev) => (prev === date ? null : date))}
       onRetry={() => setRequest({ days: request.days })}
+      showValues={showValues}
     />
   );
 }
@@ -88,6 +91,7 @@ export function SpendingTimelineContent({
   onSelectDays,
   onToggleDay,
   onRetry,
+  showValues = true,
 }: {
   data: TimelineDay[];
   loading: boolean;
@@ -97,9 +101,12 @@ export function SpendingTimelineContent({
   onSelectDays: (days: number) => void;
   onToggleDay: (date: string) => void;
   onRetry: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   const totalIncome = data.reduce((sum, d) => sum + d.income, 0);
   const totalExpense = data.reduce((sum, d) => sum + d.expense, 0);
   const daysWithActivity = data.filter((d) => d.count > 0);
@@ -159,6 +166,8 @@ export function SpendingTimelineContent({
               valueClassName="mt-0 text-sm sm:text-sm"
               label={t('timeline.metrics.runningBalance')}
               value={`${data[0].runningBalance >= 0 ? '+' : ''}${currencyFmt(data[0].runningBalance, locale)}`}
+              showValues={showValues}
+              maskedValue={maskedValue}
             />
             <FinanceMetric
               variant="cell"
@@ -166,6 +175,8 @@ export function SpendingTimelineContent({
               valueClassName="mt-0 text-sm font-normal sm:text-sm"
               label={t('timeline.metrics.income')}
               value={currencyFmt(totalIncome, locale)}
+              showValues={showValues}
+              maskedValue={maskedValue}
             />
             <FinanceMetric
               variant="cell"
@@ -173,15 +184,17 @@ export function SpendingTimelineContent({
               valueClassName="mt-0 text-sm font-normal sm:text-sm"
               label={t('timeline.metrics.expense')}
               value={currencyFmt(totalExpense, locale)}
+              showValues={showValues}
+              maskedValue={maskedValue}
             />
           </dl>
           <div aria-hidden="true" className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full bg-[var(--ds-accent-positive)]"
               style={{
-                width: `${totalIncome + totalExpense > 0
+                width: `${showValues ? (totalIncome + totalExpense > 0
                   ? (totalIncome / (totalIncome + totalExpense)) * 100
-                  : 50}%`,
+                  : 50) : 0}%`,
               }}
             />
           </div>
@@ -191,7 +204,7 @@ export function SpendingTimelineContent({
       )}
 
       {chartData.length > 0 && (
-        <SpendingTimelineChart chartData={chartData} maxAbsNet={maxAbsNet} />
+        <SpendingTimelineChart chartData={chartData} maxAbsNet={maxAbsNet} showValues={showValues} />
       )}
 
       <ScrollArea className="[&>[data-slot=scroll-area-viewport]]:max-h-[420px]">
@@ -202,6 +215,7 @@ export function SpendingTimelineContent({
               day={day}
               isExpanded={expandedDay === day.date}
               onToggleDay={onToggleDay}
+              showValues={showValues}
             />
           ))}
         </ul>

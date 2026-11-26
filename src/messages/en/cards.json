@@ -36,7 +36,10 @@
     "copied": "Copied",
     "cycleDates": "Closes day {closingDay} · Due day {dueDay}",
     "currentBalance": "Current statement",
-    "available": "Available"
+    "available": "Available",
+    "debitSubtitle": "Debit mode",
+    "debitMode": "Debit card",
+    "debitNoCredit": "Purchases linked to account balance"
   },
   "usage": {
     "high": "High limit usage",
@@ -49,6 +52,8 @@
     "available": "Available",
     "infoAria": "Card details",
     "maskedNumber": "Masked number",
+    "type": "Type",
+    "debitNotice": "Debit mode card: purchases are recorded directly without a credit billing cycle.",
     "closing": "Closing",
     "due": "Due",
     "day": "Day {day}",

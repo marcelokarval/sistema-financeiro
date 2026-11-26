@@ -73,30 +73,43 @@ function getSavingsLabelKey(rate: number): SavingsRateLabelKey {
 const panel = 'min-w-0 space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5';
 const amount = 'break-words font-mono text-sm font-semibold tabular-nums';
 
-export function ChallengeRow({ challenge }: { challenge: ChallengeTarget }) {
+function maskChallengeText(text: string, maskedValue: string): string {
+  return text
+    .replace(/-?R\$\s*[\d.,]+/g, maskedValue)
+    .replace(/[+-]?\d+(?:[.,]\d+)?\s*%/g, '•••')
+    .replace(/\d+(?:[.,]\d+)*/g, '•••');
+}
+
+export function ChallengeRow({ challenge, showValues = true }: { challenge: ChallengeTarget; showValues?: boolean }) {
   const t = useSafeTranslations('goals');
   const locale = useSafeLocale();
   const [started, setStarted] = useState(() => readStartedChallenges().has(challenge.id));
   const statusKey = challenge.progress >= 80 ? 'onTrack' : challenge.progress >= 50 ? 'almostThere' : 'needsWork';
   const label = t(`challenges.row.${statusKey}`);
-  const formatValue = (v: number, unit: string) => unit === 'currency' ? currencyFmt(v, locale) : `${v.toFixed(1)}%`;
+  const maskedValue = t('maskedValue');
+  const title = showValues ? challenge.title : maskChallengeText(challenge.title, maskedValue);
+  const description = showValues ? challenge.description : maskChallengeText(challenge.description, maskedValue);
+  const formatValue = (v: number, unit: string) => {
+    if (!showValues) return unit === 'currency' ? maskedValue : '•••';
+    return unit === 'currency' ? currencyFmt(v, locale) : `${v.toFixed(1)}%`;
+  };
   const width = Math.min(100, Math.max(challenge.progress, 0));
 
   return (
     <li className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center sm:gap-4">
       <div className="min-w-0">
-        <h4 className="break-words text-sm font-medium">{challenge.title}</h4>
-        <p className="break-words text-xs text-muted-foreground">{challenge.description}</p>
+        <h4 className="break-words text-sm font-medium">{title}</h4>
+        <p className="break-words text-xs text-muted-foreground">{description}</p>
       </div>
       <div className="min-w-0 space-y-1.5 text-xs">
-        <p className="flex flex-wrap justify-between gap-x-2"><span>{label}</span><span className="font-mono tabular-nums">{challenge.progress.toFixed(0)}%</span></p>
+        <p className="flex flex-wrap justify-between gap-x-2"><span>{label}</span><span className="font-mono tabular-nums">{showValues ? `${challenge.progress.toFixed(0)}%` : '•••'}</span></p>
         <FinanceProgress
-          label={t('challenges.row.progressAria', { title: challenge.title })}
+          label={t('challenges.row.progressAria', { title })}
           value={width}
           min={0}
           max={100}
           unit="%"
-          valueText={`${challenge.progress.toFixed(0)}%`}
+          valueText={showValues ? `${challenge.progress.toFixed(0)}%` : '•••'}
           showHeader={false}
         />
         <p className="break-words text-muted-foreground">
@@ -123,7 +136,8 @@ export function ChallengeRow({ challenge }: { challenge: ChallengeTarget }) {
   );
 }
 
-export function SavingsChallenge() {
+export function SavingsChallenge({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [data, setData] = useState<SavingsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -141,19 +155,24 @@ export function SavingsChallenge() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    void locale;
+    fetchData();
+  }, [fetchData, locale]);
 
-  return <SavingsChallengeContent data={data} loading={loading} onRetry={fetchData} />;
+  return <SavingsChallengeContent data={data} loading={loading} onRetry={fetchData} showValues={showValues} />;
 }
 
 export function SavingsChallengeContent({
   data,
   loading,
   onRetry,
+  showValues = true,
 }: {
   data: SavingsData | null;
   loading: boolean;
   onRetry: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('goals');
   const locale = useSafeLocale();
@@ -178,8 +197,10 @@ export function SavingsChallengeContent({
     );
   }
 
+  const maskedValue = t('maskedValue');
+  const money = (v: number) => (showValues ? currencyFmt(v, locale) : maskedValue);
   const motivation = data.savingsRate >= 30
-    ? t('challenges.motivation.high', { rate: data.savingsRate.toFixed(0) })
+    ? t('challenges.motivation.high', { rate: showValues ? data.savingsRate.toFixed(0) : '•••' })
     : data.savingsRate >= 20
       ? t('challenges.motivation.good', { days: data.daysRemaining })
       : data.savingsRate >= 10
@@ -196,10 +217,10 @@ export function SavingsChallengeContent({
         <p className="text-xs capitalize text-muted-foreground">{format(new Date(), 'MMMM yyyy', { locale: getDateFnsLocale(locale) })}</p>
       </header>
       <dl aria-label={t('challenges.summaryAria')} className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs sm:grid-cols-3 xl:grid-cols-5">
-        <FinanceMetric variant="compact" label={t('challenges.metrics.savingsRate')} value={`${Math.round(data.savingsRate)}%`} caption={t(`challenges.rateLabels.${getSavingsLabelKey(data.savingsRate)}`)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label={t('challenges.metrics.monthSavings')} value={currencyFmt(data.currentMonthSavings, locale)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label={t('challenges.metrics.dailyAverage')} value={currencyFmt(data.dailyAverageExpense, locale)} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label={t('challenges.metrics.projectedSavings')} value={currencyFmt(data.projectedSavings, locale)} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.savingsRate')} value={`${Math.round(data.savingsRate)}%`} caption={t(`challenges.rateLabels.${getSavingsLabelKey(data.savingsRate)}`)} showValues={showValues} maskedValue="•••" valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.monthSavings')} value={currencyFmt(data.currentMonthSavings, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.dailyAverage')} value={currencyFmt(data.dailyAverageExpense, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.projectedSavings')} value={currencyFmt(data.projectedSavings, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
         <FinanceMetric variant="compact" label={t('challenges.metrics.daysRemaining')} value={data.daysRemaining} valueClassName="text-sm" />
       </dl>
       <div className="space-y-2 rounded-md border border-border px-3 py-2.5">
@@ -208,8 +229,8 @@ export function SavingsChallengeContent({
           <p className="text-xs">{data.todaySpending > data.dailyTarget ? t('challenges.today.overTarget') : t('challenges.today.withinTarget')}</p>
         </div>
         <p className="break-words text-xs text-muted-foreground">
-          <strong className={cn(amount, 'text-foreground')}>{currencyFmt(data.todaySpending, locale)}</strong>{' '}
-          {t('challenges.today.usagePrefix', { target: currencyFmt(data.dailyTarget, locale), pct: todayProgress.toFixed(0) })}
+          <strong className={cn(amount, 'text-foreground')}>{money(data.todaySpending)}</strong>{' '}
+          {t('challenges.today.usagePrefix', { target: money(data.dailyTarget), pct: showValues ? todayProgress.toFixed(0) : '•••' })}
         </p>
         <FinanceProgress
           label={t('challenges.today.progressLabel')}
@@ -217,21 +238,21 @@ export function SavingsChallengeContent({
           min={0}
           max={100}
           unit="%"
-          valueText={`${todayProgress.toFixed(0)}%`}
+          valueText={showValues ? `${todayProgress.toFixed(0)}%` : '•••'}
           showHeader={false}
         />
         {data.todaySpending === 0 && <p className="text-xs text-muted-foreground">{t('challenges.today.noSpending')}</p>}
       </div>
       <div>
         <h3 className="text-sm font-medium">{t('challenges.targetsTitle')}</h3>
-        <ul className="divide-y divide-border">{data.challengeTargets.map((challenge) => <ChallengeRow key={challenge.id} challenge={challenge} />)}</ul>
+        <ul className="divide-y divide-border">{data.challengeTargets.map((challenge) => <ChallengeRow key={challenge.id} challenge={challenge} showValues={showValues} />)}</ul>
       </div>
       <footer className="space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
         <p>{motivation}</p>
         <p>
           {t('challenges.footerSummary', {
-            income: currencyFmt(data.income, locale),
-            expenses: currencyFmt(data.totalExpenses, locale),
+            income: money(data.income),
+            expenses: money(data.totalExpenses),
             elapsed: data.daysElapsed,
             total: data.daysInMonth,
           })}

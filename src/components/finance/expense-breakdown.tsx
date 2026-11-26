@@ -46,9 +46,12 @@ export function currentExpenseBreakdown(request: ExpenseBreakdownRequest, settle
   return settled?.request === request ? settled.result : { status: 'loading' };
 }
 
-export function ExpenseBreakdown() {
+export function ExpenseBreakdown({ showValues = true }: { showValues?: boolean } = {}) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
+  const money = (v: number) => (showValues ? currencyFmt(v, locale) : maskedValue);
   const [request, setRequest] = useState<ExpenseBreakdownRequest>({ months: '6' });
   const [settled, setSettled] = useState<ExpenseBreakdownResult | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -59,10 +62,11 @@ export function ExpenseBreakdown() {
   const refresh = () => setRequest({ months: request.months });
 
   useEffect(() => {
+    void locale;
     const controller = new AbortController();
     void requestExpenseBreakdown(request, controller.signal, setSettled);
     return () => controller.abort();
-  }, [request]);
+  }, [request, locale]);
 
   const selectPeriod = (months: ExpenseBreakdownRequest['months']) => {
     if (months === request.months) return;
@@ -168,7 +172,7 @@ export function ExpenseBreakdown() {
         <>
           <div className="min-w-0 space-y-2">
             <p className="text-xs text-muted-foreground">{t('expenses.totalExpenses')}</p>
-            <p className="break-words font-mono text-lg font-semibold tabular-nums">{currencyFmt(data.totalExpense, locale)}</p>
+            <p className="break-words font-mono text-lg font-semibold tabular-nums">{money(data.totalExpense)}</p>
           </div>
 
           {chartData.length > 0 && (
@@ -210,13 +214,13 @@ export function ExpenseBreakdown() {
                         );
                       })}
                     </Pie>
-                    <RechartsTooltip content={<ExpenseBreakdownTooltip />} />
+                    <RechartsTooltip content={<ExpenseBreakdownTooltip showValues={showValues} />} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               {activeSlice && (
                 <p className="break-words text-center text-xs text-muted-foreground">
-                  {activeSlice.name} ({activeSlice.percentage.toFixed(1)}%)
+                  {activeSlice.name} ({showValues ? `${activeSlice.percentage.toFixed(1)}%` : '•••'})
                 </p>
               )}
             </figure>
@@ -233,6 +237,7 @@ export function ExpenseBreakdown() {
             expandedCategory={expandedCategory}
             onSelectActive={setActiveCategory}
             onToggleExpand={(categoryId) => setExpandedCategory(expandedCategory === categoryId ? null : categoryId)}
+            showValues={showValues}
           />
 
           {top3.length > 0 && (
@@ -243,7 +248,7 @@ export function ExpenseBreakdown() {
                   <li key={cat.categoryId} className="min-w-0 space-y-1 bg-card p-3 text-xs">
                     <p className="break-words font-medium">{idx + 1}. {cat.categoryName}</p>
                     <p className="flex flex-wrap gap-x-2 font-mono tabular-nums">
-                      {currencyFmt(cat.total, locale)} <span className="text-muted-foreground">{cat.percentage.toFixed(1)}%</span>
+                      {money(cat.total)} <span className="text-muted-foreground">{showValues ? `${cat.percentage.toFixed(1)}%` : '•••'}</span>
                     </p>
                   </li>
                 ))}

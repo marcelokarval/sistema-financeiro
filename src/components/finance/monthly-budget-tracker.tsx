@@ -113,7 +113,7 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
   const monthLabel = format(now, 'MMMM yyyy', { locale: getDateFnsLocale(locale) });
-  const key = `${currentYear}-${currentMonth}-${request}-${refreshCounter}`;
+  const key = `${currentYear}-${currentMonth}-${request}-${refreshCounter}-${locale}`;
   const query = settled?.key === key ? settled.result : { status: 'loading' as const };
   const refreshBudgets = () => setRequest((value) => value + 1);
   const money = (amount: number) => showValues ? currencyFmt(amount, locale) : t('maskedValue');
@@ -127,12 +127,13 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
   }, (result) => setSettled({ key, result })), [currentMonth, currentYear, key]);
 
   useEffect(() => observeQuery(async (signal) => {
+    void locale;
     const response = await fetch('/api/categories', { signal });
     if (!response.ok) throw new Error('Categorias indisponíveis');
     type Category = MonthlyBudgetCategoryOption & { type: string };
     const data: { categories: Category[] } | Category[] = await response.json();
     return (Array.isArray(data) ? data : data.categories).filter((category) => category.type === 'EXPENSE');
-  }, (result) => { if (result.status === 'ready') setCategories(result.data); }), [refreshCounter]);
+  }, (result) => { if (result.status === 'ready') setCategories(result.data); }), [refreshCounter, locale]);
 
   const openCreateDialog = () => {
     setEditingBudget(null);

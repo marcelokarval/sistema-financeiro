@@ -118,7 +118,8 @@ export function currentNetworthEvolution(
   return settled?.request === request ? settled.result : { status: 'loading' };
 }
 
-export function NetworthEvolution() {
+export function NetworthEvolution({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [request, setRequest] = useState<NetworthRequest>({ months: 6 });
   const [settled, setSettled] = useState<NetworthResult | null>(null);
   const query = currentNetworthEvolution(request, settled);
@@ -130,10 +131,11 @@ export function NetworthEvolution() {
   }, []);
 
   useEffect(() => {
+    void locale;
     const controller = new AbortController();
     void requestNetworthEvolution(request, controller.signal, setSettled);
     return () => controller.abort();
-  }, [request]);
+  }, [request, locale]);
 
   return (
     <NetworthEvolutionContent
@@ -145,6 +147,7 @@ export function NetworthEvolution() {
       }}
       fetchData={fetchData}
       onRetry={() => setRequest({ months: request.months })}
+      showValues={showValues}
     />
   );
 }
@@ -167,7 +170,10 @@ export function NetworthEvolutionContent({
   showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
+  const money = (v: number) => (showValues ? currencyFmt(v, locale) : maskedValue);
   const handleRetry = onRetry ?? (() => fetchData(selectedMonths));
 
   if (loading) {
@@ -280,7 +286,7 @@ export function NetworthEvolutionContent({
                   <span className="text-xs text-muted-foreground font-medium">{t('networth.current')}</span>
                 </div>
                 <p className="font-mono text-base font-semibold tabular-nums text-foreground">
-                  {currencyFmt(current.netWorth, locale)}
+                  {money(current.netWorth)}
                 </p>
                 <div className="flex items-center gap-1 mt-1">
                   {current.changeAmount >= 0 ? (
@@ -293,8 +299,7 @@ export function NetworthEvolutionContent({
                       current.changePercent >= 0 ? 'text-[var(--money)]' : 'text-[var(--debt)]'
                     }`}
                   >
-                    {current.changePercent >= 0 ? '+' : ''}
-                    {current.changePercent.toFixed(1)}%
+                    {showValues ? `${current.changePercent >= 0 ? '+' : ''}${current.changePercent.toFixed(1)}%` : '•••'}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {t('networth.vsPreviousMonth')}
@@ -308,7 +313,7 @@ export function NetworthEvolutionContent({
                   <span className="text-xs text-muted-foreground font-medium">{t('networth.highest')}</span>
                 </div>
                 <p className="font-mono text-base font-semibold tabular-nums text-[var(--money)]">
-                  {currencyFmt(highest.netWorth, locale)}
+                  {money(highest.netWorth)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1 capitalize">
                   {highest.month}
@@ -321,7 +326,7 @@ export function NetworthEvolutionContent({
                   <span className="text-xs text-muted-foreground font-medium">{t('networth.lowest')}</span>
                 </div>
                 <p className="font-mono text-base font-semibold tabular-nums text-[var(--debt)]">
-                  {currencyFmt(lowest.netWorth, locale)}
+                  {money(lowest.netWorth)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1 capitalize">
                   {lowest.month}
@@ -348,7 +353,7 @@ export function NetworthEvolutionContent({
                     tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v) => formatNetworthAxis(v, locale)}
+                    tickFormatter={(v) => (showValues ? formatNetworthAxis(v, locale) : '•••')}
                     domain={['dataMin - 5000', 'dataMax + 5000']}
                   />
                   <RechartsTooltip content={<NetworthEvolutionTooltip showValues={showValues} />} />
@@ -394,33 +399,33 @@ export function NetworthEvolutionContent({
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-foreground">
-                      {t('networth.milestone.title', { target: currencyFmt(milestoneTarget, locale) })}
+                      {t('networth.milestone.title', { target: money(milestoneTarget) })}
                     </p>
                     <span className="font-mono text-xs font-semibold tabular-nums text-primary">
-                      {milestoneProgress.toFixed(1)}%
+                      {showValues ? `${milestoneProgress.toFixed(1)}%` : '•••'}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {t('networth.milestone.remaining', {
-                      amount: currencyFmt(Math.max(0, milestoneTarget - Math.max(0, current.netWorth)), locale),
+                      amount: money(Math.max(0, milestoneTarget - Math.max(0, current.netWorth))),
                     })}
                   </p>
                 </div>
               </div>
               <div
                 role="progressbar"
-                aria-label={t('networth.milestone.progressAria', { target: currencyFmt(milestoneTarget, locale) })}
+                aria-label={t('networth.milestone.progressAria', { target: money(milestoneTarget) })}
                 aria-valuenow={Math.round(milestoneProgress)}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuetext={`${milestoneProgress.toFixed(1)}%`}
+                aria-valuetext={showValues ? `${milestoneProgress.toFixed(1)}%` : '•••'}
                 className="h-3 rounded-full bg-muted overflow-hidden"
               >
-                <div className="h-full rounded-full bg-primary" style={{ width: `${milestoneProgress}%` }} />
+                <div className="h-full rounded-full bg-primary" style={{ width: `${showValues ? milestoneProgress : 0}%` }} />
               </div>
               <div className="flex items-center justify-between mt-1.5">
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">{currencyFmt(0, locale)}</span>
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">{currencyFmt(milestoneTarget, locale)}</span>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">{money(0)}</span>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">{money(milestoneTarget)}</span>
               </div>
             </div>
           </div>

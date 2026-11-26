@@ -132,6 +132,7 @@ function CardRow({ card, copied, onOpen, onCopy, onEdit, onDelete }: {
 }) {
   const locale = useSafeLocale();
   const t = createFallbackTranslator(useSafeTranslations('cards'), PT_OPERATIONS_MESSAGES.cards);
+  const isDebit = card.type === 'DEBIT';
   return (
     <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:gap-x-4">
       <Button type="button" variant="ghost" aria-label={t('list.openCardAria', { name: card.name })} onClick={onOpen} data-card-detail={card.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left md:col-span-1">
@@ -139,16 +140,25 @@ function CardRow({ card, copied, onOpen, onCopy, onEdit, onDelete }: {
         <span className="min-w-0 wrap-anywhere">
           <span className="block font-semibold">{card.name}</span>
           <span className="block text-xs text-muted-foreground">{resolveCardBrand(card.brand, t)}{card.flag && ` · ${card.flag}`} · <span className="font-mono">•••• •••• •••• {card.lastFourDigits}</span></span>
-          <span className="block text-xs text-muted-foreground">{t('list.cycleDates', { closingDay: card.closingDay, dueDay: card.dueDay })}</span>
+          <span className="block text-xs text-muted-foreground">{isDebit ? t('list.debitSubtitle') : t('list.cycleDates', { closingDay: card.closingDay, dueDay: card.dueDay })}</span>
         </span>
         <ChevronRight aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
       </Button>
       <div className="col-span-2 grid min-w-0 gap-1 md:col-span-1">
-        <dl className="grid grid-cols-2 gap-2 text-xs">
-          <FinanceMetric variant="compact" label={t('list.currentBalance')} value={currencyFmt(card.currentBalance, locale)} />
-          <FinanceMetric variant="compact" label={t('list.available')} value={currencyFmt(card.creditLimit - card.currentBalance, locale)} />
-        </dl>
-        <CardUsage value={usagePercent(card)} high={isOverLimit(card)} />
+        {isDebit ? (
+          <div className="space-y-0.5 text-xs">
+            <p className="font-medium text-foreground">{t('list.debitMode')}</p>
+            <p className="text-muted-foreground">{t('list.debitNoCredit')}</p>
+          </div>
+        ) : (
+          <>
+            <dl className="grid grid-cols-2 gap-2 text-xs">
+              <FinanceMetric variant="compact" label={t('list.currentBalance')} value={currencyFmt(card.currentBalance, locale)} />
+              <FinanceMetric variant="compact" label={t('list.available')} value={currencyFmt(card.creditLimit - card.currentBalance, locale)} />
+            </dl>
+            <CardUsage value={usagePercent(card)} high={isOverLimit(card)} />
+          </>
+        )}
       </div>
       <div className="col-span-2 flex flex-wrap items-center justify-between gap-1 md:col-span-1">
         <span role="status" className="text-xs text-muted-foreground">{copied ? t('list.copied') : ''}</span>
@@ -327,6 +337,7 @@ export function CardsView() {
   }
 
   if (selectedCard) {
+    const isDebit = selectedCard.type === 'DEBIT';
     const purchaseStatus = purchasesLoading ? 'loading' : purchasesError ? 'error' : purchases.length === 0 ? 'empty' : 'success';
     return (
       <div className="min-w-0 space-y-5">
@@ -339,18 +350,30 @@ export function CardsView() {
             <h2 className="wrap-anywhere text-2xl font-semibold tracking-tight">{selectedCard.name}</h2>
           </div>
         </header>
-        <dl aria-label={t('detail.positionAria')} className={cn(cardPanel, 'grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0')}>
-          <FinanceMetric variant="cell" label={t('detail.currentBalance')} value={currencyFmt(selectedCard.currentBalance, locale)} />
-          <FinanceMetric variant="cell" label={t('detail.limit')} value={currencyFmt(selectedCard.creditLimit, locale)} />
-          <FinanceMetric variant="cell" label={t('detail.available')} value={currencyFmt(selectedCard.creditLimit - selectedCard.currentBalance, locale)} />
-        </dl>
+        {!isDebit && (
+          <dl aria-label={t('detail.positionAria')} className={cn(cardPanel, 'grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0')}>
+            <FinanceMetric variant="cell" label={t('detail.currentBalance')} value={currencyFmt(selectedCard.currentBalance, locale)} />
+            <FinanceMetric variant="cell" label={t('detail.limit')} value={currencyFmt(selectedCard.creditLimit, locale)} />
+            <FinanceMetric variant="cell" label={t('detail.available')} value={currencyFmt(selectedCard.creditLimit - selectedCard.currentBalance, locale)} />
+          </dl>
+        )}
         <section aria-label={t('detail.infoAria')} className={cn(cardPanel, 'space-y-3 p-4')}>
           <dl className="flex flex-wrap justify-between gap-x-6 gap-y-2 text-sm">
             <div><dt className="text-muted-foreground">{t('detail.maskedNumber')}</dt><dd className="font-mono">•••• •••• •••• {selectedCard.lastFourDigits}</dd></div>
-            <div><dt className="text-muted-foreground">{t('detail.closing')}</dt><dd>{t('detail.day', { day: String(selectedCard.closingDay).padStart(2, '0') })}</dd></div>
-            <div><dt className="text-muted-foreground">{t('detail.due')}</dt><dd>{t('detail.day', { day: String(selectedCard.dueDay).padStart(2, '0') })}</dd></div>
+            {isDebit ? (
+              <div><dt className="text-muted-foreground">{t('detail.type')}</dt><dd>{resolveCardType(selectedCard.type, t)}</dd></div>
+            ) : (
+              <>
+                <div><dt className="text-muted-foreground">{t('detail.closing')}</dt><dd>{t('detail.day', { day: String(selectedCard.closingDay).padStart(2, '0') })}</dd></div>
+                <div><dt className="text-muted-foreground">{t('detail.due')}</dt><dd>{t('detail.day', { day: String(selectedCard.dueDay).padStart(2, '0') })}</dd></div>
+              </>
+            )}
           </dl>
-          <CardUsage value={usagePercent(selectedCard)} high={isOverLimit(selectedCard)} />
+          {isDebit ? (
+            <p className="text-xs text-muted-foreground">{t('detail.debitNotice')}</p>
+          ) : (
+            <CardUsage value={usagePercent(selectedCard)} high={isOverLimit(selectedCard)} />
+          )}
         </section>
         <QueryPanel
           titleId="card-purchases"

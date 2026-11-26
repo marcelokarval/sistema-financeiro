@@ -184,7 +184,7 @@ function heldResponse() {
   return { promise, resolve, reject };
 }
 
-function find(node: ReactNode, match: (element: Element) => boolean): Element | undefined {
+function find(node: ReactNode, match: (element: Element) => boolean, locale: CanonicalLocale = 'pt'): Element | undefined {
   for (const child of React.Children.toArray(node)) {
     if (!React.isValidElement<Element['props']>(child)) continue;
     if (match(child)) return child;
@@ -202,15 +202,15 @@ function find(node: ReactNode, match: (element: Element) => boolean): Element | 
         || child.type === FinanceConfirmationDialogShell
         || child.type === QueryPanel
       ) {
-        expanded = withPtIntlDispatcher(() => (child.type as (props: Element['props']) => ReactNode)(child.props));
+        expanded = withPtIntlDispatcher(() => (child.type as (props: Element['props']) => ReactNode)(child.props), locale);
       }
     }
-    const nested = find(expanded, match);
+    const nested = find(expanded, match, locale);
     if (nested) return nested;
   }
 }
-const required = (node: ReactNode, match: (element: Element) => boolean) => {
-  const result = find(node, match);
+const required = (node: ReactNode, match: (element: Element) => boolean, locale: CanonicalLocale = 'pt') => {
+  const result = find(node, match, locale);
   if (!result) throw new Error('Controle sintético não encontrado');
   return result;
 };
@@ -547,7 +547,7 @@ async function exerciseCards(onRun: (testbed: {
   feedback: string[];
   answerWrite: (answer: () => Promise<Response>) => void;
   answerPurchases: (answer: (url: string) => Promise<Response>) => void;
-}) => Promise<void>, cards = qaCards) {
+}) => Promise<void>, cards = qaCards, locale: CanonicalLocale = 'pt') {
   const react = (React as unknown as {
     __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
   }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
@@ -583,7 +583,7 @@ async function exerciseCards(onRun: (testbed: {
         return callbacks[i].fn;
       },
       useMemo: (factory: () => unknown) => factory(),
-      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
       useId: () => 'test-id',
       useDebugValue: () => {},
       useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
@@ -1219,5 +1219,102 @@ test('renderiza AccountsView, CardsView e showValues=false sem vazar dígitos em
     for (const [, label] of maskedHtml.matchAll(/aria-label="([^"]*)"/g)) {
       expect(label).not.toMatch(/\d/);
     }
+  }
+});
+
+test('Cartões omite fatura, limite, disponibilidade, uso e ciclo em cartões DEBIT na lista e no detalhe em pt, es e en', async () => {
+  const mixedCards = [
+    {
+      id: 'credit-1',
+      name: 'Crédito Principal',
+      type: 'CREDIT',
+      brand: 'VISA',
+      lastFourDigits: '1111',
+      creditLimit: 5000,
+      currentBalance: 450,
+      closingDay: 5,
+      dueDay: 15,
+      color: '#8b5cf6',
+      flag: 'Banco QA',
+    },
+    {
+      id: 'debit-1',
+      name: 'Débito Conta',
+      type: 'DEBIT',
+      brand: 'ELO',
+      lastFourDigits: '9876',
+      creditLimit: 0,
+      currentBalance: 0,
+      closingDay: 1,
+      dueDay: 10,
+      color: '#0ea5e9',
+      flag: 'Banco Débito',
+    },
+  ];
+  const expectedByLocale = {
+    pt: {
+      openAria: 'Abrir cartão Débito Conta',
+      debitSubtitle: 'Modalidade débito',
+      debitMode: 'Débito à vista',
+      debitNoCredit: 'Movimentação vinculada ao saldo da conta',
+      debitNotice: 'Cartão na modalidade débito: compras registradas diretamente sem ciclo de crédito.',
+      purchasesTitle: 'Compras no cartão',
+      creditTerms: ['Fecha dia', 'Vence dia', 'Fatura atual', 'Disponível', 'Uso do limite', 'Fechamento', 'Vencimento'],
+    },
+    es: {
+      openAria: 'Abrir tarjeta Débito Conta',
+      debitSubtitle: 'Modalidad débito',
+      debitMode: 'Débito al contado',
+      debitNoCredit: 'Movimientos vinculados al saldo de la cuenta',
+      debitNotice: 'Tarjeta en modalidad débito: compras registradas directamente sin ciclo de crédito.',
+      purchasesTitle: 'Compras en la tarjeta',
+      creditTerms: ['Cierra día', 'Vence día', 'Factura actual', 'Disponible', 'Uso del límite', 'Cierre', 'Vencimiento'],
+    },
+    en: {
+      openAria: 'Open card Débito Conta',
+      debitSubtitle: 'Debit mode',
+      debitMode: 'Debit card',
+      debitNoCredit: 'Purchases linked to account balance',
+      debitNotice: 'Debit mode card: purchases are recorded directly without a credit billing cycle.',
+      purchasesTitle: 'Card purchases',
+      creditTerms: ['Closes day', 'Due day', 'Current statement', 'Available', 'Limit usage', 'Closing', 'Due'],
+    },
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const spec = expectedByLocale[locale];
+    await exerciseCards(async ({ render }) => {
+      const listTree = render();
+      const debitRow = find(
+        listTree,
+        (node) => typeof node.type === 'function' && node.type.name === 'CardRow' && node.props.card?.id === 'debit-1',
+      );
+      expect(debitRow).toBeDefined();
+      const rowHtml = renderWithIntl(debitRow!, locale);
+      expect(rowHtml).toContain('Débito Conta');
+      expect(rowHtml).toContain('•••• •••• •••• 9876');
+      expect(rowHtml).toContain(spec.debitSubtitle);
+      expect(rowHtml).toContain(spec.debitMode);
+      expect(rowHtml).toContain(spec.debitNoCredit);
+      expect(rowHtml).not.toContain('role="progressbar"');
+      for (const forbidden of spec.creditTerms) {
+        expect(rowHtml).not.toContain(forbidden);
+      }
+
+      required(listTree, nameIs(spec.openAria), locale).props.onClick();
+      render();
+      await settle();
+      const detailTree = render();
+      const detailHtml = renderWithIntl(detailTree, locale);
+      expect(detailHtml).toContain('Débito Conta');
+      expect(detailHtml).toContain('•••• •••• •••• 9876');
+      expect(detailHtml).toContain(spec.debitNotice);
+      expect(detailHtml).toContain(spec.purchasesTitle);
+      expect(detailHtml).toContain('Compra debit-1');
+      expect(detailHtml).not.toContain('role="progressbar"');
+      for (const forbidden of spec.creditTerms) {
+        expect(detailHtml).not.toContain(forbidden);
+      }
+    }, mixedCards, locale);
   }
 });
