@@ -34,6 +34,7 @@ function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T
   internals.H = {
     useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
     useId: () => 'test-id',
+    useRef: (current: unknown) => ({ current }),
     useMemo: (factory: () => unknown) => factory(),
     useCallback: (cb: unknown) => cb,
   };
@@ -274,8 +275,19 @@ test('lista e detalhe montam as mesmas folhas de edição e confirmação de con
 const openFormDialog = (render: () => ViewElement) => findElement(render(), e => e.type === Dialog && e.props.open);
 const formButton = (root: ViewElement, label: string) => findElement(root, e => e.props.onClick && React.Children.toArray(e.props.children).some(child => typeof child === 'string' && child.trim() === label))!;
 const openForm = (render: () => ViewElement, method: 'POST' | 'PUT', id: string) => {
-  if (method === 'POST') formButton(render(), 'Novo consórcio').props.onClick(trigger);
-  else findElement(render(), e => e.type === consortiums.ConsortiumRow && e.props.consortium.id === id)!.props.onEdit(trigger);
+  if (method === 'POST') {
+    formButton(render(), 'Novo consórcio').props.onClick(trigger);
+    for (const [fieldId, val] of [
+      ['consortium-description', 'Cota Teste'],
+      ['consortium-total-amount', '1000'],
+      ['consortium-monthly-payment', '125'],
+      ['consortium-installment-count', '8'],
+    ] as const) {
+      findElement(openFormDialog(render), (e) => e.props.id === fieldId)?.props.onChange({ target: { value: val } });
+    }
+  } else {
+    findElement(render(), e => e.type === consortiums.ConsortiumRow && e.props.consortium.id === id)!.props.onEdit(trigger);
+  }
 };
 
 const rowById = (view: ViewElement, id = consortium.id) => findElement(view, (e) => e.type === consortiums.ConsortiumRow && e.props.consortium.id === id);
@@ -650,7 +662,7 @@ test('savings-view exibe erro com retry quando /api/savings falha e consome newG
   }
 });
 
-test('ConsortiumEditor adota FinanceFormDialogShell com papel dialog, sem closeLabel extra e com rodapé específico', () => {
+test('ConsortiumEditor adota FinanceFormDialogShell com papel dialog, closeLabel localizado e com rodapé específico', () => {
   let cancelled = 0;
   const onCloseAutoFocus = () => {};
   const element = withPtIntlDispatcher(() =>
@@ -667,14 +679,14 @@ test('ConsortiumEditor adota FinanceFormDialogShell com papel dialog, sem closeL
   );
 
   expect(element.type).toBe(FinanceFormDialogShell);
-  expect(element.props.closeLabel).toBeUndefined();
+  expect(element.props.closeLabel).toBe('Fechar formulário');
   expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
 
   const dialog = findElement(element, (e) => e.type === Dialog);
   expect(dialog).toBeDefined();
   expect(findElement(element, (e) => e.type === AlertDialog)).toBeUndefined();
   const content = findElement(element, (e) => e.type === DialogContent);
-  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.showCloseButton).toBe(false);
   expect(content?.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
   expect(content?.props.className).toContain('max-h-[85dvh]');
   expect(findElement(element, (e) => React.Children.toArray(e.props.children).includes('Editar Consórcio'))).toBeDefined();
@@ -737,7 +749,7 @@ test('savings-view adota FinanceProgress em SavingsGoalRow preservando percentua
   expect(zeroHtml).toContain('0%');
 });
 
-test('SavingsGoalEditor adota FinanceFormDialogShell em criação e edição, sem closeLabel extra e com pendência', () => {
+test('SavingsGoalEditor adota FinanceFormDialogShell em criação e edição, com closeLabel localizado e pendência', () => {
   const onOpenChange = () => {};
   const onCloseAutoFocus = () => {};
   const onSubmit = async () => {};
@@ -767,10 +779,10 @@ test('SavingsGoalEditor adota FinanceFormDialogShell em criação e edição, se
   );
 
   expect(editEl.type).toBe(FinanceFormDialogShell);
-  expect(editEl.props.closeLabel).toBeUndefined();
+  expect(editEl.props.closeLabel).toBe('Fechar formulário');
   expect(editEl.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
   const content = findElement(editEl, (e) => e.type === DialogContent);
-  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.showCloseButton).toBe(false);
   expect(content?.props.className).toContain('max-h-[85dvh]');
   expect(findElement(editEl, (e) => React.Children.toArray(e.props.children).includes('Editar Meta'))).toBeDefined();
   const submitBtn = findElement(editEl, (e) => e.props.onClick === onSubmit);
@@ -822,10 +834,10 @@ test('SavingsContributionDialog adota FinanceFormDialogShell preservando conta v
   );
 
   expect(element.type).toBe(FinanceFormDialogShell);
-  expect(element.props.closeLabel).toBeUndefined();
+  expect(element.props.closeLabel).toBe('Fechar formulário');
   expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
   const content = findElement(element, (e) => e.type === DialogContent);
-  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.showCloseButton).toBe(false);
   expect(content?.props.className).toContain('max-h-[85dvh]');
   expect(renderToStaticMarkup(<>{element.props.children}</>)).toContain('Conta vinculada: Conta sintética');
   expect(renderToStaticMarkup(<>{element.props.description}</>)).toContain('R$ 200,00');
@@ -1020,13 +1032,13 @@ test('ConsortiumInstallmentPayment adota FinanceFormDialogShell com papel dialog
   );
 
   expect(element.type).toBe(FinanceFormDialogShell);
-  expect(element.props.closeLabel).toBeUndefined();
+  expect(element.props.closeLabel).toBe('Fechar formulário');
   expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
   const dialog = findElement(element, (e) => e.type === Dialog);
   expect(dialog).toBeDefined();
   expect(findElement(element, (e) => e.type === AlertDialog)).toBeUndefined();
   const content = findElement(element, (e) => e.type === DialogContent);
-  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.showCloseButton).toBe(false);
   expect(content?.props.className).toContain('max-h-[85dvh]');
   expect(renderToStaticMarkup(<>{element.props.description}</>)).toContain('Parcela 3 — R$ 125,00');
   const confirmBtn = findElement(element, (e) => e.props.onClick === onConfirm);
@@ -1563,4 +1575,156 @@ test('renderiza ConsortiumRow, ConsortiumDetail e SavingsGoalRow em pt, es e en 
     const savingsHtml = renderWithIntl(<savings.SavingsGoalRow goal={goal} onDeposit={noop} onEdit={noop} onDelete={noop} />, locale);
     expect(savingsHtml).toContain(`aria-label="${expected[locale].goalAria}"`);
   }
+});
+
+test('#8: diálogo Novo Consórcio adota FinanceFormDialogShell com closeLabel localizado nos 3 idiomas', async () => {
+  const expectedClose = {
+    pt: 'Fechar formulário',
+    es: 'Cerrar formulario',
+    en: 'Close form',
+  } as const;
+
+  const src = await Bun.file(new URL('./consortiums-view.tsx', import.meta.url)).text();
+  expect(src).toContain('<FinanceFormDialogShell');
+  expect(src).toContain("closeLabel={t('createDialog.closeLabel')}");
+
+  for (const locale of CANONICAL_LOCALES) {
+    const msg = getMessagesForLocale(locale) as { consortiums: { createDialog: { closeLabel: string }; editor: { closeLabel: string }; payment: { closeLabel: string } }; savings: { editor: { closeLabel: string }; contribution: { closeLabel: string } } };
+    expect(msg.consortiums.createDialog.closeLabel).toBe(expectedClose[locale]);
+    expect(msg.consortiums.editor.closeLabel).toBe(expectedClose[locale]);
+    expect(msg.consortiums.payment.closeLabel).toBe(expectedClose[locale]);
+    expect(msg.savings.editor.closeLabel).toBe(expectedClose[locale]);
+    expect(msg.savings.contribution.closeLabel).toBe(expectedClose[locale]);
+  }
+});
+
+test('#15: SavingsGoalRow oculta Depositar no menu Mais ações quando a caixinha está concluída', () => {
+  const collectTexts = (node: ReactNode, out: string[] = []): string[] => {
+    for (const child of React.Children.toArray(node)) {
+      if (typeof child === 'string') out.push(child.trim());
+      else if (React.isValidElement<Record<string, unknown>>(child)) {
+        if (child.props.children) collectTexts(child.props.children as ReactNode, out);
+      }
+    }
+    return out;
+  };
+
+  const activeTree = withPtIntlDispatcher(() =>
+    savings.SavingsGoalRow({ goal, onDeposit: noop, onEdit: noop, onDelete: noop }),
+  );
+  expect(collectTexts(activeTree).filter((txt) => txt === 'Depositar').length).toBe(2);
+
+  for (const completedGoal of [
+    { ...goal, isCompleted: true },
+    { ...goal, currentAmount: goal.targetAmount },
+  ]) {
+    const completedTree = withPtIntlDispatcher(() =>
+      savings.SavingsGoalRow({ goal: completedGoal, onDeposit: noop, onEdit: noop, onDelete: noop }),
+    );
+    expect(collectTexts(completedTree)).not.toContain('Depositar');
+    expect(collectTexts(completedTree)).toContain('Editar');
+    expect(collectTexts(completedTree)).toContain('Excluir');
+  }
+});
+
+test('#16: ConsortiumsView valida createConsortium no cliente antes de adquirir trava ou enviar POST', async () => {
+  await exerciseConsortium(
+    async () => Response.json({}),
+    async (render, requests, feedback) => {
+      formButton(render(), 'Novo consórcio').props.onClick(trigger);
+      const submit = () => formButton(openFormDialog(render)!, 'Criar Consórcio').props.onClick();
+
+      // Descrição só com espaços
+      findElement(openFormDialog(render), (e) => e.props.id === 'consortium-description')?.props.onChange({ target: { value: '   ' } });
+      await submit();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+      expect(feedback.at(-1)).toBe('error');
+
+      // Valor total <= 0
+      findElement(openFormDialog(render), (e) => e.props.id === 'consortium-description')?.props.onChange({ target: { value: 'Cota Válida' } });
+      findElement(openFormDialog(render), (e) => e.props.id === 'consortium-total-amount')?.props.onChange({ target: { value: '0' } });
+      await submit();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+
+      // Parcela mensal <= 0
+      findElement(openFormDialog(render), (e) => e.props.id === 'consortium-total-amount')?.props.onChange({ target: { value: '1200' } });
+      findElement(openFormDialog(render), (e) => e.props.id === 'consortium-monthly-payment')?.props.onChange({ target: { value: '-10' } });
+      await submit();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+
+      // Total de parcelas fracionário (1.5) ou < 1
+      findElement(openFormDialog(render), (e) => e.props.id === 'consortium-monthly-payment')?.props.onChange({ target: { value: '100' } });
+      findElement(openFormDialog(render), (e) => e.props.id === 'consortium-installment-count')?.props.onChange({ target: { value: '1.5' } });
+      await submit();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+    },
+  );
+});
+
+test('#18: ConsortiumDetail filtra Todas/Pendentes/Pagas mantendo 1..N, isola consortiumId e salta à próxima pendente', () => {
+  const detailInstallments = [
+    { id: 'ci-1', number: 1, amount: 125, dueDate: '2026-04-01', paidDate: '2026-04-01', status: 'PAID', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: consortium.id },
+    { id: 'ci-2', number: 2, amount: 125, dueDate: '2026-05-01', paidDate: null, status: 'OVERDUE', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: consortium.id },
+    { id: 'ci-3', number: 3, amount: 125, dueDate: '2026-06-01', paidDate: null, status: 'PENDING', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: consortium.id },
+  ];
+
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previousH = internals.H;
+  const states: unknown[] = [];
+  const refs: { current: unknown }[] = [];
+
+  function renderDetail(rows = detailInstallments) {
+    let s = 0, r = 0;
+    internals.H = {
+      useState(initial: unknown) {
+        const i = s++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useRef: (init: unknown) => (refs[r++] ??= { current: init }),
+      useMemo: (f: () => unknown) => f(),
+      useCallback: (cb: unknown) => cb,
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, 'pt'),
+      useEffect: () => {},
+    };
+    try {
+      return consortiums.ConsortiumDetail({ consortium, installments: rows, installmentLoad: 'ready', onPay: noop });
+    } finally {
+      internals.H = previousH;
+    }
+  }
+
+  let tree = renderDetail();
+  const findBtn = (node: ReactNode, text: string) =>
+    findElement(node, (e) => Boolean(e.props?.onClick) && React.Children.toArray(e.props.children).some((c) => typeof c === 'string' && c.trim() === text))!;
+
+  // Pendentes agrupa OVERDUE + PENDING em ordem 2 -> 3
+  findBtn(tree, 'Pendentes').props.onClick();
+  tree = renderDetail();
+  const pendingHtml = renderToStaticMarkup(tree);
+  expect(pendingHtml).not.toContain('Parcela 1');
+  expect(pendingHtml).toContain('Parcela 2');
+  expect(pendingHtml).toContain('Parcela 3');
+  expect(pendingHtml.indexOf('Parcela 2')).toBeLessThan(pendingHtml.indexOf('Parcela 3'));
+
+  // Pagas mostra somente Parcela 1; acionar Ir para próxima pendente volta para Todas
+  findBtn(tree, 'Pagas').props.onClick();
+  tree = renderDetail();
+  const paidHtml = renderToStaticMarkup(tree);
+  expect(paidHtml).toContain('Parcela 1');
+  expect(paidHtml).not.toContain('Parcela 2');
+
+  const jumpBtn = findBtn(tree, 'Ir para próxima pendente');
+  expect(jumpBtn.props.disabled).toBe(false);
+  jumpBtn.props.onClick();
+  tree = renderDetail();
+  expect(findBtn(tree, 'Todas').props['aria-pressed']).toBe(true);
+
+  // Todas pagas -> botão de salto desabilitado
+  states.length = 0;
+  refs.length = 0;
+  const allPaidTree = renderDetail([detailInstallments[0]]);
+  expect(findBtn(allPaidTree, 'Ir para próxima pendente').props.disabled).toBe(true);
 });

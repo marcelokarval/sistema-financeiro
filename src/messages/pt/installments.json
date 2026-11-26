@@ -39,11 +39,17 @@
     "backToPlans": "Voltar aos planos",
     "deletePlan": "Excluir plano",
     "retry": "Tentar novamente",
-    "openAriaLabel": "Abrir plano: {description}"
+    "openAriaLabel": "Abrir plano: {description}",
+    "jumpToNextPending": "Ir para próxima pendente"
   },
   "errors": {
     "loadPlans": "Não foi possível carregar os planos.",
     "loadPlanDetail": "Não foi possível carregar os detalhes do plano.",
+    "descriptionRequired": "Informe a descrição do plano",
+    "totalPositive": "O valor total deve ser maior que zero",
+    "countInvalid": "O número de parcelas deve ser um número inteiro maior ou igual a 1",
+    "monthlyPositive": "O valor da parcela deve ser maior que zero",
+    "invalidInterestRate": "A taxa de juros deve ser um número igual ou maior que zero",
     "createPlan": "Erro ao criar plano",
     "deletePlan": "Erro ao excluir plano",
     "payInstallment": "Erro ao registrar pagamento"
@@ -85,6 +91,13 @@
   "entries": {
     "title": "Parcelas",
     "empty": "Nenhuma parcela encontrada. As parcelas serão geradas automaticamente.",
+    "emptyFiltered": "Nenhuma parcela neste filtro.",
+    "filters": {
+      "ariaLabel": "Filtrar parcelas por situação",
+      "ALL": "Todas",
+      "PENDING": "Pendentes",
+      "PAID": "Pagas"
+    },
     "label": "Parcela {number} de {total}",
     "dueDate": "Vencimento: {date}",
     "paidOn": "Pago em {date}",

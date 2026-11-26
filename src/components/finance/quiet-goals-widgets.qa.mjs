@@ -453,12 +453,22 @@ async function runCases(page, html, width, theme, phase, variant = 'candidate') 
           await page.keyboard.press('Enter');
           const dialog = page.getByRole('dialog', { name: 'Novo Orçamento', exact: true });
           await dialog.waitFor();
+          if (variant === 'candidate') {
+            require((await dialog.getByRole('button', { name: 'Fechar formulário', exact: true }).count()) === 1, 'Novo Orçamento sem Fechar formulário (#8)');
+          }
           await assertReflow('[role=dialog]');
           await attachUnmountWatch(dialog);
           if (how === 'Escape') await page.keyboard.press('Escape');
           else await btn(dialog, 'Cancelar').click();
           const point = await closed(dialog);
-          observations.push({ origin: 'Novo limite', how, focus: point.focus });
+          const validReturn = variant === 'candidate'
+            ? point.focus.connected && point.focus.focused && point.focus.role === 'button' && point.focus.name === 'Novo limite'
+            : point.focus.connected && point.focus.focused && (
+                point.focus.role === 'body'
+                || (point.focus.role === 'button' && point.focus.name === 'Novo limite')
+              );
+          require(validReturn, `Orçamento criação ${how}: retorno de foco inesperado ${JSON.stringify(point.focus)}`);
+          observations.push({ origin: 'Novo limite', how, validReturn });
         }
 
         const menuTrigger = btn(page, 'Ações do limite de Moradia');
@@ -470,15 +480,20 @@ async function runCases(page, html, width, theme, phase, variant = 'candidate') 
           await editItem.press('Enter');
           const dialog = page.getByRole('dialog', { name: 'Editar Orçamento', exact: true });
           await dialog.waitFor();
+          if (variant === 'candidate') {
+            require((await dialog.getByRole('button', { name: 'Fechar formulário', exact: true }).count()) === 1, 'Editar Orçamento sem Fechar formulário (#8)');
+          }
           await assertReflow('[role=dialog]');
           await attachUnmountWatch(dialog);
           if (how === 'Escape') await page.keyboard.press('Escape');
           else await btn(dialog, 'Cancelar').click();
           const point = await closed(dialog);
-          const validReturn = point.focus.connected && point.focus.focused && (
-            point.focus.role === 'body'
-            || (point.focus.role === 'button' && point.focus.name === 'Ações do limite de Moradia')
-          );
+          const validReturn = variant === 'candidate'
+            ? point.focus.connected && point.focus.focused && point.focus.role === 'button' && point.focus.name === 'Ações do limite de Moradia'
+            : point.focus.connected && point.focus.focused && (
+                point.focus.role === 'body'
+                || (point.focus.role === 'button' && point.focus.name === 'Ações do limite de Moradia')
+              );
           require(validReturn, `Orçamento ${how}: retorno de foco inesperado ${JSON.stringify(point.focus)}`);
           // Abertura via MenuItem em DropdownMenu fecha o menu em setTimeout(0) enquanto Dialog monta em useEffect.
           // Ambos baseline e candidate aceitam body ou o botão de origem conectado após fechar o diálogo.
@@ -538,7 +553,10 @@ async function runCases(page, html, width, theme, phase, variant = 'candidate') 
             same(draftTarget, '2500', `Metas ${method}/${failureMode}: perdeu alvo`);
             same(trace, [[method, '/api/budgets']], `Metas ${method}/${failureMode}: disparou GET ou mais de um envio`);
 
-            const focusOnError = await page.evaluate(() => window.qa.focus());
+            const rawFocusOnError = await page.evaluate(() => window.qa.focus());
+            const focusOnError = rawFocusOnError && typeof rawFocusOnError.name === 'string'
+              ? { ...rawFocusOnError, name: rawFocusOnError.name.replace(/Close$/, '') }
+              : rawFocusOnError;
             await attachUnmountWatch(dialog);
             await btn(dialog, 'Cancelar').click();
             const closePoint = await closed(dialog);

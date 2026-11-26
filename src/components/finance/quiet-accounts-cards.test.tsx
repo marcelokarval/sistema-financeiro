@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { readFileSync } from 'node:fs';
 import { useAppStore } from '@/lib/store';
 import { AccountsView, reconcileTransactionDraft, transactionDraftForAccount } from './accounts-view';
+import { AccountTransactionFields } from './account-transaction-fields';
 import { AccountPicker } from './account-picker';
 import { AccountTransferDialog } from './account-transfer-dialog';
 import { CardsView } from './cards-view';
@@ -751,6 +752,7 @@ test('Cartões: trava síncrona em POST/PUT/DELETE, chaves distintas, liberaçã
     required(render(), buttonNamed('Novo cartão')).props.onClick({ currentTarget: null });
     const createDialog = () => required(render(), dialogTitleIs('Novo Cartão'));
     required(createDialog(), byId('card-name')).props.onChange({ target: { value: 'Cartão Novo' } });
+    required(createDialog(), byId('card-digits')).props.onChange({ target: { value: '1234' } });
     const heldCreate = heldResponse();
     answerWrite(() => heldCreate.promise);
     const submitCreate = required(createDialog(), buttonNamed('Adicionar')).props.onClick;
@@ -1316,5 +1318,184 @@ test('Cartões omite fatura, limite, disponibilidade, uso e ciclo em cartões DE
         expect(detailHtml).not.toContain(forbidden);
       }
     }, mixedCards, locale);
+  }
+});
+
+test('#8: AccountTransferDialog, CardEditor e AccountsView usam closeLabel localizado nos 3 idiomas sem "Close"', async () => {
+  const expectedClose = {
+    pt: 'Fechar formulário',
+    es: 'Cerrar formulario',
+    en: 'Close form',
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const transferEl = withPtIntlDispatcher(
+      () =>
+        AccountTransferDialog({
+          open: true,
+          pending: false,
+          accounts: qaAccounts,
+          form: { fromAccountId: 'a', toAccountId: 'b', amount: '10', date: '2026-02-01', description: '' },
+          onFieldChange: () => {},
+          onOpenChange: () => {},
+          onCloseAutoFocus: () => {},
+          onSubmit: async () => {},
+        }),
+      locale,
+    );
+    expect(transferEl.type).toBe(FinanceFormDialogShell);
+    expect(transferEl.props.closeLabel).toBe(expectedClose[locale]);
+    const transferContent = find(transferEl, (e) => Boolean(e.props && 'showCloseButton' in e.props), locale);
+    expect(transferContent?.props.showCloseButton).toBe(false);
+
+    const cardEl = withPtIntlDispatcher(
+      () =>
+        CardEditor({
+          mode: 'create',
+          open: true,
+          pending: false,
+          form: { name: '', type: 'CREDIT', brand: 'VISA', lastFourDigits: '', creditLimit: '0', closingDay: '1', dueDay: '10', color: '#8b5cf6', flag: '' },
+          onFieldChange: () => {},
+          onOpenChange: () => {},
+          onCloseAutoFocus: () => {},
+          onSubmit: async () => {},
+        }),
+      locale,
+    );
+    expect(cardEl.type).toBe(FinanceFormDialogShell);
+    expect(cardEl.props.closeLabel).toBe(expectedClose[locale]);
+    const cardContent = find(cardEl, (e) => Boolean(e.props && 'showCloseButton' in e.props), locale);
+    expect(cardContent?.props.showCloseButton).toBe(false);
+  }
+
+  const accountsSrc = await Bun.file(new URL('./accounts-view.tsx', import.meta.url)).text();
+  const dialogContents = [...accountsSrc.matchAll(/<DialogContent\b([\s\S]*?)>/g)];
+  expect(dialogContents.length).toBeGreaterThanOrEqual(3);
+  for (const match of dialogContents) {
+    expect(match[1]).toContain('showCloseButton={false}');
+  }
+  expect(accountsSrc).toContain("aria-label={t('actions.closeDialog')}");
+});
+
+test('#14: AccountsView exibe TRANSFER com tone="neutral" e AccountTransactionFields expõe notes preservando TRANSFER em edição', async () => {
+  const transferTx = {
+    id: 'tx-transfer',
+    type: 'TRANSFER',
+    amount: 250,
+    description: 'Transferência entre contas',
+    date: '2026-02-05T00:00:00.000Z',
+    category: null,
+    categoryId: null,
+    notes: 'Reserva mensal',
+  };
+
+  const accountsSrc = await Bun.file(new URL('./accounts-view.tsx', import.meta.url)).text();
+  expect(accountsSrc).toContain("tx.type === 'TRANSFER'");
+  expect(accountsSrc).toContain("tone={tx.type === 'INCOME' ? 'positive' : tx.type === 'TRANSFER' ? 'neutral' : 'negative'}");
+
+  const recordedChanges: Array<{ notes: string; type: string }> = [];
+  const recordChange = (next: { notes: string; type: string }) => {
+    recordedChanges.push({ notes: next.notes, type: next.type });
+  };
+  const editFieldsHtml = renderWithIntl(
+    <AccountTransactionFields
+      mode="edit"
+      value={{
+        type: 'TRANSFER',
+        description: transferTx.description,
+        amount: '250',
+        date: '2026-02-05',
+        categoryId: '',
+        notes: transferTx.notes,
+      }}
+      onChange={recordChange}
+      categories={qaCategories}
+    />,
+    'pt',
+  );
+  expect(editFieldsHtml).toContain('id="edit-tx-notes"');
+  expect(editFieldsHtml).toContain('value="Reserva mensal"');
+  expect(editFieldsHtml).toContain('Transferência');
+
+  const transferFieldsTree = withPtIntlDispatcher(() =>
+    AccountTransactionFields({
+      mode: 'edit',
+      value: {
+        type: 'TRANSFER',
+        description: 'Transferência',
+        amount: '100',
+        date: '2026-02-05',
+        categoryId: '',
+        notes: 'Nota inicial',
+      },
+      onChange: recordChange,
+      categories: qaCategories,
+    }),
+  );
+  const notesInput = required(transferFieldsTree, byId('edit-tx-notes'));
+  notesInput.props.onChange({ target: { value: 'Nota atualizada' } });
+  expect(recordedChanges.at(-1)).toEqual({ notes: 'Nota atualizada', type: 'TRANSFER' });
+
+  // Tentativa de alterar Select para EXPENSE durante edição de TRANSFER é bloqueada
+  const typeSelect = find(transferFieldsTree, (e) => typeof e.props?.onValueChange === 'function' && e.props.value === 'TRANSFER');
+  expect(typeSelect?.props.disabled).toBe(true);
+  const countBefore = recordedChanges.length;
+  typeSelect?.props.onValueChange('EXPENSE');
+  expect(recordedChanges).toHaveLength(countBefore);
+});
+
+test('#16 e #17: CardsView valida rascunhos antes de enviar, propaga data.error e Accounts/Cards aplicam min-h-11/size-11', async () => {
+  await exerciseCards(async ({ render, calls, feedback, answerWrite }) => {
+    required(render(), buttonNamed('Novo cartão')).props.onClick({ currentTarget: null });
+    const createDialog = () => required(render(), dialogTitleIs('Novo Cartão'));
+
+    // Nome apenas com espaços -> bloqueia envio
+    required(createDialog(), byId('card-name')).props.onChange({ target: { value: '   ' } });
+    required(createDialog(), byId('card-digits')).props.onChange({ target: { value: '1234' } });
+    required(createDialog(), buttonNamed('Adicionar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Nome do cartão é obrigatório');
+
+    // Dígitos finais inválidos -> bloqueia envio
+    required(createDialog(), byId('card-name')).props.onChange({ target: { value: 'Cartão Válido' } });
+    required(createDialog(), byId('card-digits')).props.onChange({ target: { value: '12' } });
+    required(createDialog(), buttonNamed('Adicionar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Informe os 4 dígitos finais do cartão');
+
+    // Dia de fechamento fora de 1..31 -> bloqueia envio
+    required(createDialog(), byId('card-digits')).props.onChange({ target: { value: '1234' } });
+    required(createDialog(), byId('card-close-day')).props.onChange({ target: { value: '32' } });
+    required(createDialog(), buttonNamed('Adicionar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Dia de fechamento deve ser entre 1 e 31');
+
+    // Dia de vencimento 0 -> bloqueia envio
+    required(createDialog(), byId('card-close-day')).props.onChange({ target: { value: '10' } });
+    required(createDialog(), byId('card-due-day')).props.onChange({ target: { value: '0' } });
+    required(createDialog(), buttonNamed('Adicionar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Dia de vencimento deve ser entre 1 e 31');
+
+    // Limite negativo -> bloqueia envio
+    required(createDialog(), byId('card-due-day')).props.onChange({ target: { value: '15' } });
+    required(createDialog(), byId('card-limit')).props.onChange({ target: { value: '-50' } });
+    required(createDialog(), buttonNamed('Adicionar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Informe um limite de crédito válido');
+
+    // Propaga data.error quando API retorna JSON com error
+    required(createDialog(), byId('card-limit')).props.onChange({ target: { value: '1000' } });
+    answerWrite(async () => Response.json({ error: 'Cartão duplicado na API' }, { status: 400 }));
+    await required(createDialog(), buttonNamed('Adicionar')).props.onClick();
+    await settle();
+    expect(writes(calls)).toHaveLength(1);
+    expect(feedback.at(-1)).toBe('erro: Cartão duplicado na API');
+  });
+
+  for (const file of ['./accounts-view.tsx', './cards-view.tsx'] as const) {
+    const src = await Bun.file(new URL(file, import.meta.url)).text();
+    expect(src).toContain('min-h-11');
+    expect(src).toContain('size-11');
   }
 });

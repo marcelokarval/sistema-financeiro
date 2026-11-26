@@ -16,7 +16,7 @@ import { formatPurchaseDate } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { useKeyedMutationLock } from '@/hooks/use-keyed-mutation-lock';
-import { CardEditor, emptyCardForm, type CardFormDraft } from './card-editor';
+import { CardEditor, emptyCardForm, validateCardDraft, type CardFormDraft } from './card-editor';
 import {
   CARD_BRAND_KEYS,
   createFallbackTranslator,
@@ -84,7 +84,7 @@ function CardPurchaseRow({ purchase, expanded, onToggle }: { purchase: Purchase;
     <li>
       <button
         type="button"
-        className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-accent/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        className="flex min-h-11 w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-accent/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         aria-expanded={expanded}
         aria-controls={`card-purchase-${purchase.id}`}
         onClick={onToggle}
@@ -135,7 +135,7 @@ function CardRow({ card, copied, onOpen, onCopy, onEdit, onDelete }: {
   const isDebit = card.type === 'DEBIT';
   return (
     <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:gap-x-4">
-      <Button type="button" variant="ghost" aria-label={t('list.openCardAria', { name: card.name })} onClick={onOpen} data-card-detail={card.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left md:col-span-1">
+      <Button type="button" variant="ghost" aria-label={t('list.openCardAria', { name: card.name })} onClick={onOpen} data-card-detail={card.id} className="col-span-2 h-auto min-h-11 min-w-0 justify-start whitespace-normal px-0 text-left md:col-span-1">
         <CreditCard aria-hidden="true" className="size-5 text-muted-foreground" />
         <span className="min-w-0 wrap-anywhere">
           <span className="block font-semibold">{card.name}</span>
@@ -163,13 +163,13 @@ function CardRow({ card, copied, onOpen, onCopy, onEdit, onDelete }: {
       <div className="col-span-2 flex flex-wrap items-center justify-between gap-1 md:col-span-1">
         <span role="status" className="text-xs text-muted-foreground">{copied ? t('list.copied') : ''}</span>
         <div className="ml-auto flex gap-1">
-          <Button variant="ghost" size="icon" aria-label={t('list.copyNumberAria', { name: card.name })} onClick={onCopy}>
+          <Button variant="ghost" size="icon" className="size-11" aria-label={t('list.copyNumberAria', { name: card.name })} onClick={onCopy}>
             {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           </Button>
-          <Button variant="ghost" size="icon" aria-label={t('list.editCardAria', { name: card.name })} onClick={onEdit}>
+          <Button variant="ghost" size="icon" className="size-11" aria-label={t('list.editCardAria', { name: card.name })} onClick={onEdit}>
             <Pencil aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label={t('list.deleteCardAria', { name: card.name })} onClick={onDelete} className="text-destructive hover:text-destructive">
+          <Button variant="ghost" size="icon" aria-label={t('list.deleteCardAria', { name: card.name })} onClick={onDelete} className="size-11 text-destructive hover:text-destructive">
             <Trash2 aria-hidden="true" />
           </Button>
         </div>
@@ -271,16 +271,17 @@ export function CardsView() {
   const saveKey = editingCard ? `edit:${editingCard.id}` : 'create';
   const saveCard = async () => {
     if (!form.name.trim()) { toast.error(t('errors.nameRequired')); return; }
+    const validated = validateCardDraft(form, t);
+    if (!validated.ok) { toast.error(validated.error); return; }
     if (!tryAcquire(saveKey)) return;
     const opening = cardOpening.current;
     try {
-      const body = { ...form, creditLimit: parseFloat(form.creditLimit) || 0, closingDay: parseInt(form.closingDay) || 1, dueDay: parseInt(form.dueDay) || 10 };
       const res = await fetch('/api/cards', {
         method: editingCard ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingCard ? { id: editingCard.id, ...body } : body),
+        body: JSON.stringify(editingCard ? { id: editingCard.id, ...validated.payload } : validated.payload),
       });
-      if (!res.ok) { toast.error(t('errors.saveCard')); return; }
+      if (!res.ok) { const d = await res.json().catch(() => null); toast.error(d?.error || t('errors.saveCard')); return; }
       toast.success(editingCard ? t('toasts.cardUpdated') : t('toasts.cardAdded'));
       if (cardOpening.current === opening) setShowCardDialog(false);
       fetchCards();
@@ -342,7 +343,7 @@ export function CardsView() {
     return (
       <div className="min-w-0 space-y-5">
         <header className="space-y-3">
-          <Button ref={detailBack} variant="ghost" size="sm" onClick={closeCard}>
+          <Button ref={detailBack} variant="ghost" className="min-h-11" onClick={closeCard}>
             <ArrowLeft aria-hidden="true" /> {t('actions.backToCards')}
           </Button>
           <div>
@@ -405,14 +406,14 @@ export function CardsView() {
           <h2 className="text-2xl font-semibold tracking-tight">{t('title')}</h2>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <Button ref={newCardButton} onClick={(event) => { dialogReturn.current = event.currentTarget; openNewCard(); }}>
+        <Button ref={newCardButton} className="min-h-11" onClick={(event) => { dialogReturn.current = event.currentTarget; openNewCard(); }}>
           <Plus aria-hidden="true" /> {t('actions.newCard')}
         </Button>
       </header>
       {cardsError && (
         <div role="alert" className={cn(cardPanel, 'flex flex-wrap items-center justify-between gap-2 p-4 text-sm')}>
           <p className="text-destructive">{t('errors.loadCards')}</p>
-          <Button variant="outline" size="sm" onClick={() => void fetchCards()}>{t('actions.retry')}</Button>
+          <Button variant="outline" className="min-h-11" onClick={() => void fetchCards()}>{t('actions.retry')}</Button>
         </div>
       )}
       <dl aria-label={t('summary.ariaLabel')} className={cn(cardPanel, 'grid grid-cols-2 divide-x divide-border')}>

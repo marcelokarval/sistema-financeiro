@@ -13,6 +13,10 @@
     "loadCards": "No se pudieron cargar las tarjetas.",
     "loadPurchases": "No se pudieron cargar las compras de la tarjeta.",
     "nameRequired": "El nombre de la tarjeta es obligatorio",
+    "lastFourInvalid": "Ingresa los últimos 4 dígitos de la tarjeta",
+    "invalidLimit": "Ingresa un límite de crédito válido",
+    "invalidClosingDay": "El día de cierre debe estar entre 1 y 31",
+    "invalidDueDay": "El día de vencimiento debe estar entre 1 y 31",
     "saveCard": "Error al guardar la tarjeta",
     "deleteCard": "Error al eliminar la tarjeta"
   },
@@ -83,6 +87,7 @@
     "description": "Esta acción no se puede deshacer. Se conservará el historial de compras."
   },
   "editor": {
+    "closeLabel": "Cerrar formulario",
     "editTitle": "Editar Tarjeta",
     "createTitle": "Nueva Tarjeta",
     "editDescription": "Actualiza los datos de la tarjeta",

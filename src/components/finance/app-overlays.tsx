@@ -37,25 +37,30 @@ export function AppOverlays({
         ref={advisorDialogRef}
         inert={!aiAssistantVisible}
         aria-labelledby="advisor-title"
-        className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-4 text-card-foreground shadow-lg backdrop:bg-black/50"
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-0 text-card-foreground shadow-lg backdrop:bg-black/50"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) onCloseAdvisor();
+        }}
         onCancel={(event) => {
           event.preventDefault();
           onCloseAdvisor();
         }}
         onClose={onAdvisorDialogClose}
       >
-        <h2 id="advisor-title" className="sr-only">{t('title')}</h2>
-        <div className="mb-2 flex justify-end">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={t('close')}
-            onClick={onCloseAdvisor}
-          >
-            <X aria-hidden="true" />
-          </Button>
+        <div className="p-4">
+          <h2 id="advisor-title" className="sr-only">{t('title')}</h2>
+          <div className="mb-2 flex justify-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t('close')}
+              onClick={onCloseAdvisor}
+            >
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+          {(advisorOpened || aiAssistantVisible) && <AIAdvisor />}
         </div>
-        {(advisorOpened || aiAssistantVisible) && <AIAdvisor />}
       </dialog>
 
       <GlobalSearch

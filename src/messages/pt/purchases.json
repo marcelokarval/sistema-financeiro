@@ -13,6 +13,8 @@
   "errors": {
     "merchantRequired": "Informe o estabelecimento",
     "itemsRequired": "Adicione ao menos um item",
+    "invalidItems": "Verifique quantidade e preço dos itens",
+    "totalPositive": "O total da compra deve ser maior que zero",
     "save": "Erro ao salvar compra",
     "delete": "Erro ao excluir compra",
     "refresh": "Não foi possível atualizar a lista de compras.",

@@ -340,3 +340,39 @@ test('renderiza DashboardContent em pt, es e en e oculta dígitos com showValues
     }
   }
 });
+
+test('#12 e #13: DashboardContent aceita série mensal aparada preservando totais do período e BudgetHeader encaminha createButtonRef', () => {
+  const trimmedData: DashboardData = {
+    ...data,
+    monthIncome: 15000,
+    monthExpense: 4200,
+    monthlyTrend: [{ month: 'nov. de 26', income: 1100, expense: 350 }],
+  };
+  const html = renderDashboard('ready', true, trimmedData, 'pt');
+  expect(html).toContain(currencyFmt(10800));
+  expect(html).toContain(currencyFmt(4200));
+  expect(html).toContain('Agregação mensal');
+
+  const btnRef = React.createRef<HTMLButtonElement>();
+  const headerEl = withPtIntlDispatcher(() =>
+    BudgetHeader({
+      status: 'ready',
+      monthLabel: 'novembro 2026',
+      createButtonRef: btnRef,
+      openCreateDialog: () => {},
+      refreshBudgets: () => {},
+    }),
+  );
+  expect(headerEl).toBeDefined();
+  const headerHtml = renderWithIntl(
+    <BudgetHeader
+      status="ready"
+      monthLabel="novembro 2026"
+      createButtonRef={btnRef}
+      openCreateDialog={() => {}}
+      refreshBudgets={() => {}}
+    />,
+    'pt',
+  );
+  expect(headerHtml).toContain('Novo limite');
+});

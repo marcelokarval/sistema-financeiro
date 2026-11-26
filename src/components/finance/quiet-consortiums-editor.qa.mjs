@@ -22,7 +22,7 @@ function installFixture(ConsortiumsView, AppIntlProvider, getMessagesForLocale, 
     startDate: '2026-01-01', nextAssemblyDate: '2026-05-15T00:00:00.000Z', assembliesAttended: 1,
     status: 'CONTEMPLATED', categoryId: null, category: null, accountId: null, isActive: true,
   }));
-  const qa = window.qa = { calls: [], unexpected: [], mode: null, pending: {}, readReleased: false, closePoint: null, rootInstance: null };
+  const qa = window.qa = { calls: [], unexpected: [], mode: null, pending: {}, readReleased: false, closePoint: null, rootInstance: null, installments: null };
   let deleted = false;
   let updated = false;
   qa.refreshStatus = null;
@@ -61,7 +61,10 @@ function installFixture(ConsortiumsView, AppIntlProvider, getMessagesForLocale, 
         }
         return Response.json(readRows());
       }
-      if (url === '/api/categories' || url === '/api/accounts' || url === `${collection}/installments?consortiumId=a`) {
+      if (url === `${collection}/installments?consortiumId=a`) {
+        return Response.json(qa.installments ?? []);
+      }
+      if (url === '/api/categories' || url === '/api/accounts') {
         return Response.json([]);
       }
     }
@@ -92,6 +95,7 @@ function installFixture(ConsortiumsView, AppIntlProvider, getMessagesForLocale, 
     qa.refreshStatus = null;
     qa.earlyJsonWhilePortalConnected = null;
     qa.deletePortal = null;
+    qa.installments = null;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     qa.rootInstance = createRoot(document.getElementById('root'));
     qa.rootInstance.render(createElement(ThemeProvider,
@@ -109,7 +113,7 @@ function installFixture(ConsortiumsView, AppIntlProvider, getMessagesForLocale, 
 }
 
 // Serializado para a VM do CLI. As leituras DOM correm dentro da página.
-async function runCases(page, html, width, theme) {
+async function runCases(page, html, width, theme, variant = 'candidate') {
   const url = 'https://finance-qa.invalid/';
   const collection = '/api/consortiums';
   const results = [];
@@ -298,6 +302,43 @@ async function runCases(page, html, width, theme) {
           afterRetryFocus: await page.evaluate(() => window.qa.focus()), violations: [] });
       }
     }
+    if (variant === 'candidate') {
+      // #8 & #16: Novo Consórcio tem Fechar formulário e bloqueia envio inválido sem POST
+      await page.evaluate((name) => window.qa.mount(name), theme);
+      await openA().waitFor();
+      await create().click();
+      const createDialog = page.getByRole('dialog', { name: 'Novo Consórcio', exact: true });
+      await createDialog.waitFor();
+      invariant((await button(createDialog, 'Fechar formulário').count()) === 1, 'Novo Consórcio sem Fechar formulário (#8)');
+      const beforeInvalid = (await requests()).writes.length;
+      await button(createDialog, 'Criar Consórcio').click();
+      await page.locator('[data-sonner-toast][data-type=error]').first().waitFor({ state: 'attached' });
+      invariant((await requests()).writes.length === beforeInvalid, 'Consórcio inválido disparou POST (#16)');
+      await button(createDialog, 'Fechar formulário').click();
+      await createDialog.waitFor({ state: 'detached' });
+
+      // #18: Filtro Todas/Pendentes/Pagas e salto Ir para próxima pendente
+      await page.evaluate((name) => {
+        window.qa.mount(name);
+        window.qa.installments = [
+          { id: 'ci-1', number: 1, amount: 300, dueDate: '2026-04-01', paidDate: '2026-04-01', status: 'PAID', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: 'a' },
+          { id: 'ci-2', number: 2, amount: 300, dueDate: '2026-05-01', paidDate: null, status: 'OVERDUE', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: 'a' },
+          { id: 'ci-3', number: 3, amount: 300, dueDate: '2026-06-01', paidDate: null, status: 'PENDING', notes: '', assemblyDate: null, assemblyResult: '', consortiumId: 'a' },
+        ];
+      }, theme);
+      await openA().click();
+      await heading('Cota A').waitFor();
+      await button(page, 'Pendentes').click();
+      invariant((await page.getByText('Parcela 1', { exact: true }).count()) === 0, 'Filtro Pendentes exibiu Parcela 1 paga (#18)');
+      await page.getByText('Parcela 2', { exact: true }).waitFor();
+      await page.getByText('Parcela 3', { exact: true }).waitFor();
+      await button(page, 'Pagas').click();
+      await page.getByText('Parcela 1', { exact: true }).waitFor();
+      invariant((await page.getByText('Parcela 2', { exact: true }).count()) === 0, 'Filtro Pagas exibiu Parcela 2 (#18)');
+      await button(page, 'Ir para próxima pendente').click();
+      invariant((await button(page, 'Todas').getAttribute('aria-pressed')) === 'true', 'Ir para próxima pendente não voltou para Todas (#18)');
+      invariant((await button(page, 'Marcar parcela 2 como paga').evaluate((el) => el === document.activeElement)), 'Ir para próxima pendente não focou parcela 2 (#18)');
+    }
     const witness = await witnessTheme();
     invariant(witness.width === width && witness.theme === theme && witness.background !== 'rgba(0, 0, 0, 0)', 'Viewport/tema não aplicado');
     await checkFixture();
@@ -394,7 +435,7 @@ try {
     for (const theme of ['light', 'dark']) {
       const observed = {};
       for (const label of ['baseline', 'candidate']) {
-        const report = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)})`);
+        const report = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(label)})`);
         const result = report.match(/^### Result\s*\n([^\n]+)/m)?.[1];
         assert(result, `${label}: resultado DOM ausente`);
         observed[label] = JSON.parse(result);

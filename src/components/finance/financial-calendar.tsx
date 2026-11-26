@@ -189,10 +189,12 @@ export function FinancialCalendarContent({
     const map = new Map<string, { hasIncome: boolean; hasExpense: boolean }>();
     if (!data) return map;
     for (const day of data.days) {
-      map.set(day.date, {
-        hasIncome: day.income > 0,
-        hasExpense: day.expense > 0,
-      });
+      if (day.income > 0 || day.expense > 0 || day.events.length > 0) {
+        map.set(day.date, {
+          hasIncome: day.income > 0,
+          hasExpense: day.expense > 0,
+        });
+      }
     }
     return map;
   }, [data]);

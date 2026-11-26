@@ -33,6 +33,9 @@ function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T
     useId: () => 'test-id',
     useMemo: (factory: () => unknown) => factory(),
     useCallback: (cb: unknown) => cb,
+    useState: (initial: unknown) => [typeof initial === 'function' ? (initial as () => unknown)() : initial, () => {}],
+    useRef: (initial: unknown) => ({ current: initial }),
+    useEffect: () => {},
   };
   try {
     return fn();

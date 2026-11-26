@@ -13,6 +13,7 @@ import { FinanceMetric } from '@/components/shared/finance-metric';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate as dateFmt, purchaseDateForInput, purchaseDateForSave } from '@/lib/purchase-date';
+import { normalizeSearchText } from '@/lib/search-normalize';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { createFallbackTranslator, PT_OPERATIONS_MESSAGES } from './operations-i18n';
@@ -233,20 +234,36 @@ export function PurchasesView() {
   };
 
   const savePurchase = async () => {
-    if (!form.merchant) { toast.error(t('errors.merchantRequired')); return; }
-    const validItems = items.filter((i) => i.name.trim());
+    const merchant = form.merchant.trim();
+    if (!merchant) { toast.error(t('errors.merchantRequired')); return; }
+    const validItems = items
+      .filter((i) => i.name.trim())
+      .map((i) => ({ ...i, name: i.name.trim(), quantity: Number(i.quantity), unitPrice: Number(i.unitPrice), totalPrice: Number(i.totalPrice) }));
     if (validItems.length === 0) { toast.error(t('errors.itemsRequired')); return; }
+    if (validItems.some((i) => !Number.isInteger(i.quantity) || i.quantity < 1 || !Number.isFinite(i.unitPrice) || i.unitPrice < 0)) {
+      toast.error(t('errors.invalidItems'));
+      return;
+    }
+    const validTotal = validItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    if (!Number.isFinite(formTotal) || formTotal <= 0 || !Number.isFinite(validTotal) || validTotal <= 0) {
+      toast.error(t('errors.totalPositive'));
+      return;
+    }
     const submittedOpening = activeOpening.current;
     if (!submittedOpening || mutationPending.current) return;
     mutationPending.current = true;
     try {
-      const body = { ...form, date: editingPurchase?.date ? purchaseDateForSave(form.date, editingPurchase.date) : form.date, totalAmount: formTotal, items: validItems };
+      const body = { ...form, merchant, date: editingPurchase?.date ? purchaseDateForSave(form.date, editingPurchase.date) : form.date, totalAmount: validTotal, items: validItems };
       const res = await fetch('/api/purchases', {
         method: editingPurchase ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingPurchase ? { id: editingPurchase.id, ...body } : body),
       });
-      if (!res.ok) throw new Error('HTTP error');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.error || t('errors.save'));
+        return;
+      }
       toast.success(editingPurchase ? t('toasts.updated') : t('toasts.created'));
       await fetchPurchases();
       if (activeOpening.current === submittedOpening) closeDialog('form');
@@ -269,7 +286,14 @@ export function PurchasesView() {
     } catch { toast.error(t('errors.delete')); } finally { mutationPending.current = false; }
   };
 
-  const filtered = purchases.filter((p) => p.merchant.toLowerCase().includes(search.toLowerCase()) || (p.card?.name || '').toLowerCase().includes(search.toLowerCase()));
+  const normalizedSearch = normalizeSearchText(search.trim());
+  const filtered = normalizedSearch
+    ? purchases.filter(
+        (p) =>
+          normalizeSearchText(p.merchant).includes(normalizedSearch) ||
+          normalizeSearchText(p.card?.name || '').includes(normalizedSearch),
+      )
+    : purchases;
   const merchantStats = purchases.reduce((acc, p) => {
     if (!acc[p.merchant]) acc[p.merchant] = { total: 0, count: 0, items: 0 };
     acc[p.merchant].total += p.totalAmount;

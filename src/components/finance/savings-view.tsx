@@ -568,7 +568,9 @@ export function SavingsGoalRow({ goal, onDeposit, onEdit, onDelete }: {
             if (openingDialog.current) { event.preventDefault(); openingDialog.current = false; }
           }}>
             <DropdownMenuItem onSelect={() => openFromMenu(onEdit)}><Pencil aria-hidden="true" /> {t('actions.edit')}</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => openFromMenu(onDeposit)}><ArrowDownToLine aria-hidden="true" /> {t('actions.deposit')}</DropdownMenuItem>
+            {!isComplete && (
+              <DropdownMenuItem onSelect={() => openFromMenu(onDeposit)}><ArrowDownToLine aria-hidden="true" /> {t('actions.deposit')}</DropdownMenuItem>
+            )}
             <DropdownMenuItem variant="destructive" onSelect={() => openFromMenu(onDelete)}><Trash2 aria-hidden="true" /> {t('actions.delete')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

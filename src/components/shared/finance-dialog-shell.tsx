@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
+import { useSafeTranslations } from '@/i18n/provider';
 
 export interface FinanceFormDialogShellProps {
   open: boolean;
@@ -43,30 +43,33 @@ export function FinanceFormDialogShell({
   description,
   children,
   footer,
-  closeLabel,
+  closeLabel: closeLabelProp,
   contentClassName,
 }: FinanceFormDialogShellProps) {
+  const tShared = useSafeTranslations('shared');
+  const closeLabel =
+    closeLabelProp ??
+    (tShared.has('dialogCloseLabel') ? tShared('dialogCloseLabel') : 'Fechar formulário');
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        showCloseButton={!closeLabel}
+        showCloseButton={false}
         onCloseAutoFocus={onCloseAutoFocus}
         className={contentClassName}
       >
-        <DialogHeader className={cn(closeLabel && 'relative pr-10 text-left')}>
-          {closeLabel && (
-            <DialogClose asChild>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                aria-label={closeLabel}
-                className="absolute right-0 top-0"
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </DialogClose>
-          )}
+        <DialogHeader className="relative pr-10 text-left">
+          <DialogClose asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={closeLabel}
+              className="absolute right-0 top-0"
+            >
+              <X aria-hidden="true" />
+            </Button>
+          </DialogClose>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>

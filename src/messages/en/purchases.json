@@ -13,6 +13,8 @@
   "errors": {
     "merchantRequired": "Enter the merchant",
     "itemsRequired": "Add at least one item",
+    "invalidItems": "Check item quantities and prices",
+    "totalPositive": "Purchase total must be greater than zero",
     "save": "Error saving purchase",
     "delete": "Error deleting purchase",
     "refresh": "Could not refresh the purchase list.",

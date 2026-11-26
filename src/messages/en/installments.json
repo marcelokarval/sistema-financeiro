@@ -39,11 +39,17 @@
     "backToPlans": "Back to plans",
     "deletePlan": "Delete plan",
     "retry": "Try again",
-    "openAriaLabel": "Open plan: {description}"
+    "openAriaLabel": "Open plan: {description}",
+    "jumpToNextPending": "Go to next pending"
   },
   "errors": {
     "loadPlans": "Could not load plans.",
     "loadPlanDetail": "Could not load plan details.",
+    "descriptionRequired": "Enter the plan description",
+    "totalPositive": "Total amount must be greater than zero",
+    "countInvalid": "Number of installments must be a whole number of at least 1",
+    "monthlyPositive": "Installment amount must be greater than zero",
+    "invalidInterestRate": "Interest rate must be a number greater than or equal to zero",
     "createPlan": "Error creating plan",
     "deletePlan": "Error deleting plan",
     "payInstallment": "Error recording payment"
@@ -85,6 +91,13 @@
   "entries": {
     "title": "Installments",
     "empty": "No installments found. Installments will be generated automatically.",
+    "emptyFiltered": "No installments in this filter.",
+    "filters": {
+      "ariaLabel": "Filter installments by status",
+      "ALL": "All",
+      "PENDING": "Pending",
+      "PAID": "Paid"
+    },
     "label": "Installment {number} of {total}",
     "dueDate": "Due: {date}",
     "paidOn": "Paid on {date}",

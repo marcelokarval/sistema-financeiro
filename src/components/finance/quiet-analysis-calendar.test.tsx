@@ -1712,3 +1712,81 @@ test('widgets de análise refazem fetch ao trocar locale mantendo URLs /api/... 
     globalThis.fetch = originalFetch;
   }
 });
+
+test('#11: FinancialCalendar marca dias sem receita, despesa ou eventos com aria-disabled="true" e bloqueia seleção', () => {
+  const CalendarView = calendar.FinancialCalendarContent;
+  const selectedCalls: Array<string | null> = [];
+  const calendarProps = {
+    loading: false,
+    activeDays: 30,
+    selectedDate: null as string | null,
+    currentMonth: new Date('2026-11-15T12:00:00Z'),
+    onSelectDays: () => {},
+    onSelectDate: (d: string | null) => selectedCalls.push(d),
+    setCurrentMonth: () => {},
+    onToday: () => {},
+    fetchData: () => {},
+    data: {
+      days: [
+        { date: '2026-11-10', dayOfWeek: 'ter', income: 0, expense: 0, events: [] },
+        {
+          date: '2026-11-12',
+          dayOfWeek: 'qui',
+          income: 300,
+          expense: 0,
+          events: [{ id: 'ev-1', type: 'transaction' as const, description: 'Freela', amount: 300, category: 'Renda', isRecurring: false }],
+        },
+      ],
+      summary: {
+        totalUpcoming: 300,
+        totalBills: 1,
+        totalIncome: 300,
+        totalExpense: 0,
+        upcomingBiggestExpense: null,
+        nextPaymentDate: '2026-11-12',
+      },
+    },
+  };
+
+  const html = renderWithIntl(<CalendarView {...calendarProps} />, 'pt');
+  expect(html).toContain('aria-disabled="true"');
+  expect(html).toContain('aria-disabled="false"');
+
+  // Testa diretamente o handler de clique na árvore de elementos do grid
+  const harness = runWithReactHarness(() => CalendarView(calendarProps));
+  const collectDayButtons = (node: unknown, out: Array<{ props: Record<string, any> }> = []) => {
+    if (!node || typeof node !== 'object') return out;
+    const el = node as { type?: unknown; props?: Record<string, any> };
+    if (el.props && 'aria-disabled' in el.props && 'aria-pressed' in el.props && typeof el.props.onClick === 'function') {
+      out.push(el as { props: Record<string, any> });
+    }
+    if (typeof el.type === 'function') {
+      const rendered = withPtIntlDispatcher(() => (el.type as (p: Record<string, any>) => unknown)(el.props ?? {}));
+      return collectDayButtons(rendered, out);
+    }
+    for (const child of React.Children.toArray(el.props?.children)) {
+      collectDayButtons(child, out);
+    }
+    return out;
+  };
+
+  try {
+    const tree = harness.renderTree();
+    const dayButtons = collectDayButtons(tree);
+    expect(dayButtons.length).toBeGreaterThanOrEqual(28);
+    const disabledDays = dayButtons.filter((b) => b.props['aria-disabled'] === true);
+    const enabledDays = dayButtons.filter((b) => b.props['aria-disabled'] === false);
+    expect(enabledDays).toHaveLength(1);
+    expect(disabledDays.length).toBe(dayButtons.length - 1);
+
+    // Dia vazio (2026-11-10 presente em data.days com zeros) não dispara onSelectDate
+    for (const b of disabledDays) b.props.onClick();
+    expect(selectedCalls).toEqual([]);
+
+    // Dia ativo (2026-11-12) dispara onSelectDate
+    enabledDays[0].props.onClick();
+    expect(selectedCalls).toEqual(['2026-11-12']);
+  } finally {
+    harness.cleanupAll();
+  }
+});

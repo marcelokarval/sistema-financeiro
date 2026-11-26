@@ -93,6 +93,7 @@ function installFixture(InstallmentsView, SavingsView, AppIntlProvider, getMessa
     mode: null,
     readReleased: false,
     writeSettled: false,
+    completedGoalMode: false,
   };
 
   let planDeleted = false;
@@ -118,6 +119,7 @@ function installFixture(InstallmentsView, SavingsView, AppIntlProvider, getMessa
         ...g,
         ...(goalUpdated ? { name: 'Meta A editada', description: '' } : {}),
         ...(goalDeposited ? { currentAmount: 250 } : {}),
+        ...(qa.completedGoalMode ? { isCompleted: true, currentAmount: 1000 } : {}),
       };
     });
 
@@ -235,7 +237,7 @@ function installFixture(InstallmentsView, SavingsView, AppIntlProvider, getMessa
     throw new Error(`Requisição inesperada na fixture: ${method} ${url}`);
   };
 
-  qa.mount = (domain, theme) => {
+  qa.mount = (domain, theme, opts = {}) => {
     planDeleted = false;
     planDetailReads = 0;
     plansCreated = [];
@@ -249,6 +251,7 @@ function installFixture(InstallmentsView, SavingsView, AppIntlProvider, getMessa
     qa.mode = null;
     qa.readReleased = false;
     qa.writeSettled = false;
+    qa.completedGoalMode = Boolean(opts?.completedGoalMode);
 
     const View = domain === 'installments' ? InstallmentsView : SavingsView;
     createRoot(document.getElementById('root')).render(
@@ -280,7 +283,7 @@ function installFixture(InstallmentsView, SavingsView, AppIntlProvider, getMessa
 }
 
 // Serializado pelo CLI no sandbox. Não depende de globals Node na VM.
-async function runCases(page, html, width, theme, phase) {
+async function runCases(page, html, width, theme, phase, variant = 'candidate') {
   const url = 'https://finance-qa.invalid/';
   const rejected = [];
   const errors = [];
@@ -488,6 +491,22 @@ async function runCases(page, html, width, theme, phase) {
         await btn(page, 'Excluir plano').waitFor();
         await btn(page, 'Pagar parcela 1 de 2').waitFor();
 
+        if (variant === 'candidate') {
+          // #17 & #18: filtro Todas/Pendentes/Pagas, salto Ir para próxima pendente e alvos táteis >= 44px
+          const touchProbe = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('main button')).map((b) => {
+              const r = b.getBoundingClientRect();
+              return { label: b.getAttribute('aria-label') || b.textContent?.trim() || '', w: r.width, h: r.height };
+            }).filter((b) => b.w > 0 && b.h > 0 && (b.w < 43.5 || b.h < 43.5));
+          });
+          require(touchProbe.length === 0, `Parcelas detalhe touch target <44px (#17): ${JSON.stringify(touchProbe)}`);
+          await btn(page, 'Pagas').click();
+          await page.getByText('Nenhuma parcela neste filtro.', { exact: true }).waitFor();
+          await btn(page, 'Ir para próxima pendente').click();
+          same(await btn(page, 'Todas').getAttribute('aria-pressed'), 'true', 'Ir para próxima pendente não voltou para Todas (#18)');
+          require(await btn(page, 'Pagar parcela 1 de 2').evaluate((el) => el === document.activeElement), 'Ir para próxima pendente não focou Pagar parcela 1 (#18)');
+        }
+
         // Iniciar pagamento com refresh do detalhe retido
         await page.evaluate(() => { window.qa.mode = 'hold-detail-refresh'; });
         await btn(page, 'Pagar parcela 1 de 2').click();
@@ -683,6 +702,14 @@ async function runCases(page, html, width, theme, phase) {
           || !depositClose.focus.connected
           ? ['foco não retornou à origem nos editores de Caixinhas']
           : [];
+        if (variant === 'candidate') {
+          // #15: meta concluída oculta Depositar também no menu Mais ações
+          await page.evaluate((skin) => window.qa.mount('savings', skin, { completedGoalMode: true }), theme);
+          await btn(page, 'Mais ações de Meta A').click();
+          await page.getByRole('menuitem', { name: 'Editar', exact: true }).waitFor();
+          same(await page.getByRole('menuitem', { name: 'Depositar', exact: true }).count(), 0, 'Meta concluída exibiu Depositar no menu Mais ações (#15)');
+          await page.keyboard.press('Escape');
+        }
         return { editClose: editClose.focus, depositClose: depositClose.focus, violations };
       });
     }
@@ -834,7 +861,7 @@ const session = `quiet-installments-savings-${randomUUID()}`;
 const failures = [];
 let attemptedOpen = false;
 let daemonPid;
-const deadline = Date.now() + 420_000;
+const deadline = Date.now() + 720_000;
 
 async function cli(...args) {
   const cleanup = ['close', 'list'].includes(args[0]);
@@ -942,7 +969,7 @@ try {
       const observed = { baseline: [], candidate: [] };
       for (const phase of phases) {
         for (const label of ['baseline', 'candidate']) {
-          const outcome = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)})`);
+          const outcome = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)}, ${JSON.stringify(label)})`);
           const result = outcome.match(/^### Result\s*\n([^\n]+)/m)?.[1];
           assert(result, `${label}/${phase}: ausência de resultado do DOM`);
           observed[label].push(...JSON.parse(result));

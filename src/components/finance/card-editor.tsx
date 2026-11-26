@@ -44,6 +44,56 @@ export const emptyCardForm: CardFormDraft = {
   flag: '',
 };
 
+export interface CardSubmissionPayload {
+  name: string;
+  type: string;
+  brand: string;
+  lastFourDigits: string;
+  creditLimit: number;
+  closingDay: number;
+  dueDay: number;
+  color: string;
+  flag: string;
+}
+
+/** Validates card draft fields and returns a normalized API payload or localized error key message. */
+export function validateCardDraft(
+  form: CardFormDraft,
+  t: (key: string) => string,
+): { ok: true; payload: CardSubmissionPayload } | { ok: false; error: string } {
+  const name = form.name.trim();
+  if (!name) return { ok: false, error: t('errors.nameRequired') };
+  const lastFourDigits = form.lastFourDigits.trim();
+  if (!/^\d{4}$/.test(lastFourDigits)) return { ok: false, error: t('errors.lastFourInvalid') };
+
+  if (form.type === 'CREDIT') {
+    const limitRaw = form.creditLimit.trim();
+    const creditLimit = limitRaw === '' ? NaN : Number(limitRaw);
+    if (!Number.isFinite(creditLimit) || creditLimit < 0) {
+      return { ok: false, error: t('errors.invalidLimit') };
+    }
+    const closingRaw = form.closingDay.trim();
+    const closingDay = closingRaw === '' ? NaN : Number(closingRaw);
+    if (!Number.isInteger(closingDay) || closingDay < 1 || closingDay > 31) {
+      return { ok: false, error: t('errors.invalidClosingDay') };
+    }
+    const dueRaw = form.dueDay.trim();
+    const dueDay = dueRaw === '' ? NaN : Number(dueRaw);
+    if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
+      return { ok: false, error: t('errors.invalidDueDay') };
+    }
+    return {
+      ok: true,
+      payload: { ...form, name, lastFourDigits, creditLimit, closingDay, dueDay },
+    };
+  }
+
+  return {
+    ok: true,
+    payload: { ...form, name, lastFourDigits, creditLimit: 0, closingDay: 1, dueDay: 10 },
+  };
+}
+
 export interface CardEditorProps {
   mode: 'create' | 'edit';
   open: boolean;
@@ -74,6 +124,7 @@ export function CardEditor({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
+      closeLabel={t('editor.closeLabel')}
       contentClassName="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
       title={isEditing ? t('editor.editTitle') : t('editor.createTitle')}
       description={isEditing ? t('editor.editDescription') : t('editor.createDescription')}

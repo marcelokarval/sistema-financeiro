@@ -1,6 +1,6 @@
 'use client';
 
-import type { RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { Bell, Brain, Moon, Plus, Search, Sun, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LanguageSwitcher } from '@/components/finance/language-switcher';
@@ -55,6 +55,20 @@ export function AppHeader({
 }: AppHeaderProps) {
   const t = useSafeTranslations('shell.header');
   const tNav = useSafeTranslations('shell.navigation');
+  const notificationsContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const container = notificationsContainerRef.current;
+      if (!container) return;
+      if (event.target instanceof Node && !container.contains(event.target)) {
+        onCloseNotifications();
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [showNotifications, onCloseNotifications]);
 
   const currentLabel =
     currentView === 'dashboard'
@@ -112,6 +126,7 @@ export function AppHeader({
         </Button>
 
         <div
+          ref={notificationsContainerRef}
           onKeyDown={(event) => {
             if (event.key === 'Escape' && showNotifications) onCloseNotifications();
           }}
@@ -142,13 +157,13 @@ export function AppHeader({
         <Button
           ref={newEntryButtonRef}
           size="sm"
-          className="ml-1 h-9 px-2.5"
+          className="ml-1 size-9 px-0 sm:h-9 sm:w-auto sm:px-2.5"
           aria-label={t('newEntry')}
           aria-haspopup="dialog"
           onClick={(event) => onNewEntry(event.currentTarget)}
         >
           <Plus aria-hidden="true" />
-          <span>{t('newEntry')}</span>
+          <span className="hidden sm:inline">{t('newEntry')}</span>
         </Button>
       </div>
     </header>

@@ -84,6 +84,7 @@
     "confirm": "Delete"
   },
   "editor": {
+    "closeLabel": "Close form",
     "createTitle": "New Savings Goal",
     "editTitle": "Edit Goal",
     "createDescription": "Set a financial goal to start saving.",
@@ -127,6 +128,7 @@
     }
   },
   "contribution": {
+    "closeLabel": "Close form",
     "title": "Deposit",
     "descriptionWithGoal": "Add an amount to goal \"{name}\". Current: {amount}",
     "descriptionFallback": "Add an amount to the selected goal.",

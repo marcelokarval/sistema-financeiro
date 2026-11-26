@@ -264,6 +264,9 @@ async function runCases(page, html, width, theme, flagBodies) {
       notifTitle: 'Notificações',
       aiTrigger: 'Assistente IA',
       aiHeading: 'Assistente Financeiro',
+      newEntryAria: 'Novo lançamento',
+      newAccountBtn: 'Nova conta',
+      closeFormLabel: 'Fechar formulário',
     },
     es: {
       dashboardHeading: 'Resumen financiero',
@@ -291,6 +294,9 @@ async function runCases(page, html, width, theme, flagBodies) {
       notifTitle: 'Notificaciones',
       aiTrigger: 'Asistente IA',
       aiHeading: 'Asistente Financiero',
+      newEntryAria: 'Nuevo movimiento',
+      newAccountBtn: 'Nueva cuenta',
+      closeFormLabel: 'Cerrar formulario',
     },
     en: {
       dashboardHeading: 'Financial overview',
@@ -318,6 +324,9 @@ async function runCases(page, html, width, theme, flagBodies) {
       notifTitle: 'Notifications',
       aiTrigger: 'AI Assistant',
       aiHeading: 'Financial Assistant',
+      newEntryAria: 'New entry',
+      newAccountBtn: 'New account',
+      closeFormLabel: 'Close form',
     },
   };
 
@@ -338,13 +347,20 @@ async function runCases(page, html, width, theme, flagBodies) {
       await waitText(spec.balanceLabel);
       await frame();
 
-      const dashProbe = await page.evaluate(() => {
+      const dashProbe = await page.evaluate((newEntryLabel) => {
         const text = document.body.innerText ?? '';
         const bg = getComputedStyle(document.body).backgroundColor;
         const overflow = document.documentElement.scrollWidth > window.innerWidth + 1;
-        return { text, bg, overflow, scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth };
-      });
+        const headerEl = document.querySelector('header');
+        const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 0;
+        const hasNewEntryAria = Boolean(document.querySelector(`header button[aria-label="${newEntryLabel}"]`));
+        return { text, bg, overflow, scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, headerHeight, hasNewEntryAria };
+      }, spec.newEntryAria);
       if (!renderedBg) renderedBg = dashProbe.bg;
+      ensure(dashProbe.hasNewEntryAria, `${width}/${theme}/${locale} missing header newEntry aria-label (${spec.newEntryAria})`);
+      if (width <= 390) {
+        ensure(dashProbe.headerHeight > 0 && dashProbe.headerHeight <= 76, `${width}/${theme}/${locale} mobile header too tall (#7): ${dashProbe.headerHeight}px`);
+      }
       ensure(!dashProbe.overflow, `${width}/${theme}/${locale} dashboard overflow: ${dashProbe.scrollWidth} > ${dashProbe.innerWidth}`);
       ensure(spec.currencyPattern.test(dashProbe.text), `${width}/${theme}/${locale} missing BRL format on dashboard`);
       ensure(!/MISSING_MESSAGE/.test(dashProbe.text), `${width}/${theme}/${locale} MISSING_MESSAGE leaked on dashboard`);
@@ -417,7 +433,36 @@ async function runCases(page, html, width, theme, flagBodies) {
         if (item.expectBrl) {
           ensure(spec.currencyPattern.test(viewProbe.text), `${width}/${theme}/${locale}/${item.view} missing BRL formatting`);
         }
+        if (item.view === 'accounts') {
+          // (#17) Touch targets >= 44px on mobile/desktop + (#8) localized dialog close label without "Close"
+          const accountTouchProbe = await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('main button')).map((b) => {
+              const r = b.getBoundingClientRect();
+              return { label: b.getAttribute('aria-label') || b.textContent?.trim() || '', w: r.width, h: r.height };
+            });
+            return buttons.filter((b) => b.w > 0 && b.h > 0 && (b.w < 43.5 || b.h < 43.5));
+          });
+          ensure(accountTouchProbe.length === 0, `${width}/${theme}/${locale}/accounts touch target <44px (#17): ${JSON.stringify(accountTouchProbe)}`);
+
+          await page.getByRole('button', { name: spec.newAccountBtn, exact: true }).click();
+          const accDialog = page.getByRole('dialog').first();
+          await accDialog.waitFor();
+          ensure((await accDialog.getByRole('button', { name: spec.closeFormLabel, exact: true }).count()) === 1, `${width}/${theme}/${locale}/accounts missing localized close (${spec.closeFormLabel}) (#8)`);
+          if (locale !== 'en') {
+            ensure((await accDialog.getByRole('button', { name: 'Close', exact: true }).count()) === 0, `${width}/${theme}/${locale}/accounts leaked English Close (#8)`);
+          }
+          await page.keyboard.press('Escape');
+          await accDialog.waitFor({ state: 'detached' });
+        }
         if (item.view === 'cards') {
+          const cardTouchProbe = await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('main button')).map((b) => {
+              const r = b.getBoundingClientRect();
+              return { label: b.getAttribute('aria-label') || b.textContent?.trim() || '', w: r.width, h: r.height };
+            });
+            return buttons.filter((b) => b.w > 0 && b.h > 0 && (b.w < 43.5 || b.h < 43.5));
+          });
+          ensure(cardTouchProbe.length === 0, `${width}/${theme}/${locale}/cards touch target <44px (#17): ${JSON.stringify(cardTouchProbe)}`);
           // (#6) Verify DEBIT card omits credit cycle/limit/usage in list and detail
           const debitRowText = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll('li'));
@@ -468,6 +513,8 @@ async function runCases(page, html, width, theme, flagBodies) {
       ensure(!overlayProbe.overflow, `${width}/${theme}/${locale} overlay overflow`);
       ensure(!/MISSING_MESSAGE/.test(overlayProbe.text), `${width}/${theme}/${locale} overlay MISSING_MESSAGE`);
       await page.evaluate(() => window.qa.setAiVisible(false));
+      await page.locator('main').click({ position: { x: 8, y: 8 } });
+      await page.locator('[data-quiet-notifications]').waitFor({ state: 'detached' });
 
       if (locale === 'pt') {
         // (#5) Dynamic switch via LanguageSwitcher updates UI immediately and refetches widgets without ?locale=

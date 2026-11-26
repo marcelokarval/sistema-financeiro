@@ -1,5 +1,6 @@
 {
   "maskedValue": "R$ ••••••",
+  "dialogCloseLabel": "Close form",
   "queryPanel": {
     "loading": "Loading…",
     "error": "Could not load data.",

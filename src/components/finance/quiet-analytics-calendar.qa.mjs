@@ -344,7 +344,7 @@ function installFixture(
   });
 }
 
-async function runCases(page, html, width, theme, phase) {
+async function runCases(page, html, width, theme, phase, variant = 'candidate') {
   const url = 'https://finance-qa.invalid/';
   const rejected = [];
   const errors = [];
@@ -492,6 +492,17 @@ async function runCases(page, html, width, theme, phase) {
         const monthTextNext = await nextMonth.locator('..').locator('span').first().textContent();
         const focusNext = await page.evaluate(() => window.qa.focus());
         require(monthTextNext === monthTextBefore, 'Próximo mês não restaurou mês inicial');
+
+        if (variant === 'candidate') {
+          const emptyDay = page.locator('button[aria-disabled="true"][aria-pressed]').first();
+          require((await emptyDay.count()) > 0, 'Nenhum dia vazio com aria-disabled="true" (#11)');
+          require((await emptyDay.getAttribute('aria-pressed')) === 'false', 'Dia vazio iniciou selecionado (#11)');
+          const agendaBeforeEmpty = await page.locator('#calendar-agenda-heading').textContent();
+          await emptyDay.click({ force: true });
+          await frame();
+          require((await emptyDay.getAttribute('aria-pressed')) === 'false', 'Clique em dia vazio selecionou célula (#11)');
+          require((await page.locator('#calendar-agenda-heading').textContent()) === agendaBeforeEmpty, 'Clique em dia vazio alterou agenda (#11)');
+        }
 
         await assertReflow();
         return {
@@ -793,7 +804,7 @@ try {
   async function runPhase(width, theme, phase, expectedCount) {
     const observed = {};
     for (const label of ['baseline', 'candidate']) {
-      const outcome = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)})`);
+      const outcome = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)}, ${JSON.stringify(label)})`);
       const result = outcome.match(/^### Result\s*\n([^\n]+)/m)?.[1];
       assert(result, `${label}/${phase}: ausência de resultado do DOM`);
       observed[label] = JSON.parse(result);

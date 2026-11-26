@@ -10,7 +10,9 @@ import * as search from './global-search';
 import * as notifications from './notification-panel';
 import { AIAdvisor } from './ai-advisor';
 import { renderWithIntl } from '@/test-utils/intl';
-import { CANONICAL_LOCALES } from '@/i18n/config';
+import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
+import { getMessagesForLocale } from '@/i18n/messages';
+import { AppIntlBridgeContext } from '@/i18n/provider';
 
 test('Busca mapeia os cinco tipos emitidos a views existentes e ignora tipos desconhecidos', () => {
   expect(search).toHaveProperty('searchDestination');
@@ -245,5 +247,95 @@ test('mantém paridade recursiva de chaves e placeholders ICU nos 18 namespaces 
         expect(extractPlaceholders(otherVal)).toEqual(extractPlaceholders(ptVal));
       }
     }
+  }
+});
+
+test('#10: AIAdvisor trata falha de transporte TypeError("Failed to fetch") com erro localizado nos 3 idiomas sem vazar texto cru', async () => {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previousH = internals.H;
+  const originalFetch = globalThis.fetch;
+
+  const expectedConnectError = {
+    pt: 'Erro ao conectar com o assistente.',
+    es: 'Error al conectar con el asistente.',
+    en: 'Failed to connect to the advisor.',
+  } as const;
+
+  try {
+    globalThis.fetch = Object.assign(
+      async () => {
+        throw new TypeError('Failed to fetch');
+      },
+      { preconnect: () => {} },
+    ) as typeof fetch;
+
+    for (const locale of CANONICAL_LOCALES) {
+      const states: unknown[] = [];
+      const refs: { current: unknown }[] = [];
+      const callbacks: Array<{ deps?: readonly unknown[]; fn: unknown }> = [];
+      const depsChanged = (a?: readonly unknown[], b?: readonly unknown[]) =>
+        !a || !b || a.length !== b.length || b.some((v, i) => !Object.is(v, a[i]));
+
+      const renderAdvisor = () => {
+        let s = 0, r = 0, c = 0;
+        internals.H = {
+          useState(initial: unknown) {
+            const i = s++;
+            if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+            return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+          },
+          useRef: (init: unknown) => (refs[r++] ??= { current: init }),
+          useCallback: (fn: unknown, deps?: readonly unknown[]) => {
+            const i = c++;
+            if (!callbacks[i] || depsChanged(callbacks[i].deps, deps)) callbacks[i] = { deps, fn };
+            return callbacks[i].fn;
+          },
+          useMemo: (f: () => unknown) => f(),
+          useContext: (ctx: React.Context<unknown>) =>
+            ctx === AppIntlBridgeContext
+              ? { locale, messages: getMessagesForLocale(locale as CanonicalLocale) }
+              : (ctx as unknown as { _currentValue?: unknown })._currentValue,
+          useEffect: () => {},
+        };
+        return AIAdvisor();
+      };
+
+      const tree = renderAdvisor();
+      const findComposer = (node: React.ReactNode): React.ReactElement<Record<string, any>> | undefined => {
+        for (const child of React.Children.toArray(node)) {
+          if (!React.isValidElement<Record<string, any>>(child)) continue;
+          if (typeof child.type === 'function' && child.type.name === 'AdvisorComposer') return child;
+          const nested = findComposer(child.props.children);
+          if (nested) return nested;
+        }
+        return undefined;
+      };
+
+      const composer = findComposer(tree)!;
+      expect(composer).toBeDefined();
+      await composer.props.onSuggestionClick('Como economizar?');
+
+      const updatedTree = renderAdvisor();
+      const logNode = (function findLog(node: React.ReactNode): React.ReactElement<Record<string, any>> | undefined {
+        for (const child of React.Children.toArray(node)) {
+          if (!React.isValidElement<Record<string, any>>(child)) continue;
+          if (child.props.role === 'log') return child;
+          const nested = findLog(child.props.children);
+          if (nested) return nested;
+        }
+        return undefined;
+      })(updatedTree)!;
+      const messages = React.Children.toArray(logNode.props.children)
+        .filter((c): c is React.ReactElement<{ message: { content: string } }> => React.isValidElement(c) && Boolean((c.props as { message?: unknown }).message))
+        .map((c) => c.props.message.content);
+      const lastContent = messages.at(-1) ?? '';
+      expect(lastContent).toBe(expectedConnectError[locale]);
+      expect(lastContent).not.toContain('Failed to fetch');
+    }
+  } finally {
+    internals.H = previousH;
+    globalThis.fetch = originalFetch;
   }
 });

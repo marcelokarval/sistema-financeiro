@@ -84,6 +84,7 @@
     "confirm": "Eliminar"
   },
   "editor": {
+    "closeLabel": "Cerrar formulario",
     "createTitle": "Nueva Meta de Ahorro",
     "editTitle": "Editar Meta",
     "createDescription": "Define un objetivo financiero para comenzar a ahorrar.",
@@ -127,6 +128,7 @@
     }
   },
   "contribution": {
+    "closeLabel": "Cerrar formulario",
     "title": "Depositar",
     "descriptionWithGoal": "Agrega un monto a la meta \"{name}\". Actual: {amount}",
     "descriptionFallback": "Agrega un monto a la meta seleccionada.",

@@ -500,13 +500,13 @@ test('BudgetGoalEditor adota FinanceFormDialogShell preservando retorno de foco,
   );
 
   expect(element.type).toBe(FinanceFormDialogShell);
-  expect(element.props.closeLabel).toBeUndefined();
+  expect(element.props.closeLabel).toBe('Fechar formulário');
   expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
   expect(findElement(element, (e) => e.type === AlertDialog)).toBeUndefined();
   const dialog = findElement(element, (e) => e.type === Dialog);
   expect(dialog).toBeDefined();
   const content = findElement(element, (e) => e.type === DialogContent);
-  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.showCloseButton).toBe(false);
   expect(content?.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
   expect(findElement(element, (e) => React.Children.toArray(e.props.children).includes('Editar Meta'))).toBeDefined();
   const submitBtn = findElement(element, (e) => e.props.onClick === onSubmit);
@@ -520,7 +520,7 @@ test('BudgetGoalEditor adota FinanceFormDialogShell preservando retorno de foco,
   expect(cancelled).toBe(1);
 });
 
-test('MonthlyBudgetEditor adota FinanceFormDialogShell sem closeLabel extra, sem bloquear autoFocus padrão e com w-full nos triggers', () => {
+test('MonthlyBudgetEditor adota FinanceFormDialogShell com closeLabel localizado, sem bloquear autoFocus padrão e com w-full nos triggers', () => {
   let closed = 0;
   const onSubmit = async () => {};
   const createEl = withPtIntlDispatcher(() =>
@@ -539,9 +539,9 @@ test('MonthlyBudgetEditor adota FinanceFormDialogShell sem closeLabel extra, sem
   );
 
   expect(createEl.type).toBe(FinanceFormDialogShell);
-  expect(createEl.props.closeLabel).toBeUndefined();
+  expect(createEl.props.closeLabel).toBe('Fechar formulário');
   const content = findElement(createEl, (e) => e.type === DialogContent);
-  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.showCloseButton).toBe(false);
   const fakeEvent = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
   content?.props.onCloseAutoFocus(fakeEvent);
   expect(fakeEvent.defaultPrevented).toBe(false);
@@ -1035,4 +1035,97 @@ test('widgets de metas e saúde financeira refazem fetch ao trocar locale sem ad
     internals.H = previous;
     globalThis.fetch = originalFetch;
   }
+});
+
+test('#8 e #13: BudgetGoalEditor e MonthlyBudgetEditor localizam closeLabel nos 3 idiomas e MonthlyBudgetTracker restaura foco no fechamento', async () => {
+  const expectedClose = {
+    pt: 'Fechar formulário',
+    es: 'Cerrar formulario',
+    en: 'Close form',
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const goalEl = withPtIntlDispatcher(
+      () =>
+        BudgetGoalEditor({
+          mode: 'create',
+          open: true,
+          submitting: false,
+          form: { name: '', description: '', targetAmount: '', currentAmount: '0', categoryId: '', endDate: '' },
+          categories: [],
+          onFieldChange: () => {},
+          onOpenChange: () => {},
+          onCloseAutoFocus: () => {},
+          onSubmit: async () => {},
+        }),
+      locale,
+    );
+    expect(goalEl.props.closeLabel).toBe(expectedClose[locale]);
+
+    const budgetEl = withPtIntlDispatcher(
+      () =>
+        MonthlyBudgetEditor({
+          mode: 'create',
+          open: true,
+          submitting: false,
+          fieldId: ':qa:',
+          form: { categoryId: '', amount: '', month: '11', year: '2026' },
+          categories: [],
+          years: ['2026'],
+          onFieldChange: () => {},
+          onOpenChange: () => {},
+          onSubmit: async () => {},
+        }),
+      locale,
+    );
+    expect(budgetEl.props.closeLabel).toBe(expectedClose[locale]);
+  }
+
+  let focusCalls: string[] = [];
+  const createBtn = { isConnected: true, focus: () => focusCalls.push('create') } as unknown as HTMLButtonElement;
+  const rowMenuBtn = { isConnected: true, focus: () => focusCalls.push('row') } as unknown as HTMLButtonElement;
+  const disconnectedBtn = { isConnected: false, focus: () => focusCalls.push('disconnected') } as unknown as HTMLButtonElement;
+
+  await exerciseWidget(
+    () => MonthlyBudgetUI.MonthlyBudgetTracker({ showValues: true, refreshCounter: 0 }),
+    async (url) => {
+      if (String(url).startsWith('/api/monthly-budgets')) {
+        return Response.json({
+          budgets: [
+            { id: 'mb-1', categoryId: 'cat-1', categoryName: 'Moradia', categoryColor: '#8b5cf6', categoryIcon: 'home', amount: 1000, spent: 200, remaining: 800, percentage: 20, isOverBudget: false },
+          ],
+        });
+      }
+      if (String(url).startsWith('/api/categories')) {
+        return Response.json([{ id: 'cat-1', name: 'Moradia', color: '#8b5cf6', icon: 'home', type: 'EXPENSE' }]);
+      }
+      throw new Error(`Unexpected GET ${url}`);
+    },
+    async (render) => {
+      await settle();
+      const tree = render();
+      const header = findElement(tree, (e) => e.type === MonthlyBudgetUI.BudgetHeader)!;
+      const createRef = header.props.createButtonRef as { current: HTMLButtonElement | null };
+      createRef.current = createBtn;
+
+      // 1) Abrir pelo gatilho da linha -> restaura foco ao gatilho da linha conectado
+      const row = findElement(tree, (e) => typeof e.type === 'function' && e.type.name === 'BudgetRow')!;
+      row.props.onEdit(rowMenuBtn);
+      const editorAfterRow = findElement(render(), (e) => e.type === MonthlyBudgetEditor)!;
+      expect(typeof editorAfterRow.props.onCloseAutoFocus).toBe('function');
+      const rowEvt = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      editorAfterRow.props.onCloseAutoFocus(rowEvt);
+      expect(rowEvt.defaultPrevented).toBe(true);
+      expect(focusCalls).toEqual(['row']);
+
+      // 2) Se gatilho desconectado, faz fallback ao createButtonRef conectado
+      focusCalls = [];
+      row.props.onEdit(disconnectedBtn);
+      const editorAfterDisconnect = findElement(render(), (e) => e.type === MonthlyBudgetEditor)!;
+      const fallbackEvt = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      editorAfterDisconnect.props.onCloseAutoFocus(fallbackEvt);
+      expect(fallbackEvt.defaultPrevented).toBe(true);
+      expect(focusCalls).toEqual(['create']);
+    },
+  );
 });

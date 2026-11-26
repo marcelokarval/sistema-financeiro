@@ -195,7 +195,8 @@ export function CategoriesView() {
   };
 
   const save = async () => {
-    if (!form.name) {
+    const name = form.name.trim();
+    if (!name) {
       toast.error(t('errors.nameRequired'));
       return;
     }
@@ -203,11 +204,12 @@ export function CategoriesView() {
     if (!submittedOpening || mutationPending.current) return;
     mutationPending.current = true;
     try {
+      const payload = { ...form, name };
       if (editing) {
         const res = await fetch('/api/categories', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: editing.id, ...form }),
+          body: JSON.stringify({ id: editing.id, ...payload }),
         });
         if (!res.ok) {
           const data = await res.json().catch(() => null);
@@ -218,7 +220,7 @@ export function CategoriesView() {
         const res = await fetch('/api/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           const data = await res.json().catch(() => null);

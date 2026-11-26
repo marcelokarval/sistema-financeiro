@@ -13,6 +13,10 @@
     "loadCards": "Could not load cards.",
     "loadPurchases": "Could not load card purchases.",
     "nameRequired": "Card name is required",
+    "lastFourInvalid": "Enter the last 4 digits of the card",
+    "invalidLimit": "Enter a valid credit limit",
+    "invalidClosingDay": "Closing day must be between 1 and 31",
+    "invalidDueDay": "Due day must be between 1 and 31",
     "saveCard": "Error saving card",
     "deleteCard": "Error deleting card"
   },
@@ -83,6 +87,7 @@
     "description": "This action cannot be undone. Purchase history will be preserved."
   },
   "editor": {
+    "closeLabel": "Close form",
     "editTitle": "Edit Card",
     "createTitle": "New Card",
     "editDescription": "Update card details",

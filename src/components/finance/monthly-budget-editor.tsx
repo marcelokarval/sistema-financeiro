@@ -66,6 +66,7 @@ export function MonthlyBudgetEditor({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
+      closeLabel={t('monthlyBudget.editor.closeLabel')}
       contentClassName="sm:max-w-[420px]"
       title={isEditing ? t('monthlyBudget.editor.editTitle') : t('monthlyBudget.editor.createTitle')}
       description={t('monthlyBudget.editor.description')}

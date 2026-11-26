@@ -110,6 +110,7 @@ export function AccountTransferDialog({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
+      closeLabel={t('transfer.closeLabel')}
       contentClassName="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
       title={
         <span className="flex items-center gap-2">

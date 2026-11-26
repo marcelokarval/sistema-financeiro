@@ -1,5 +1,6 @@
 {
   "maskedValue": "R$ ••••••",
+  "dialogCloseLabel": "Cerrar formulario",
   "queryPanel": {
     "loading": "Cargando…",
     "error": "No fue posible cargar los datos.",

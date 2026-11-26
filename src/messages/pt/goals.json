@@ -81,6 +81,7 @@
       "updateError": "Erro ao atualizar meta"
     },
     "editor": {
+      "closeLabel": "Fechar formulário",
       "editTitle": "Editar Meta",
       "createTitle": "Nova Meta de Orçamento",
       "editDescription": "Atualize os dados da sua meta de orçamento.",
@@ -281,6 +282,7 @@
       "deleteError": "Erro ao excluir"
     },
     "editor": {
+      "closeLabel": "Fechar formulário",
       "editTitle": "Editar Orçamento",
       "createTitle": "Novo Orçamento",
       "description": "Informe a categoria, o valor e o período do limite.",

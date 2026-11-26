@@ -13,6 +13,10 @@
     "loadCards": "Não foi possível carregar os cartões.",
     "loadPurchases": "Não foi possível carregar as compras do cartão.",
     "nameRequired": "Nome do cartão é obrigatório",
+    "lastFourInvalid": "Informe os 4 dígitos finais do cartão",
+    "invalidLimit": "Informe um limite de crédito válido",
+    "invalidClosingDay": "Dia de fechamento deve ser entre 1 e 31",
+    "invalidDueDay": "Dia de vencimento deve ser entre 1 e 31",
     "saveCard": "Erro ao salvar cartão",
     "deleteCard": "Erro ao excluir cartão"
   },
@@ -83,6 +87,7 @@
     "description": "Esta ação não pode ser desfeita. O histórico de compras será preservado."
   },
   "editor": {
+    "closeLabel": "Fechar formulário",
     "editTitle": "Editar Cartão",
     "createTitle": "Novo Cartão",
     "editDescription": "Atualize os dados do cartão",

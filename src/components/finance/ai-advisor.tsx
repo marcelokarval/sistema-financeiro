@@ -112,7 +112,18 @@ export function AIAdvisor() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.error || t('errors.connectFailed'));
+        const serverError =
+          typeof errorData?.error === 'string' ? errorData.error.trim() : '';
+        const assistantError: ChatMessage = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: serverError
+            ? t('errors.prefix', { message: serverError })
+            : t('errors.connectFailed'),
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantError]);
+        return;
       }
 
       const data = await res.json();
@@ -131,7 +142,7 @@ export function AIAdvisor() {
         role: 'assistant',
         content:
           error instanceof Error
-            ? t('errors.prefix', { message: error.message })
+            ? t('errors.connectFailed')
             : t('errors.unexpected'),
         timestamp: new Date(),
       };

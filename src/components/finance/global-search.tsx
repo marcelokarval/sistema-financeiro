@@ -14,9 +14,12 @@ import {
   ShoppingBag,
   Tag,
   TrendingUp,
+  X,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
   DialogDescription,
@@ -28,6 +31,7 @@ import { getMessagesForLocale } from '@/i18n/messages';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { currencyFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
+import { normalizeSearchText } from '@/lib/search-normalize';
 import type { ViewType } from '@/lib/store';
 import {
   GlobalSearchResult,
@@ -169,12 +173,12 @@ export function buildSearchResults(
     messages: getMessagesForLocale(locale),
     namespace: 'shell.globalSearch',
   });
-  const q = query.trim().toLowerCase();
+  const q = normalizeSearchText(query.trim());
   const results: SearchResult[] = [];
 
   for (const tx of rawData.transactions ?? []) {
     const txDate = formatPurchaseDate(tx.date, 'date', locale);
-    const searchable = `${tx.description || ''} ${tx.category?.name || ''} ${tx.type || ''} ${txDate}`.toLowerCase();
+    const searchable = normalizeSearchText(`${tx.description || ''} ${tx.category?.name || ''} ${tx.type || ''} ${txDate}`);
     if (q && !searchable.includes(q)) continue;
 
     const isTransfer = tx.type === 'TRANSFER';
@@ -194,7 +198,7 @@ export function buildSearchResults(
 
   for (const p of rawData.purchases ?? []) {
     const date = formatPurchaseDate(p.date, 'date', locale);
-    const searchable = `${p.merchant || ''} ${p.card?.name || ''} ${p.category?.name || ''} ${date}`.toLowerCase();
+    const searchable = normalizeSearchText(`${p.merchant || ''} ${p.card?.name || ''} ${p.category?.name || ''} ${date}`);
     if (q && !searchable.includes(q)) continue;
 
     results.push({
@@ -208,7 +212,7 @@ export function buildSearchResults(
 
   for (const a of rawData.accounts ?? []) {
     const typeLabel = KNOWN_ACCOUNT_TYPES.has(a.type) ? t(`accountTypes.${a.type}`) : a.type;
-    const searchable = `${a.name || ''} ${typeLabel || ''} ${currencyFmt(a.balance, locale)}`.toLowerCase();
+    const searchable = normalizeSearchText(`${a.name || ''} ${typeLabel || ''} ${currencyFmt(a.balance, locale)}`);
     if (q && !searchable.includes(q)) continue;
 
     results.push({
@@ -222,7 +226,7 @@ export function buildSearchResults(
 
   for (const c of rawData.cards ?? []) {
     const typeLabel = KNOWN_CARD_TYPES.has(c.type) ? t(`cardTypes.${c.type}`) : c.type;
-    const searchable = `${c.name || ''} ${c.brand || ''} ${c.lastFourDigits || ''} ${typeLabel || ''}`.toLowerCase();
+    const searchable = normalizeSearchText(`${c.name || ''} ${c.brand || ''} ${c.lastFourDigits || ''} ${typeLabel || ''}`);
     if (q && !searchable.includes(q)) continue;
 
     results.push({
@@ -236,7 +240,7 @@ export function buildSearchResults(
 
   for (const cat of rawData.categories ?? []) {
     const typeLabel = KNOWN_CATEGORY_TYPES.has(cat.type) ? t(`categoryTypes.${cat.type}`) : cat.type;
-    const searchable = `${cat.name || ''} ${typeLabel || ''}`.toLowerCase();
+    const searchable = normalizeSearchText(`${cat.name || ''} ${typeLabel || ''}`);
     if (q && !searchable.includes(q)) continue;
 
     results.push({
@@ -249,7 +253,7 @@ export function buildSearchResults(
   }
 
   for (const inv of rawData.investments ?? []) {
-    const searchable = `${inv.name || ''} ${inv.ticker || ''} ${inv.type || ''} ${inv.brokerage || ''}`.toLowerCase();
+    const searchable = normalizeSearchText(`${inv.name || ''} ${inv.ticker || ''} ${inv.type || ''} ${inv.brokerage || ''}`);
     if (q && !searchable.includes(q)) continue;
 
     const details = [inv.ticker, inv.type, inv.brokerage].filter(Boolean).join(' · ');
@@ -263,7 +267,7 @@ export function buildSearchResults(
   }
 
   for (const ins of rawData.installments ?? []) {
-    const searchable = `${ins.description || ''} ${ins.type || ''} ${ins.status || ''} ${ins.card?.name || ''} ${ins.category?.name || ''}`.toLowerCase();
+    const searchable = normalizeSearchText(`${ins.description || ''} ${ins.type || ''} ${ins.status || ''} ${ins.card?.name || ''} ${ins.category?.name || ''}`);
     if (q && !searchable.includes(q)) continue;
 
     const count = ins.installmentCount ?? 0;
@@ -278,7 +282,7 @@ export function buildSearchResults(
   }
 
   for (const con of rawData.consortiums ?? []) {
-    const searchable = `${con.description || ''} ${con.group || ''} ${con.quota || ''} ${con.administrator || ''} ${con.status || ''}`.toLowerCase();
+    const searchable = normalizeSearchText(`${con.description || ''} ${con.group || ''} ${con.quota || ''} ${con.administrator || ''} ${con.status || ''}`);
     if (q && !searchable.includes(q)) continue;
 
     const groupQuota = con.group && con.quota
@@ -300,6 +304,13 @@ export function buildSearchResults(
 export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
   const locale = useSafeLocale();
   const t = useSafeTranslations('shell.globalSearch');
+  const sharedTranslator = useSafeTranslations('shared') as unknown as {
+    (key: string): string;
+    has?: (key: string) => boolean;
+  };
+  const closeLabel = sharedTranslator.has?.('dialogCloseLabel')
+    ? sharedTranslator('dialogCloseLabel')
+    : 'Fechar formulário';
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -391,17 +402,33 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="gap-0 overflow-hidden rounded-lg border border-border bg-card p-0 text-card-foreground shadow-lg motion-reduce:animate-none sm:max-w-[560px]">
+      <DialogContent
+        showCloseButton={false}
+        className="gap-0 overflow-hidden rounded-lg border border-border bg-card p-0 text-card-foreground shadow-lg motion-reduce:animate-none sm:max-w-[560px]"
+      >
         {isOpen && (
           <div
             data-quiet-search
             className="flex max-h-[80dvh] min-w-0 flex-col transition-opacity duration-150 motion-reduce:transition-none"
           >
             <header className="shrink-0 border-b border-border px-4 pb-3 pt-4 sm:px-5">
-              <DialogTitle className="pr-8 text-base">{t('title')}</DialogTitle>
-              <DialogDescription className="mt-1.5 pr-6 text-xs">
-                {t('description')}
-              </DialogDescription>
+              <div className="relative pr-10">
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={closeLabel}
+                    className="absolute right-0 top-0"
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                </DialogClose>
+                <DialogTitle className="text-base">{t('title')}</DialogTitle>
+                <DialogDescription className="mt-1.5 text-xs">
+                  {t('description')}
+                </DialogDescription>
+              </div>
               <div className="relative mt-3">
                 <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

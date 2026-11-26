@@ -84,6 +84,7 @@
     "confirm": "Excluir"
   },
   "editor": {
+    "closeLabel": "Fechar formulário",
     "createTitle": "Nova Meta de Poupança",
     "editTitle": "Editar Meta",
     "createDescription": "Defina um objetivo financeiro para começar a poupar.",
@@ -127,6 +128,7 @@
     }
   },
   "contribution": {
+    "closeLabel": "Fechar formulário",
     "title": "Depositar",
     "descriptionWithGoal": "Adicione um valor à meta \"{name}\". Atual: {amount}",
     "descriptionFallback": "Adicione um valor à meta selecionada.",

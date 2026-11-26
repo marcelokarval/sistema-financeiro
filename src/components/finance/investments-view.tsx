@@ -578,7 +578,7 @@ export function InvestmentsView() {
 
     return (
       <section className="min-w-0 space-y-5" aria-labelledby="investment-detail-title">
-        <Button variant="ghost" size="sm" onClick={closeInvestmentDetail}><ArrowLeft aria-hidden="true" /> {t('actions.backToPortfolio')}</Button>
+        <Button variant="ghost" className="min-h-11" onClick={closeInvestmentDetail}><ArrowLeft aria-hidden="true" /> {t('actions.backToPortfolio')}</Button>
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 id="investment-detail-title" tabIndex={-1} className="break-words text-xl font-semibold tracking-tight">{selectedInvestment.name}</h2>
@@ -587,8 +587,8 @@ export function InvestmentsView() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => openEditInvestment(selectedInvestment))}><Pencil aria-hidden="true" /> {t('actions.editInvestment')}</Button>
-            <Button variant="outline" size="sm" className="text-destructive" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => setShowDeleteDialog(selectedInvestment.id))}><Trash2 aria-hidden="true" /> {t('actions.deleteInvestment')}</Button>
+            <Button variant="outline" className="min-h-11" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => openEditInvestment(selectedInvestment))}><Pencil aria-hidden="true" /> {t('actions.editInvestment')}</Button>
+            <Button variant="outline" className="min-h-11 text-destructive" onClick={(event) => rememberDialogOrigin(event.currentTarget, () => setShowDeleteDialog(selectedInvestment.id))}><Trash2 aria-hidden="true" /> {t('actions.deleteInvestment')}</Button>
           </div>
         </header>
         <InvestmentMetrics label={t('detail.positionAriaLabel')} metrics={[
@@ -758,18 +758,18 @@ export function InvestmentPortfolio({ summary, count, records, filter, loadError
           <h2 id="investments-title" tabIndex={-1} className="text-xl font-semibold tracking-tight">{t('title')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <Button onClick={onNew} size="sm"><Plus aria-hidden="true" /> {t('actions.newInvestment')}</Button>
+        <Button onClick={onNew} className="min-h-11"><Plus aria-hidden="true" /> {t('actions.newInvestment')}</Button>
       </header>
       {loadError && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-4 text-sm">
           <p className="text-destructive">{t('errors.loadPortfolio')}</p>
-          {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>{t('actions.retry')}</Button>}
+          {onRetry && <Button variant="outline" className="min-h-11" onClick={onRetry}>{t('actions.retry')}</Button>}
         </div>
       )}
       {!loadError && dividendLoadError && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-4 text-sm">
           <p className="text-destructive">{t('errors.loadDividends')}</p>
-          {onRetryDividends && <Button size="sm" variant="outline" onClick={onRetryDividends}>{t('actions.retry')}</Button>}
+          {onRetryDividends && <Button variant="outline" className="min-h-11" onClick={onRetryDividends}>{t('actions.retry')}</Button>}
         </div>
       )}
       <InvestmentMetrics label={t('summary.ariaLabel')} metrics={[
@@ -786,7 +786,7 @@ export function InvestmentPortfolio({ summary, count, records, filter, loadError
         <h3 id="investment-records-title" className="font-semibold">{t('portfolio.sectionTitle')}</h3>
         <Tabs value={filter} onValueChange={onFilter}>
           <TabsList aria-label={t('filters.ariaLabel')} className="h-auto max-w-full flex-wrap justify-start gap-1 border bg-card">
-            {INVESTMENT_FILTER_TABS.map((tab) => <TabsTrigger key={tab.value} value={tab.value} className="flex-none px-3 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">{t(tab.labelKey)}</TabsTrigger>)}
+            {INVESTMENT_FILTER_TABS.map((tab) => <TabsTrigger key={tab.value} value={tab.value} className="min-h-11 flex-none px-3 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">{t(tab.labelKey)}</TabsTrigger>)}
           </TabsList>
         </Tabs>
         {records.length === 0 ? (
@@ -812,8 +812,8 @@ export function InvestmentPortfolio({ summary, count, records, filter, loadError
                     </span>
                   </button>
                   <div className="flex flex-wrap gap-1 px-2 md:px-0">
-                    <Button size="icon" variant="ghost" aria-label={t('actions.editAriaLabel', { name: inv.name })} onClick={(event) => onEdit(inv, event)}><Pencil aria-hidden="true" /></Button>
-                    <Button size="icon" variant="ghost" aria-label={t('actions.deleteAriaLabel', { name: inv.name })} className="text-destructive" onClick={(event) => onDelete(inv.id, event)}><Trash2 aria-hidden="true" /></Button>
+                    <Button size="icon" variant="ghost" className="size-11" aria-label={t('actions.editAriaLabel', { name: inv.name })} onClick={(event) => onEdit(inv, event)}><Pencil aria-hidden="true" /></Button>
+                    <Button size="icon" variant="ghost" aria-label={t('actions.deleteAriaLabel', { name: inv.name })} className="size-11 text-destructive" onClick={(event) => onDelete(inv.id, event)}><Trash2 aria-hidden="true" /></Button>
                   </div>
                 </li>
               );
@@ -830,7 +830,7 @@ function InvestmentHistoryHeader({ onNew }: { onNew: (event: MouseEvent<HTMLButt
   return (
     <header className="flex flex-wrap items-center justify-between gap-2">
       <h3 id="investment-history-title" className="font-semibold">{t('detail.historyTitle')}</h3>
-      <Button size="sm" onClick={onNew}><Plus aria-hidden="true" /> {t('actions.newTransaction')}</Button>
+      <Button className="min-h-11" onClick={onNew}><Plus aria-hidden="true" /> {t('actions.newTransaction')}</Button>
     </header>
   );
 }
@@ -867,12 +867,12 @@ export function InvestmentEntries({ transactions, onNew, onEdit, onDelete }: {
                 <div className="flex items-center gap-1">
                   <span className="mr-1 break-words font-mono text-sm font-semibold tabular-nums">{isCredit ? '+' : '-'}{currencyFmt(tx.amount, locale)}</span>
                   {onEdit && (
-                    <Button size="icon" variant="ghost" aria-label={t('actions.editTxAriaLabel', { title: txTitle })} onClick={(event) => onEdit(tx, event)}>
+                    <Button size="icon" variant="ghost" className="size-11" aria-label={t('actions.editTxAriaLabel', { title: txTitle })} onClick={(event) => onEdit(tx, event)}>
                       <Pencil aria-hidden="true" />
                     </Button>
                   )}
                   {onDelete && (
-                    <Button size="icon" variant="ghost" aria-label={t('actions.deleteTxAriaLabel', { title: txTitle })} className="text-destructive hover:text-destructive" onClick={(event) => onDelete(tx, event)}>
+                    <Button size="icon" variant="ghost" aria-label={t('actions.deleteTxAriaLabel', { title: txTitle })} className="size-11 text-destructive hover:text-destructive" onClick={(event) => onDelete(tx, event)}>
                       <Trash2 aria-hidden="true" />
                     </Button>
                   )}

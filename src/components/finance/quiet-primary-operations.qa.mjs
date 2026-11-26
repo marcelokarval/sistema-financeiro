@@ -204,7 +204,8 @@ function installFixture(Page, ThemeProvider, AppIntlProvider, getMessagesForLoca
 }
 
 // Função serializada para a VM do Playwright CLI: não depende de globals Node.
-async function runCases(page, html, width, theme, phase, localeFlagBodies) {
+async function runCases(page, html, width, theme, phase, localeFlagBodies, variant = 'candidate') {
+  const closeBtnLabel = variant === 'baseline' ? 'Close' : 'Fechar formulário';
   const url = 'https://finance-qa.invalid/';
   const results = [];
   const errors = [];
@@ -365,9 +366,9 @@ async function runCases(page, html, width, theme, phase, localeFlagBodies) {
           closeObservations.push({ target: 'seletor', how, focus: await activeInfo() });
         }
 
-        // Tab chega a Transferir e retorno de foco após Escape/Cancelar/Close
+        // Tab chega a Transferir e retorno de foco após Escape/Cancelar/Fechar
         const transferBtn = btn('Transferir');
-        for (const how of ['Escape', 'Cancelar', 'Close']) {
+        for (const how of ['Escape', 'Cancelar', closeBtnLabel]) {
           await tabTo(pickerBtn, transferBtn, 6);
           await page.keyboard.press('Enter');
           await dialog().waitFor();
@@ -377,7 +378,7 @@ async function runCases(page, html, width, theme, phase, localeFlagBodies) {
           else await action(how).click();
           await closes();
           require(await focused(transferBtn), `Foco não retornou a Transferir após ${how}`);
-          closeObservations.push({ target: 'transferencia', how, focus: await activeInfo() });
+          closeObservations.push({ target: 'transferencia', how: how === closeBtnLabel ? 'closeButton' : how, focus: await activeInfo() });
         }
 
         require((await calls()).every((c) => c.method === 'GET'), 'Escape/Cancelar não pode gravar');
@@ -540,8 +541,8 @@ async function runCases(page, html, width, theme, phase, localeFlagBodies) {
         await payBtnA.waitFor();
 
         const closeObservations = [];
-        for (const how of ['Escape', 'Cancelar', 'Close']) {
-          await tabTo(btn('Excluir'), payBtnA, 4);
+        for (const how of ['Escape', 'Cancelar', closeBtnLabel]) {
+          await tabTo(btn('Excluir'), payBtnA, variant === 'baseline' ? 4 : 10);
           await page.keyboard.press('Enter');
           await dialog().waitFor();
           await dialog().getByText('Marcar Parcela como Paga', { exact: true }).waitFor();
@@ -550,7 +551,7 @@ async function runCases(page, html, width, theme, phase, localeFlagBodies) {
           else await action(how).click();
           await closes();
           require(await focused(payBtnA), `Foco não retornou à parcela após ${how}`);
-          closeObservations.push({ how, focus: await activeInfo() });
+          closeObservations.push({ how: how === closeBtnLabel ? 'closeButton' : how, focus: await activeInfo() });
         }
 
         // Caso (a): abrir confirmação de A e trocar para B antes de confirmar -> zero POST
@@ -801,7 +802,7 @@ try {
         for (const label of ['baseline', 'candidate']) {
           const outcome = await cli(
             'run-code',
-            `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)}, ${JSON.stringify(localeFlagBodies)})`,
+            `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)}, ${JSON.stringify(localeFlagBodies)}, ${JSON.stringify(label)})`,
           );
           const result = outcome.match(/^### Result\s*\n([^\n]+)/m)?.[1];
           assert(result, `${label}/${phase}: resultado DOM ausente`);
