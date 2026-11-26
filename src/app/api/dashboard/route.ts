@@ -1,11 +1,21 @@
 import { NextResponse, NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { parseCivilDateEnd, parseCivilDateStart } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 // GET /api/dashboard - Aggregated dashboard data with optional date range filter
-export async function GET(request: NextRequest) {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const { searchParams } = request.nextUrl;
+    const searchParams =
+      request?.nextUrl?.searchParams ??
+      new URL(request?.url ?? "http://localhost").searchParams;
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
@@ -23,17 +33,19 @@ export async function GET(request: NextRequest) {
       const parsedEnd = toParam !== null ? parseCivilDateEnd(toParam) : null;
 
       if ((fromParam !== null && !parsedStart) || (toParam !== null && !parsedEnd)) {
-        return NextResponse.json(
-          { error: "Datas inválidas. Use o formato YYYY-MM-DD." },
-          { status: 400 }
+        return apiErrorResponse(
+          "INVALID_DATE_FORMAT",
+          translateApiMessage(locale, "errors.invalidDateFormat"),
+          400
         );
       }
 
       if (parsedStart && parsedEnd) {
         if (parsedStart > parsedEnd) {
-          return NextResponse.json(
-            { error: "Intervalo de datas inválido: 'from' deve ser anterior ou igual a 'to'." },
-            { status: 400 }
+          return apiErrorResponse(
+            "INVALID_DATE_RANGE",
+            translateApiMessage(locale, "errors.invalidDateRange"),
+            400
           );
         }
         rangeStart = parsedStart;
@@ -219,16 +231,14 @@ export async function GET(request: NextRequest) {
     // Monthly trend - iterate through each month in the date range
     const monthlyTrend: {
       month: string;
+      monthKey: string;
       income: number;
       expense: number;
     }[] = [];
     for (let i = 0; i < trendMonths; i++) {
       const trendMonth = new Date(trendStart.getFullYear(), trendStart.getMonth() + i, 1);
       const trendMonthEnd = new Date(trendStart.getFullYear(), trendStart.getMonth() + i + 1, 0, 23, 59, 59, 999);
-      const monthLabel = trendMonth.toLocaleString("pt-BR", {
-        month: "short",
-        year: "2-digit",
-      });
+      const monthLabel = formatServerMonthLabel(trendMonth, locale);
 
       const monthTxns = monthlyTransactions.filter(
         (t) => t.date >= trendMonth && t.date <= trendMonthEnd
@@ -253,6 +263,7 @@ export async function GET(request: NextRequest) {
 
       monthlyTrend.push({
         month: monthLabel,
+        monthKey: toMonthKey(trendMonth),
         income,
         expense: txnExpense + purchaseExpense,
       });
@@ -331,9 +342,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch dashboard data" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "analytics.dashboardFetchFailed"),
+      500
     );
   }
 }

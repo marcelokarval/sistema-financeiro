@@ -4,11 +4,13 @@ import { describe, expect, it } from 'bun:test';
 import {
   computeEndOfWeek,
   mapPrismaError,
+  mapPrismaErrorLocalized,
   normalizeRecurringToMonthly,
   parseCivilDateEnd,
   parseCivilDateStart,
   parseFiniteNumber,
   parseJsonBody,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
   resolveCardDueDate,
   toLocalCivilDateKey,
@@ -213,5 +215,53 @@ describe('computeEndOfWeek', () => {
     expect(end.getMinutes()).toBe(59);
     expect(end.getSeconds()).toBe(59);
     expect(end.getMilliseconds()).toBe(999);
+  });
+});
+
+describe('parseJsonBodyLocalized e mapPrismaErrorLocalized', () => {
+  it('resolve locale do request, inclui X-Error-Code e retorna { error, code } em pt, es e en', async () => {
+    const reqEn = new Request('http://localhost/api/test?locale=en', {
+      method: 'POST',
+      body: '{invalid',
+    });
+    const resEn = await parseJsonBodyLocalized(reqEn);
+    expect(resEn.ok).toBe(false);
+    expect(resEn.locale).toBe('en');
+    if (!resEn.ok) {
+      expect(resEn.response.status).toBe(400);
+      expect(resEn.response.headers.get('X-Error-Code')).toBe('INVALID_JSON');
+      const body = await resEn.response.json();
+      expect(body.code).toBe('INVALID_JSON');
+      expect(typeof body.error).toBe('string');
+      expect(body.error.length).toBeGreaterThan(0);
+    }
+
+    const reqEs = new Request('http://localhost/api/test', {
+      method: 'POST',
+      headers: { 'Accept-Language': 'es-ES' },
+      body: JSON.stringify({ name: 'Prueba' }),
+    });
+    const okEs = await parseJsonBodyLocalized<{ name: string }>(reqEs);
+    expect(okEs.ok).toBe(true);
+    expect(okEs.locale).toBe('es');
+    if (okEs.ok) {
+      expect(okEs.data).toEqual({ name: 'Prueba' });
+    }
+  });
+
+  it('mapPrismaErrorLocalized mapeia P2003 e P2025 com { error, code } e X-Error-Code nos três locales', async () => {
+    const fkEs = mapPrismaErrorLocalized({ code: 'P2003' }, 'es');
+    expect(fkEs).not.toBeNull();
+    expect(fkEs!.status).toBe(400);
+    expect(fkEs!.headers.get('X-Error-Code')).toBe('FOREIGN_KEY_ERROR');
+    expect(await fkEs!.json()).toMatchObject({ code: 'FOREIGN_KEY_ERROR' });
+
+    const notFoundEn = mapPrismaErrorLocalized({ code: 'P2025' }, 'en');
+    expect(notFoundEn).not.toBeNull();
+    expect(notFoundEn!.status).toBe(404);
+    expect(notFoundEn!.headers.get('X-Error-Code')).toBe('NOT_FOUND');
+    expect(await notFoundEn!.json()).toMatchObject({ code: 'NOT_FOUND' });
+
+    expect(mapPrismaErrorLocalized({ code: 'P2002' }, 'pt')).toBeNull();
   });
 });

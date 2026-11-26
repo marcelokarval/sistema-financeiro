@@ -1,0 +1,122 @@
+{
+  "navigation": {
+    "groups": {
+      "overview": "Resumen",
+      "activity": "Movimientos",
+      "wealth": "Patrimonio"
+    },
+    "items": {
+      "dashboard": "Resumen",
+      "accounts": "Cuentas",
+      "cards": "Tarjetas",
+      "purchases": "Compras",
+      "categories": "Categorías",
+      "investments": "Inversiones",
+      "installments": "Cuotas",
+      "consortiums": "Consorcios",
+      "savings": "Ahorros"
+    },
+    "brandName": "FinanceApp",
+    "brandSubtitle": "Patrimonio personal",
+    "desktopAriaLabel": "Navegación principal",
+    "mobileAriaLabel": "Navegación móvil",
+    "allDestinationsAriaLabel": "Todos los destinos",
+    "realtimeActive": "Actualización en tiempo real activa",
+    "realtimeUnavailable": "Tiempo real no disponible",
+    "personalSpace": "Espacio personal",
+    "reload": "Recargar",
+    "expandNavigation": "Expandir navegación",
+    "collapseNavigation": "Contraer navegación",
+    "more": "Más",
+    "moreDestinations": "Más destinos",
+    "moreDescription": "Elige un área de FinanceApp.",
+    "currentPageSuffix": "(página actual)",
+    "languageSection": "Idioma"
+  },
+  "header": {
+    "dashboardTitle": "Resumen financiero",
+    "realtimeUnavailable": "Tiempo real no disponible",
+    "openSearch": "Abrir búsqueda global",
+    "searchButton": "Buscar en todo",
+    "shortcutHint": "Ctrl/⌘ K",
+    "useLightTheme": "Usar tema claro",
+    "useDarkTheme": "Usar tema oscuro",
+    "openAdvisor": "Abrir asistente financiero IA",
+    "notifications": "Notificaciones",
+    "newEntry": "Nuevo movimiento",
+    "viewContext": {
+      "dashboard": "Visión general de tus finanzas",
+      "accounts": "Gestiona tus cuentas y saldos",
+      "cards": "Controla tarjetas y facturas",
+      "purchases": "Control detallado de compras",
+      "categories": "Organiza ingresos y gastos",
+      "investments": "Aportes, dividendos y rendimientos",
+      "installments": "Financiamientos y pagos en cuotas",
+      "consortiums": "Control de consorcios",
+      "savings": "Metas y alcancías de ahorro"
+    }
+  },
+  "quickActions": {
+    "label": "Acciones rápidas",
+    "newTransaction": "Nueva Transacción",
+    "newPurchase": "Nueva Compra",
+    "newGoal": "Nueva Meta",
+    "exportData": "Exportar Datos"
+  },
+  "advisorDialog": {
+    "title": "Asistente financiero IA",
+    "close": "Cerrar asistente financiero"
+  },
+  "globalSearch": {
+    "title": "Búsqueda Global",
+    "description": "Transacciones, compras, cuentas, tarjetas, categorías, inversiones, cuotas y consorcios",
+    "inputAriaLabel": "Buscar en finanzas",
+    "placeholder": "Escribe un término de búsqueda…",
+    "loadError": "No se pudieron cargar todos los datos de búsqueda.",
+    "retry": "Intentar de nuevo",
+    "loading": "Buscando datos...",
+    "noResults": "No se encontraron resultados",
+    "noResultsHint": "Intenta buscar con otro término.",
+    "startTyping": "Empieza a escribir para buscar",
+    "resultCount": "{count, plural, one {# resultado} other {# resultados}}",
+    "navigateHint": "Navegar",
+    "selectHint": "Seleccionar",
+    "groups": {
+      "transactions": "Transacciones",
+      "purchases": "Compras",
+      "accounts": "Cuentas",
+      "cards": "Tarjetas",
+      "categories": "Categorías",
+      "investments": "Inversiones",
+      "installments": "Cuotas",
+      "consortiums": "Consorcios"
+    },
+    "fallbacks": {
+      "noDescription": "Sin descripción",
+      "noMerchant": "Sin comercio",
+      "noName": "Sin nombre",
+      "cardDefault": "Tarjeta"
+    },
+    "labels": {
+      "transfer": "Transferencia",
+      "statement": "Factura: {amount}",
+      "perMonth": "{amount}/mes",
+      "groupQuota": "Grupo {group} · Cuota {quota}"
+    },
+    "accountTypes": {
+      "CASH": "Efectivo",
+      "BANK": "Banco",
+      "DIGITAL_WALLET": "Billetera Digital"
+    },
+    "cardTypes": {
+      "CREDIT": "Crédito",
+      "DEBIT": "Débito",
+      "BOTH": "Crédito y Débito"
+    },
+    "categoryTypes": {
+      "INCOME": "Ingreso",
+      "EXPENSE": "Gasto",
+      "BOTH": "Ambos"
+    }
+  }
+}

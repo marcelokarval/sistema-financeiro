@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
-export async function GET(request: NextRequest) {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url ?? 'http://localhost');
     let months = parseInt(searchParams.get('months') || '6', 10);
     months = Math.max(1, Math.min(12, isNaN(months) ? 6 : months));
 
@@ -111,16 +119,17 @@ export async function GET(request: NextRequest) {
 
     // ── Month labels ──
     const monthLabels: string[] = [];
+    const monthKeys: string[] = [];
     for (let m = 0; m <= months; m++) {
       const d = new Date(now.getFullYear(), now.getMonth() + m, 1);
-      monthLabels.push(
-        d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
-      );
+      monthLabels.push(formatServerMonthLabel(d, locale));
+      monthKeys.push(toMonthKey(d));
     }
 
     return NextResponse.json({
       accounts: accountProjections,
       monthLabels,
+      monthKeys,
       totalCurrentBalance: Math.round(totalCurrentBalance),
       totalProjected: Math.round(totalProjected),
       averageMonthlySavings: Math.round(averageMonthlySavings),
@@ -130,9 +139,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Erro ao calcular projeção de saldo:', error);
-    return NextResponse.json(
-      { error: 'Erro ao calcular projeção de saldo.' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'analytics.balanceProjectionFailed'),
+      500
     );
   }
 }

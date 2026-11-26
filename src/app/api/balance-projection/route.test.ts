@@ -76,4 +76,21 @@ describe("GET /api/balance-projection - janela fechada de 3 meses completos", ()
     expect(data.accounts[0].monthlyNet).toBe(2000);
     expect(data.averageMonthlySavings).toBe(2000);
   });
+
+  test("emite monthKeys ISO aditivos e monthLabels localizados para en e es", async () => {
+    const resEn = await GET(new NextRequest("http://localhost/api/balance-projection?months=2&locale=en"));
+    expect(resEn.status).toBe(200);
+    const dataEn = await resEn.json();
+    expect(dataEn.monthKeys).toEqual(["2026-11", "2026-12", "2027-01"]);
+    expect(dataEn.monthLabels[0]).toContain("Nov");
+    expect(dataEn.monthLabels[1]).toContain("Dec");
+    expect(dataEn.monthLabels[2]).toContain("Jan");
+
+    const resEs = await GET(new NextRequest("http://localhost/api/balance-projection?months=2&locale=es"));
+    expect(resEs.status).toBe(200);
+    const dataEs = await resEs.json();
+    expect(dataEs.monthKeys).toEqual(["2026-11", "2026-12", "2027-01"]);
+    expect(dataEs.monthLabels[1].toLowerCase()).toContain("dic");
+    expect(dataEs.monthLabels[2].toLowerCase()).toContain("ene");
+  });
 });

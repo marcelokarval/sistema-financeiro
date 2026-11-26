@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { Sidebar } from '@/components/finance/sidebar';
@@ -31,6 +31,7 @@ import { GoalsDashboard } from '@/components/finance/goals-dashboard';
 import { QuickStatsOverview } from '@/components/finance/quick-stats-overview';
 import { AppHeader } from '@/components/finance/app-header';
 import { AppOverlays } from '@/components/finance/app-overlays';
+import { AppIntlBridgeContext, AppIntlProvider, useSafeTranslations } from '@/i18n/provider';
 import { useAppStore, type ViewType } from '@/lib/store';
 import { useRealtime } from '@/hooks/use-realtime';
 
@@ -87,7 +88,7 @@ function DashboardWithWidgets({ refreshCounter }: { refreshCounter: number }) {
   );
 }
 
-export default function Page() {
+function PageContent() {
   const currentView = useAppStore((state) => state.currentView);
   const setCurrentView = useAppStore((state) => state.setCurrentView);
   const requestNewTransaction = useAppStore((state) => state.requestNewTransaction);
@@ -101,6 +102,8 @@ export default function Page() {
   const aiAssistantVisible = useAppStore((state) => state.aiAssistantVisible);
   const setAiAssistantVisible = useAppStore((state) => state.setAiAssistantVisible);
   const { resolvedTheme, setTheme } = useTheme();
+  const tLoading = useSafeTranslations('loading');
+  const tCommon = useSafeTranslations('common');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -119,7 +122,7 @@ export default function Page() {
       if (toastShownRef.current !== event.timestamp) {
         toastShownRef.current = event.timestamp;
         if (event.type === 'dashboard:updated' || event.type === 'dashboard:refresh') {
-          toast.success('Dados atualizados');
+          toast.success(tCommon('dataUpdated'));
         }
       }
     },
@@ -150,7 +153,7 @@ export default function Page() {
   if (!mounted) {
     return (
       <div role="status" className="flex h-dvh min-w-0 items-center justify-center bg-background text-sm text-muted-foreground">
-        <span>Carregando FinanceApp…</span>
+        <span>{tLoading('app')}</span>
       </div>
     );
   }
@@ -287,5 +290,17 @@ export default function Page() {
         onSelectSearch={handleSearchSelect}
       />
     </div>
+  );
+}
+
+export default function Page() {
+  const intlContext = useContext(AppIntlBridgeContext);
+  if (intlContext) {
+    return <PageContent />;
+  }
+  return (
+    <AppIntlProvider>
+      <PageContent />
+    </AppIntlProvider>
   );
 }

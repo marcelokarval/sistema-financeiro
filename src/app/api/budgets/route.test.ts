@@ -123,4 +123,70 @@ describe("POST, PUT e DELETE /api/budgets - validação JSON, FK e domínio", ()
     expect(updated.targetAmount).toBe(1500);
     expect(updated.categoryId).toBeNull();
   });
+
+  test("retorna erros e mensagens localizadas com code e X-Error-Code em pt, es e en", async () => {
+    const enJsonErr = await POST(
+      new NextRequest("http://localhost/api/budgets?locale=en", {
+        method: "POST",
+        body: "{bad",
+      })
+    );
+    expect(enJsonErr.status).toBe(400);
+    expect(enJsonErr.headers.get("X-Error-Code")).toBe("INVALID_JSON");
+    expect(await enJsonErr.json()).toEqual({
+      error: "Invalid JSON request body.",
+      code: "INVALID_JSON",
+    });
+
+    const esNameErr = await POST(
+      new NextRequest("http://localhost/api/budgets?locale=es", {
+        method: "POST",
+        body: JSON.stringify({ name: " ", targetAmount: 100 }),
+      })
+    );
+    expect(esNameErr.status).toBe(400);
+    expect(esNameErr.headers.get("X-Error-Code")).toBe("VALIDATION_ERROR");
+    expect(await esNameErr.json()).toEqual({
+      error: "El nombre de la meta es obligatorio",
+      code: "VALIDATION_ERROR",
+    });
+
+    const enFkErr = await POST(
+      new NextRequest("http://localhost/api/budgets?locale=en", {
+        method: "POST",
+        body: JSON.stringify({ name: "Goal", targetAmount: 100, categoryId: "cat-missing" }),
+      })
+    );
+    expect(enFkErr.status).toBe(400);
+    expect(enFkErr.headers.get("X-Error-Code")).toBe("FOREIGN_KEY_ERROR");
+    expect(await enFkErr.json()).toEqual({
+      error: "Category not found",
+      code: "FOREIGN_KEY_ERROR",
+    });
+
+    const esNotFound = await PUT(
+      new NextRequest("http://localhost/api/budgets?locale=es", {
+        method: "PUT",
+        body: JSON.stringify({ id: "bg-missing", name: "Otra" }),
+      })
+    );
+    expect(esNotFound.status).toBe(404);
+    expect(esNotFound.headers.get("X-Error-Code")).toBe("NOT_FOUND");
+    expect(await esNotFound.json()).toEqual({
+      error: "Meta no encontrada",
+      code: "NOT_FOUND",
+    });
+
+    const esDel = await DELETE(
+      new NextRequest("http://localhost/api/budgets?locale=es", {
+        method: "DELETE",
+        body: JSON.stringify({ id: "bg-1" }),
+      })
+    );
+    expect(esDel.status).toBe(200);
+    expect(await esDel.json()).toEqual({
+      success: true,
+      message: "Meta eliminada correctamente",
+    });
+  });
 });

@@ -1,9 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
-export async function GET(request: Request) {
+export async function GET(request?: Request | NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url ?? 'http://localhost');
     const monthsParam = searchParams.get('months');
     const months = Math.min(Math.max(parseInt(monthsParam || '6', 10) || 6, 1), 24);
 
@@ -129,6 +137,7 @@ export async function GET(request: Request) {
     // Past months = current net worth - cumulative future flows
     const monthlyData: {
       month: string;
+      monthKey: string;
       netWorth: number;
       assets: number;
       liabilities: number;
@@ -137,7 +146,7 @@ export async function GET(request: Request) {
     }[] = [];
     for (let i = 0; i < months; i++) {
       const monthDate = new Date(currentYear, currentMonth - (months - 1) + i, 1);
-      const label = monthDate.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+      const label = formatServerMonthLabel(monthDate, locale);
 
       // Net worth for this month: subtract all flows from (month+1) to current
       let netWorth = currentNetWorth;
@@ -169,6 +178,7 @@ export async function GET(request: Request) {
 
       monthlyData.push({
         month: label,
+        monthKey: toMonthKey(monthDate),
         netWorth: Math.round(netWorth * 100) / 100,
         assets: Math.round(assets * 100) / 100,
         liabilities: Math.round(liabilities * 100) / 100,
@@ -180,9 +190,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ monthlyData });
   } catch (error) {
     console.error('Erro ao buscar dados de patrimônio:', error);
-    return NextResponse.json(
-      { error: 'Falha ao buscar dados de evolução patrimonial' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'analytics.networthFetchFailed'),
+      500
     );
   }
 }

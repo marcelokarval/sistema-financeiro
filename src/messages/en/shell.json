@@ -1,0 +1,122 @@
+{
+  "navigation": {
+    "groups": {
+      "overview": "Overview",
+      "activity": "Activity",
+      "wealth": "Wealth"
+    },
+    "items": {
+      "dashboard": "Overview",
+      "accounts": "Accounts",
+      "cards": "Cards",
+      "purchases": "Purchases",
+      "categories": "Categories",
+      "investments": "Investments",
+      "installments": "Installments",
+      "consortiums": "Consortiums",
+      "savings": "Savings"
+    },
+    "brandName": "FinanceApp",
+    "brandSubtitle": "Personal wealth",
+    "desktopAriaLabel": "Main navigation",
+    "mobileAriaLabel": "Mobile navigation",
+    "allDestinationsAriaLabel": "All destinations",
+    "realtimeActive": "Real-time updates active",
+    "realtimeUnavailable": "Real-time unavailable",
+    "personalSpace": "Personal space",
+    "reload": "Reload",
+    "expandNavigation": "Expand navigation",
+    "collapseNavigation": "Collapse navigation",
+    "more": "More",
+    "moreDestinations": "More destinations",
+    "moreDescription": "Choose a FinanceApp area.",
+    "currentPageSuffix": "(current page)",
+    "languageSection": "Language"
+  },
+  "header": {
+    "dashboardTitle": "Financial overview",
+    "realtimeUnavailable": "Real-time unavailable",
+    "openSearch": "Open global search",
+    "searchButton": "Search everything",
+    "shortcutHint": "Ctrl/⌘ K",
+    "useLightTheme": "Use light theme",
+    "useDarkTheme": "Use dark theme",
+    "openAdvisor": "Open AI financial assistant",
+    "notifications": "Notifications",
+    "newEntry": "New entry",
+    "viewContext": {
+      "dashboard": "Overview of your finances",
+      "accounts": "Manage your accounts and balances",
+      "cards": "Track cards and statements",
+      "purchases": "Detailed purchase tracking",
+      "categories": "Organize income and expenses",
+      "investments": "Contributions, dividends, and returns",
+      "installments": "Financing and installment plans",
+      "consortiums": "Consortium tracking",
+      "savings": "Savings goals and pockets"
+    }
+  },
+  "quickActions": {
+    "label": "Quick actions",
+    "newTransaction": "New Transaction",
+    "newPurchase": "New Purchase",
+    "newGoal": "New Goal",
+    "exportData": "Export Data"
+  },
+  "advisorDialog": {
+    "title": "AI financial assistant",
+    "close": "Close financial assistant"
+  },
+  "globalSearch": {
+    "title": "Global Search",
+    "description": "Transactions, purchases, accounts, cards, categories, investments, installments, and consortiums",
+    "inputAriaLabel": "Search finances",
+    "placeholder": "Type a search term…",
+    "loadError": "Could not load all search data.",
+    "retry": "Try again",
+    "loading": "Searching data...",
+    "noResults": "No results found",
+    "noResultsHint": "Try searching for another term.",
+    "startTyping": "Start typing to search",
+    "resultCount": "{count, plural, one {# result} other {# results}}",
+    "navigateHint": "Navigate",
+    "selectHint": "Select",
+    "groups": {
+      "transactions": "Transactions",
+      "purchases": "Purchases",
+      "accounts": "Accounts",
+      "cards": "Cards",
+      "categories": "Categories",
+      "investments": "Investments",
+      "installments": "Installments",
+      "consortiums": "Consortiums"
+    },
+    "fallbacks": {
+      "noDescription": "No description",
+      "noMerchant": "No merchant",
+      "noName": "Unnamed",
+      "cardDefault": "Card"
+    },
+    "labels": {
+      "transfer": "Transfer",
+      "statement": "Statement: {amount}",
+      "perMonth": "{amount}/mo",
+      "groupQuota": "Group {group} · Quota {quota}"
+    },
+    "accountTypes": {
+      "CASH": "Cash",
+      "BANK": "Bank",
+      "DIGITAL_WALLET": "Digital Wallet"
+    },
+    "cardTypes": {
+      "CREDIT": "Credit",
+      "DEBIT": "Debit",
+      "BOTH": "Credit & Debit"
+    },
+    "categoryTypes": {
+      "INCOME": "Income",
+      "EXPENSE": "Expense",
+      "BOTH": "Both"
+    }
+  }
+}

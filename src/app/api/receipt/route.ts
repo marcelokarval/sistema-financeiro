@@ -1,42 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { formatPurchaseDate } from "@/lib/purchase-date";
+import {
+  apiErrorResponse,
+  formatServerCurrencyBRL,
+  formatServerDate,
+  formatServerPurchaseDate,
+  resolveRequestLocale,
+  translateApiMessage,
+  type SupportedLocale,
+} from "@/lib/server-i18n";
 
-const currencyFmt = (v: number) =>
-  new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(v);
-
-const dateFmt = (d: Date) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(d));
-
-const translateType = (type: string) => {
-  const map: Record<string, string> = {
-    INCOME: "Receita",
-    EXPENSE: "Despesa",
-    TRANSFER: "Transferência",
-  };
-  return map[type] || type;
-};
+function translateReceiptType(type: string, locale: SupportedLocale): string {
+  const key = `receipt.types.${type}`;
+  const translated = translateApiMessage(locale, key);
+  return translated === key ? type : translated;
+}
 
 // GET /api/receipt?type=transaction|purchase&id=xxx
-export async function GET(request: NextRequest) {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url ?? "http://localhost");
     const type = searchParams.get("type");
     const id = searchParams.get("id");
 
     if (!type || !id) {
-      return NextResponse.json(
-        { error: "Parâmetros 'type' e 'id' são obrigatórios." },
-        { status: 400 }
+      return apiErrorResponse(
+        "MISSING_PARAMS",
+        translateApiMessage(locale, "receipt.missingParams"),
+        400
       );
     }
 
@@ -51,9 +43,10 @@ export async function GET(request: NextRequest) {
       });
 
       if (!transaction) {
-        return NextResponse.json(
-          { error: "Transação não encontrada." },
-          { status: 404 }
+        return apiErrorResponse(
+          "NOT_FOUND",
+          translateApiMessage(locale, "receipt.transactionNotFound"),
+          404
         );
       }
 
@@ -63,15 +56,15 @@ export async function GET(request: NextRequest) {
         issuedAt: new Date().toISOString(),
         data: {
           id: transaction.id,
-          type: translateType(transaction.type),
+          type: translateReceiptType(transaction.type, locale),
           rawType: transaction.type,
           description: transaction.description,
-          amount: currencyFmt(transaction.amount),
+          amount: formatServerCurrencyBRL(transaction.amount, locale),
           amountRaw: transaction.amount,
-          date: dateFmt(transaction.date),
-          category: transaction.category?.name || "Sem categoria",
+          date: formatServerDate(transaction.date, locale, "datetime"),
+          category: transaction.category?.name || translateApiMessage(locale, "common.uncategorized"),
           categoryColor: transaction.category?.color || "#6b7280",
-          account: transaction.account?.name || "N/A",
+          account: transaction.account?.name || translateApiMessage(locale, "common.notAvailable"),
           accountColor: transaction.account?.color || "#6b7280",
           card: transaction.card
             ? `${transaction.card.name} •••• ${transaction.card.lastFourDigits}`
@@ -96,9 +89,10 @@ export async function GET(request: NextRequest) {
       });
 
       if (!purchase) {
-        return NextResponse.json(
-          { error: "Compra não encontrada." },
-          { status: 404 }
+        return apiErrorResponse(
+          "NOT_FOUND",
+          translateApiMessage(locale, "receipt.purchaseNotFound"),
+          404
         );
       }
 
@@ -109,10 +103,10 @@ export async function GET(request: NextRequest) {
         data: {
           id: purchase.id,
           merchant: purchase.merchant,
-          totalAmount: currencyFmt(purchase.totalAmount),
+          totalAmount: formatServerCurrencyBRL(purchase.totalAmount, locale),
           totalAmountRaw: purchase.totalAmount,
-          date: formatPurchaseDate(purchase.date, "receipt"),
-          category: purchase.category?.name || "Sem categoria",
+          date: formatServerPurchaseDate(purchase.date, locale, "receipt"),
+          category: purchase.category?.name || translateApiMessage(locale, "common.uncategorized"),
           categoryColor: purchase.category?.color || "#6b7280",
           card: purchase.card
             ? `${purchase.card.name} •••• ${purchase.card.lastFourDigits}`
@@ -126,8 +120,8 @@ export async function GET(request: NextRequest) {
           items: purchase.items.map((item) => ({
             name: item.name,
             quantity: item.quantity,
-            unitPrice: currencyFmt(item.unitPrice),
-            totalPrice: currencyFmt(item.totalPrice),
+            unitPrice: formatServerCurrencyBRL(item.unitPrice, locale),
+            totalPrice: formatServerCurrencyBRL(item.totalPrice, locale),
             totalPriceRaw: item.totalPrice,
           })),
           itemsCount: purchase.items.length,
@@ -137,15 +131,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(receipt);
     }
 
-    return NextResponse.json(
-      { error: "Tipo inválido. Use 'transaction' ou 'purchase'." },
-      { status: 400 }
+    return apiErrorResponse(
+      "INVALID_TYPE",
+      translateApiMessage(locale, "receipt.invalidType"),
+      400
     );
   } catch (error) {
     console.error("Error generating receipt:", error);
-    return NextResponse.json(
-      { error: "Erro ao gerar recibo. Tente novamente." },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "receipt.fetchFailed"),
+      500
     );
   }
 }

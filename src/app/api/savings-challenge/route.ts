@@ -1,8 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  apiErrorResponse,
+  formatServerCurrencyBRL,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 // GET /api/savings-challenge — Compute savings data for gamified challenges
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -80,11 +88,16 @@ export async function GET() {
     const savingsRateTarget = 20;
     const challenge3Progress = Math.min(savingsRate / savingsRateTarget * 100, 100);
 
+    const monthlyTargetFormatted = formatServerCurrencyBRL(monthlySavingTarget, locale);
+    const currentSavedFormatted = formatServerCurrencyBRL(Math.max(currentMonthSavings, 0), locale);
+
     const challengeTargets = [
       {
         id: "daily-spend",
-        title: "Gastar menos hoje",
-        description: `Fique abaixo de ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(dailyTarget)} no dia`,
+        title: translateApiMessage(locale, "savingsChallenge.targets.dailySpendTitle"),
+        description: translateApiMessage(locale, "savingsChallenge.targets.dailySpendDescription", {
+          target: formatServerCurrencyBRL(dailyTarget, locale),
+        }),
         current: todaySpending,
         target: dailyTarget,
         progress: challenge1Progress,
@@ -92,8 +105,13 @@ export async function GET() {
       },
       {
         id: "monthly-save",
-        title: "Economizar R$500 este mês",
-        description: `Já economizou ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Math.max(currentMonthSavings, 0))} de R$500,00`,
+        title: translateApiMessage(locale, "savingsChallenge.targets.monthlySaveTitle", {
+          target: monthlyTargetFormatted,
+        }),
+        description: translateApiMessage(locale, "savingsChallenge.targets.monthlySaveDescription", {
+          current: currentSavedFormatted,
+          target: monthlyTargetFormatted,
+        }),
         current: Math.max(currentMonthSavings, 0),
         target: monthlySavingTarget,
         progress: challenge2Progress,
@@ -101,8 +119,12 @@ export async function GET() {
       },
       {
         id: "savings-rate",
-        title: "Taxa de poupança acima de 20%",
-        description: `Taxa atual: ${savingsRate.toFixed(1)}% — mantenha o ritmo!`,
+        title: translateApiMessage(locale, "savingsChallenge.targets.savingsRateTitle", {
+          target: savingsRateTarget,
+        }),
+        description: translateApiMessage(locale, "savingsChallenge.targets.savingsRateDescription", {
+          rate: savingsRate.toFixed(1),
+        }),
         current: savingsRate,
         target: savingsRateTarget,
         progress: challenge3Progress,
@@ -127,9 +149,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Erro ao carregar dados do desafio de economia:", error);
-    return NextResponse.json(
-      { error: "Erro ao carregar dados do desafio de economia." },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "savingsChallenge.fetchFailed"),
+      500
     );
   }
 }

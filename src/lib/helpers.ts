@@ -1,32 +1,66 @@
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { DEFAULT_LOCALE, INTL_LOCALE, normalizeLocale } from '@/i18n/config';
 
-export const currencyFmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const MS_PER_DAY = 86_400_000;
 
-export const shortCurrency = (v: number) => {
-  if (Math.abs(v) >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
-  if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return v.toFixed(0);
+function resolveIntlLocale(locale?: unknown): string {
+  return typeof locale === 'string'
+    ? INTL_LOCALE[normalizeLocale(locale)]
+    : INTL_LOCALE[DEFAULT_LOCALE];
+}
+
+function formatDateWithPattern(
+  d: string,
+  year: 'numeric' | '2-digit',
+  locale?: string,
+): string {
+  if (!d) return d;
+  const isDateOnly = DATE_ONLY_REGEX.test(d);
+  const date = isDateOnly ? new Date(`${d}T00:00:00.000Z`) : new Date(d);
+  if (Number.isNaN(date.getTime())) return d;
+
+  const isCivil = isDateOnly || date.getTime() % MS_PER_DAY === 0;
+  return new Intl.DateTimeFormat(resolveIntlLocale(locale), {
+    day: '2-digit',
+    month: '2-digit',
+    year,
+    ...(isCivil ? { timeZone: 'UTC' } : {}),
+  }).format(date);
+}
+
+export const currencyFmt = (v: number, locale?: string) =>
+  new Intl.NumberFormat(resolveIntlLocale(locale), {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(v);
+
+export const shortCurrency = (v: number, locale?: string | number) => {
+  const intlLocale = resolveIntlLocale(locale);
+  const oneDecimal = new Intl.NumberFormat(intlLocale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  if (Math.abs(v) >= 1_000_000) return `${oneDecimal.format(v / 1_000_000)}M`;
+  if (Math.abs(v) >= 1_000) return `${oneDecimal.format(v / 1_000)}k`;
+  return new Intl.NumberFormat(intlLocale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(v);
 };
 
-export const dateFmt = (d: string) => {
-  try {
-    return format(parseISO(d), 'dd/MM/yyyy', { locale: ptBR });
-  } catch {
-    return d;
-  }
-};
+export const dateFmt = (d: string, locale?: string) =>
+  formatDateWithPattern(d, 'numeric', locale);
 
-export const dateShortFmt = (d: string) => {
-  try {
-    return format(parseISO(d), 'dd/MM/yy', { locale: ptBR });
-  } catch {
-    return d;
-  }
-};
+export const dateShortFmt = (d: string, locale?: string) =>
+  formatDateWithPattern(d, '2-digit', locale);
 
-export const percentFmt = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+export const percentFmt = (v: number, locale?: string) => {
+  const formatted = new Intl.NumberFormat(resolveIntlLocale(locale), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(v);
+  return `${v >= 0 ? '+' : ''}${formatted}%`;
+};
 
 export const pct = (part: number, total: number) =>
   total > 0 ? Math.round((part / total) * 100) : 0;

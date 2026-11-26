@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
-  mapPrismaError,
+  mapPrismaErrorLocalized,
   parseCivilDateStart,
   parseFiniteNumber,
-  parseJsonBody,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  hasExplicitLocaleSignal,
+  resolveRequestLocale,
+  translateApiMessage,
+  type SupportedLocale,
+} from "@/lib/server-i18n";
 
 const VALID_INSTALLMENT_TYPES = [
   "FINANCING",
@@ -37,18 +45,25 @@ function parseOptionalId(
   return { valid: true, value: trimmed || null };
 }
 
-async function validateInstallmentRelations(ids: {
-  cardId?: string | null;
-  accountId?: string | null;
-  categoryId?: string | null;
-}): Promise<NextResponse | null> {
+async function validateInstallmentRelations(
+  ids: {
+    cardId?: string | null;
+    accountId?: string | null;
+    categoryId?: string | null;
+  },
+  locale: SupportedLocale
+): Promise<NextResponse | null> {
   if (ids.cardId) {
     const card = await db.card.findUnique({
       where: { id: ids.cardId },
       select: { id: true },
     });
     if (!card) {
-      return NextResponse.json({ error: "Cartão não encontrado" }, { status: 400 });
+      return apiErrorResponse(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.cards.notFound"),
+        400
+      );
     }
   }
   if (ids.accountId) {
@@ -57,7 +72,11 @@ async function validateInstallmentRelations(ids: {
       select: { id: true },
     });
     if (!account) {
-      return NextResponse.json({ error: "Conta não encontrada" }, { status: 400 });
+      return apiErrorResponse(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.accounts.notFound"),
+        400
+      );
     }
   }
   if (ids.categoryId) {
@@ -66,7 +85,11 @@ async function validateInstallmentRelations(ids: {
       select: { id: true },
     });
     if (!category) {
-      return NextResponse.json({ error: "Categoria não encontrada" }, { status: 400 });
+      return apiErrorResponse(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.categories.notFound"),
+        400
+      );
     }
   }
   return null;
@@ -74,6 +97,9 @@ async function validateInstallmentRelations(ids: {
 
 // GET /api/installments - Listar planos ou consultar o detalhe pelo ID
 export async function GET(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const explicitLocale = hasExplicitLocaleSignal(request);
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -85,9 +111,13 @@ export async function GET(request: NextRequest) {
       });
 
       if (!plan) {
-        return NextResponse.json(
-          { error: "Plano de parcelamento não encontrado" },
-          { status: 404 }
+        return apiErrorResponse(
+          "NOT_FOUND",
+          explicitLocale
+            ? translateApiMessage(locale, "crud.installments.notFound")
+            : "Plano de parcelamento não encontrado",
+          404,
+          { includeCode: explicitLocale }
         );
       }
 
@@ -117,17 +147,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(plans);
   } catch (error) {
     console.error("Erro ao buscar planos de parcelamento:", error);
-    return NextResponse.json(
-      { error: "Erro ao buscar planos de parcelamento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.installments.fetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/installments - Criar plano de parcelamento
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -146,25 +179,28 @@ export async function POST(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof description !== "string" || description.trim() === "") {
-      return NextResponse.json(
-        { error: "Descrição do plano é obrigatória" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.descriptionRequired"),
+        400
       );
     }
 
     const parsedTotalAmount = parsePositiveFiniteNumber(totalAmount);
     if (parsedTotalAmount === null) {
-      return NextResponse.json(
-        { error: "Valor total do plano é obrigatório e deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.totalPositive"),
+        400
       );
     }
 
     const parsedInstallmentCount = parsePositiveFiniteNumber(installmentCount);
     if (parsedInstallmentCount === null || !Number.isInteger(parsedInstallmentCount)) {
-      return NextResponse.json(
-        { error: "Quantidade de parcelas deve ser um inteiro maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.countInvalid"),
+        400
       );
     }
 
@@ -172,9 +208,10 @@ export async function POST(request: NextRequest) {
     if (monthlyValue !== undefined && monthlyValue !== null) {
       const parsedMonthly = parsePositiveFiniteNumber(monthlyValue);
       if (parsedMonthly === null) {
-        return NextResponse.json(
-          { error: "Valor da parcela deve ser maior que zero" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.installments.monthlyPositive"),
+          400
         );
       }
       calculatedMonthlyValue = parsedMonthly;
@@ -188,18 +225,20 @@ export async function POST(request: NextRequest) {
         ? 0
         : parseFiniteNumber(interestRate);
     if (parsedInterestRate === null || parsedInterestRate < 0) {
-      return NextResponse.json(
-        { error: "Taxa de juros inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.invalidInterestRate"),
+        400
       );
     }
 
     let planStartDate = new Date();
     if (startDate !== undefined && startDate !== null && startDate !== "") {
       if (typeof startDate !== "string" || parseCivilDateStart(startDate) === null) {
-        return NextResponse.json(
-          { error: "Data de início inválida" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.installments.invalidStartDate"),
+          400
         );
       }
       planStartDate = new Date(startDate);
@@ -213,9 +252,10 @@ export async function POST(request: NextRequest) {
         resolvedType as (typeof VALID_INSTALLMENT_TYPES)[number]
       )
     ) {
-      return NextResponse.json(
-        { error: "Tipo de parcelamento inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.invalidType"),
+        400
       );
     }
 
@@ -223,17 +263,21 @@ export async function POST(request: NextRequest) {
     const parsedAccountId = parseOptionalId(accountId);
     const parsedCategoryId = parseOptionalId(categoryId);
     if (!parsedCardId.valid || !parsedAccountId.valid || !parsedCategoryId.valid) {
-      return NextResponse.json(
-        { error: "Identificador de vínculo inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidLinkId"),
+        400
       );
     }
 
-    const relationError = await validateInstallmentRelations({
-      cardId: parsedCardId.value,
-      accountId: parsedAccountId.value,
-      categoryId: parsedCategoryId.value,
-    });
+    const relationError = await validateInstallmentRelations(
+      {
+        cardId: parsedCardId.value,
+        accountId: parsedAccountId.value,
+        categoryId: parsedCategoryId.value,
+      },
+      locale
+    );
     if (relationError) {
       return relationError;
     }
@@ -281,20 +325,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(plan, { status: 201 });
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale);
     if (mapped) return mapped;
     console.error("Erro ao criar plano de parcelamento:", error);
-    return NextResponse.json(
-      { error: "Erro ao criar plano de parcelamento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.installments.createFailed"),
+      500
     );
   }
 }
 
 // PUT /api/installments - Atualizar plano de parcelamento
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -317,25 +364,28 @@ export async function PUT(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof id !== "string" || id.trim() === "") {
-      return NextResponse.json(
-        { error: "ID do plano é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.idRequired"),
+        400
       );
     }
 
     if (description !== undefined && (typeof description !== "string" || description.trim() === "")) {
-      return NextResponse.json(
-        { error: "Descrição do plano é obrigatória" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.descriptionRequired"),
+        400
       );
     }
 
     const parsedTotalAmount =
       totalAmount !== undefined ? parsePositiveFiniteNumber(totalAmount) : undefined;
     if (totalAmount !== undefined && parsedTotalAmount === null) {
-      return NextResponse.json(
-        { error: "Valor total do plano deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.totalPositiveUpdate"),
+        400
       );
     }
 
@@ -345,18 +395,20 @@ export async function PUT(request: NextRequest) {
       installmentCount !== undefined &&
       (parsedInstallmentCount === null || !Number.isInteger(parsedInstallmentCount))
     ) {
-      return NextResponse.json(
-        { error: "Quantidade de parcelas deve ser um inteiro maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.countInvalid"),
+        400
       );
     }
 
     const parsedMonthlyValue =
       monthlyValue !== undefined ? parsePositiveFiniteNumber(monthlyValue) : undefined;
     if (monthlyValue !== undefined && parsedMonthlyValue === null) {
-      return NextResponse.json(
-        { error: "Valor da parcela deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.monthlyPositive"),
+        400
       );
     }
 
@@ -366,18 +418,20 @@ export async function PUT(request: NextRequest) {
       parsedInterestRate !== undefined &&
       (parsedInterestRate === null || parsedInterestRate < 0)
     ) {
-      return NextResponse.json(
-        { error: "Taxa de juros inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.invalidInterestRate"),
+        400
       );
     }
 
     let resolvedStartDate: Date | undefined;
     if (startDate !== undefined) {
       if (typeof startDate !== "string" || parseCivilDateStart(startDate) === null) {
-        return NextResponse.json(
-          { error: "Data de início inválida" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.installments.invalidStartDate"),
+          400
         );
       }
       resolvedStartDate = new Date(startDate);
@@ -388,9 +442,10 @@ export async function PUT(request: NextRequest) {
       (typeof type !== "string" ||
         !VALID_INSTALLMENT_TYPES.includes(type as (typeof VALID_INSTALLMENT_TYPES)[number]))
     ) {
-      return NextResponse.json(
-        { error: "Tipo de parcelamento inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.invalidType"),
+        400
       );
     }
 
@@ -401,16 +456,18 @@ export async function PUT(request: NextRequest) {
           status as (typeof VALID_INSTALLMENT_STATUSES)[number]
         ))
     ) {
-      return NextResponse.json(
-        { error: "Status do parcelamento inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.invalidStatus"),
+        400
       );
     }
 
     if (isActive !== undefined && typeof isActive !== "boolean") {
-      return NextResponse.json(
-        { error: "Valor de isActive inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidActiveFlag"),
+        400
       );
     }
 
@@ -420,9 +477,10 @@ export async function PUT(request: NextRequest) {
         !Number.isInteger(paidInstallments) ||
         paidInstallments < 0)
     ) {
-      return NextResponse.json(
-        { error: "Quantidade de parcelas pagas inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.invalidPaidCount"),
+        400
       );
     }
 
@@ -434,9 +492,10 @@ export async function PUT(request: NextRequest) {
       (parsedAccountId && !parsedAccountId.valid) ||
       (parsedCategoryId && !parsedCategoryId.valid)
     ) {
-      return NextResponse.json(
-        { error: "Identificador de vínculo inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidLinkId"),
+        400
       );
     }
 
@@ -450,9 +509,10 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!existingPlan) {
-      return NextResponse.json(
-        { error: "Plano de parcelamento não encontrado" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.installments.notFound"),
+        404
       );
     }
 
@@ -462,17 +522,21 @@ export async function PUT(request: NextRequest) {
       typeof paidInstallments === "number" &&
       paidInstallments > effectiveInstallmentCount
     ) {
-      return NextResponse.json(
-        { error: "Parcelas pagas não pode exceder a quantidade total de parcelas" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.paidExceedsTotal"),
+        400
       );
     }
 
-    const relationError = await validateInstallmentRelations({
-      cardId: parsedCardId && parsedCardId.valid ? parsedCardId.value : null,
-      accountId: parsedAccountId && parsedAccountId.valid ? parsedAccountId.value : null,
-      categoryId: parsedCategoryId && parsedCategoryId.valid ? parsedCategoryId.value : null,
-    });
+    const relationError = await validateInstallmentRelations(
+      {
+        cardId: parsedCardId && parsedCardId.valid ? parsedCardId.value : null,
+        accountId: parsedAccountId && parsedAccountId.valid ? parsedAccountId.value : null,
+        categoryId: parsedCategoryId && parsedCategoryId.valid ? parsedCategoryId.value : null,
+      },
+      locale
+    );
     if (relationError) {
       return relationError;
     }
@@ -547,20 +611,25 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(plan);
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.installments.notFound"),
+    });
     if (mapped) return mapped;
     console.error("Erro ao atualizar plano de parcelamento:", error);
-    return NextResponse.json(
-      { error: "Erro ao atualizar plano de parcelamento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.installments.updateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/installments - Excluir plano de parcelamento
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -568,34 +637,38 @@ export async function DELETE(request: NextRequest) {
     const { id } = parsedBody.data;
 
     if (typeof id !== "string" || id.trim() === "") {
-      return NextResponse.json(
-        { error: "ID do plano é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.installments.idRequired"),
+        400
       );
     }
 
     const existing = await db.installmentPlan.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Plano de parcelamento não encontrado" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.installments.notFound"),
+        404
       );
     }
 
     // Cascade delete remove as parcelas automaticamente
     await db.installmentPlan.delete({ where: { id } });
 
-    return NextResponse.json({
-      success: true,
-      message: "Plano de parcelamento excluído com sucesso",
-    });
+    return apiSuccessMessage(
+      translateApiMessage(locale, "crud.installments.deleted")
+    );
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.installments.notFound"),
+    });
     if (mapped) return mapped;
     console.error("Erro ao excluir plano de parcelamento:", error);
-    return NextResponse.json(
-      { error: "Erro ao excluir plano de parcelamento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.installments.deleteFailed"),
+      500
     );
   }
 }

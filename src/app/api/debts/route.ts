@@ -1,7 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import {
+  apiErrorResponse,
+  resolveRequestLocale,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -118,9 +124,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Erro ao buscar dados de dívidas:', error);
-    return NextResponse.json(
-      { error: 'Erro ao buscar dados de dívidas.' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'analytics.debtsFetchFailed'),
+      500
     );
   }
 }

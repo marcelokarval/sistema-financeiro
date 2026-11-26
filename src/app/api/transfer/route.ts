@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { parseJsonBodyLocalized } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 class TransferDomainError extends Error {
   constructor(
+    public readonly code: string,
     message: string,
     public readonly status: number
   ) {
@@ -12,21 +19,31 @@ class TransferDomainError extends Error {
 
 // POST /api/transfer - Transfer between accounts
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { fromAccountId, toAccountId, amount, date, description } = body;
+  const locale = resolveRequestLocale(request);
 
-    if (!fromAccountId || !toAccountId) {
-      return NextResponse.json(
-        { error: "From and To account IDs are required" },
-        { status: 400 }
+  try {
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
+
+    const { fromAccountId, toAccountId, amount, date, description } = parsedBody.data;
+    const fromId = typeof fromAccountId === "string" ? fromAccountId.trim() : "";
+    const toId = typeof toAccountId === "string" ? toAccountId.trim() : "";
+
+    if (!fromId || !toId) {
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transfer.accountsRequired"),
+        400
       );
     }
 
-    if (fromAccountId === toAccountId) {
-      return NextResponse.json(
-        { error: "Cannot transfer to the same account" },
-        { status: 400 }
+    if (fromId === toId) {
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transfer.sameAccount"),
+        400
       );
     }
 
@@ -37,43 +54,58 @@ export async function POST(request: NextRequest) {
       !Number.isFinite(parsedAmount) ||
       parsedAmount <= 0
     ) {
-      return NextResponse.json(
-        { error: "Valid amount is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transfer.validAmountRequired"),
+        400
       );
     }
 
-    if (date !== undefined && date !== null && isNaN(new Date(date).getTime())) {
-      return NextResponse.json(
-        { error: "Invalid transfer date" },
-        { status: 400 }
+    if (
+      date !== undefined &&
+      date !== null &&
+      (typeof date !== "string" && typeof date !== "number" ||
+        isNaN(new Date(date).getTime()))
+    ) {
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.transfer.invalidDate"),
+        400
       );
     }
 
-    const transferDate = date ? new Date(date) : new Date();
+    const transferDate = date ? new Date(date as string | number) : new Date();
 
     const { withdrawalTx, depositTx } = await db.$transaction(async (tx) => {
       // Acquire write lock upfront in SQLite to prevent SHARED->RESERVED deadlocks under concurrency
       const debited = await tx.account.updateMany({
-        where: { id: fromAccountId, balance: { gte: parsedAmount } },
+        where: { id: fromId, balance: { gte: parsedAmount } },
         data: { balance: { decrement: parsedAmount } },
       });
 
       const [fromAccount, toAccount] = await Promise.all([
-        tx.account.findUnique({ where: { id: fromAccountId } }),
-        tx.account.findUnique({ where: { id: toAccountId } }),
+        tx.account.findUnique({ where: { id: fromId } }),
+        tx.account.findUnique({ where: { id: toId } }),
       ]);
 
       if (!fromAccount || !toAccount) {
-        throw new TransferDomainError("One or both accounts not found", 404);
+        throw new TransferDomainError(
+          "NOT_FOUND",
+          translateApiMessage(locale, "crud.transfer.accountsNotFound"),
+          404
+        );
       }
 
       if (debited.count === 0) {
-        throw new TransferDomainError("Insufficient balance in source account", 400);
+        throw new TransferDomainError(
+          "INSUFFICIENT_BALANCE",
+          translateApiMessage(locale, "crud.transfer.insufficientBalance"),
+          400
+        );
       }
 
       await tx.account.update({
-        where: { id: toAccountId },
+        where: { id: toId },
         data: { balance: { increment: parsedAmount } },
       });
 
@@ -89,7 +121,7 @@ export async function POST(request: NextRequest) {
           description: desc,
           date: transferDate,
           notes: `Transferência para ${toAccount.name}`,
-          accountId: fromAccountId,
+          accountId: fromId,
         },
         include: { category: true, account: true },
       });
@@ -101,7 +133,7 @@ export async function POST(request: NextRequest) {
           description: desc,
           date: transferDate,
           notes: `Transferência de ${fromAccount.name}`,
-          accountId: toAccountId,
+          accountId: toId,
         },
         include: { category: true, account: true },
       });
@@ -114,18 +146,19 @@ export async function POST(request: NextRequest) {
         success: true,
         withdrawal: withdrawalTx,
         deposit: depositTx,
-        message: "Transferência realizada com sucesso",
+        message: translateApiMessage(locale, "crud.transfer.success"),
       },
       { status: 201 }
     );
   } catch (error) {
     if (error instanceof TransferDomainError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return apiErrorResponse(error.code, error.message, error.status);
     }
     console.error("Error processing transfer:", error);
-    return NextResponse.json(
-      { error: "Failed to process transfer" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.transfer.failed"),
+      500
     );
   }
 }

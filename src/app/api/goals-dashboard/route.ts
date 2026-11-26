@@ -1,9 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { format, addMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { addMonths } from 'date-fns';
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
     const [budgetGoals, savingsGoals, investments] = await Promise.all([
       db.budgetGoal.findMany({
@@ -94,6 +101,7 @@ export async function GET() {
       (g) => !g.isCompleted && g.monthlyContribution > 0
     );
     let estimatedCompletion: string | null = null;
+    let estimatedCompletionKey: string | null = null;
     if (activeGoalsWithContrib.length > 0) {
       const totalRemaining = activeGoalsWithContrib.reduce(
         (sum, g) => sum + Math.max(g.targetAmount - g.currentAmount, 0),
@@ -105,7 +113,12 @@ export async function GET() {
       );
       if (totalMonthlyContrib > 0 && totalRemaining > 0) {
         const monthsToComplete = Math.ceil(totalRemaining / totalMonthlyContrib);
-        estimatedCompletion = format(addMonths(new Date(), monthsToComplete), 'MMM yyyy', { locale: ptBR });
+        const targetDate = addMonths(new Date(), monthsToComplete);
+        estimatedCompletion = formatServerMonthLabel(targetDate, locale, {
+          month: 'short',
+          year: 'numeric',
+        });
+        estimatedCompletionKey = toMonthKey(targetDate);
       }
     }
 
@@ -118,6 +131,7 @@ export async function GET() {
         totalCurrentAmount: Math.round(totalCurrentAmount * 100) / 100,
         overallProgress: Math.round(overallProgress * 10) / 10,
         estimatedCompletion,
+        estimatedCompletionKey,
       },
       budgetGoals: mappedBudgetGoals,
       savingsGoals: mappedSavingsGoals,
@@ -125,9 +139,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Erro ao carregar central de metas:', error);
-    return NextResponse.json(
-      { error: 'Erro interno ao carregar dados das metas' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'analytics.goalsDashboardFailed'),
+      500
     );
   }
 }

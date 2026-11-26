@@ -1,9 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
-export async function GET(request: Request) {
+export async function GET(request?: Request | NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const uncategorizedLabel = translateApiMessage(locale, 'common.uncategorizedTitle');
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url ?? 'http://localhost');
     const monthsParam = searchParams.get('months');
     const months = Math.min(Math.max(parseInt(monthsParam || '6', 10) || 6, 1), 24);
 
@@ -66,7 +75,7 @@ export async function GET(request: Request) {
     for (const t of expenseTransactions) {
       const catId = t.categoryId || 'uncategorized';
       const cat = categoryMap.get(catId);
-      const name = cat?.name || 'Sem Categoria';
+      const name = cat?.name || uncategorizedLabel;
       const color = cat?.color || '#6b7280';
 
       if (!categoryExpenses.has(catId)) {
@@ -85,7 +94,7 @@ export async function GET(request: Request) {
       entry.total += t.amount;
       entry.transactionCount += 1;
 
-      const monthKey = `${t.date.getFullYear()}-${String(t.date.getMonth() + 1).padStart(2, '0')}`;
+      const monthKey = toMonthKey(t.date);
       entry.monthlyTotals.set(monthKey, (entry.monthlyTotals.get(monthKey) || 0) + t.amount);
     }
 
@@ -93,7 +102,7 @@ export async function GET(request: Request) {
     for (const p of allPurchases) {
       const catId = p.categoryId || 'uncategorized';
       const cat = categoryMap.get(catId);
-      const name = cat?.name || 'Sem Categoria';
+      const name = cat?.name || uncategorizedLabel;
       const color = cat?.color || '#6b7280';
 
       if (!categoryExpenses.has(catId)) {
@@ -144,20 +153,15 @@ export async function GET(request: Request) {
     }[] = [];
     for (let i = months - 1; i >= 0; i--) {
       const monthStart = new Date(currentYear, currentMonth - i, 1);
-      const monthKey = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;
-      const label = monthStart.toLocaleString('pt-BR', {
-        month: 'short',
-        year: '2-digit',
-      });
+      const monthKey = toMonthKey(monthStart);
+      const label = formatServerMonthLabel(monthStart, locale);
 
       let monthExpense = 0;
       for (const t of expenseTransactions) {
-        const tKey = `${t.date.getFullYear()}-${String(t.date.getMonth() + 1).padStart(2, '0')}`;
-        if (tKey === monthKey) monthExpense += t.amount;
+        if (toMonthKey(t.date) === monthKey) monthExpense += t.amount;
       }
       for (const p of allPurchases) {
-        const pKey = `${p.date.getFullYear()}-${String(p.date.getMonth() + 1).padStart(2, '0')}`;
-        if (pKey === monthKey) monthExpense += p.totalAmount;
+        if (toMonthKey(p.date) === monthKey) monthExpense += p.totalAmount;
       }
 
       monthlyData.push({
@@ -175,9 +179,10 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Erro ao buscar detalhamento de despesas:', error);
-    return NextResponse.json(
-      { error: 'Falha ao buscar detalhamento de despesas' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'analytics.expenseBreakdownFailed'),
+      500
     );
   }
 }

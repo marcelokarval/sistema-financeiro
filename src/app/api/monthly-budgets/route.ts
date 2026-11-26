@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import {
-  mapPrismaError,
+  mapPrismaErrorLocalized,
   parseFiniteNumber,
-  parseJsonBody,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
 } from '@/lib/api-validation';
+import {
+  apiErrorResponse,
+  resolveRequestLocale,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
 function parseMonthValue(value: unknown): number | null {
   const parsed = parseFiniteNumber(value);
@@ -25,6 +30,7 @@ function parseYearValue(value: unknown, minYear: number): number | null {
 
 // GET /api/monthly-budgets?month=7&year=2026
 export async function GET(req: NextRequest) {
+  const locale = resolveRequestLocale(req);
   try {
     const { searchParams } = new URL(req.url);
     const now = new Date();
@@ -33,12 +39,20 @@ export async function GET(req: NextRequest) {
 
     const month = monthParam !== null ? parseMonthValue(monthParam) : now.getMonth() + 1;
     if (month === null) {
-      return NextResponse.json({ error: 'Mês deve ser um inteiro entre 1 e 12' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'crud.monthlyBudgets.invalidMonthQuery'),
+        400
+      );
     }
 
     const year = yearParam !== null ? parseYearValue(yearParam, 2000) : now.getFullYear();
     if (year === null) {
-      return NextResponse.json({ error: 'Ano inválido' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'crud.monthlyBudgets.invalidYearQuery'),
+        400
+      );
     }
 
     const startDate = new Date(year, month - 1, 1);
@@ -105,14 +119,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ budgets: result });
   } catch (error) {
     console.error('Erro ao buscar orçamentos mensais:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'errors.internalServer'),
+      500
+    );
   }
 }
 
 // POST /api/monthly-budgets
 export async function POST(req: NextRequest) {
+  const locale = resolveRequestLocale(req);
   try {
-    const parsedBody = await parseJsonBody(req);
+    const parsedBody = await parseJsonBodyLocalized(req, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -121,22 +140,38 @@ export async function POST(req: NextRequest) {
 
     const validCategoryId = typeof categoryId === 'string' ? categoryId.trim() : '';
     if (!validCategoryId) {
-      return NextResponse.json({ error: 'Categoria é obrigatória' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'crud.monthlyBudgets.categoryRequired'),
+        400
+      );
     }
 
     const parsedAmount = parsePositiveFiniteNumber(amount);
     if (parsedAmount === null) {
-      return NextResponse.json({ error: 'Valor deve ser maior que zero' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'crud.monthlyBudgets.amountPositive'),
+        400
+      );
     }
 
     const parsedMonth = parseMonthValue(month);
     if (parsedMonth === null) {
-      return NextResponse.json({ error: 'Mês deve ser entre 1 e 12' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'crud.monthlyBudgets.invalidMonthBody'),
+        400
+      );
     }
 
     const parsedYear = parseYearValue(year, 2021);
     if (parsedYear === null) {
-      return NextResponse.json({ error: 'Ano deve ser maior que 2020' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'crud.monthlyBudgets.invalidYearBody'),
+        400
+      );
     }
 
     const budget = await db.monthlyBudget.create({
@@ -157,24 +192,32 @@ export async function POST(req: NextRequest) {
       'code' in error &&
       (error as { code?: unknown }).code === 'P2002'
     ) {
-      return NextResponse.json(
-        { error: 'Já existe um orçamento para esta categoria neste mês/ano' },
-        { status: 409 }
+      return apiErrorResponse(
+        'CONFLICT',
+        translateApiMessage(locale, 'crud.monthlyBudgets.duplicate'),
+        409
       );
     }
-    const prismaResponse = mapPrismaError(error, { fk: 'Categoria não encontrada' });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      fk: translateApiMessage(locale, 'crud.monthlyBudgets.categoryNotFound'),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error('Erro ao criar orçamento mensal:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'errors.internalServer'),
+      500
+    );
   }
 }
 
 // PUT /api/monthly-budgets
 export async function PUT(req: NextRequest) {
+  const locale = resolveRequestLocale(req);
   try {
-    const parsedBody = await parseJsonBody(req);
+    const parsedBody = await parseJsonBodyLocalized(req, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -183,17 +226,29 @@ export async function PUT(req: NextRequest) {
     const budgetId = typeof id === 'string' ? id.trim() : '';
 
     if (!budgetId) {
-      return NextResponse.json({ error: 'ID é obrigatório' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'validation.idRequired'),
+        400
+      );
     }
 
     const parsedAmount = parsePositiveFiniteNumber(amount);
     if (parsedAmount === null) {
-      return NextResponse.json({ error: 'Valor deve ser maior que zero' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'crud.monthlyBudgets.amountPositive'),
+        400
+      );
     }
 
     const existing = await db.monthlyBudget.findUnique({ where: { id: budgetId } });
     if (!existing) {
-      return NextResponse.json({ error: 'Orçamento não encontrado' }, { status: 404 });
+      return apiErrorResponse(
+        'NOT_FOUND',
+        translateApiMessage(locale, 'crud.monthlyBudgets.notFound'),
+        404
+      );
     }
 
     const budget = await db.monthlyBudget.update({
@@ -204,39 +259,60 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(budget);
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, { notFound: 'Orçamento não encontrado' });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, 'crud.monthlyBudgets.notFound'),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error('Erro ao atualizar orçamento mensal:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'errors.internalServer'),
+      500
+    );
   }
 }
 
 // DELETE /api/monthly-budgets?id=xxx
 export async function DELETE(req: NextRequest) {
+  const locale = resolveRequestLocale(req);
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id')?.trim() ?? '';
 
     if (!id) {
-      return NextResponse.json({ error: 'ID é obrigatório' }, { status: 400 });
+      return apiErrorResponse(
+        'VALIDATION_ERROR',
+        translateApiMessage(locale, 'validation.idRequired'),
+        400
+      );
     }
 
     const existing = await db.monthlyBudget.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json({ error: 'Orçamento não encontrado' }, { status: 404 });
+      return apiErrorResponse(
+        'NOT_FOUND',
+        translateApiMessage(locale, 'crud.monthlyBudgets.notFound'),
+        404
+      );
     }
 
     await db.monthlyBudget.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, { notFound: 'Orçamento não encontrado' });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, 'crud.monthlyBudgets.notFound'),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error('Erro ao excluir orçamento mensal:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'errors.internalServer'),
+      500
+    );
   }
 }

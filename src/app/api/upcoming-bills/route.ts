@@ -1,8 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { computeEndOfWeek, resolveCardDueDate } from '@/lib/api-validation';
+import {
+  apiErrorResponse,
+  resolveRequestLocale,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -98,7 +104,7 @@ export async function GET() {
         dueDate: inst.dueDate.toISOString(),
         daysUntilDue: daysUntil,
         status,
-        source: inst.installmentPlan.type || 'Parcelamento',
+        source: inst.installmentPlan.type || translateApiMessage(locale, 'bills.installmentSource'),
       });
     }
 
@@ -117,7 +123,7 @@ export async function GET() {
         dueDate: ci.dueDate.toISOString(),
         daysUntilDue: daysUntil,
         status,
-        source: 'Consórcio',
+        source: translateApiMessage(locale, 'bills.consortiumSource'),
       });
     }
 
@@ -141,7 +147,7 @@ export async function GET() {
         bills.push({
           id: `card-${card.id}`,
           type: 'card',
-          title: `Fatura ${card.name}`,
+          title: translateApiMessage(locale, 'bills.cardBillTitle', { name: card.name }),
           amount: card.currentBalance,
           dueDate: dueDateThisMonth.toISOString(),
           daysUntilDue: daysUntil,
@@ -166,7 +172,7 @@ export async function GET() {
         dueDate: rt.nextDate.toISOString(),
         daysUntilDue: daysUntil,
         status,
-        source: 'Recorrente',
+        source: translateApiMessage(locale, 'bills.recurringSource'),
       });
     }
 
@@ -213,9 +219,10 @@ export async function GET() {
     return NextResponse.json({ bills, summary });
   } catch (error) {
     console.error('Erro ao buscar próximos pagamentos:', error);
-    return NextResponse.json(
-      { error: 'Erro ao buscar próximos pagamentos.' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'bills.fetchFailed'),
+      500
     );
   }
 }

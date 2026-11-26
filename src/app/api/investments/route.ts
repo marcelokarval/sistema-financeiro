@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
-  mapPrismaError,
+  mapPrismaErrorLocalized,
   parseFiniteNumber,
-  parseJsonBody,
+  parseJsonBodyLocalized,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 const INVESTMENT_TYPES = new Set([
   "STOCK",
@@ -49,6 +55,8 @@ function parseNonNegativeOrZero(value: unknown): number | null {
 
 // GET /api/investments - Listar todos os investimentos
 export async function GET(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
@@ -68,17 +76,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(investments);
   } catch (error) {
     console.error("Erro ao buscar investimentos:", error);
-    return NextResponse.json(
-      { error: "Erro ao buscar investimentos" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.investments.fetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/investments - Criar investimento
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -97,16 +108,18 @@ export async function POST(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof name !== "string" || name.trim() === "") {
-      return NextResponse.json(
-        { error: "Nome do investimento é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.nameRequired"),
+        400
       );
     }
 
     if (typeof type !== "string" || type.trim() === "" || !INVESTMENT_TYPES.has(type.trim())) {
-      return NextResponse.json(
-        { error: "Tipo do investimento é obrigatório e deve ser válido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.invalidTypeRequired"),
+        400
       );
     }
 
@@ -114,43 +127,48 @@ export async function POST(request: NextRequest) {
     const parsedBrokerage = parseOptionalString(brokerage);
     const parsedTicker = parseOptionalString(ticker);
     if (!parsedDescription.ok || !parsedBrokerage.ok || !parsedTicker.ok) {
-      return NextResponse.json(
-        { error: "Campos de texto inválidos" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.invalidTextFields"),
+        400
       );
     }
 
     const parsedInvested = parseNonNegativeOrZero(investedAmount);
     if (parsedInvested === null) {
-      return NextResponse.json(
-        { error: "Valor investido inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.invalidInvestedAmount"),
+        400
       );
     }
 
     const parsedBalance = parseNonNegativeOrZero(currentBalance);
     if (parsedBalance === null) {
-      return NextResponse.json(
-        { error: "Saldo atual inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.invalidCurrentBalance"),
+        400
       );
     }
 
     const parsedYield =
       yieldRate === undefined || yieldRate === null ? 0 : parseFiniteNumber(yieldRate);
     if (parsedYield === null) {
-      return NextResponse.json(
-        { error: "Rentabilidade inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.invalidYieldRate"),
+        400
       );
     }
 
     const parsedAccount = parseOptionalRelationId(accountId);
     const parsedCategory = parseOptionalRelationId(categoryId);
     if (!parsedAccount.ok || !parsedCategory.ok) {
-      return NextResponse.json(
-        { error: "Conta ou categoria inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.invalidAccountOrCategory"),
+        400
       );
     }
 
@@ -171,24 +189,27 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(investment, { status: 201 });
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, {
-      fk: "Conta ou categoria não encontrada",
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      fk: translateApiMessage(locale, "crud.investments.invalidAccountOrCategory"),
     });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Erro ao criar investimento:", error);
-    return NextResponse.json(
-      { error: "Erro ao criar investimento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.investments.createFailed"),
+      500
     );
   }
 }
 
 // PUT /api/investments - Atualizar investimento
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -210,16 +231,18 @@ export async function PUT(request: NextRequest) {
 
     const investmentId = typeof id === "string" ? id.trim() : "";
     if (!investmentId) {
-      return NextResponse.json(
-        { error: "ID do investimento é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.idRequired"),
+        400
       );
     }
 
     if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
-      return NextResponse.json(
-        { error: "Nome do investimento é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.nameRequired"),
+        400
       );
     }
 
@@ -227,9 +250,10 @@ export async function PUT(request: NextRequest) {
       type !== undefined &&
       (typeof type !== "string" || type.trim() === "" || !INVESTMENT_TYPES.has(type.trim()))
     ) {
-      return NextResponse.json(
-        { error: "Tipo do investimento inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.invalidType"),
+        400
       );
     }
 
@@ -237,7 +261,11 @@ export async function PUT(request: NextRequest) {
     if (description !== undefined) {
       const parsed = parseOptionalString(description);
       if (!parsed.ok) {
-        return NextResponse.json({ error: "Descrição inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "validation.invalidDescription"),
+          400
+        );
       }
       resolvedDescription = parsed.value;
     }
@@ -246,7 +274,11 @@ export async function PUT(request: NextRequest) {
     if (brokerage !== undefined) {
       const parsed = parseOptionalString(brokerage);
       if (!parsed.ok) {
-        return NextResponse.json({ error: "Corretora inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.investments.invalidBroker"),
+          400
+        );
       }
       resolvedBrokerage = parsed.value;
     }
@@ -255,7 +287,11 @@ export async function PUT(request: NextRequest) {
     if (ticker !== undefined) {
       const parsed = parseOptionalString(ticker);
       if (!parsed.ok) {
-        return NextResponse.json({ error: "Ticker inválido" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.investments.invalidTicker"),
+          400
+        );
       }
       resolvedTicker = parsed.value;
     }
@@ -264,7 +300,11 @@ export async function PUT(request: NextRequest) {
     if (investedAmount !== undefined) {
       const parsed = parseFiniteNumber(investedAmount);
       if (parsed === null || parsed < 0) {
-        return NextResponse.json({ error: "Valor investido inválido" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.investments.invalidInvestedAmount"),
+          400
+        );
       }
       resolvedInvested = parsed;
     }
@@ -273,7 +313,11 @@ export async function PUT(request: NextRequest) {
     if (currentBalance !== undefined) {
       const parsed = parseFiniteNumber(currentBalance);
       if (parsed === null || parsed < 0) {
-        return NextResponse.json({ error: "Saldo atual inválido" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.investments.invalidCurrentBalance"),
+          400
+        );
       }
       resolvedBalance = parsed;
     }
@@ -282,7 +326,11 @@ export async function PUT(request: NextRequest) {
     if (yieldRate !== undefined) {
       const parsed = parseFiniteNumber(yieldRate);
       if (parsed === null) {
-        return NextResponse.json({ error: "Rentabilidade inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.investments.invalidYieldRate"),
+          400
+        );
       }
       resolvedYield = parsed;
     }
@@ -291,7 +339,11 @@ export async function PUT(request: NextRequest) {
     if (accountId !== undefined) {
       const parsed = parseOptionalRelationId(accountId);
       if (!parsed.ok) {
-        return NextResponse.json({ error: "Conta inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "validation.invalidAccount"),
+          400
+        );
       }
       resolvedAccount = parsed.value;
     }
@@ -300,20 +352,29 @@ export async function PUT(request: NextRequest) {
     if (categoryId !== undefined) {
       const parsed = parseOptionalRelationId(categoryId);
       if (!parsed.ok) {
-        return NextResponse.json({ error: "Categoria inválida" }, { status: 400 });
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "validation.invalidCategory"),
+          400
+        );
       }
       resolvedCategory = parsed.value;
     }
 
     if (isActive !== undefined && typeof isActive !== "boolean") {
-      return NextResponse.json({ error: "Flag isActive inválida" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidActiveFlag"),
+        400
+      );
     }
 
     const existing = await db.investment.findUnique({ where: { id: investmentId } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Investimento não encontrado" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.investments.notFound"),
+        404
       );
     }
 
@@ -336,25 +397,28 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(investment);
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, {
-      fk: "Conta ou categoria não encontrada",
-      notFound: "Investimento não encontrado",
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      fk: translateApiMessage(locale, "crud.investments.invalidAccountOrCategory"),
+      notFound: translateApiMessage(locale, "crud.investments.notFound"),
     });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Erro ao atualizar investimento:", error);
-    return NextResponse.json(
-      { error: "Erro ao atualizar investimento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.investments.updateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/investments - Excluir investimento
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -363,37 +427,39 @@ export async function DELETE(request: NextRequest) {
     const investmentId = typeof id === "string" ? id.trim() : "";
 
     if (!investmentId) {
-      return NextResponse.json(
-        { error: "ID do investimento é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.investments.idRequired"),
+        400
       );
     }
 
     const existing = await db.investment.findUnique({ where: { id: investmentId } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Investimento não encontrado" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.investments.notFound"),
+        404
       );
     }
 
     await db.investment.delete({ where: { id: investmentId } });
 
-    return NextResponse.json({
-      success: true,
-      message: "Investimento excluído com sucesso",
-    });
+    return apiSuccessMessage(
+      translateApiMessage(locale, "crud.investments.deleted")
+    );
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, {
-      notFound: "Investimento não encontrado",
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.investments.notFound"),
     });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Erro ao excluir investimento:", error);
-    return NextResponse.json(
-      { error: "Erro ao excluir investimento" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.investments.deleteFailed"),
+      500
     );
   }
 }

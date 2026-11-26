@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
-  mapPrismaError,
-  parseJsonBody,
+  mapPrismaErrorLocalized,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 class DepositDomainError extends Error {
   constructor(
+    public readonly code: string,
     message: string,
     public readonly status: number
   ) {
@@ -17,8 +23,10 @@ class DepositDomainError extends Error {
 
 // POST /api/savings/deposit - Depositar em meta de poupança
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -27,31 +35,34 @@ export async function POST(request: NextRequest) {
 
     const goalId = typeof savingsGoalId === "string" ? savingsGoalId.trim() : "";
     if (!goalId) {
-      return NextResponse.json(
-        { error: "ID da meta de poupança é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.savings.idRequired"),
+        400
       );
     }
 
     const parsedAmount = parsePositiveFiniteNumber(amount);
     if (parsedAmount === null) {
-      return NextResponse.json(
-        { error: "Valor do depósito é obrigatório e deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.savings.depositAmountPositive"),
+        400
       );
     }
 
     if (description !== undefined && description !== null && typeof description !== "string") {
-      return NextResponse.json(
-        { error: "Descrição inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidDescription"),
+        400
       );
     }
 
     const depositDescription =
       typeof description === "string" && description.trim() !== ""
         ? description.trim()
-        : "Depósito";
+        : translateApiMessage(locale, "crud.savings.depositDefaultDescription");
 
     const { updatedGoal, goalCompleted } = await db.$transaction(async (tx) => {
       // Atualiza atomicamente primeiro para evitar lost update e deadlock de upgrade de lock no SQLite
@@ -66,9 +77,17 @@ export async function POST(request: NextRequest) {
           select: { id: true, isCompleted: true },
         });
         if (!existing) {
-          throw new DepositDomainError("Meta de poupança não encontrada", 404);
+          throw new DepositDomainError(
+            "NOT_FOUND",
+            translateApiMessage(locale, "crud.savings.notFound"),
+            404
+          );
         }
-        throw new DepositDomainError("Esta meta de poupança já foi concluída", 400);
+        throw new DepositDomainError(
+          "GOAL_COMPLETED",
+          translateApiMessage(locale, "crud.savings.goalAlreadyCompleted"),
+          400
+        );
       }
 
       let goal = await tx.savingsGoal.findUniqueOrThrow({
@@ -104,18 +123,19 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof DepositDomainError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return apiErrorResponse(error.code, error.message, error.status);
     }
-    const prismaResponse = mapPrismaError(error, {
-      notFound: "Meta de poupança não encontrada",
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.savings.notFound"),
     });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Erro ao depositar na meta de poupança:", error);
-    return NextResponse.json(
-      { error: "Falha ao depositar na meta de poupança" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.savings.depositFailed"),
+      500
     );
   }
 }

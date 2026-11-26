@@ -1,5 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  apiErrorResponse,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 // Helper: advance nextDate based on frequency
 function advanceDate(currentDate: Date, frequency: string): Date {
@@ -25,7 +30,9 @@ function advanceDate(currentDate: Date, frequency: string): Date {
 }
 
 // POST /api/recurring/process - Process due recurring transactions
-export async function POST() {
+export async function POST(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const today = new Date();
     today.setHours(23, 59, 59, 999);
@@ -102,14 +109,17 @@ export async function POST() {
       processed: processedCount,
       message:
         processedCount > 0
-          ? `${processedCount} transação(ões) recorrente(s) processada(s)`
-          : "Nenhuma transação recorrente pendente",
+          ? translateApiMessage(locale, "crud.recurring.processedCount", {
+              count: processedCount,
+            })
+          : translateApiMessage(locale, "crud.recurring.nonePending"),
     });
   } catch (error) {
     console.error("Error processing recurring transactions:", error);
-    return NextResponse.json(
-      { error: "Erro ao processar transações recorrentes" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.recurring.processFailed"),
+      500
     );
   }
 }

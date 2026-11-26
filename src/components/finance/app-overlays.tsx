@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AIAdvisor } from '@/components/finance/ai-advisor';
 import { GlobalSearch, type SearchResultType } from '@/components/finance/global-search';
+import { useSafeTranslations } from '@/i18n/provider';
 
 export interface AppOverlaysProps {
   advisorDialogRef: RefObject<HTMLDialogElement | null>;
@@ -28,6 +29,8 @@ export function AppOverlays({
   onCloseSearch,
   onSelectSearch,
 }: AppOverlaysProps) {
+  const t = useSafeTranslations('shell.advisorDialog');
+
   return (
     <>
       <dialog
@@ -41,12 +44,12 @@ export function AppOverlays({
         }}
         onClose={onAdvisorDialogClose}
       >
-        <h2 id="advisor-title" className="sr-only">Assistente financeiro IA</h2>
+        <h2 id="advisor-title" className="sr-only">{t('title')}</h2>
         <div className="mb-2 flex justify-end">
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Fechar assistente financeiro"
+            aria-label={t('close')}
             onClick={onCloseAdvisor}
           >
             <X aria-hidden="true" />

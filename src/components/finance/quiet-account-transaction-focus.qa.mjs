@@ -11,13 +11,13 @@ import { fileURLToPath } from 'node:url';
 
 const baseRef = '25b44535c5068b99044afa03f7ecf318e7a9726f';
 const baselineHash = '4cb86fd747b2388301c6d5ee7b91391fb8376376f705514d10dc472e0b1a1758';
-const shellHash = '66c7c5e4bb2bff89f2f7e3cdefcf89bae73f1ac9a2caaac792beebe23d6f1d31';
+const shellHash = 'fb7a520212aa2b67221a887a61dc651fd227f842eb769219b4607b46f08601c7';
 const source = fileURLToPath(import.meta.url);
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const view = join(root, 'src/components/finance/accounts-view.tsx');
 const shell = join(root, 'src/app/page.tsx');
 
-function installFixture(Page, ThemeProvider, createElement, createRoot) {
+function installFixture(Page, ThemeProvider, AppIntlProvider, getMessagesForLocale, createElement, createRoot) {
   const accounts = ['a', 'b'].map((id) => ({
     id, name: `Conta ${id.toUpperCase()}`, type: 'BANK', balance: 20, color: '#22c55e', icon: 'wallet', isActive: true,
   }));
@@ -56,16 +56,20 @@ function installFixture(Page, ThemeProvider, createElement, createRoot) {
     qa.unexpected.push(`${method} ${url}`);
     throw new Error('Fetch fora da fixture de foco');
   };
-  qa.mount = (theme, isEmpty) => {
+  qa.mount = (theme, isEmpty, locale = 'pt') => {
     empty = isEmpty;
     createRoot(document.getElementById('root')).render(
-      createElement(ThemeProvider, { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true }, createElement(Page)),
+      createElement(
+        ThemeProvider,
+        { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
+        createElement(AppIntlProvider, { locale, messages: getMessagesForLocale(locale) }, createElement(Page)),
+      ),
     );
   };
 }
 
 // Função serializada para a VM do CLI: não depende de módulos/globals Node.
-async function runCases(page, html, width, theme) {
+async function runCases(page, html, width, theme, localeFlagBodies) {
   const url = 'https://finance-qa.invalid/';
   const results = [];
   const errors = [];
@@ -73,10 +77,21 @@ async function runCases(page, html, width, theme) {
   const onError = (error) => errors.push(error.message);
   const routeAll = (route) => {
     const request = route.request();
-    if (request.url() === url && request.method() === 'GET' && request.isNavigationRequest()) {
+    const reqUrl = request.url();
+    if (reqUrl === url && request.method() === 'GET' && request.isNavigationRequest()) {
       return route.fulfill({ path: html, contentType: 'text/html; charset=utf-8' });
     }
-    blocked.push(request.url());
+    if (request.method() === 'GET' && reqUrl.startsWith(url)) {
+      const reqPath = reqUrl.slice(url.length - 1);
+      if (localeFlagBodies && Object.hasOwn(localeFlagBodies, reqPath)) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'image/svg+xml; charset=utf-8',
+          body: localeFlagBodies[reqPath],
+        });
+      }
+    }
+    blocked.push(reqUrl);
     return route.abort();
   };
   const button = (name, within = page) => within.getByRole('button', { name, exact: true });
@@ -302,7 +317,9 @@ try {
   const entry = `import Page from ${JSON.stringify(shell)};
     import { createElement } from 'react'; import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
-    (${installFixture.toString()})(Page, ThemeProvider, createElement, createRoot);`;
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
+    (${installFixture.toString()})(Page, ThemeProvider, AppIntlProvider, getMessagesForLocale, createElement, createRoot);`;
   const realtime = `import { useSyncExternalStore } from 'react';
     const subscribe = (cb) => { window.qa.listeners.add(cb); return () => window.qa.listeners.delete(cb); };
     const get = () => window.qa.revision;
@@ -345,6 +362,14 @@ try {
   assert(Number.isInteger(opened.pid) && opened.pid > 1, 'Daemon sem PID verificável');
   daemonPid = opened.pid;
   await cli('snapshot');
+  const localeFlagBodies = Object.fromEntries(
+    await Promise.all(
+      ['pt', 'es', 'en'].map(async (code) => [
+        `/locale-flags/${code}.svg`,
+        await readFile(join(root, 'public/locale-flags', `${code}.svg`), 'utf8'),
+      ]),
+    ),
+  );
   const gaps = [];
   let count = 0;
   for (const width of [360, 390, 1440]) {
@@ -352,7 +377,7 @@ try {
     for (const theme of ['light', 'dark']) {
       const observed = {};
       for (const label of ['baseline', 'candidate']) {
-        const report = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)})`);
+        const report = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(localeFlagBodies)})`);
         const result = report.match(/^### Result\s*\n([^\n]+)/m)?.[1];
         assert(result, `${label}: resultado DOM ausente`);
         observed[label] = JSON.parse(result);

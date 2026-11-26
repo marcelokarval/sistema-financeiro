@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
-  mapPrismaError,
+  mapPrismaErrorLocalized,
   parseCivilDateStart,
-  parseJsonBody,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  resolveRequestLocale,
+  translateApiMessage,
+  type SupportedLocale,
+} from "@/lib/server-i18n";
 
 const VALID_CONSORTIUM_STATUSES = [
   "ACTIVE",
@@ -27,17 +34,24 @@ function parseOptionalId(
   return { valid: true, value: trimmed || null };
 }
 
-async function validateConsortiumRelations(ids: {
-  categoryId?: string | null;
-  accountId?: string | null;
-}): Promise<NextResponse | null> {
+async function validateConsortiumRelations(
+  ids: {
+    categoryId?: string | null;
+    accountId?: string | null;
+  },
+  locale: SupportedLocale
+): Promise<NextResponse | null> {
   if (ids.categoryId) {
     const category = await db.category.findUnique({
       where: { id: ids.categoryId },
       select: { id: true },
     });
     if (!category) {
-      return NextResponse.json({ error: "Categoria não encontrada" }, { status: 400 });
+      return apiErrorResponse(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.categories.notFound"),
+        400
+      );
     }
   }
   if (ids.accountId) {
@@ -46,7 +60,11 @@ async function validateConsortiumRelations(ids: {
       select: { id: true },
     });
     if (!account) {
-      return NextResponse.json({ error: "Conta não encontrada" }, { status: 400 });
+      return apiErrorResponse(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.accounts.notFound"),
+        400
+      );
     }
   }
   return null;
@@ -54,6 +72,8 @@ async function validateConsortiumRelations(ids: {
 
 // GET /api/consortiums - Listar todos os consórcios
 export async function GET(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -76,17 +96,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(consortiums);
   } catch (error) {
     console.error("Erro ao buscar consórcios:", error);
-    return NextResponse.json(
-      { error: "Falha ao buscar consórcios" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.consortiums.fetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/consortiums - Criar consórcio
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -106,33 +129,37 @@ export async function POST(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof description !== "string" || description.trim() === "") {
-      return NextResponse.json(
-        { error: "Descrição do consórcio é obrigatória" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.descriptionRequired"),
+        400
       );
     }
 
     const parsedTotalAmount = parsePositiveFiniteNumber(totalAmount);
     if (parsedTotalAmount === null) {
-      return NextResponse.json(
-        { error: "Valor total do consórcio é obrigatório e deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.totalPositive"),
+        400
       );
     }
 
     const parsedMonthlyPayment = parsePositiveFiniteNumber(monthlyPayment);
     if (parsedMonthlyPayment === null) {
-      return NextResponse.json(
-        { error: "Valor da parcela mensal é obrigatório e deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.monthlyPositive"),
+        400
       );
     }
 
     const parsedInstallmentCount = parsePositiveFiniteNumber(installmentCount);
     if (parsedInstallmentCount === null || !Number.isInteger(parsedInstallmentCount)) {
-      return NextResponse.json(
-        { error: "Quantidade de parcelas é obrigatória e deve ser um inteiro maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.countInvalid"),
+        400
       );
     }
 
@@ -143,18 +170,20 @@ export async function POST(request: NextRequest) {
         administrator !== null &&
         typeof administrator !== "string")
     ) {
-      return NextResponse.json(
-        { error: "Dados de grupo/cota/administradora inválidos" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.invalidMeta"),
+        400
       );
     }
 
     let start = new Date();
     if (startDate !== undefined && startDate !== null && startDate !== "") {
       if (typeof startDate !== "string" || parseCivilDateStart(startDate) === null) {
-        return NextResponse.json(
-          { error: "Data de início inválida" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.consortiums.invalidStartDate"),
+          400
         );
       }
       start = new Date(startDate);
@@ -170,9 +199,10 @@ export async function POST(request: NextRequest) {
         typeof nextAssemblyDate !== "string" ||
         parseCivilDateStart(nextAssemblyDate) === null
       ) {
-        return NextResponse.json(
-          { error: "Data da próxima assembleia inválida" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.consortiums.invalidAssemblyDate"),
+          400
         );
       }
       resolvedNextAssemblyDate = new Date(nextAssemblyDate);
@@ -181,16 +211,20 @@ export async function POST(request: NextRequest) {
     const parsedCategoryId = parseOptionalId(categoryId);
     const parsedAccountId = parseOptionalId(accountId);
     if (!parsedCategoryId.valid || !parsedAccountId.valid) {
-      return NextResponse.json(
-        { error: "Identificador de vínculo inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidLinkId"),
+        400
       );
     }
 
-    const relationError = await validateConsortiumRelations({
-      categoryId: parsedCategoryId.value,
-      accountId: parsedAccountId.value,
-    });
+    const relationError = await validateConsortiumRelations(
+      {
+        categoryId: parsedCategoryId.value,
+        accountId: parsedAccountId.value,
+      },
+      locale
+    );
     if (relationError) {
       return relationError;
     }
@@ -235,20 +269,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(consortium, { status: 201 });
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale);
     if (mapped) return mapped;
     console.error("Erro ao criar consórcio:", error);
-    return NextResponse.json(
-      { error: "Falha ao criar consórcio" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.consortiums.createFailed"),
+      500
     );
   }
 }
 
 // PUT /api/consortiums - Atualizar consórcio
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -270,16 +307,18 @@ export async function PUT(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof id !== "string" || id.trim() === "") {
-      return NextResponse.json(
-        { error: "ID do consórcio é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.idRequired"),
+        400
       );
     }
 
     if (description !== undefined && (typeof description !== "string" || description.trim() === "")) {
-      return NextResponse.json(
-        { error: "Descrição do consórcio é obrigatória" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.descriptionRequired"),
+        400
       );
     }
 
@@ -288,27 +327,30 @@ export async function PUT(request: NextRequest) {
       (quota !== undefined && typeof quota !== "string") ||
       (administrator !== undefined && typeof administrator !== "string")
     ) {
-      return NextResponse.json(
-        { error: "Dados de grupo/cota/administradora inválidos" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.invalidMeta"),
+        400
       );
     }
 
     const parsedTotalAmount =
       totalAmount !== undefined ? parsePositiveFiniteNumber(totalAmount) : undefined;
     if (totalAmount !== undefined && parsedTotalAmount === null) {
-      return NextResponse.json(
-        { error: "Valor total do consórcio deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.totalPositiveUpdate"),
+        400
       );
     }
 
     const parsedMonthlyPayment =
       monthlyPayment !== undefined ? parsePositiveFiniteNumber(monthlyPayment) : undefined;
     if (monthlyPayment !== undefined && parsedMonthlyPayment === null) {
-      return NextResponse.json(
-        { error: "Valor da parcela mensal deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.monthlyPositiveUpdate"),
+        400
       );
     }
 
@@ -319,9 +361,10 @@ export async function PUT(request: NextRequest) {
           status as (typeof VALID_CONSORTIUM_STATUSES)[number]
         ))
     ) {
-      return NextResponse.json(
-        { error: "Status do consórcio inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.invalidStatus"),
+        400
       );
     }
 
@@ -333,9 +376,10 @@ export async function PUT(request: NextRequest) {
         typeof nextAssemblyDate !== "string" ||
         parseCivilDateStart(nextAssemblyDate) === null
       ) {
-        return NextResponse.json(
-          { error: "Data da próxima assembleia inválida" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.consortiums.invalidAssemblyDate"),
+          400
         );
       } else {
         resolvedNextAssemblyDate = new Date(nextAssemblyDate);
@@ -350,16 +394,18 @@ export async function PUT(request: NextRequest) {
         assembliesAttended < 0 ||
         assembliesAttended > 2_147_483_647)
     ) {
-      return NextResponse.json(
-        { error: "A contagem de assembleias deve ser um inteiro entre 0 e 2147483647" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.invalidAssembliesCount"),
+        400
       );
     }
 
     if (isActive !== undefined && typeof isActive !== "boolean") {
-      return NextResponse.json(
-        { error: "Valor de isActive inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidActiveFlag"),
+        400
       );
     }
 
@@ -369,24 +415,29 @@ export async function PUT(request: NextRequest) {
       (parsedCategoryId && !parsedCategoryId.valid) ||
       (parsedAccountId && !parsedAccountId.valid)
     ) {
-      return NextResponse.json(
-        { error: "Identificador de vínculo inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidLinkId"),
+        400
       );
     }
 
     const existing = await db.consortium.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Consórcio não encontrado" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.consortiums.notFound"),
+        404
       );
     }
 
-    const relationError = await validateConsortiumRelations({
-      categoryId: parsedCategoryId && parsedCategoryId.valid ? parsedCategoryId.value : null,
-      accountId: parsedAccountId && parsedAccountId.valid ? parsedAccountId.value : null,
-    });
+    const relationError = await validateConsortiumRelations(
+      {
+        categoryId: parsedCategoryId && parsedCategoryId.valid ? parsedCategoryId.value : null,
+        accountId: parsedAccountId && parsedAccountId.valid ? parsedAccountId.value : null,
+      },
+      locale
+    );
     if (relationError) {
       return relationError;
     }
@@ -425,20 +476,25 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(consortium);
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.consortiums.notFound"),
+    });
     if (mapped) return mapped;
     console.error("Erro ao atualizar consórcio:", error);
-    return NextResponse.json(
-      { error: "Falha ao atualizar consórcio" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.consortiums.updateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/consortiums - Excluir consórcio
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -446,30 +502,37 @@ export async function DELETE(request: NextRequest) {
     const { id } = parsedBody.data;
 
     if (typeof id !== "string" || id.trim() === "") {
-      return NextResponse.json(
-        { error: "ID do consórcio é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.consortiums.idRequired"),
+        400
       );
     }
 
     const existing = await db.consortium.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Consórcio não encontrado" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.consortiums.notFound"),
+        404
       );
     }
 
     await db.consortium.delete({ where: { id } });
 
-    return NextResponse.json({ success: true, message: "Consórcio excluído com sucesso" });
+    return apiSuccessMessage(
+      translateApiMessage(locale, "crud.consortiums.deleted")
+    );
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.consortiums.notFound"),
+    });
     if (mapped) return mapped;
     console.error("Erro ao excluir consórcio:", error);
-    return NextResponse.json(
-      { error: "Falha ao excluir consórcio" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.consortiums.deleteFailed"),
+      500
     );
   }
 }

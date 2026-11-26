@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { toLocalCivilDateKey } from '@/lib/api-validation';
+import {
+  apiErrorResponse,
+  resolveRequestLocale,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
 interface TimelineItem {
   type: 'transaction' | 'purchase';
@@ -11,6 +16,7 @@ interface TimelineItem {
 
 interface TimelineDay {
   date: string;
+  dateKey: string;
   income: number;
   expense: number;
   net: number;
@@ -19,9 +25,11 @@ interface TimelineDay {
   items: TimelineItem[];
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const uncategorizedLabel = translateApiMessage(locale, 'common.uncategorized');
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url ?? 'http://localhost');
     const daysParam = searchParams.get('days');
     let days = parseInt(daysParam || '30', 10);
 
@@ -66,7 +74,7 @@ export async function GET(request: NextRequest) {
         type: 'transaction',
         description: tx.description,
         amount: isIncome ? tx.amount : -tx.amount,
-        category: tx.category?.name || 'Sem categoria',
+        category: tx.category?.name || uncategorizedLabel,
       });
       dateMap.set(dateKey, items);
     }
@@ -78,7 +86,7 @@ export async function GET(request: NextRequest) {
         type: 'purchase',
         description: p.merchant,
         amount: -p.totalAmount,
-        category: p.category?.name || 'Sem categoria',
+        category: p.category?.name || uncategorizedLabel,
       });
       dateMap.set(dateKey, items);
     }
@@ -110,6 +118,7 @@ export async function GET(request: NextRequest) {
 
       result.push({
         date: dateKey,
+        dateKey,
         income: Math.round(income * 100) / 100,
         expense: Math.round(expense * 100) / 100,
         net: Math.round(net * 100) / 100,
@@ -137,9 +146,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     console.error('Erro ao buscar linha do tempo:', error);
-    return NextResponse.json(
-      { error: 'Falha ao buscar dados da linha do tempo' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'analytics.timelineFetchFailed'),
+      500
     );
   }
 }

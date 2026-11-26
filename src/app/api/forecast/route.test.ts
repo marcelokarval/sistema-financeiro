@@ -94,5 +94,81 @@ describe("GET /api/forecast - normalização mensal de recorrências", () => {
     expect(data.forecastMonths).toHaveLength(1);
     expect(data.forecastMonths[0].projectedIncome).toBe(expectedProjIncome);
     expect(data.forecastMonths[0].projectedExpense).toBe(expectedProjExpense);
+    expect(data.forecastMonths[0].monthKey).toBe("2026-12");
+  });
+
+  test("localiza meses futuros com monthKey aditivo, categoria Outros e riskAlerts em en e es", async () => {
+    await localDb.category.createMany({
+      data: [
+        { id: "cat-active", name: "Mercado", type: "EXPENSE", color: "#ef4444", isActive: true },
+        { id: "cat-inactive", name: "Antiga", type: "EXPENSE", color: "#999999", isActive: false },
+      ],
+    });
+
+    // Meses mais antigos (julho e agosto) com gastos menores que os últimos 3 meses (set, out, nov)
+    await localDb.transaction.createMany({
+      data: [
+        { id: "t-inc-jul", type: "INCOME", amount: 1000, description: "Salário Jul", date: new Date(2026, 6, 10, 12, 0) },
+        { id: "t-exp-jul", type: "EXPENSE", amount: 500, description: "Gasto Jul", date: new Date(2026, 6, 12, 12, 0), categoryId: "cat-active" },
+        { id: "t-inc-aug", type: "INCOME", amount: 1000, description: "Salário Ago", date: new Date(2026, 7, 10, 12, 0) },
+        { id: "t-exp-aug", type: "EXPENSE", amount: 500, description: "Gasto Ago", date: new Date(2026, 7, 12, 12, 0), categoryId: "cat-active" },
+        { id: "t-inc-sep", type: "INCOME", amount: 1000, description: "Salário Set", date: new Date(2026, 8, 10, 12, 0) },
+        { id: "t-exp-sep", type: "EXPENSE", amount: 1500, description: "Gasto Set", date: new Date(2026, 8, 12, 12, 0), categoryId: "cat-active" },
+        { id: "t-inc-oct", type: "INCOME", amount: 1000, description: "Salário Out", date: new Date(2026, 9, 10, 12, 0) },
+        { id: "t-exp-oct", type: "EXPENSE", amount: 1500, description: "Gasto Out", date: new Date(2026, 9, 12, 12, 0), categoryId: "cat-active" },
+        { id: "t-inc-nov", type: "INCOME", amount: 1000, description: "Salário Nov", date: new Date(2026, 10, 10, 12, 0) },
+        { id: "t-exp-nov", type: "EXPENSE", amount: 1500, description: "Gasto Nov", date: new Date(2026, 10, 12, 12, 0), categoryId: "cat-active" },
+        { id: "t-exp-inact", type: "EXPENSE", amount: 100, description: "Inativa", date: new Date(2026, 10, 13, 12, 0), categoryId: "cat-inactive" },
+      ],
+    });
+
+    const resEn = await GET(new NextRequest("http://localhost/api/forecast?months=2&locale=en"));
+    expect(resEn.status).toBe(200);
+    const dataEn = await resEn.json();
+    expect(dataEn.forecastMonths[0].monthKey).toBe("2026-12");
+    expect(dataEn.forecastMonths[1].monthKey).toBe("2027-01");
+    expect(dataEn.forecastMonths[0].month.toLowerCase()).toContain("december");
+    expect(dataEn.topExpenseCategories.some((c: { name: string }) => c.name === "Other")).toBe(true);
+    expect(dataEn.riskAlerts).toContain("Your expenses exceed 90% of your average income. Risk of deficit.");
+    expect(dataEn.riskAlerts).toContain("Your average monthly balance is negative. Review your spending urgently.");
+    expect(dataEn.riskAlerts.some((a: string) => a.includes("Overall expenses are 207% above"))).toBe(true);
+    expect(dataEn.riskAlerts.some((a: string) => a.includes("Spending on Mercado is 200% above"))).toBe(true);
+
+    const resEs = await GET(new NextRequest("http://localhost/api/forecast?months=2&locale=es"));
+    expect(resEs.status).toBe(200);
+    const dataEs = await resEs.json();
+    expect(dataEs.forecastMonths[0].monthKey).toBe("2026-12");
+    expect(dataEs.forecastMonths[0].month.toLowerCase()).toContain("diciembre");
+    expect(dataEs.topExpenseCategories.some((c: { name: string }) => c.name === "Otros")).toBe(true);
+    expect(dataEs.riskAlerts).toContain("Sus gastos superan el 90% de sus ingresos promedio. Riesgo de déficit.");
+    expect(dataEs.riskAlerts).toContain("Su saldo promedio mensual es negativo. Revise sus gastos con urgencia.");
+    expect(dataEs.riskAlerts.some((a: string) => a.includes("Los gastos generales están un 207%"))).toBe(true);
+    expect(dataEs.riskAlerts.some((a: string) => a.includes("Los gastos en Mercado están un 200%"))).toBe(true);
+  });
+
+  test("retorna erro 400 localizado com code e X-Error-Code quando months é inválido", async () => {
+    const resPt = await GET(new NextRequest("http://localhost/api/forecast?months=99"));
+    expect(resPt.status).toBe(400);
+    expect(resPt.headers.get("X-Error-Code")).toBe("VALIDATION_ERROR");
+    expect(await resPt.json()).toEqual({
+      error: "O parâmetro 'months' deve ser um número entre 1 e 6.",
+      code: "VALIDATION_ERROR",
+    });
+
+    const resEn = await GET(new NextRequest("http://localhost/api/forecast?months=99&locale=en"));
+    expect(resEn.status).toBe(400);
+    expect(resEn.headers.get("X-Error-Code")).toBe("VALIDATION_ERROR");
+    expect(await resEn.json()).toEqual({
+      error: "Parameter 'months' must be a number between 1 and 6.",
+      code: "VALIDATION_ERROR",
+    });
+
+    const resEs = await GET(new NextRequest("http://localhost/api/forecast?months=99&locale=es"));
+    expect(resEs.status).toBe(400);
+    expect(resEs.headers.get("X-Error-Code")).toBe("VALIDATION_ERROR");
+    expect(await resEs.json()).toEqual({
+      error: "El parámetro 'months' debe ser un número entre 1 y 6.",
+      code: "VALIDATION_ERROR",
+    });
   });
 });

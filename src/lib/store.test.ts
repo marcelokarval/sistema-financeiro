@@ -63,7 +63,7 @@ describe('shell Quiet Financial OS', () => {
     const actions = await Bun.file(new URL('../components/finance/quick-actions.tsx', import.meta.url)).text();
     expect(page).toContain('<AppHeader');
     expect(header).toMatch(/<header\b[\s\S]*<QuickActions\b[\s\S]*<\/header>/);
-    expect(actions).toContain('aria-label="Ações rápidas"');
+    expect(actions).toContain("aria-label={t('label')}");
     expect(actions).toMatch(/<DropdownMenuTrigger\b/);
     expect(actions).not.toMatch(/\bfixed\b|bg-gradient|backdrop-blur/);
   });
@@ -71,10 +71,18 @@ describe('shell Quiet Financial OS', () => {
   test('preserva os quatro atalhos e seus destinos ou callbacks', async () => {
     const page = await Bun.file(new URL('../app/page.tsx', import.meta.url)).text();
     const actions = await Bun.file(new URL('../components/finance/quick-actions.tsx', import.meta.url)).text();
-    expect(actions).toMatch(/label: 'Nova Transação'[^}]*view: 'accounts'/);
-    expect(actions).toMatch(/label: 'Nova Compra'[^}]*view: 'purchases'/);
-    expect(actions).toMatch(/label: 'Nova Meta'[^}]*action: 'goal'/);
-    expect(actions).toMatch(/label: 'Exportar Dados'[^}]*action: 'export'/);
+    const ptShell = JSON.parse(await Bun.file(new URL('../messages/pt/shell.json', import.meta.url)).text());
+    expect(actions).toMatch(/labelKey: 'newTransaction'[^}]*view: 'accounts'/);
+    expect(actions).toMatch(/labelKey: 'newPurchase'[^}]*view: 'purchases'/);
+    expect(actions).toMatch(/labelKey: 'newGoal'[^}]*action: 'goal'/);
+    expect(actions).toMatch(/labelKey: 'exportData'[^}]*action: 'export'/);
+    expect(ptShell.quickActions).toMatchObject({
+      label: 'Ações rápidas',
+      newTransaction: 'Nova Transação',
+      newPurchase: 'Nova Compra',
+      newGoal: 'Nova Meta',
+      exportData: 'Exportar Dados',
+    });
     expect(actions).toContain('onNewGoal?.()');
     expect(actions).toContain('onExport?.()');
     expect(page).toContain('/api/export?type=transactions&format=csv');

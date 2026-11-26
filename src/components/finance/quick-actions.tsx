@@ -4,18 +4,21 @@ import { useRef } from 'react';
 import { Download, Ellipsis, Plus, ShoppingBag, Target, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useSafeTranslations } from '@/i18n/provider';
 import { useAppStore, type ViewType } from '@/lib/store';
 
-type QuickAction = { label: string; icon: LucideIcon } & (
+type QuickActionKey = 'newTransaction' | 'newPurchase' | 'newGoal' | 'exportData';
+
+type QuickAction = { labelKey: QuickActionKey; icon: LucideIcon } & (
   | { view: ViewType; action?: never }
   | { action: 'export' | 'goal'; view?: never }
 );
 
 const actions: QuickAction[] = [
-  { label: 'Nova Transação', icon: Plus, view: 'accounts' },
-  { label: 'Nova Compra', icon: ShoppingBag, view: 'purchases' },
-  { label: 'Nova Meta', icon: Target, action: 'goal' },
-  { label: 'Exportar Dados', icon: Download, action: 'export' },
+  { labelKey: 'newTransaction', icon: Plus, view: 'accounts' },
+  { labelKey: 'newPurchase', icon: ShoppingBag, view: 'purchases' },
+  { labelKey: 'newGoal', icon: Target, action: 'goal' },
+  { labelKey: 'exportData', icon: Download, action: 'export' },
 ];
 
 interface QuickActionsProps {
@@ -27,6 +30,7 @@ interface QuickActionsProps {
 
 export function QuickActions({ onNavigate, onExport, onNewGoal, onOpenChange }: QuickActionsProps) {
   const setCurrentView = useAppStore((state) => state.setCurrentView);
+  const t = useSafeTranslations('shell.quickActions');
   const trigger = useRef<HTMLButtonElement>(null);
   const openingTransaction = useRef(false);
 
@@ -48,9 +52,9 @@ export function QuickActions({ onNavigate, onExport, onNewGoal, onOpenChange }: 
   return (
     <DropdownMenu modal={false} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
-        <Button ref={trigger} variant="ghost" size="icon" className="text-muted-foreground lg:w-auto lg:px-2.5" aria-label="Ações rápidas">
+        <Button ref={trigger} variant="ghost" size="icon" className="text-muted-foreground lg:w-auto lg:px-2.5" aria-label={t('label')}>
           <Ellipsis aria-hidden="true" />
-          <span className="hidden lg:inline">Ações rápidas</span>
+          <span className="hidden lg:inline">{t('label')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -66,9 +70,9 @@ export function QuickActions({ onNavigate, onExport, onNewGoal, onOpenChange }: 
         }}
       >
         {actions.map((action) => (
-          <DropdownMenuItem key={action.label} onSelect={() => handleAction(action)}>
+          <DropdownMenuItem key={action.labelKey} onSelect={() => handleAction(action)}>
             <action.icon aria-hidden="true" />
-            {action.label}
+            {t(action.labelKey)}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

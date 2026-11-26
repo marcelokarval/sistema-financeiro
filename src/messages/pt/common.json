@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "title": "FinanceApp - Gestão Financeira Inteligente",
+    "description": "Sistema completo de gestão financeira com controle de contas, cartões e compras"
+  },
+  "loading": {
+    "app": "Carregando FinanceApp…"
+  },
+  "common": {
+    "dataUpdated": "Dados atualizados",
+    "retry": "Tentar novamente",
+    "brandName": "FinanceApp"
+  },
+  "languageSwitcher": {
+    "label": "Selecionar idioma",
+    "currentLanguage": "Idioma atual: {language}",
+    "menuLabel": "Idiomas disponíveis"
+  }
+}

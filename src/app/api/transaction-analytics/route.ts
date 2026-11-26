@@ -1,9 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  formatServerWeekdayShort,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
-export async function GET(request: Request) {
+export async function GET(request?: Request | NextRequest) {
+  const locale = resolveRequestLocale(request);
+  const uncategorizedLabel = translateApiMessage(locale, 'common.uncategorizedTitle');
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url ?? 'http://localhost');
     const monthsParam = searchParams.get('months');
     const months = Math.min(Math.max(parseInt(monthsParam || '6', 10) || 6, 1), 12);
     const typeFilter = searchParams.get('type') || 'ALL';
@@ -54,7 +64,7 @@ export async function GET(request: Request) {
       description: t.description,
       amount: t.amount,
       date: t.date.toISOString(),
-      categoryName: t.category?.name || 'Sem Categoria',
+      categoryName: t.category?.name || uncategorizedLabel,
       type: t.type,
     });
 
@@ -62,7 +72,7 @@ export async function GET(request: Request) {
     const categoryCounts = new Map<string, { name: string; color: string; count: number; total: number }>();
     for (const t of transactions) {
       const catId = t.category?.id || 'uncategorized';
-      const catName = t.category?.name || 'Sem Categoria';
+      const catName = t.category?.name || uncategorizedLabel;
       const catColor = t.category?.color || '#6b7280';
       if (!categoryCounts.has(catId)) {
         categoryCounts.set(catId, { name: catName, color: catColor, count: 0, total: 0 });
@@ -74,14 +84,15 @@ export async function GET(request: Request) {
     const sortedCategories = Array.from(categoryCounts.values()).sort((a, b) => b.count - a.count);
     const mostFrequentCategory = sortedCategories[0] || null;
 
-    // Weekday breakdown (pt-BR: Dom=0, Seg=1, Ter=2, Qua=3, Qui=4, Sex=5, Sáb=6)
-    const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const weekdayBreakdown = weekdayLabels.map((day, idx) => {
+    // Weekday breakdown (Dom=0 .. Sáb=6)
+    const weekdayBreakdown = Array.from({ length: 7 }, (_, idx) => {
+      const day = formatServerWeekdayShort(idx, locale);
       const dayTxs = transactions.filter((t) => t.date.getDay() === idx);
       const dayIncome = dayTxs.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
       const dayExpense = dayTxs.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
       return {
         day,
+        dayIndex: idx,
         income: dayIncome,
         expense: dayExpense,
         count: dayTxs.length,
@@ -91,6 +102,7 @@ export async function GET(request: Request) {
     // Monthly comparison
     const monthlyComparison: {
       month: string;
+      monthKey: string;
       income: number;
       expense: number;
       net: number;
@@ -100,7 +112,7 @@ export async function GET(request: Request) {
     for (let i = months - 1; i >= 0; i--) {
       const mStart = new Date(currentYear, currentMonth - i, 1);
       const mEnd = new Date(currentYear, currentMonth - i + 1, 0, 23, 59, 59, 999);
-      const mLabel = mStart.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+      const mLabel = formatServerMonthLabel(mStart, locale);
 
       const mTxs = transactions.filter((t) => t.date >= mStart && t.date <= mEnd);
       const mIncome = mTxs.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
@@ -108,6 +120,7 @@ export async function GET(request: Request) {
 
       monthlyComparison.push({
         month: mLabel,
+        monthKey: toMonthKey(mStart),
         income: mIncome,
         expense: mExpense,
         net: mIncome - mExpense,
@@ -121,7 +134,7 @@ export async function GET(request: Request) {
     for (const t of expenseTxs) {
       const name = t.description.trim();
       if (!merchantCounts.has(name)) {
-        merchantCounts.set(name, { name, count: 0, total: 0, category: t.category?.name || 'Sem Categoria' });
+        merchantCounts.set(name, { name, count: 0, total: 0, category: t.category?.name || uncategorizedLabel });
       }
       const entry = merchantCounts.get(name)!;
       entry.count += 1;
@@ -185,9 +198,10 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Erro ao buscar análise de transações:', error);
-    return NextResponse.json(
-      { error: 'Falha ao buscar análise de transações' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'analytics.transactionAnalyticsFailed'),
+      500
     );
   }
 }

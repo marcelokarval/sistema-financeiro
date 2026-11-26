@@ -1,8 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 // GET /api/quick-stats — compact financial summary with sparkline data
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -83,6 +91,7 @@ export async function GET() {
     // --- Per-month computation (6 months) ---
     const monthlyData: {
       month: string;
+      monthKey: string;
       year: number;
       monthIndex: number;
       income: number;
@@ -114,7 +123,8 @@ export async function GET() {
       );
 
       monthlyData.push({
-        month: mStart.toLocaleString("pt-BR", { month: "short" }),
+        month: formatServerMonthLabel(mStart, locale, { month: "short" }),
+        monthKey: toMonthKey(mStart),
         year: mStart.getFullYear(),
         monthIndex: i,
         income,
@@ -225,9 +235,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Erro ao buscar resumo rápido:", error);
-    return NextResponse.json(
-      { error: "Falha ao buscar dados do resumo rápido" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "analytics.quickStatsFetchFailed"),
+      500
     );
   }
 }

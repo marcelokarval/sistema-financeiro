@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
-  mapPrismaError,
+  mapPrismaErrorLocalized,
   parseCivilDateStart,
-  parseJsonBody,
+  parseJsonBodyLocalized,
   parsePositiveFiniteNumber,
 } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  resolveRequestLocale,
+  translateApiMessage,
+  type SupportedLocale,
+} from "@/lib/server-i18n";
 
 const VALID_RECURRING_TYPES = ["INCOME", "EXPENSE"] as const;
 const VALID_RECURRING_FREQUENCIES = [
@@ -29,18 +36,25 @@ function parseOptionalId(
   return { valid: true, value: trimmed || null };
 }
 
-async function validateRecurringRelations(ids: {
-  categoryId?: string | null;
-  accountId?: string | null;
-  cardId?: string | null;
-}): Promise<NextResponse | null> {
+async function validateRecurringRelations(
+  ids: {
+    categoryId?: string | null;
+    accountId?: string | null;
+    cardId?: string | null;
+  },
+  locale: SupportedLocale
+): Promise<NextResponse | null> {
   if (ids.categoryId) {
     const category = await db.category.findUnique({
       where: { id: ids.categoryId },
       select: { id: true },
     });
     if (!category) {
-      return NextResponse.json({ error: "Categoria não encontrada" }, { status: 400 });
+      return apiErrorResponse(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.categories.notFound"),
+        400
+      );
     }
   }
   if (ids.accountId) {
@@ -49,7 +63,11 @@ async function validateRecurringRelations(ids: {
       select: { id: true },
     });
     if (!account) {
-      return NextResponse.json({ error: "Conta não encontrada" }, { status: 400 });
+      return apiErrorResponse(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.accounts.notFound"),
+        400
+      );
     }
   }
   if (ids.cardId) {
@@ -58,14 +76,20 @@ async function validateRecurringRelations(ids: {
       select: { id: true },
     });
     if (!card) {
-      return NextResponse.json({ error: "Cartão não encontrado" }, { status: 400 });
+      return apiErrorResponse(
+        "FOREIGN_KEY_ERROR",
+        translateApiMessage(locale, "crud.cards.notFound"),
+        400
+      );
     }
   }
   return null;
 }
 
 // GET /api/recurring - List all recurring transactions
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     const recurring = await db.recurringTransaction.findMany({
       orderBy: { createdAt: "desc" },
@@ -79,17 +103,20 @@ export async function GET() {
     return NextResponse.json(recurring);
   } catch (error) {
     console.error("Error fetching recurring transactions:", error);
-    return NextResponse.json(
-      { error: "Erro ao buscar transações recorrentes" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.recurring.fetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/recurring - Create recurring transaction
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -106,17 +133,19 @@ export async function POST(request: NextRequest) {
     } = parsedBody.data;
 
     if (typeof description !== "string" || description.trim() === "") {
-      return NextResponse.json(
-        { error: "A descrição é obrigatória" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.recurring.descriptionRequired"),
+        400
       );
     }
 
     const parsedAmount = parsePositiveFiniteNumber(amount);
     if (parsedAmount === null) {
-      return NextResponse.json(
-        { error: "O valor deve ser maior que zero" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.recurring.amountPositive"),
+        400
       );
     }
 
@@ -124,9 +153,10 @@ export async function POST(request: NextRequest) {
       typeof type !== "string" ||
       !VALID_RECURRING_TYPES.includes(type as (typeof VALID_RECURRING_TYPES)[number])
     ) {
-      return NextResponse.json(
-        { error: "Tipo inválido. Use INCOME ou EXPENSE" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.recurring.invalidType"),
+        400
       );
     }
 
@@ -136,26 +166,26 @@ export async function POST(request: NextRequest) {
         frequency as (typeof VALID_RECURRING_FREQUENCIES)[number]
       )
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "Frequência inválida. Use WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY ou YEARLY",
-        },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.recurring.invalidFrequency"),
+        400
       );
     }
 
     if (typeof nextDate !== "string" || !nextDate.trim()) {
-      return NextResponse.json(
-        { error: "A próxima data é obrigatória" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.recurring.nextDateRequired"),
+        400
       );
     }
     const parsedNextDate = parseCivilDateStart(nextDate);
     if (parsedNextDate === null) {
-      return NextResponse.json(
-        { error: "A próxima data é inválida" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.recurring.invalidNextDate"),
+        400
       );
     }
 
@@ -163,17 +193,21 @@ export async function POST(request: NextRequest) {
     const parsedAccountId = parseOptionalId(accountId);
     const parsedCardId = parseOptionalId(cardId);
     if (!parsedCategoryId.valid || !parsedAccountId.valid || !parsedCardId.valid) {
-      return NextResponse.json(
-        { error: "Identificador de vínculo inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidLinkId"),
+        400
       );
     }
 
-    const relationError = await validateRecurringRelations({
-      categoryId: parsedCategoryId.value,
-      accountId: parsedAccountId.value,
-      cardId: parsedCardId.value,
-    });
+    const relationError = await validateRecurringRelations(
+      {
+        categoryId: parsedCategoryId.value,
+        accountId: parsedAccountId.value,
+        cardId: parsedCardId.value,
+      },
+      locale
+    );
     if (relationError) {
       return relationError;
     }
@@ -198,20 +232,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(recurring, { status: 201 });
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale);
     if (mapped) return mapped;
     console.error("Error creating recurring transaction:", error);
-    return NextResponse.json(
-      { error: "Erro ao criar transação recorrente" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.recurring.createFailed"),
+      500
     );
   }
 }
 
 // PUT /api/recurring - Update recurring transaction
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -219,18 +256,20 @@ export async function PUT(request: NextRequest) {
     const { id, ...data } = parsedBody.data;
 
     if (typeof id !== "string" || id.trim() === "") {
-      return NextResponse.json(
-        { error: "O ID é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.idRequired"),
+        400
       );
     }
 
     const updateData: Record<string, unknown> = {};
     if (data.description !== undefined) {
       if (typeof data.description !== "string" || data.description.trim() === "") {
-        return NextResponse.json(
-          { error: "A descrição é obrigatória" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.recurring.descriptionRequired"),
+          400
         );
       }
       updateData.description = data.description.trim();
@@ -238,9 +277,10 @@ export async function PUT(request: NextRequest) {
     if (data.amount !== undefined) {
       const parsedAmount = parsePositiveFiniteNumber(data.amount);
       if (parsedAmount === null) {
-        return NextResponse.json(
-          { error: "O valor deve ser maior que zero" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.recurring.amountPositive"),
+          400
         );
       }
       updateData.amount = parsedAmount;
@@ -252,9 +292,10 @@ export async function PUT(request: NextRequest) {
           data.type as (typeof VALID_RECURRING_TYPES)[number]
         )
       ) {
-        return NextResponse.json(
-          { error: "Tipo inválido. Use INCOME ou EXPENSE" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.recurring.invalidType"),
+          400
         );
       }
       updateData.type = data.type;
@@ -266,37 +307,38 @@ export async function PUT(request: NextRequest) {
           data.frequency as (typeof VALID_RECURRING_FREQUENCIES)[number]
         )
       ) {
-        return NextResponse.json(
-          {
-            error:
-              "Frequência inválida. Use WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY ou YEARLY",
-          },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.recurring.invalidFrequency"),
+          400
         );
       }
       updateData.frequency = data.frequency;
     }
     if (data.nextDate !== undefined) {
       if (typeof data.nextDate !== "string") {
-        return NextResponse.json(
-          { error: "A próxima data é inválida" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.recurring.invalidNextDate"),
+          400
         );
       }
       const parsedNextDate = parseCivilDateStart(data.nextDate);
       if (parsedNextDate === null) {
-        return NextResponse.json(
-          { error: "A próxima data é inválida" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "crud.recurring.invalidNextDate"),
+          400
         );
       }
       updateData.nextDate = parsedNextDate;
     }
     if (data.isActive !== undefined) {
       if (typeof data.isActive !== "boolean") {
-        return NextResponse.json(
-          { error: "Valor de isActive inválido" },
-          { status: 400 }
+        return apiErrorResponse(
+          "VALIDATION_ERROR",
+          translateApiMessage(locale, "validation.invalidActiveFlag"),
+          400
         );
       }
       updateData.isActive = data.isActive;
@@ -313,9 +355,10 @@ export async function PUT(request: NextRequest) {
       (parsedAccountId && !parsedAccountId.valid) ||
       (parsedCardId && !parsedCardId.valid)
     ) {
-      return NextResponse.json(
-        { error: "Identificador de vínculo inválido" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidLinkId"),
+        400
       );
     }
 
@@ -333,17 +376,21 @@ export async function PUT(request: NextRequest) {
       where: { id },
     });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Transação recorrente não encontrada" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.recurring.notFound"),
+        404
       );
     }
 
-    const relationError = await validateRecurringRelations({
-      categoryId: parsedCategoryId && parsedCategoryId.valid ? parsedCategoryId.value : null,
-      accountId: parsedAccountId && parsedAccountId.valid ? parsedAccountId.value : null,
-      cardId: parsedCardId && parsedCardId.valid ? parsedCardId.value : null,
-    });
+    const relationError = await validateRecurringRelations(
+      {
+        categoryId: parsedCategoryId && parsedCategoryId.valid ? parsedCategoryId.value : null,
+        accountId: parsedAccountId && parsedAccountId.valid ? parsedAccountId.value : null,
+        cardId: parsedCardId && parsedCardId.valid ? parsedCardId.value : null,
+      },
+      locale
+    );
     if (relationError) {
       return relationError;
     }
@@ -360,20 +407,25 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(recurring);
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.recurring.notFound"),
+    });
     if (mapped) return mapped;
     console.error("Error updating recurring transaction:", error);
-    return NextResponse.json(
-      { error: "Erro ao atualizar transação recorrente" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.recurring.updateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/recurring - Delete recurring transaction
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
-    const parsedBody = await parseJsonBody(request, "Corpo da requisição JSON inválido.");
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -381,9 +433,10 @@ export async function DELETE(request: NextRequest) {
     const { id } = parsedBody.data;
 
     if (typeof id !== "string" || id.trim() === "") {
-      return NextResponse.json(
-        { error: "O ID é obrigatório" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.idRequired"),
+        400
       );
     }
 
@@ -391,25 +444,28 @@ export async function DELETE(request: NextRequest) {
       where: { id },
     });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Transação recorrente não encontrada" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.recurring.notFound"),
+        404
       );
     }
 
     await db.recurringTransaction.delete({ where: { id } });
 
-    return NextResponse.json({
-      success: true,
-      message: "Transação recorrente excluída",
-    });
+    return apiSuccessMessage(
+      translateApiMessage(locale, "crud.recurring.deleted")
+    );
   } catch (error) {
-    const mapped = mapPrismaError(error);
+    const mapped = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.recurring.notFound"),
+    });
     if (mapped) return mapped;
     console.error("Error deleting recurring transaction:", error);
-    return NextResponse.json(
-      { error: "Erro ao excluir transação recorrente" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.recurring.deleteFailed"),
+      500
     );
   }
 }

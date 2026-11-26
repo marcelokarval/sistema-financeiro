@@ -19,6 +19,8 @@ function installFixture(
   CashFlowForecastContent,
   CashFlowForecastTooltip,
   ThemeProvider,
+  AppIntlProvider,
+  getMessagesForLocale,
   Toaster,
   Fragment,
   createElement,
@@ -316,7 +318,7 @@ function installFixture(
     );
   }
 
-  qa.mountShell = (theme) => {
+  qa.mountShell = (theme, locale = 'pt') => {
     qa.calls = [];
     qa.mutations = [];
     qa.unexpected = [];
@@ -342,7 +344,11 @@ function installFixture(
       createElement(
         ThemeProvider,
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
-        createElement(Fragment, null, createElement(Page), createElement(Toaster, { theme })),
+        createElement(
+          AppIntlProvider,
+          { locale, messages: getMessagesForLocale(locale) },
+          createElement(Fragment, null, createElement(Page), createElement(Toaster, { theme })),
+        ),
       ),
     );
   };
@@ -372,7 +378,7 @@ function installFixture(
 }
 
 // Serializado pelo CLI no sandbox; não depende de globals Node na VM.
-async function runCases(page, html, width, theme, phase) {
+async function runCases(page, html, width, theme, phase, localeFlagBodies) {
   const url = 'https://finance-qa.invalid/';
   const errors = [];
   const blocked = [];
@@ -380,10 +386,21 @@ async function runCases(page, html, width, theme, phase) {
   const onError = (error) => errors.push(error.message);
   const routeAll = (route) => {
     const req = route.request();
-    if (req.url() === url && req.method() === 'GET' && req.isNavigationRequest()) {
+    const reqUrl = req.url();
+    if (reqUrl === url && req.method() === 'GET' && req.isNavigationRequest()) {
       return route.fulfill({ path: html, contentType: 'text/html; charset=utf-8' });
     }
-    blocked.push(req.url());
+    if (req.method() === 'GET' && reqUrl.startsWith(url)) {
+      const reqPath = reqUrl.slice(url.length - 1);
+      if (localeFlagBodies && Object.hasOwn(localeFlagBodies, reqPath)) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'image/svg+xml; charset=utf-8',
+          body: localeFlagBodies[reqPath],
+        });
+      }
+    }
+    blocked.push(reqUrl);
     return route.abort();
   };
 
@@ -777,6 +794,8 @@ try {
     import { createRoot } from 'react-dom/client';
     import { ThemeProvider } from 'next-themes';
     import { Toaster } from 'sonner';
+    import { AppIntlProvider } from ${JSON.stringify(join(root, 'src/i18n/provider.tsx'))};
+    import { getMessagesForLocale } from ${JSON.stringify(join(root, 'src/i18n/messages.ts'))};
     import { useAppStore } from ${JSON.stringify(join(root, 'src/lib/store.ts'))};
     (${installFixture.toString()})(
       Page,
@@ -784,6 +803,8 @@ try {
       CashFlowForecastContent,
       CashFlowForecastTooltip,
       ThemeProvider,
+      AppIntlProvider,
+      getMessagesForLocale,
       Toaster,
       Fragment,
       createElement,
@@ -826,11 +847,20 @@ try {
   daemonPid = opened.pid;
   await cli('snapshot');
 
+  const localeFlagBodies = Object.fromEntries(
+    await Promise.all(
+      ['pt', 'es', 'en'].map(async (code) => [
+        `/locale-flags/${code}.svg`,
+        await readFile(join(root, 'public/locale-flags', `${code}.svg`), 'utf8'),
+      ]),
+    ),
+  );
+
   let totalScenarios = 0;
   for (const width of [360, 390, 1440]) {
     const backgrounds = [];
     for (const theme of ['light', 'dark']) {
-      const shellOut = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html)}, ${width}, ${JSON.stringify(theme)}, "shell-ops")`);
+      const shellOut = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html)}, ${width}, ${JSON.stringify(theme)}, "shell-ops", ${JSON.stringify(localeFlagBodies)})`);
       const shellJson = shellOut.match(/^### Result\s*\n([^\n]+)/m)?.[1];
       assert(shellJson, `${width}/${theme}/shell-ops: sem resultado`);
       const shellRes = JSON.parse(shellJson);
@@ -839,7 +869,7 @@ try {
       assert(witness, `${width}/${theme}: testemunha ausente`);
       backgrounds.push(witness.renderedBg);
 
-      const domainOut = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html)}, ${width}, ${JSON.stringify(theme)}, "domain-charts")`);
+      const domainOut = await cli('run-code', `(page) => (${runCases.toString()})(page, ${JSON.stringify(html)}, ${width}, ${JSON.stringify(theme)}, "domain-charts", ${JSON.stringify(localeFlagBodies)})`);
       const domainJson = domainOut.match(/^### Result\s*\n([^\n]+)/m)?.[1];
       assert(domainJson, `${width}/${theme}/domain-charts: sem resultado`);
       const domainRes = JSON.parse(domainJson);

@@ -151,4 +151,23 @@ describe("GET /api/networth - dívidas reais e passivos históricos negativos", 
     expect(oct.assets).toBe(0);
     expect(oct.assets - oct.liabilities).toBe(oct.netWorth);
   });
+
+  test("emite monthKey ISO aditivo e rótulos localizados em en e es", async () => {
+    const resEn = await GET(new Request("http://localhost/api/networth?months=2&locale=en"));
+    expect(resEn.status).toBe(200);
+    const dataEn = (await resEn.json()) as {
+      monthlyData: Array<{ month: string; monthKey: string }>;
+    };
+    expect(dataEn.monthlyData.map((m) => m.monthKey)).toEqual(["2026-10", "2026-11"]);
+    expect(dataEn.monthlyData[0].month).toContain("Oct");
+    expect(dataEn.monthlyData[1].month).toContain("Nov");
+
+    const resEs = await GET(new Request("http://localhost/api/networth?months=2&locale=es"));
+    expect(resEs.status).toBe(200);
+    const dataEs = (await resEs.json()) as {
+      monthlyData: Array<{ month: string; monthKey: string }>;
+    };
+    expect(dataEs.monthlyData.map((m) => m.monthKey)).toEqual(["2026-10", "2026-11"]);
+    expect(dataEs.monthlyData[0].month.toLowerCase()).toContain("oct");
+  });
 });

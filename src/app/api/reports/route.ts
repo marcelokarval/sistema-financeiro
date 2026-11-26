@@ -1,9 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import {
+  apiErrorResponse,
+  formatServerMonthLabel,
+  resolveRequestLocale,
+  toMonthKey,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
-export async function GET(request: Request) {
+export async function GET(request?: Request | NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url ?? 'http://localhost');
     const monthsParam = searchParams.get('months');
     const months = Math.min(Math.max(parseInt(monthsParam || '6', 10) || 6, 1), 24);
 
@@ -51,6 +59,7 @@ export async function GET(request: Request) {
     // Build monthly comparison data
     const monthlyData: {
       month: string;
+      monthKey: string;
       income: number;
       expense: number;
       net: number;
@@ -67,10 +76,7 @@ export async function GET(request: Request) {
       const daysInMonth = new Date(currentYear, currentMonth - i + 1, 0).getDate();
       const daysElapsed = i === 0 ? now.getDate() : daysInMonth;
 
-      const label = monthStart.toLocaleString('pt-BR', {
-        month: 'short',
-        year: '2-digit',
-      });
+      const label = formatServerMonthLabel(monthStart, locale);
 
       // Filter transactions for this month
       const monthTxns = allTransactions.filter(
@@ -101,6 +107,7 @@ export async function GET(request: Request) {
 
       monthlyData.push({
         month: label,
+        monthKey: toMonthKey(monthStart),
         income,
         expense,
         net,
@@ -174,6 +181,7 @@ export async function GET(request: Request) {
     // Savings rate trend (per month)
     const savingsRateTrend = monthlyData.map((m) => ({
       month: m.month,
+      monthKey: m.monthKey,
       rate: m.savingsRate,
     }));
 
@@ -195,9 +203,10 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching reports data:', error);
-    return NextResponse.json(
-      { error: 'Falha ao buscar dados dos relatórios' },
-      { status: 500 }
+    return apiErrorResponse(
+      'INTERNAL_ERROR',
+      translateApiMessage(locale, 'analytics.reportsFetchFailed'),
+      500
     );
   }
 }

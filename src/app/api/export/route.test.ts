@@ -121,4 +121,103 @@ describe("GET /api/export - neutralização de formula injection e datas civis",
       expect(res.status).toBe(400);
     }
   });
+
+  test("localiza cabeçalhos, enums, números, datas civis e nomes de arquivo para ?locale=en e ?locale=es preservando BOM e anti-formula-injection", async () => {
+    await localDb.transaction.create({
+      data: {
+        id: "tx-i18n",
+        type: "EXPENSE",
+        amount: 1234.56,
+        description: "=SUM(A1)",
+        date: new Date(2026, 10, 25, 10, 0),
+      },
+    });
+    await localDb.purchase.create({
+      data: {
+        id: "pur-i18n",
+        merchant: "Supermarket",
+        totalAmount: 250.5,
+        date: new Date("2026-11-25T00:00:00.000Z"),
+        installmentNumber: 1,
+        installmentTotal: 1,
+      },
+    });
+    await localDb.account.create({
+      data: {
+        id: "acc-i18n",
+        name: "Wallet",
+        type: "DIGITAL_WALLET",
+        balance: 987.65,
+        isActive: true,
+      },
+    });
+
+    // English
+    const enTxRes = await GET(new NextRequest("http://localhost/api/export?type=transactions&format=csv&locale=en"));
+    expect(enTxRes.status).toBe(200);
+    expect(enTxRes.headers.get("Content-Disposition")).toBe('attachment; filename="transactions.csv"');
+    const enTxCsv = await enTxRes.text();
+    expect(enTxCsv.startsWith("\uFEFF")).toBe(true);
+    expect(enTxCsv).toContain("ID;Type;Amount (BRL);Description;Date;Category;Account;Card");
+    expect(enTxCsv).toContain(";Expense;1,234.56;'=SUM(A1);");
+    expect(enTxCsv).not.toContain("''=");
+
+    const enPurRes = await GET(new NextRequest("http://localhost/api/export?type=purchases&format=csv&locale=en"));
+    expect(enPurRes.status).toBe(200);
+    expect(enPurRes.headers.get("Content-Disposition")).toBe('attachment; filename="purchases.csv"');
+    const enPurCsv = await enPurRes.text();
+    expect(enPurCsv).toContain("ID;Merchant;Total Amount (BRL);Date;Card;Items Count;Installment");
+    expect(enPurCsv).toContain(";250.50;11/25/2026;");
+    expect(enPurCsv).toContain(";In full");
+
+    const enAccRes = await GET(new NextRequest("http://localhost/api/export?type=accounts&format=csv&locale=en"));
+    expect(enAccRes.status).toBe(200);
+    expect(enAccRes.headers.get("Content-Disposition")).toBe('attachment; filename="accounts.csv"');
+    const enAccCsv = await enAccRes.text();
+    expect(enAccCsv).toContain("ID;Name;Type;Balance (BRL);Active");
+    expect(enAccCsv).toContain(";Digital Wallet;987.65;Yes");
+
+    // Spanish
+    const esTxRes = await GET(new NextRequest("http://localhost/api/export?type=transactions&format=csv&locale=es"));
+    expect(esTxRes.status).toBe(200);
+    expect(esTxRes.headers.get("Content-Disposition")).toBe('attachment; filename="transacciones.csv"');
+    const esTxCsv = await esTxRes.text();
+    expect(esTxCsv.startsWith("\uFEFF")).toBe(true);
+    expect(esTxCsv).toContain("ID;Tipo;Monto (R$);Descripción;Fecha;Categoría;Cuenta;Tarjeta");
+    expect(esTxCsv).toContain(";Gasto;");
+    expect(esTxCsv).toContain(";'=SUM(A1);");
+
+    const esPurRes = await GET(new NextRequest("http://localhost/api/export?type=purchases&format=csv&locale=es"));
+    expect(esPurRes.status).toBe(200);
+    expect(esPurRes.headers.get("Content-Disposition")).toBe('attachment; filename="compras.csv"');
+    const esPurCsv = await esPurRes.text();
+    expect(esPurCsv).toContain("ID;Comercio;Monto Total (R$);Fecha;Tarjeta;Cant. Artículos;Cuota");
+    expect(esPurCsv).toContain(";25/11/2026;");
+    expect(esPurCsv).toContain(";Al contado");
+
+    const esAccRes = await GET(new NextRequest("http://localhost/api/export?type=accounts&format=csv&locale=es"));
+    expect(esAccRes.status).toBe(200);
+    expect(esAccRes.headers.get("Content-Disposition")).toBe('attachment; filename="cuentas.csv"');
+    const esAccCsv = await esAccRes.text();
+    expect(esAccCsv).toContain(";Billetera Digital;");
+    expect(esAccCsv).toContain(";Sí");
+  });
+
+  test("retorna erros 400 localizados com code e X-Error-Code em pt, es e en", async () => {
+    const enRes = await GET(new NextRequest("http://localhost/api/export?type=unknown&format=csv&locale=en"));
+    expect(enRes.status).toBe(400);
+    expect(enRes.headers.get("X-Error-Code")).toBe("VALIDATION_ERROR");
+    expect(await enRes.json()).toEqual({
+      error: "Invalid export type. Use: transactions, purchases, or accounts",
+      code: "VALIDATION_ERROR",
+    });
+
+    const esRes = await GET(new NextRequest("http://localhost/api/export?type=transactions&format=json&locale=es"));
+    expect(esRes.status).toBe(400);
+    expect(esRes.headers.get("X-Error-Code")).toBe("VALIDATION_ERROR");
+    expect(await esRes.json()).toEqual({
+      error: "Formato inválido. Use: csv",
+      code: "VALIDATION_ERROR",
+    });
+  });
 });

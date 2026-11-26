@@ -1,0 +1,122 @@
+{
+  "navigation": {
+    "groups": {
+      "overview": "Visão",
+      "activity": "Movimentação",
+      "wealth": "Patrimônio"
+    },
+    "items": {
+      "dashboard": "Resumo",
+      "accounts": "Contas",
+      "cards": "Cartões",
+      "purchases": "Compras",
+      "categories": "Categorias",
+      "investments": "Investimentos",
+      "installments": "Parcelas",
+      "consortiums": "Consórcios",
+      "savings": "Caixinhas"
+    },
+    "brandName": "FinanceApp",
+    "brandSubtitle": "Patrimônio pessoal",
+    "desktopAriaLabel": "Navegação principal",
+    "mobileAriaLabel": "Navegação móvel",
+    "allDestinationsAriaLabel": "Todos os destinos",
+    "realtimeActive": "Atualização em tempo real ativa",
+    "realtimeUnavailable": "Tempo real indisponível",
+    "personalSpace": "Espaço pessoal",
+    "reload": "Recarregar",
+    "expandNavigation": "Expandir navegação",
+    "collapseNavigation": "Recolher navegação",
+    "more": "Mais",
+    "moreDestinations": "Mais destinos",
+    "moreDescription": "Escolha uma área do FinanceApp.",
+    "currentPageSuffix": "(página atual)",
+    "languageSection": "Idioma"
+  },
+  "header": {
+    "dashboardTitle": "Resumo financeiro",
+    "realtimeUnavailable": "Tempo real indisponível",
+    "openSearch": "Abrir busca global",
+    "searchButton": "Buscar em tudo",
+    "shortcutHint": "Ctrl/⌘ K",
+    "useLightTheme": "Usar tema claro",
+    "useDarkTheme": "Usar tema escuro",
+    "openAdvisor": "Abrir assistente financeiro IA",
+    "notifications": "Notificações",
+    "newEntry": "Novo lançamento",
+    "viewContext": {
+      "dashboard": "Visão geral das suas finanças",
+      "accounts": "Gerencie suas contas e saldos",
+      "cards": "Acompanhe cartões e faturas",
+      "purchases": "Controle detalhado de compras",
+      "categories": "Organize receitas e despesas",
+      "investments": "Aportes, dividendos e rendimentos",
+      "installments": "Financiamentos e parcelamentos",
+      "consortiums": "Controle de consórcios",
+      "savings": "Metas e caixinhas de poupança"
+    }
+  },
+  "quickActions": {
+    "label": "Ações rápidas",
+    "newTransaction": "Nova Transação",
+    "newPurchase": "Nova Compra",
+    "newGoal": "Nova Meta",
+    "exportData": "Exportar Dados"
+  },
+  "advisorDialog": {
+    "title": "Assistente financeiro IA",
+    "close": "Fechar assistente financeiro"
+  },
+  "globalSearch": {
+    "title": "Busca Global",
+    "description": "Transações, compras, contas, cartões, categorias, investimentos, parcelas e consórcios",
+    "inputAriaLabel": "Buscar nas finanças",
+    "placeholder": "Digite um termo de busca…",
+    "loadError": "Não foi possível carregar todos os dados da busca.",
+    "retry": "Tentar novamente",
+    "loading": "Buscando dados...",
+    "noResults": "Nenhum resultado encontrado",
+    "noResultsHint": "Tente buscar por outro termo.",
+    "startTyping": "Comece a digitar para buscar",
+    "resultCount": "{count, plural, one {# resultado} other {# resultados}}",
+    "navigateHint": "Navegar",
+    "selectHint": "Selecionar",
+    "groups": {
+      "transactions": "Transações",
+      "purchases": "Compras",
+      "accounts": "Contas",
+      "cards": "Cartões",
+      "categories": "Categorias",
+      "investments": "Investimentos",
+      "installments": "Parcelas",
+      "consortiums": "Consórcios"
+    },
+    "fallbacks": {
+      "noDescription": "Sem descrição",
+      "noMerchant": "Sem estabelecimento",
+      "noName": "Sem nome",
+      "cardDefault": "Cartão"
+    },
+    "labels": {
+      "transfer": "Transferência",
+      "statement": "Fatura: {amount}",
+      "perMonth": "{amount}/mês",
+      "groupQuota": "Grupo {group} · Cota {quota}"
+    },
+    "accountTypes": {
+      "CASH": "Dinheiro",
+      "BANK": "Banco",
+      "DIGITAL_WALLET": "Carteira Digital"
+    },
+    "cardTypes": {
+      "CREDIT": "Crédito",
+      "DEBIT": "Débito",
+      "BOTH": "Crédito e Débito"
+    },
+    "categoryTypes": {
+      "INCOME": "Receita",
+      "EXPENSE": "Despesa",
+      "BOTH": "Ambos"
+    }
+  }
+}

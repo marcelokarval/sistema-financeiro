@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
+import { NextRequest } from "next/server";
 
 describe("GET /api/upcoming-bills - vencimento de cartão, domingo e fatura zerada", () => {
   let tempDir: string;
@@ -127,5 +128,95 @@ describe("GET /api/upcoming-bills - vencimento de cartão, domingo e fatura zera
     expect(data.bills).toHaveLength(2);
     expect(data.summary.thisWeek.count).toBe(1);
     expect(data.summary.thisWeek.amount).toBe(200);
+  });
+
+  test("localiza títulos e fontes de contas em pt (default), es e en", async () => {
+    setSystemTime(new Date("2026-11-10T12:00:00Z"));
+
+    await localDb.card.create({
+      data: {
+        id: "c-i18n",
+        name: "Nubank",
+        type: "CREDIT",
+        brand: "MASTERCARD",
+        lastFourDigits: "9999",
+        creditLimit: 5000,
+        currentBalance: 300,
+        closingDay: 10,
+        dueDay: 18,
+        isActive: true,
+      },
+    });
+    await localDb.installmentPlan.create({
+      data: {
+        id: "ip-i18n",
+        description: "Notebook",
+        totalAmount: 1200,
+        installmentCount: 6,
+        monthlyValue: 200,
+        type: "",
+      },
+    });
+    await localDb.installment.create({
+      data: {
+        id: "inst-i18n",
+        number: 1,
+        amount: 200,
+        dueDate: new Date("2026-11-15T12:00:00Z"),
+        status: "PENDING",
+        installmentPlanId: "ip-i18n",
+      },
+    });
+    await localDb.consortium.create({
+      data: {
+        id: "cons-i18n",
+        description: "Auto",
+        totalAmount: 10000,
+        monthlyPayment: 500,
+        installmentCount: 20,
+      },
+    });
+    await localDb.consortiumInstallment.create({
+      data: {
+        id: "ci-i18n",
+        number: 1,
+        amount: 500,
+        dueDate: new Date("2026-11-16T12:00:00Z"),
+        status: "PENDING",
+        consortiumId: "cons-i18n",
+      },
+    });
+    await localDb.recurringTransaction.create({
+      data: {
+        id: "rec-i18n",
+        description: "Internet",
+        amount: 120,
+        type: "EXPENSE",
+        frequency: "MONTHLY",
+        nextDate: new Date("2026-11-17T12:00:00Z"),
+        isActive: true,
+      },
+    });
+
+    const resPt = await GET();
+    const dataPt = await resPt.json();
+    expect(dataPt.bills.find((b: { id: string }) => b.id === "card-c-i18n").title).toBe("Fatura Nubank");
+    expect(dataPt.bills.find((b: { id: string }) => b.id === "inst-i18n").source).toBe("Parcelamento");
+    expect(dataPt.bills.find((b: { id: string }) => b.id === "ci-i18n").source).toBe("Consórcio");
+    expect(dataPt.bills.find((b: { id: string }) => b.id === "rec-i18n").source).toBe("Recorrente");
+
+    const resEs = await GET(new NextRequest("http://localhost/api/upcoming-bills?locale=es"));
+    const dataEs = await resEs.json();
+    expect(dataEs.bills.find((b: { id: string }) => b.id === "card-c-i18n").title).toBe("Resumen Nubank");
+    expect(dataEs.bills.find((b: { id: string }) => b.id === "inst-i18n").source).toBe("Plan de cuotas");
+    expect(dataEs.bills.find((b: { id: string }) => b.id === "ci-i18n").source).toBe("Consorcio");
+    expect(dataEs.bills.find((b: { id: string }) => b.id === "rec-i18n").source).toBe("Recurrente");
+
+    const resEn = await GET(new NextRequest("http://localhost/api/upcoming-bills?locale=en"));
+    const dataEn = await resEn.json();
+    expect(dataEn.bills.find((b: { id: string }) => b.id === "card-c-i18n").title).toBe("Nubank Bill");
+    expect(dataEn.bills.find((b: { id: string }) => b.id === "inst-i18n").source).toBe("Installment");
+    expect(dataEn.bills.find((b: { id: string }) => b.id === "ci-i18n").source).toBe("Consortium");
+    expect(dataEn.bills.find((b: { id: string }) => b.id === "rec-i18n").source).toBe("Recurring");
   });
 });

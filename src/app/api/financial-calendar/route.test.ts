@@ -63,4 +63,28 @@ describe("GET /api/financial-calendar - isolamento de TRANSFER", () => {
     const allEvents = data.days.flatMap((d: { events: Array<{ id: string }> }) => d.events);
     expect(allEvents.some((e: { id: string }) => e.id === "tx-tr-1")).toBe(false);
   });
+
+  test("emite dateKey ISO e localiza dayOfWeek em pt, es e en", async () => {
+    // 2026-11-15 é domingo (dayIndex 0), 2026-11-16 é segunda (dayIndex 1)
+    const resPt = await GET(new NextRequest("http://localhost/api/financial-calendar?days=7"));
+    expect(resPt.status).toBe(200);
+    const dataPt = await resPt.json();
+    expect(dataPt.days[0].dateKey).toBe("2026-11-15");
+    expect(dataPt.days[0].dayOfWeek).toBe("Dom");
+    expect(dataPt.days[1].dayOfWeek).toBe("Seg");
+
+    const resEn = await GET(new NextRequest("http://localhost/api/financial-calendar?days=7&locale=en"));
+    expect(resEn.status).toBe(200);
+    const dataEn = await resEn.json();
+    expect(dataEn.days[0].dateKey).toBe("2026-11-15");
+    expect(dataEn.days[0].dayOfWeek).toBe("Sun");
+    expect(dataEn.days[1].dayOfWeek).toBe("Mon");
+
+    const resEs = await GET(new NextRequest("http://localhost/api/financial-calendar?days=7&locale=es"));
+    expect(resEs.status).toBe(200);
+    const dataEs = await resEs.json();
+    expect(dataEs.days[0].dateKey).toBe("2026-11-15");
+    expect(dataEs.days[0].dayOfWeek).toBe("Dom");
+    expect(dataEs.days[1].dayOfWeek).toBe("Lun");
+  });
 });

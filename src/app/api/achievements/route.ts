@@ -1,5 +1,11 @@
 import { db } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  apiErrorResponse,
+  formatServerCurrencyBRL,
+  resolveRequestLocale,
+  translateApiMessage,
+} from '@/lib/server-i18n';
 
 // ─── Types ──────────────────────────────────────────────────────
 interface Achievement {
@@ -16,7 +22,9 @@ interface Achievement {
 }
 
 // ─── GET /api/achievements ──────────────────────────────────────
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
+
   try {
     // ── Current month boundaries ───────────────────────────────
     const now = new Date();
@@ -112,9 +120,8 @@ export async function GET() {
       // 1. Primeira Economia
       {
         id: 'primeira-economia',
-        title: 'Primeira Economia',
-        description:
-          'Economize dinheiro pela primeira vez — mês com receita maior que despesa',
+        title: translateApiMessage(locale, 'achievements.items.primeira-economia.title'),
+        description: translateApiMessage(locale, 'achievements.items.primeira-economia.description'),
         icon: 'PiggyBank',
         category: 'poupanca',
         unlocked: monthIncome > monthExpense && monthIncome > 0,
@@ -132,8 +139,8 @@ export async function GET() {
       // 2. Poupador Dedicado
       {
         id: 'poupador-dedicado',
-        title: 'Poupador Dedicado',
-        description: 'Taxa de poupança acima de 20% no mês atual',
+        title: translateApiMessage(locale, 'achievements.items.poupador-dedicado.title'),
+        description: translateApiMessage(locale, 'achievements.items.poupador-dedicado.description'),
         icon: 'Target',
         category: 'poupanca',
         unlocked: savingsRate >= 20,
@@ -146,8 +153,8 @@ export async function GET() {
       // 3. Mestre da Poupança
       {
         id: 'mestre-poupanca',
-        title: 'Mestre da Poupança',
-        description: 'Taxa de poupança acima de 40% — você é um mestre em economizar',
+        title: translateApiMessage(locale, 'achievements.items.mestre-poupanca.title'),
+        description: translateApiMessage(locale, 'achievements.items.mestre-poupanca.description'),
         icon: 'Crown',
         category: 'poupanca',
         unlocked: savingsRate >= 40,
@@ -160,8 +167,8 @@ export async function GET() {
       // 4. Investidor Iniciante
       {
         id: 'investidor-iniciante',
-        title: 'Investidor Iniciante',
-        description: 'Possua pelo menos 1 investimento ativo',
+        title: translateApiMessage(locale, 'achievements.items.investidor-iniciante.title'),
+        description: translateApiMessage(locale, 'achievements.items.investidor-iniciante.description'),
         icon: 'TrendingUp',
         category: 'investimento',
         unlocked: investments.length >= 1,
@@ -175,8 +182,8 @@ export async function GET() {
       // 5. Carteira Diversificada
       {
         id: 'carteira-diversificada',
-        title: 'Carteira Diversificada',
-        description: 'Tenha 3 ou mais tipos diferentes de investimento',
+        title: translateApiMessage(locale, 'achievements.items.carteira-diversificada.title'),
+        description: translateApiMessage(locale, 'achievements.items.carteira-diversificada.description'),
         icon: 'BarChart3',
         category: 'investimento',
         unlocked: investments.length >= 3,
@@ -190,8 +197,8 @@ export async function GET() {
       // 6. Meta Conquistada
       {
         id: 'meta-conquistada',
-        title: 'Meta Conquistada',
-        description: 'Complete qualquer meta de poupança',
+        title: translateApiMessage(locale, 'achievements.items.meta-conquistada.title'),
+        description: translateApiMessage(locale, 'achievements.items.meta-conquistada.description'),
         icon: 'Award',
         category: 'poupanca',
         unlocked: completedGoals.length > 0,
@@ -207,8 +214,8 @@ export async function GET() {
       // 7. Sem Dívidas
       {
         id: 'sem-dividas',
-        title: 'Sem Dívidas',
-        description: 'Fatura zerada em todos os cartões de crédito',
+        title: translateApiMessage(locale, 'achievements.items.sem-dividas.title'),
+        description: translateApiMessage(locale, 'achievements.items.sem-dividas.description'),
         icon: 'Shield',
         category: 'controle',
         unlocked: allCardsZeroBalance && cards.length > 0,
@@ -229,8 +236,8 @@ export async function GET() {
       // 8. Organizado
       {
         id: 'organizado',
-        title: 'Organizado',
-        description: 'Utilize 3 ou mais categorias diferentes',
+        title: translateApiMessage(locale, 'achievements.items.organizado.title'),
+        description: translateApiMessage(locale, 'achievements.items.organizado.description'),
         icon: 'Tag',
         category: 'controle',
         unlocked: categoriesInUse >= 3,
@@ -243,8 +250,8 @@ export async function GET() {
       // 9. Colecionador de Contas
       {
         id: 'colecionador-contas',
-        title: 'Colecionador de Contas',
-        description: 'Possua 4 ou mais contas bancárias ativas',
+        title: translateApiMessage(locale, 'achievements.items.colecionador-contas.title'),
+        description: translateApiMessage(locale, 'achievements.items.colecionador-contas.description'),
         icon: 'Wallet',
         category: 'exploracao',
         unlocked: accounts.length >= 4,
@@ -257,8 +264,8 @@ export async function GET() {
       // 10. Registros Consistentes
       {
         id: 'registros-consistentes',
-        title: 'Registros Consistentes',
-        description: 'Registre 20 ou mais transações no mês atual',
+        title: translateApiMessage(locale, 'achievements.items.registros-consistentes.title'),
+        description: translateApiMessage(locale, 'achievements.items.registros-consistentes.description'),
         icon: 'Zap',
         category: 'controle',
         unlocked: transactions.length >= 20,
@@ -272,9 +279,10 @@ export async function GET() {
       // 11. Patrimônio Crescendo
       {
         id: 'patrimonio-crescendo',
-        title: 'Patrimônio Crescendo',
-        description:
-          'Patrimônio líquido positivo e acima de R$ 1.000,00',
+        title: translateApiMessage(locale, 'achievements.items.patrimonio-crescendo.title'),
+        description: translateApiMessage(locale, 'achievements.items.patrimonio-crescendo.description', {
+          amount: formatServerCurrencyBRL(1000, locale),
+        }),
         icon: 'Star',
         category: 'investimento',
         unlocked: netWorth > 1000,
@@ -287,9 +295,8 @@ export async function GET() {
       // 12. Financeiro Completo
       {
         id: 'financeiro-completo',
-        title: 'Financeiro Completo',
-        description:
-          'Utilize todos os recursos: investimentos, metas e parcelamentos',
+        title: translateApiMessage(locale, 'achievements.items.financeiro-completo.title'),
+        description: translateApiMessage(locale, 'achievements.items.financeiro-completo.description'),
         icon: 'CreditCard',
         category: 'exploracao',
         unlocked: hasInvestments && hasSavingsGoals && hasInstallments,
@@ -310,9 +317,6 @@ export async function GET() {
     return NextResponse.json({ achievements });
   } catch (error) {
     console.error('Erro ao buscar conquistas:', error);
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    );
+    return apiErrorResponse('INTERNAL_ERROR', translateApiMessage(locale, 'achievements.fetchFailed'), 500);
   }
 }

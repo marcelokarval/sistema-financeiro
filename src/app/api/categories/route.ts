@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { mapPrismaError, parseJsonBody } from "@/lib/api-validation";
+import { mapPrismaErrorLocalized, parseJsonBodyLocalized } from "@/lib/api-validation";
+import {
+  apiErrorResponse,
+  apiSuccessMessage,
+  resolveRequestLocale,
+  translateApiMessage,
+} from "@/lib/server-i18n";
 
 const CATEGORY_TYPES = new Set(["INCOME", "EXPENSE"]);
 
 // GET /api/categories - List all categories
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
     const categories = await db.category.findMany({
       orderBy: { createdAt: "desc" },
@@ -18,17 +25,19 @@ export async function GET() {
     return NextResponse.json(categories);
   } catch (error) {
     console.error("Error fetching categories:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch categories" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.categories.fetchFailed"),
+      500
     );
   }
 }
 
 // POST /api/categories - Create category
 export async function POST(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -36,28 +45,42 @@ export async function POST(request: NextRequest) {
     const { name, icon, type, color, isActive } = parsedBody.data;
 
     if (typeof name !== "string" || name.trim() === "") {
-      return NextResponse.json(
-        { error: "Category name is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.categories.nameRequired"),
+        400
       );
     }
 
     const resolvedType = type === undefined || type === null ? "EXPENSE" : type;
     if (typeof resolvedType !== "string" || !CATEGORY_TYPES.has(resolvedType)) {
-      return NextResponse.json(
-        { error: "Invalid category type" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.categories.invalidType"),
+        400
       );
     }
 
     if (icon !== undefined && icon !== null && typeof icon !== "string") {
-      return NextResponse.json({ error: "Invalid icon" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidIcon"),
+        400
+      );
     }
     if (color !== undefined && color !== null && typeof color !== "string") {
-      return NextResponse.json({ error: "Invalid color" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidColor"),
+        400
+      );
     }
     if (isActive !== undefined && typeof isActive !== "boolean") {
-      return NextResponse.json({ error: "Invalid isActive flag" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidActiveFlag"),
+        400
+      );
     }
 
     const category = await db.category.create({
@@ -72,22 +95,24 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
-    const prismaResponse = mapPrismaError(error);
+    const prismaResponse = mapPrismaErrorLocalized(error, locale);
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error creating category:", error);
-    return NextResponse.json(
-      { error: "Failed to create category" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.categories.createFailed"),
+      500
     );
   }
 }
 
 // PUT /api/categories - Update category
 export async function PUT(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -96,41 +121,57 @@ export async function PUT(request: NextRequest) {
     const categoryId = typeof id === "string" ? id.trim() : "";
 
     if (!categoryId) {
-      return NextResponse.json(
-        { error: "Category id is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.categories.idRequired"),
+        400
       );
     }
 
     if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
-      return NextResponse.json(
-        { error: "Category name is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.categories.nameRequired"),
+        400
       );
     }
 
     if (type !== undefined && (typeof type !== "string" || !CATEGORY_TYPES.has(type))) {
-      return NextResponse.json(
-        { error: "Invalid category type" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.categories.invalidType"),
+        400
       );
     }
 
     if (icon !== undefined && typeof icon !== "string") {
-      return NextResponse.json({ error: "Invalid icon" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidIcon"),
+        400
+      );
     }
     if (color !== undefined && typeof color !== "string") {
-      return NextResponse.json({ error: "Invalid color" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidColor"),
+        400
+      );
     }
     if (isActive !== undefined && typeof isActive !== "boolean") {
-      return NextResponse.json({ error: "Invalid isActive flag" }, { status: 400 });
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "validation.invalidActiveFlag"),
+        400
+      );
     }
 
     const existing = await db.category.findUnique({ where: { id: categoryId } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Category not found" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.categories.notFound"),
+        404
       );
     }
 
@@ -147,22 +188,26 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(category);
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, { notFound: "Category not found" });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.categories.notFound"),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error updating category:", error);
-    return NextResponse.json(
-      { error: "Failed to update category" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.categories.updateFailed"),
+      500
     );
   }
 }
 
 // DELETE /api/categories - Delete category
 export async function DELETE(request: NextRequest) {
+  const locale = resolveRequestLocale(request);
   try {
-    const parsedBody = await parseJsonBody(request);
+    const parsedBody = await parseJsonBodyLocalized(request, { locale });
     if (!parsedBody.ok) {
       return parsedBody.response;
     }
@@ -171,32 +216,37 @@ export async function DELETE(request: NextRequest) {
     const categoryId = typeof id === "string" ? id.trim() : "";
 
     if (!categoryId) {
-      return NextResponse.json(
-        { error: "Category id is required" },
-        { status: 400 }
+      return apiErrorResponse(
+        "VALIDATION_ERROR",
+        translateApiMessage(locale, "crud.categories.idRequired"),
+        400
       );
     }
 
     const existing = await db.category.findUnique({ where: { id: categoryId } });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Category not found" },
-        { status: 404 }
+      return apiErrorResponse(
+        "NOT_FOUND",
+        translateApiMessage(locale, "crud.categories.notFound"),
+        404
       );
     }
 
     await db.category.delete({ where: { id: categoryId } });
 
-    return NextResponse.json({ success: true, message: "Category deleted" });
+    return apiSuccessMessage(translateApiMessage(locale, "crud.categories.deleted"));
   } catch (error) {
-    const prismaResponse = mapPrismaError(error, { notFound: "Category not found" });
+    const prismaResponse = mapPrismaErrorLocalized(error, locale, {
+      notFound: translateApiMessage(locale, "crud.categories.notFound"),
+    });
     if (prismaResponse) {
       return prismaResponse;
     }
     console.error("Error deleting category:", error);
-    return NextResponse.json(
-      { error: "Failed to delete category" },
-      { status: 500 }
+    return apiErrorResponse(
+      "INTERNAL_ERROR",
+      translateApiMessage(locale, "crud.categories.deleteFailed"),
+      500
     );
   }
 }
