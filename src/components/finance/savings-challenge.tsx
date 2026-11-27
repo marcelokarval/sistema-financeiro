@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, numberFmt, percentFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { getDateFnsLocale } from './analytics-i18n';
 
@@ -91,7 +91,7 @@ export function ChallengeRow({ challenge, showValues = true }: { challenge: Chal
   const description = showValues ? challenge.description : maskChallengeText(challenge.description, maskedValue);
   const formatValue = (v: number, unit: string) => {
     if (!showValues) return unit === 'currency' ? maskedValue : '•••';
-    return unit === 'currency' ? currencyFmt(v, locale) : `${v.toFixed(1)}%`;
+    return unit === 'currency' ? currencyFmt(v, locale) : percentFmt(v, locale, { signed: false });
   };
   const width = Math.min(100, Math.max(challenge.progress, 0));
 
@@ -102,14 +102,14 @@ export function ChallengeRow({ challenge, showValues = true }: { challenge: Chal
         <p className="break-words text-xs text-muted-foreground">{description}</p>
       </div>
       <div className="min-w-0 space-y-1.5 text-xs">
-        <p className="flex flex-wrap justify-between gap-x-2"><span>{label}</span><span className="font-mono tabular-nums">{showValues ? `${challenge.progress.toFixed(0)}%` : '•••'}</span></p>
+        <p className="flex flex-wrap justify-between gap-x-2"><span>{label}</span><span className="font-mono tabular-nums">{showValues ? percentFmt(challenge.progress, locale, { precision: 0, signed: false }) : '•••'}</span></p>
         <FinanceProgress
           label={t('challenges.row.progressAria', { title })}
           value={width}
           min={0}
           max={100}
           unit="%"
-          valueText={showValues ? `${challenge.progress.toFixed(0)}%` : '•••'}
+          valueText={showValues ? percentFmt(challenge.progress, locale, { precision: 0, signed: false }) : '•••'}
           showHeader={false}
         />
         <p className="break-words text-muted-foreground">
@@ -200,7 +200,7 @@ export function SavingsChallengeContent({
   const maskedValue = t('maskedValue');
   const money = (v: number) => (showValues ? currencyFmt(v, locale) : maskedValue);
   const motivation = data.savingsRate >= 30
-    ? t('challenges.motivation.high', { rate: showValues ? data.savingsRate.toFixed(0) : '•••' })
+    ? t('challenges.motivation.high', { rate: showValues ? numberFmt(data.savingsRate, locale, { maximumFractionDigits: 0 }) : '•••' })
     : data.savingsRate >= 20
       ? t('challenges.motivation.good', { days: data.daysRemaining })
       : data.savingsRate >= 10
@@ -217,7 +217,7 @@ export function SavingsChallengeContent({
         <p className="text-xs capitalize text-muted-foreground">{format(new Date(), 'MMMM yyyy', { locale: getDateFnsLocale(locale) })}</p>
       </header>
       <dl aria-label={t('challenges.summaryAria')} className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs sm:grid-cols-3 xl:grid-cols-5">
-        <FinanceMetric variant="compact" label={t('challenges.metrics.savingsRate')} value={`${Math.round(data.savingsRate)}%`} caption={t(`challenges.rateLabels.${getSavingsLabelKey(data.savingsRate)}`)} showValues={showValues} maskedValue="•••" valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('challenges.metrics.savingsRate')} value={percentFmt(data.savingsRate, locale, { precision: 0, signed: false })} caption={t(`challenges.rateLabels.${getSavingsLabelKey(data.savingsRate)}`)} showValues={showValues} maskedValue="•••" valueClassName="text-sm" />
         <FinanceMetric variant="compact" label={t('challenges.metrics.monthSavings')} value={currencyFmt(data.currentMonthSavings, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
         <FinanceMetric variant="compact" label={t('challenges.metrics.dailyAverage')} value={currencyFmt(data.dailyAverageExpense, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
         <FinanceMetric variant="compact" label={t('challenges.metrics.projectedSavings')} value={currencyFmt(data.projectedSavings, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
@@ -230,7 +230,7 @@ export function SavingsChallengeContent({
         </div>
         <p className="break-words text-xs text-muted-foreground">
           <strong className={cn(amount, 'text-foreground')}>{money(data.todaySpending)}</strong>{' '}
-          {t('challenges.today.usagePrefix', { target: money(data.dailyTarget), pct: showValues ? todayProgress.toFixed(0) : '•••' })}
+          {t('challenges.today.usagePrefix', { target: money(data.dailyTarget), pct: showValues ? numberFmt(todayProgress, locale, { maximumFractionDigits: 0 }) : '•••' })}
         </p>
         <FinanceProgress
           label={t('challenges.today.progressLabel')}
@@ -238,7 +238,7 @@ export function SavingsChallengeContent({
           min={0}
           max={100}
           unit="%"
-          valueText={showValues ? `${todayProgress.toFixed(0)}%` : '•••'}
+          valueText={showValues ? percentFmt(todayProgress, locale, { precision: 0, signed: false }) : '•••'}
           showHeader={false}
         />
         {data.todaySpending === 0 && <p className="text-xs text-muted-foreground">{t('challenges.today.noSpending')}</p>}

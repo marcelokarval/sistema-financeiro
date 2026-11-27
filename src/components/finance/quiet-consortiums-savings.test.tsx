@@ -1728,3 +1728,27 @@ test('#18: ConsortiumDetail filtra Todas/Pendentes/Pagas mantendo 1..N, isola co
   const allPaidTree = renderDetail([detailInstallments[0]]);
   expect(findBtn(allPaidTree, 'Ir para próxima pendente').props.disabled).toBe(true);
 });
+
+test('#20: SavingsGoalRow localiza taxa yieldRate decimal por locale (12,5% a.a. / 12,5% anual / 12.5% p.a.)', () => {
+  const expected = {
+    pt: '12,5% a.a.',
+    es: '12,5% anual',
+    en: '12.5% p.a.',
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const html = renderWithIntl(
+      <savings.SavingsGoalRow goal={{ ...goal, yieldRate: 12.5 }} onDeposit={noop} onEdit={noop} onDelete={noop} />,
+      locale,
+    );
+    expect(html).toContain(expected[locale]);
+
+    const zeroYieldHtml = renderWithIntl(
+      <savings.SavingsGoalRow goal={{ ...goal, yieldRate: 0 }} onDeposit={noop} onEdit={noop} onDelete={noop} />,
+      locale,
+    );
+    expect(zeroYieldHtml).not.toContain('% a.a.');
+    expect(zeroYieldHtml).not.toContain('% anual');
+    expect(zeroYieldHtml).not.toContain('% p.a.');
+  }
+});

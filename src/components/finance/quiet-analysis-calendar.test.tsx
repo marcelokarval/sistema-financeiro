@@ -120,7 +120,7 @@ test('financial-reports mantém Tabs fora de CardHeader, exibe erro com retry e 
     />,
   );
   expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>R\$ 400,00/);
-  expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>60\.0%/);
+  expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>60,0%/);
 });
 
 test('transaction-analytics remove classe drop- quebrada e imports mortos, exibe erro com retry e tabular-nums', () => {
@@ -186,7 +186,7 @@ test('networth-evolution remove imports mortos, formata patrimônio com font-mon
   expect(readyHtml).toContain('aria-valuemin="0"');
   expect(readyHtml).toContain('aria-valuemax="100"');
   expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>R\$ 25\.000,00/);
-  expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>25\.0%/);
+  expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>25,0%/);
 });
 
 test('debt-overview remove dark: redundante e hover:bg-accent, formata valores em font-mono e usa progressbar acessível', () => {
@@ -213,7 +213,7 @@ test('debt-overview remove dark: redundante e hover:bg-accent, formata valores e
   expect(html).toContain('aria-valuemin="0"');
   expect(html).toContain('aria-valuemax="100"');
   expect(html).toMatch(/font-mono[^>]*tabular-nums[^>]*>R\$ 1\.500,00/);
-  expect(html).toMatch(/font-mono[^>]*tabular-nums[^>]*>20\.0%/);
+  expect(html).toMatch(/font-mono[^>]*tabular-nums[^>]*>20,0%/);
 });
 
 test('financial-calendar usa ChevronRight, botão retry no erro e tamanhos acessíveis', () => {
@@ -921,7 +921,7 @@ test('Task 0018: seções extraídas de dívidas, calendário, relatórios e an�
   expect(debtExpandedHtml).toContain('Nubank');
   expect(debtExpandedHtml).toContain('****4321');
   expect(debtExpandedHtml).toContain('Uso do limite do cartão Nubank');
-  expect(debtExpandedHtml).toContain('35.0%');
+  expect(debtExpandedHtml).toContain('35,0%');
 
   const CalendarView = calendar.FinancialCalendarContent;
   const calendarHtml = renderToStaticMarkup(
@@ -1632,7 +1632,7 @@ test('TransactionAnalytics e TransactionAnalysisTabs aplicam min-w-0 e sub-widge
   for (const y of findYAxisList(nwTree)) expect(y.props.tickFormatter(25000)).toBe('•••');
   const nwHtml = renderToStaticMarkup(<NetworthView {...nwProps} />);
   expect(nwHtml).toContain('aria-valuetext="•••"');
-  expect(nwHtml).not.toMatch(/25\.000|30\.000|5\.000|25\.0%/);
+  expect(nwHtml).not.toMatch(/25\.000|30\.000|5\.000|25[.,]0%/);
 
   const DebtView = debt.DebtOverviewContent;
   const debtHtml = renderToStaticMarkup(
@@ -1653,7 +1653,7 @@ test('TransactionAnalytics e TransactionAnalysisTabs aplicam min-w-0 e sub-widge
   );
   expect(debtHtml).toContain('R$ ••••••');
   expect(debtHtml).toContain('•••');
-  expect(debtHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/2\.500|1\.500|1\.000|5\.000|35\.0%|30% usado/);
+  expect(debtHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/2\.500|1\.500|1\.000|5\.000|35[.,]0%|30% usado/);
 
   const CalendarView = calendar.FinancialCalendarContent;
   const calHtml = renderToStaticMarkup(
@@ -1788,5 +1788,96 @@ test('#11: FinancialCalendar marca dias sem receita, despesa ou eventos com aria
     expect(selectedCalls).toEqual(['2026-11-12']);
   } finally {
     harness.cleanupAll();
+  }
+});
+
+test('#20: widgets de análise formatam taxas e percentuais decimais com separador localizado em pt, es e en', () => {
+  const ReportView = reports.FinancialReportsContent;
+  const NetworthView = networth.NetworthEvolutionContent;
+  const DebtView = debt.DebtOverviewContent;
+  const BalView = balanceProj.BalanceProjectionContent;
+
+  const expectedDecimal = { pt: ',', es: ',', en: '.' } as const;
+  for (const locale of CANONICAL_LOCALES) {
+    const sep = expectedDecimal[locale];
+    const reportHtml = renderWithIntl(
+      <ReportView
+        loading={false}
+        activeTab="analysis"
+        onTabChange={() => {}}
+        onRetry={() => {}}
+        data={{
+          monthlyData: [{ month: 'jan', income: 1000, expense: 400, net: 600, transactionCount: 2, purchaseCount: 1, avgDailySpend: 20, savingsRate: 60 }],
+          topExpenseCategory: { name: 'Mercado', color: '#888', total: 400, count: 3 },
+          topCategories: [{ name: 'Mercado', color: '#888', total: 400, count: 3 }],
+          avgDailySpend: 20,
+          highestExpense: { id: 'e1', description: 'Compra', amount: 400, date: '2026-01-01' },
+          lowestIncome: { id: 'i1', description: 'Salário', amount: 1000, date: '2026-01-01' },
+          savingsRateTrend: [{ month: 'jan', rate: 60.5 }],
+          ticketMedio: 133.33,
+        }}
+      />,
+      locale,
+    );
+    expect(reportHtml).toContain(`60${sep}5%`);
+
+    const nwHtml = renderWithIntl(
+      <NetworthView
+        loading={false}
+        selectedMonths={6}
+        onSelectMonths={() => {}}
+        fetchData={() => {}}
+        onRetry={() => {}}
+        data={{
+          monthlyData: [
+            { month: 'jan', netWorth: 20000, assets: 25000, liabilities: 5000, changePercent: 5.2, changeAmount: 1000 },
+            { month: 'fev', netWorth: 25000, assets: 30000, liabilities: 5000, changePercent: 25.4, changeAmount: 5000 },
+          ],
+        }}
+      />,
+      locale,
+    );
+    expect(nwHtml).toContain(`+25${sep}4%`);
+    expect(nwHtml).toContain(`25${sep}0%`);
+
+    const debtHtml = renderWithIntl(
+      <DebtView
+        loading={false}
+        expandedType="installments"
+        onToggleExpand={() => {}}
+        onRetry={() => {}}
+        data={{
+          totalDebt: 2500, cardDebt: 1500, installmentDebt: 1000, consortiumDebt: 0,
+          debtToIncomeRatio: 35.5, monthlyIncome: 7142.85,
+          cards: [],
+          installments: [{ id: 'i1', description: 'Notebook', totalAmount: 2000, paidAmount: 1000, remaining: 1000, installmentCount: 10, paidInstallments: 5, monthlyValue: 200, interestRate: 1.5, type: 'CARD_INSTALLMENT', status: 'ACTIVE', cardName: 'Nubank', nextPaymentDate: null }],
+          consortiums: [],
+        }}
+      />,
+      locale,
+    );
+    expect(debtHtml).toContain(`35${sep}5%`);
+    expect(debtHtml).toContain(`1${sep}5%`);
+
+    const balHtml = renderWithIntl(
+      <BalView
+        loading={false}
+        selectedMonths={6}
+        onSelectMonths={() => {}}
+        onRetry={() => {}}
+        data={{
+          accounts: [],
+          monthLabels: ['jan'],
+          totalCurrentBalance: 1000,
+          totalProjected: 1125,
+          averageMonthlySavings: 125,
+          savingsRate: 12.5,
+          riskLevel: 'medium',
+          months: 6,
+        }}
+      />,
+      locale,
+    );
+    expect(balHtml).toContain(`12${sep}5%`);
   }
 });

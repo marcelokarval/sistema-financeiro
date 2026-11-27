@@ -157,9 +157,24 @@ test('mantém a ação Novo limite e a nova tentativa após erro na leitura do o
 test('nomeia variações monetárias sem atribuí-las às contagens de compras e transações', () => {
   const monthlyTrend = [{ month: 'dez. de 25', income: 1000, expense: 100 }, ...data.monthlyTrend];
   const html = renderDashboard('ready', true, { ...data, monthlyTrend });
-  expect(html).toContain('Variação do saldo mensal: -15.0%');
-  expect(html).toContain('Variação dos gastos mensais: 25.0%');
-  expect(html).toContain('Variação do volume financeiro mensal: 31.8%');
+  expect(html).toContain('Variação do saldo mensal: -15,0%');
+  expect(html).toContain('Variação dos gastos mensais: 25,0%');
+  expect(html).toContain('Variação do volume financeiro mensal: 31,8%');
+
+  const esHtml = renderDashboard('ready', true, { ...data, monthlyTrend }, 'es');
+  expect(esHtml).toContain('Variación del saldo mensual: -15,0%');
+  expect(esHtml).toContain('Variación de los gastos mensuales: 25,0%');
+  expect(esHtml).toContain('Variación del volumen financiero mensual: 31,8%');
+
+  const enHtml = renderDashboard('ready', true, { ...data, monthlyTrend }, 'en');
+  expect(enHtml).toContain('Monthly balance change: -15.0%');
+  expect(enHtml).toContain('Monthly spending change: 25.0%');
+  expect(enHtml).toContain('Monthly financial volume change: 31.8%');
+
+  const maskedEnHtml = renderDashboard('ready', false, { ...data, monthlyTrend }, 'en');
+  expect(maskedEnHtml).toContain('Monthly balance change: •••');
+  expect(maskedEnHtml).not.toContain('-15.0%');
+  expect(maskedEnHtml).not.toContain('31.8%');
 });
 
 

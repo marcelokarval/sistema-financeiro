@@ -14,7 +14,7 @@ import {
   Tooltip as RechartsTooltip,
 } from 'recharts';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, percentFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { PIE_COLORS } from './analytics-i18n';
 import {
@@ -330,12 +330,12 @@ export function DebtOverviewContent({
           {hasDebt && (
             <div className="flex items-center justify-center gap-5 flex-wrap">
               {pieData.map((entry, index) => {
-                const pct = data.totalDebt > 0 ? ((entry.value / data.totalDebt) * 100).toFixed(1) : '0.0';
+                const share = data.totalDebt > 0 ? (entry.value / data.totalDebt) * 100 : 0;
                 return (
                   <div key={entry.name} className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
                     <span className="text-xs text-muted-foreground">{entry.name}</span>
-                    <span className="font-mono text-xs font-semibold tabular-nums">{showValues ? `${pct}%` : '•••'}</span>
+                    <span className="font-mono text-xs font-semibold tabular-nums">{showValues ? percentFmt(share, locale, { signed: false }) : '•••'}</span>
                   </div>
                 );
               })}

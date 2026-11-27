@@ -16,7 +16,7 @@ import {
 } from '@/components/shared/finance-chart-tooltip';
 import { FinanceProgress } from '@/components/shared/finance-progress';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, numberFmt, percentFmt, rateFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import {
   DEBT_INSTALLMENT_TYPE_KEYS,
@@ -163,7 +163,7 @@ export function DebtIncomeRatioCard({
   const ratioLevel = ratio > 30 ? 'critical' : ratio > 15 ? 'warning' : 'healthy';
   const currentRatio = DEBT_RATIO_CONFIG[ratioLevel];
   const clampedRatio = Math.min(Math.max(ratio, 0), 100);
-  const ratioText = showValues ? `${ratio.toFixed(1)}%` : '•••';
+  const ratioText = showValues ? percentFmt(ratio, locale, { signed: false }) : '•••';
 
   return (
     <div className={cn('rounded-lg border p-4', currentRatio.bgClass)}>
@@ -297,7 +297,7 @@ function DebtCardRow({ card, showValues = true }: { card: CardDebt; showValues?:
               className="flex-1 max-w-[120px]"
               trackClassName={cn('h-1.5 bg-muted', indicatorClass)}
             />
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">{t('debts.cardRow.usedPct', { pct: showValues ? card.utilizationRate.toFixed(0) : '•••' })}</span>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">{t('debts.cardRow.usedPct', { pct: showValues ? numberFmt(card.utilizationRate, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '•••' })}</span>
           </div>
         </div>
       </div>
@@ -367,6 +367,7 @@ export function DebtExpandedSection({
   showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const locale = useSafeLocale();
   const resolveTypeLabel = (type: string) => {
     const key = DEBT_INSTALLMENT_TYPE_KEYS[type];
     return key ? t(`debts.types.${key}`) : type;
@@ -409,7 +410,7 @@ export function DebtExpandedSection({
             paidInstallments={ip.paidInstallments}
             installmentCount={ip.installmentCount}
             monthlyValue={ip.monthlyValue}
-            extraMeta={ip.interestRate > 0 ? t('debts.planRow.interestRate', { rate: showValues ? ip.interestRate : '•••' }) : undefined}
+            extraMeta={ip.interestRate > 0 ? t('debts.planRow.interestRate', { rate: showValues ? rateFmt(ip.interestRate, locale) : '•••' }) : undefined}
             progressLabel={t('debts.planRow.installmentProgressAria', { description: ip.description })}
             progressValue={ip.installmentCount > 0 ? Math.round((ip.paidInstallments / ip.installmentCount) * 100) : 0}
             showValues={showValues}

@@ -31,7 +31,7 @@
     "expenses": "Despesas",
     "mostUsed": "Mais usada",
     "emptyFallback": "—",
-    "recordsCaption": "{count, plural, one {# registro} other {# registros}}"
+    "recordsCaption": "{count, plural, =0 {# registros} one {# registro} other {# registros}}"
   },
   "list": {
     "title": "Categorias cadastradas",
@@ -42,9 +42,9 @@
     "emptyAll": "Nenhuma categoria cadastrada. Crie a primeira para começar.",
     "emptyIncome": "Nenhuma categoria de receita cadastrada.",
     "emptyExpense": "Nenhuma categoria de despesa cadastrada.",
-    "txCount": "{count, plural, one {transação} other {transações}}",
-    "purchaseCount": "{count, plural, one {compra} other {compras}}",
-    "totalRecords": "{count, plural, one {# registro} other {# registros}} no total",
+    "txCount": "{count, plural, =0 {transações} one {transação} other {transações}}",
+    "purchaseCount": "{count, plural, =0 {compras} one {compra} other {compras}}",
+    "totalRecords": "{count, plural, =0 {# registros} one {# registro} other {# registros}} no total",
     "editAria": "Editar categoria: {name}",
     "deleteAria": "Excluir categoria: {name}"
   },

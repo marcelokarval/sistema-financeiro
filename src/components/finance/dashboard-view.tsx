@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { FinanceRow } from '@/components/shared/finance-row';
 import { INTL_LOCALE, type CanonicalLocale } from '@/i18n/config';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, percentFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -262,7 +262,7 @@ function RecentTransactions({ transactions, showValues }: { transactions: Dashbo
 function DashboardDetails({ data, metrics, money, showValues }: { data: DashboardData; metrics: ReturnType<typeof dashboardMetrics>; money: Money; showValues: boolean }) {
   const t = useSafeTranslations('dashboard');
   const locale = useSafeLocale();
-  const pct = (value: number, precision = 0) => showValues ? `${value.toFixed(precision)}%` : '•••';
+  const pct = (value: number, precision = 0) => showValues ? percentFmt(value, locale, { precision, signed: false }) : '•••';
   const change = (label: string, value?: number) => value === undefined ? null : <span className={muted}> · {label}: {pct(value, 1)}</span>;
   const netStatus = metrics.net >= 0 ? t('details.otherMetrics.surplus') : t('details.otherMetrics.deficit');
   return (

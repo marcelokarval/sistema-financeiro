@@ -57,6 +57,7 @@ export function InstallmentPlanEditor({
   onSubmit,
 }: InstallmentPlanEditorProps) {
   const t = useSafeTranslations('installments');
+  const tShared = useSafeTranslations('shared');
 
   return (
     <FinanceFormDialogShell
@@ -180,13 +181,14 @@ export function InstallmentPlanEditor({
         <div>
           <Label htmlFor="plan-form-cardId">{t('editor.cardLabel')}</Label>
           <Select
-            value={form.cardId}
-            onValueChange={(v) => onFieldChange('cardId', v)}
+            value={form.cardId || 'none'}
+            onValueChange={(v) => onFieldChange('cardId', v === 'none' ? '' : v)}
           >
             <SelectTrigger id="plan-form-cardId">
               <SelectValue placeholder={t('editor.cardPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">{tShared('noneOption')}</SelectItem>
               {cards.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   <div className="flex items-center gap-2">
@@ -205,13 +207,14 @@ export function InstallmentPlanEditor({
         <div>
           <Label htmlFor="plan-form-categoryId">{t('editor.categoryLabel')}</Label>
           <Select
-            value={form.categoryId}
-            onValueChange={(v) => onFieldChange('categoryId', v)}
+            value={form.categoryId || 'none'}
+            onValueChange={(v) => onFieldChange('categoryId', v === 'none' ? '' : v)}
           >
             <SelectTrigger id="plan-form-categoryId">
               <SelectValue placeholder={t('editor.categoryPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">{tShared('noneOption')}</SelectItem>
               {categories
                 .filter((c) => c.type === 'EXPENSE')
                 .map((c) => (

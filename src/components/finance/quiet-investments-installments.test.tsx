@@ -761,3 +761,78 @@ test('#16, #17 e #18: Parcelas valida criação, Investimentos/Parcelas adotam m
   });
   expect(findBtn(allPaidTree, 'Ir para próxima pendente').props.disabled).toBe(true);
 });
+
+test('#20 e #21: Investimentos e Parcelas localizam taxas decimais por locale e oferecem Nenhum(a) em InstallmentPlanEditor', async () => {
+  const expectedYield = { pt: '+12,5%', es: '+12,5%', en: '+12.5%' } as const;
+  for (const locale of CANONICAL_LOCALES) {
+    const invHtml = renderWithIntl(
+      <investments.InvestmentPortfolio
+        summary={{ totalInvested: 1200, currentTotal: 1350, rentabilidade: 12.5, dividendsReceived: 0 }}
+        count={1}
+        records={[{ ...investment, currentBalance: 1350 }]}
+        filter="all"
+        onFilter={noop}
+        onNew={noop}
+        onOpen={noop}
+        onEdit={noop}
+        onDelete={noop}
+      />,
+      locale,
+    );
+    expect(invHtml).toContain(expectedYield[locale]);
+  }
+
+  const ratePlan = { ...plan, interestRate: 1.5 };
+  const dispatcher = (React as unknown as { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown } }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const { H } = dispatcher;
+  const originalFetch = globalThis.fetch;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const states: unknown[] = [], refs: { current: unknown }[] = [];
+    const cleanups: (() => void)[] = [];
+    let mounted = false;
+    function render() {
+      let stateIndex = 0, refIndex = 0;
+      const effects: (() => void)[] = [];
+      dispatcher.H = {
+        useState(initial: unknown) {
+          const i = stateIndex++;
+          if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+          return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+        },
+        useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
+        useCallback: (fn: unknown) => fn,
+        useMemo: (factory: () => unknown) => factory(),
+        useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+        useId: () => 'test-id',
+        useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
+        useLayoutEffect: () => {},
+      };
+      try {
+        const view = installments.InstallmentsView();
+        mounted = true;
+        effects.forEach((effect) => {
+          const cleanup = effect();
+          if (typeof cleanup === 'function') cleanups.push(cleanup);
+        });
+        return view;
+      } finally { dispatcher.H = H; }
+    }
+    try {
+      globalThis.fetch = (async (url: string) => {
+        if (url === '/api/installments') return Response.json([ratePlan]);
+        if (url === '/api/installments?id=p1') return Response.json(ratePlan);
+        return Response.json([]);
+      }) as typeof fetch;
+      render();
+      await settle();
+      findElement(render(), (e) => e.type === installments.InstallmentPortfolio)!.props.onOpen(ratePlan);
+      await settle();
+      const detailHtml = renderWithIntl(render(), locale);
+      expect(detailHtml).toContain(locale === 'en' ? '1.5%' : '1,5%');
+    } finally {
+      cleanups.forEach((c) => c());
+      globalThis.fetch = originalFetch;
+    }
+  }
+});

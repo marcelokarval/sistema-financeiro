@@ -16,7 +16,7 @@ import {
   type FinanceChartTooltipRow,
 } from '@/components/shared/finance-chart-tooltip';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt, shortCurrency } from '@/lib/helpers';
+import { currencyFmt, percentFmt, shortCurrency } from '@/lib/helpers';
 
 export interface CategoryItem {
   categoryId: string;
@@ -214,7 +214,7 @@ function ExpenseCategoryRow({
         <div className="flex items-center gap-3 shrink-0">
           <div className="text-right">
             <p className="font-mono text-sm font-semibold tabular-nums">{showValues ? currencyFmt(cat.total, locale) : maskedValue}</p>
-            <p className="font-mono text-xs tabular-nums text-muted-foreground">{showValues ? `${cat.percentage.toFixed(1)}%` : '•••'}</p>
+            <p className="font-mono text-xs tabular-nums text-muted-foreground">{showValues ? percentFmt(cat.percentage, locale, { signed: false }) : '•••'}</p>
           </div>
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-muted-foreground" />
@@ -281,7 +281,7 @@ export function ExpenseCategoryList({
               {showValues ? currencyFmt(remaining.reduce((s, c) => s + c.total, 0), locale) : maskedValue}
             </p>
             <p className="font-mono text-xs tabular-nums text-muted-foreground">
-              {showValues ? `${remaining.reduce((s, c) => s + c.percentage, 0).toFixed(1)}%` : '•••'}
+              {showValues ? percentFmt(remaining.reduce((s, c) => s + c.percentage, 0), locale, { signed: false }) : '•••'}
             </p>
           </div>
         </li>

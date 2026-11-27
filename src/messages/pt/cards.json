@@ -62,7 +62,7 @@
     "due": "Vencimento",
     "day": "Dia {day}",
     "purchasesTitle": "Compras no cartão",
-    "purchaseCount": "{count, plural, one {# compra} other {# compras}}",
+    "purchaseCount": "{count, plural, =0 {# compras} one {# compra} other {# compras}}",
     "loadingPurchases": "Carregando compras do cartão…",
     "emptyPurchases": "Nenhuma compra registrada neste cartão.",
     "purchaseItems": "Itens da compra ({count})",

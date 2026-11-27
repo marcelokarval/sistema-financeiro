@@ -63,7 +63,7 @@
   },
   "list": {
     "title": "Consórcios cadastrados",
-    "showingCount": "{shown} de {total, plural, one {# consórcio} other {# consórcios}}",
+    "showingCount": "{shown} de {total, plural, =0 {# consórcios} one {# consórcio} other {# consórcios}}",
     "emptyAllTitle": "Nenhum consórcio cadastrado",
     "emptyAllSubtitle": "Use Novo consórcio para começar.",
     "emptyFilteredTitle": "Nenhum consórcio encontrado",

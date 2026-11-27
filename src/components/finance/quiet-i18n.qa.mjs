@@ -41,7 +41,7 @@ function installFixture(
     { id: 'inv1', name: 'Tesouro QA', type: 'CDB', investedAmount: 4000, currentBalance: 4400, yieldRate: 10 },
   ];
   const goals = [
-    { id: 'g1', name: 'Reserva QA', type: 'EMERGENCY_FUND', targetAmount: 10000, currentAmount: 3500, isCompleted: false, color: '#10b981' },
+    { id: 'g1', name: 'Reserva QA', type: 'EMERGENCY_FUND', targetAmount: 10000, currentAmount: 3500, yieldRate: 12.5, isCompleted: false, color: '#10b981' },
   ];
 
   const qa = (window.qa = { unexpected: [], calls: [] });
@@ -258,6 +258,7 @@ async function runCases(page, html, width, theme, flagBodies) {
         { view: 'cards', heading: 'Cartões', expectBrl: true },
         { view: 'purchases', heading: 'Compras', expectBrl: true },
         { view: 'investments', heading: 'Investimentos', expectBrl: true },
+        { view: 'installments', heading: 'Parcelas e financiamentos', expectBrl: true },
         { view: 'savings', heading: 'Caixinhas', expectBrl: true },
       ],
       notifTrigger: 'Notificações',
@@ -266,7 +267,16 @@ async function runCases(page, html, width, theme, flagBodies) {
       aiHeading: 'Assistente Financeiro',
       newEntryAria: 'Novo lançamento',
       newAccountBtn: 'Nova conta',
+      newInvestmentBtn: 'Novo investimento',
+      newPlanBtn: 'Novo plano',
       closeFormLabel: 'Fechar formulário',
+      noneOptionText: 'Nenhum(a)',
+      savingsYieldText: '12,5% a.a.',
+      quickStatsRateText: 'Taxa de economia: 91,7%',
+      zeroGoalsText: '0 metas',
+      zeroInvestmentsText: '0 investimentos',
+      zeroPlansText: '0 planos no total',
+      zeroFoundPurchasesText: '0 compras encontradas',
     },
     es: {
       dashboardHeading: 'Resumen financiero',
@@ -288,6 +298,7 @@ async function runCases(page, html, width, theme, flagBodies) {
         { view: 'cards', heading: 'Tarjetas', expectBrl: true },
         { view: 'purchases', heading: 'Compras', expectBrl: true },
         { view: 'investments', heading: 'Inversiones', expectBrl: true },
+        { view: 'installments', heading: 'Cuotas y financiamientos', expectBrl: true },
         { view: 'savings', heading: 'Alcancías', expectBrl: true },
       ],
       notifTrigger: 'Notificaciones',
@@ -296,7 +307,13 @@ async function runCases(page, html, width, theme, flagBodies) {
       aiHeading: 'Asistente Financiero',
       newEntryAria: 'Nuevo movimiento',
       newAccountBtn: 'Nueva cuenta',
+      newInvestmentBtn: 'Nueva inversión',
+      newPlanBtn: 'Nuevo plan',
       closeFormLabel: 'Cerrar formulario',
+      noneOptionText: 'Ninguno(a)',
+      savingsYieldText: '12,5% anual',
+      quickStatsRateText: 'Tasa de ahorro: 91,7%',
+      zeroPlansText: '0 planes en total',
     },
     en: {
       dashboardHeading: 'Financial overview',
@@ -318,6 +335,7 @@ async function runCases(page, html, width, theme, flagBodies) {
         { view: 'cards', heading: 'Cards', expectBrl: true },
         { view: 'purchases', heading: 'Purchases', expectBrl: true },
         { view: 'investments', heading: 'Investments', expectBrl: true },
+        { view: 'installments', heading: 'Installments & financing', expectBrl: true },
         { view: 'savings', heading: 'Savings Boxes', expectBrl: true },
       ],
       notifTrigger: 'Notifications',
@@ -326,7 +344,13 @@ async function runCases(page, html, width, theme, flagBodies) {
       aiHeading: 'Financial Assistant',
       newEntryAria: 'New entry',
       newAccountBtn: 'New account',
+      newInvestmentBtn: 'New investment',
+      newPlanBtn: 'New plan',
       closeFormLabel: 'Close form',
+      noneOptionText: 'None',
+      savingsYieldText: '12.5% p.a.',
+      quickStatsRateText: 'Savings rate: 91.7%',
+      zeroPlansText: '0 plans in total',
     },
   };
 
@@ -381,6 +405,11 @@ async function runCases(page, html, width, theme, flagBodies) {
       ensure(detailsProbe.scrollWidth <= detailsProbe.innerWidth + 1, `${width}/${theme}/${locale} details overflow`);
       ensure(!/MISSING_MESSAGE/.test(detailsProbe.text), `${width}/${theme}/${locale} details MISSING_MESSAGE`);
       ensure(!/(?:dashboard|accounts|cards|receipts|investments|goals|analytics|notifications|advisor)\.[a-zA-Z]+\.[a-zA-Z]+/.test(detailsProbe.text), `${width}/${theme}/${locale} details raw key leaked`);
+      ensure(detailsProbe.text.includes(spec.quickStatsRateText), `${width}/${theme}/${locale} missing localized quickStats rate (${spec.quickStatsRateText}) (#20)`);
+      if (locale === 'pt') {
+        ensure(detailsProbe.text.includes(spec.zeroGoalsText), `${width}/${theme}/${locale} missing =0 plural (${spec.zeroGoalsText}) (#19)`);
+        ensure(detailsProbe.text.includes(spec.zeroInvestmentsText), `${width}/${theme}/${locale} missing =0 plural (${spec.zeroInvestmentsText}) (#19)`);
+      }
 
       // (#2) Open Patterns tab and verify width containment (especially 390px/360px)
       await page.getByRole('tab', { name: spec.patternsTab }).first().click();
@@ -413,8 +442,8 @@ async function runCases(page, html, width, theme, flagBodies) {
       });
       ensure(hiddenProbe.rechartsCount > 0, `${width}/${theme}/${locale} .recharts-wrapper unmounted when hidden`);
       ensure(hiddenProbe.text.includes('••••••'), `${width}/${theme}/${locale} masked values missing when hidden`);
-      ensure(!/5\.?400|12\.?550|2\.?750|11\.?800|91\.7/.test(hiddenProbe.text), `${width}/${theme}/${locale} sensitive numbers leaked in text when hidden`);
-      ensure(!/5\.?400|12\.?550|91\.7/.test(hiddenProbe.ariaValues), `${width}/${theme}/${locale} sensitive numbers leaked in ARIA when hidden`);
+      ensure(!/5\.?400|12\.?550|2\.?750|11\.?800|91[.,]7/.test(hiddenProbe.text), `${width}/${theme}/${locale} sensitive numbers leaked in text when hidden`);
+      ensure(!/5\.?400|12\.?550|91[.,]7/.test(hiddenProbe.ariaValues), `${width}/${theme}/${locale} sensitive numbers leaked in ARIA when hidden`);
       await page.getByRole('button', { name: spec.showValues }).first().click();
       await frame();
 
@@ -491,6 +520,42 @@ async function runCases(page, html, width, theme, flagBodies) {
           for (const term of spec.creditOnlyTerms) {
             ensure(!debitDetailProbe.text.includes(term), `${width}/${theme}/${locale} DEBIT detail leaked credit term: ${term}`);
           }
+        }
+        if (item.view === 'purchases' && locale === 'pt') {
+          const searchInput = page.locator('#purchase-search').first();
+          await searchInput.fill('zzzz-sem-correspondencia');
+          await waitText(spec.zeroFoundPurchasesText);
+          await searchInput.fill('');
+        }
+        if (item.view === 'investments') {
+          await page.getByRole('button', { name: spec.newInvestmentBtn, exact: true }).click();
+          const invDialog = page.getByRole('dialog').first();
+          await invDialog.waitFor();
+          const accTriggerText = (await invDialog.locator('#investment-form-accountId').innerText()).trim();
+          const catTriggerText = (await invDialog.locator('#investment-form-categoryId').innerText()).trim();
+          ensure(accTriggerText.includes(spec.noneOptionText), `${width}/${theme}/${locale}/investments account select missing ${spec.noneOptionText} (#21): ${accTriggerText}`);
+          ensure(catTriggerText.includes(spec.noneOptionText), `${width}/${theme}/${locale}/investments category select missing ${spec.noneOptionText} (#21): ${catTriggerText}`);
+          await invDialog.locator('#investment-form-accountId').click();
+          await page.getByRole('option', { name: spec.noneOptionText, exact: true }).first().click();
+          await invDialog.getByRole('button', { name: spec.closeFormLabel, exact: true }).click();
+          await invDialog.waitFor({ state: 'detached' });
+        }
+        if (item.view === 'installments') {
+          ensure(viewProbe.text.includes(spec.zeroPlansText), `${width}/${theme}/${locale}/installments missing zero plural (${spec.zeroPlansText}) (#19)`);
+          await page.getByRole('button', { name: spec.newPlanBtn, exact: true }).click();
+          const planDialog = page.getByRole('dialog').first();
+          await planDialog.waitFor();
+          const cardTriggerText = (await planDialog.locator('#plan-form-cardId').innerText()).trim();
+          const catTriggerText = (await planDialog.locator('#plan-form-categoryId').innerText()).trim();
+          ensure(cardTriggerText.includes(spec.noneOptionText), `${width}/${theme}/${locale}/installments card select missing ${spec.noneOptionText} (#21): ${cardTriggerText}`);
+          ensure(catTriggerText.includes(spec.noneOptionText), `${width}/${theme}/${locale}/installments category select missing ${spec.noneOptionText} (#21): ${catTriggerText}`);
+          await planDialog.locator('#plan-form-cardId').click();
+          await page.getByRole('option', { name: spec.noneOptionText, exact: true }).first().click();
+          await planDialog.getByRole('button', { name: spec.closeFormLabel, exact: true }).click();
+          await planDialog.waitFor({ state: 'detached' });
+        }
+        if (item.view === 'savings') {
+          ensure(viewProbe.text.includes(spec.savingsYieldText), `${width}/${theme}/${locale}/savings missing localized yieldRate (${spec.savingsYieldText}) (#20)`);
         }
       }
 

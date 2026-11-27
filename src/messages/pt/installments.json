@@ -64,7 +64,7 @@
     "remainingAmount": "Valor restante",
     "remainingNote": "Saldo devedor total",
     "totalFinanced": "Total financiado",
-    "planCount": "{count, plural, one {# plano no total} other {# planos no total}}",
+    "planCount": "{count, plural, =0 {# planos no total} one {# plano no total} other {# planos no total}}",
     "totalPaid": "Total pago",
     "overdueInstallments": "Parcelas em atraso",
     "attentionNeeded": "Atenção necessária",
@@ -75,7 +75,7 @@
     "totalLabel": "Total",
     "perMonth": "{amount}/mês · {count}x",
     "paidOf": "{paid} de {total} pagas · {percent}%",
-    "overdueCount": "{count, plural, one {# em atraso} other {# em atraso}}",
+    "overdueCount": "{count, plural, =0 {# em atraso} one {# em atraso} other {# em atraso}}",
     "nextDue": "Próximo vencimento: {date}"
   },
   "detail": {

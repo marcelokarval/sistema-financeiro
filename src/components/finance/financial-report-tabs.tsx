@@ -24,7 +24,7 @@ import {
 } from '@/components/shared/finance-chart-tooltip';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt, shortCurrency } from '@/lib/helpers';
+import { currencyFmt, percentFmt, shortCurrency } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 
 export interface MonthlyItem {
@@ -62,8 +62,6 @@ export interface ReportsData {
   savingsRateTrend: { month: string; rate: number }[];
   ticketMedio: number;
 }
-
-const pctFmt = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
 type ReportSeriesKey = 'income' | 'expense';
 
@@ -152,7 +150,7 @@ function MonthlyReportRow({
               )}
             >
               {incomeChange >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-              {showValues ? pctFmt(incomeChange) : '•••'}
+              {showValues ? percentFmt(incomeChange, locale) : '•••'}
             </span>
           )}
         </div>
@@ -172,7 +170,7 @@ function MonthlyReportRow({
               )}
             >
               {expenseChange <= 0 ? <ArrowDownRight className="w-2.5 h-2.5" /> : <ArrowUpRight className="w-2.5 h-2.5" />}
-              {showValues ? pctFmt(expenseChange) : '•••'}
+              {showValues ? percentFmt(expenseChange, locale) : '•••'}
             </span>
           )}
         </div>
@@ -255,7 +253,7 @@ function ReportCategoryRow({
         </div>
         <div className="flex items-center gap-2">
           <span className="font-mono text-sm font-semibold tabular-nums">{showValues ? currencyFmt(cat.total, locale) : maskedValue}</span>
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">{showValues ? `${percent.toFixed(0)}%` : '•••'}</span>
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">{showValues ? percentFmt(percent, locale, { precision: 0, signed: false }) : '•••'}</span>
         </div>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -266,6 +264,7 @@ function ReportCategoryRow({
 }
 
 function SavingsRateRow({ month, rate, showValues = true }: { month: string; rate: number; showValues?: boolean }) {
+  const locale = useSafeLocale();
   const clampedRate = Math.min(Math.max(rate, -100), 100);
   const color = clampedRate >= 30 ? 'bg-[var(--money)]' : clampedRate >= 0 ? 'bg-[var(--obligation)]' : 'bg-[var(--debt)]';
   const textColor = clampedRate >= 30 ? 'text-[var(--money)]' : clampedRate >= 0 ? 'text-[var(--obligation)]' : 'text-[var(--debt)]';
@@ -277,7 +276,7 @@ function SavingsRateRow({ month, rate, showValues = true }: { month: string; rat
         <div className={cn('h-full rounded-full', color)} style={{ width: `${showValues ? Math.max(Math.abs(clampedRate), 2) : 0}%` }} />
       </div>
       <span className={cn('font-mono text-xs font-semibold tabular-nums w-14 text-right', textColor)}>
-        {showValues ? `${rate.toFixed(1)}%` : '•••'}
+        {showValues ? percentFmt(rate, locale, { signed: false }) : '•••'}
       </span>
     </div>
   );

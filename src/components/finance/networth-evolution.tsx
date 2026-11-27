@@ -24,7 +24,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, percentFmt } from '@/lib/helpers';
 import {
   FinanceChartTooltip,
   type FinanceChartTooltipRow,
@@ -299,7 +299,7 @@ export function NetworthEvolutionContent({
                       current.changePercent >= 0 ? 'text-[var(--money)]' : 'text-[var(--debt)]'
                     }`}
                   >
-                    {showValues ? `${current.changePercent >= 0 ? '+' : ''}${current.changePercent.toFixed(1)}%` : '•••'}
+                    {showValues ? percentFmt(current.changePercent, locale) : '•••'}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {t('networth.vsPreviousMonth')}
@@ -402,7 +402,7 @@ export function NetworthEvolutionContent({
                       {t('networth.milestone.title', { target: money(milestoneTarget) })}
                     </p>
                     <span className="font-mono text-xs font-semibold tabular-nums text-primary">
-                      {showValues ? `${milestoneProgress.toFixed(1)}%` : '•••'}
+                      {showValues ? percentFmt(milestoneProgress, locale, { signed: false }) : '•••'}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -418,7 +418,7 @@ export function NetworthEvolutionContent({
                 aria-valuenow={Math.round(milestoneProgress)}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuetext={showValues ? `${milestoneProgress.toFixed(1)}%` : '•••'}
+                aria-valuetext={showValues ? percentFmt(milestoneProgress, locale, { signed: false }) : '•••'}
                 className="h-3 rounded-full bg-muted overflow-hidden"
               >
                 <div className="h-full rounded-full bg-primary" style={{ width: `${showValues ? milestoneProgress : 0}%` }} />

@@ -54,7 +54,7 @@
     "openAccountAria": "Abrir conta {name}",
     "editAccountAria": "Editar conta {name}",
     "deleteAccountAria": "Excluir conta {name}",
-    "transactionCount": "{count, plural, one {# transação} other {# transações}}"
+    "transactionCount": "{count, plural, =0 {# transações} one {# transação} other {# transações}}"
   },
   "detail": {
     "ariaLabel": "Posição da conta",

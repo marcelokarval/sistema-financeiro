@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { FinanceProgress } from '@/components/shared/finance-progress';
 import { EmptyState } from '@/components/shared/ui-helpers';
-import { currencyFmt, dateFmt, pct } from '@/lib/helpers';
+import { currencyFmt, dateFmt, pct, rateFmt } from '@/lib/helpers';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { useAppStore } from '@/lib/store';
 import { SAVINGS_FILTER_TABS, SAVINGS_TYPE_KEYS } from './portfolio-i18n';
@@ -531,7 +531,7 @@ export function SavingsGoalRow({ goal, onDeposit, onEdit, onDelete }: {
         <p className="text-xs text-muted-foreground">
           {goal.monthlyContribution ? t('row.monthlyContribution', { amount: currencyFmt(goal.monthlyContribution, locale) }) : t('row.noMonthlyContribution')}
           {goal.targetDate && ` · ${t('row.targetDate', { date: dateFmt(goal.targetDate, locale) })}`}
-          {goal.yieldRate != null && goal.yieldRate > 0 && ` · ${t('row.yieldRate', { rate: goal.yieldRate })}`}
+          {goal.yieldRate != null && goal.yieldRate > 0 && ` · ${t('row.yieldRate', { rate: rateFmt(goal.yieldRate, locale) })}`}
         </p>
       </div>
       <div className="min-w-0 space-y-2">

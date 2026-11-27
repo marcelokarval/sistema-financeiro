@@ -40,7 +40,7 @@
   },
   "list": {
     "title": "Metas cadastradas",
-    "showingCount": "{shown} de {total, plural, one {# meta} other {# metas}}",
+    "showingCount": "{shown} de {total, plural, =0 {# metas} one {# meta} other {# metas}}",
     "loadError": "Não foi possível carregar as caixinhas.",
     "emptyFilteredTitle": "Nenhuma meta do tipo {type}",
     "emptyFilteredSubtitle": "Altere o filtro ou crie uma meta deste tipo.",

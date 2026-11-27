@@ -159,10 +159,10 @@
       "next30Days": "Atrasados e próximos 30 dias"
     },
     "days": {
-      "overdue": "{count, plural, one {# dia de atraso} other {# dias de atraso}}",
+      "overdue": "{count, plural, =0 {# dias de atraso} one {# dia de atraso} other {# dias de atraso}}",
       "today": "Hoje",
       "tomorrow": "Amanhã",
-      "inDays": "{count, plural, one {Em # dia} other {Em # dias}}"
+      "inDays": "{count, plural, =0 {Em # dias} one {Em # dia} other {Em # dias}}"
     }
   }
 }

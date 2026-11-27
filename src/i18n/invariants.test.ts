@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createTranslator } from 'next-intl';
 import {
   CANONICAL_LOCALES,
   DEFAULT_LOCALE,
@@ -58,6 +59,47 @@ function extractIcuPlaceholders(template: string): string[] {
   }
   return [...names].sort();
 }
+
+function extractPluralClauses(template: string): Array<{ variable: string; body: string }> {
+  const clauses: Array<{ variable: string; body: string }> = [];
+  const scan = (input: string) => {
+    let i = 0;
+    while (i < input.length) {
+      if (input[i] !== '{') {
+        i += 1;
+        continue;
+      }
+      let depth = 1;
+      let end = i + 1;
+      while (end < input.length && depth > 0) {
+        if (input[end] === '{') depth += 1;
+        else if (input[end] === '}') depth -= 1;
+        end += 1;
+      }
+      if (depth !== 0) {
+        throw new Error(`Unbalanced braces in ICU template: ${template}`);
+      }
+      const inner = input.slice(i + 1, end - 1);
+      const match = inner.match(/^([a-zA-Z0-9_]+)\s*,\s*plural\s*,([\s\S]*)$/);
+      if (match) {
+        clauses.push({ variable: match[1], body: match[2] });
+        scan(match[2]);
+      } else {
+        scan(inner);
+      }
+      i = end;
+    }
+  };
+  scan(template);
+  return clauses;
+}
+
+const UI_NAMESPACES = [
+  'common', 'shell', 'shared', 'dashboard', 'goals', 'analytics',
+  'accounts', 'cards', 'purchases', 'categories', 'receipts',
+  'investments', 'installments', 'consortiums', 'savings',
+  'recurring', 'notifications', 'advisor',
+] as const;
 
 function ProbeComponent() {
   const locale = useSafeLocale();
@@ -159,5 +201,132 @@ describe('i18n foundation invariants', () => {
     expect(enHtml).toContain('data-locale="en"');
     expect(enHtml).toContain('Loading FinanceApp…');
     expect(enHtml).toContain('Overview');
+  });
+
+  test('every ICU plural clause across all 18 PT UI namespaces declares =0 and formats 0, 1, and 2 correctly', () => {
+    const messagesRoot = join(import.meta.dir, '..', 'messages');
+    const missingZeroClauses: string[] = [];
+
+    for (const ns of UI_NAMESPACES) {
+      const ptJson = JSON.parse(readFileSync(join(messagesRoot, 'pt', `${ns}.json`), 'utf8')) as Record<string, unknown>;
+      const ptLeaves = collectLeafPaths(ptJson);
+      const t = createTranslator({
+        locale: 'pt',
+        messages: MESSAGES_BY_LOCALE.pt as unknown as Record<string, any>,
+        ...(ns === 'common' ? {} : { namespace: ns }),
+      });
+
+      for (const [keyPath, template] of ptLeaves) {
+        if (!template.includes(', plural,')) continue;
+        const clauses = extractPluralClauses(template);
+        expect(clauses.length).toBeGreaterThan(0);
+
+        for (const clause of clauses) {
+          if (!/(?:^|\s)=0\s*\{/.test(clause.body)) {
+            missingZeroClauses.push(`${ns}.${keyPath} (${clause.variable})`);
+          }
+        }
+
+        const placeholders = extractIcuPlaceholders(template);
+        const makeParams = (n: number) =>
+          Object.fromEntries(placeholders.map((name) => [name, n]));
+
+        const renderedZero = t(keyPath as never, makeParams(0) as never);
+        const renderedOne = t(keyPath as never, makeParams(1) as never);
+        const renderedTwo = t(keyPath as never, makeParams(2) as never);
+
+        expect(renderedZero.length).toBeGreaterThan(0);
+        expect(renderedOne.length).toBeGreaterThan(0);
+        expect(renderedTwo.length).toBeGreaterThan(0);
+        expect(renderedZero).not.toContain(', plural,');
+        expect(renderedOne).not.toContain(', plural,');
+        expect(renderedTwo).not.toContain(', plural,');
+
+        // When one and other differ, 0 must render the plural =0 form rather than the singular one form
+        if (renderedOne.replace(/1/g, 'X') !== renderedTwo.replace(/2/g, 'X')) {
+          expect(renderedZero.replace(/0/g, 'X')).toBe(renderedTwo.replace(/2/g, 'X'));
+        }
+      }
+    }
+
+    expect(missingZeroClauses).toEqual([]);
+
+    const sampleCases: Array<{ ns: string; key: string; params: Record<number, Record<string, number>>; expected: [string, string, string] }> = [
+      {
+        ns: 'purchases',
+        key: 'records.foundCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['0 compras encontradas', '1 compra encontrada', '2 compras encontradas'],
+      },
+      {
+        ns: 'accounts',
+        key: 'list.transactionCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['0 transações', '1 transação', '2 transações'],
+      },
+      {
+        ns: 'categories',
+        key: 'list.txCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['transações', 'transação', 'transações'],
+      },
+      {
+        ns: 'categories',
+        key: 'list.purchaseCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['compras', 'compra', 'compras'],
+      },
+      {
+        ns: 'installments',
+        key: 'summary.planCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['0 planos no total', '1 plano no total', '2 planos no total'],
+      },
+      {
+        ns: 'investments',
+        key: 'summary.investmentCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['0 investimentos', '1 investimento', '2 investimentos'],
+      },
+      {
+        ns: 'notifications',
+        key: 'unreadCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['0 novas', '1 nova', '2 novas'],
+      },
+      {
+        ns: 'shell',
+        key: 'globalSearch.resultCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['0 resultados', '1 resultado', '2 resultados'],
+      },
+      {
+        ns: 'goals',
+        key: 'budgetGoals.summary',
+        params: {
+          0: { activeCount: 0, completedCount: 0 },
+          1: { activeCount: 1, completedCount: 1 },
+          2: { activeCount: 2, completedCount: 2 },
+        },
+        expected: ['0 ativas · 0 concluídas', '1 ativa · 1 concluída', '2 ativas · 2 concluídas'],
+      },
+      {
+        ns: 'dashboard',
+        key: 'details.recentPurchases.itemCount',
+        params: { 0: { count: 0 }, 1: { count: 1 }, 2: { count: 2 } },
+        expected: ['0 itens', '1 item', '2 itens'],
+      },
+    ];
+
+    for (const sample of sampleCases) {
+      const t = createTranslator({
+        locale: 'pt',
+        messages: MESSAGES_BY_LOCALE.pt as unknown as Record<string, any>,
+        namespace: sample.ns,
+      });
+      expect(t(sample.key as never, sample.params[0] as never)).toBe(sample.expected[0]);
+      expect(t(sample.key as never, sample.params[1] as never)).toBe(sample.expected[1]);
+      expect(t(sample.key as never, sample.params[2] as never)).toBe(sample.expected[2]);
+    }
   });
 });

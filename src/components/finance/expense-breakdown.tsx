@@ -11,7 +11,7 @@ import {
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, percentFmt } from '@/lib/helpers';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
 import {
   ExpenseBreakdownTooltip,
@@ -220,7 +220,7 @@ export function ExpenseBreakdown({ showValues = true }: { showValues?: boolean }
               </div>
               {activeSlice && (
                 <p className="break-words text-center text-xs text-muted-foreground">
-                  {activeSlice.name} ({showValues ? `${activeSlice.percentage.toFixed(1)}%` : '•••'})
+                  {activeSlice.name} ({showValues ? percentFmt(activeSlice.percentage, locale, { signed: false }) : '•••'})
                 </p>
               )}
             </figure>
@@ -248,7 +248,7 @@ export function ExpenseBreakdown({ showValues = true }: { showValues?: boolean }
                   <li key={cat.categoryId} className="min-w-0 space-y-1 bg-card p-3 text-xs">
                     <p className="break-words font-medium">{idx + 1}. {cat.categoryName}</p>
                     <p className="flex flex-wrap gap-x-2 font-mono tabular-nums">
-                      {money(cat.total)} <span className="text-muted-foreground">{showValues ? `${cat.percentage.toFixed(1)}%` : '•••'}</span>
+                      {money(cat.total)} <span className="text-muted-foreground">{showValues ? percentFmt(cat.percentage, locale, { signed: false }) : '•••'}</span>
                     </p>
                   </li>
                 ))}

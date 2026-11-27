@@ -18,7 +18,7 @@ import {
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt, dateFmt, shortCurrency } from '@/lib/helpers';
+import { currencyFmt, dateFmt, percentFmt, shortCurrency } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { DISTRIBUTION_COLORS, getIntlLocale } from './analytics-i18n';
 
@@ -217,6 +217,7 @@ function DistributionRangeRow({
 }: {
   item: DistributionItem; maxDistCount: number; color: string; showValues?: boolean;
 }) {
+  const locale = useSafeLocale();
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs font-medium text-muted-foreground w-16 shrink-0 text-right">
@@ -233,7 +234,7 @@ function DistributionRangeRow({
         <div className="absolute inset-0 flex items-center px-3">
           <span className="font-mono text-xs font-semibold tabular-nums text-foreground">{showValues ? item.count : '•••'}</span>
           <span className="text-xs text-muted-foreground ml-auto font-mono tabular-nums">
-            {showValues ? `${item.percentage.toFixed(1)}%` : '•••'}
+            {showValues ? percentFmt(item.percentage, locale, { signed: false }) : '•••'}
           </span>
         </div>
       </div>
@@ -374,7 +375,7 @@ function MonthlyComparisonRow({
               <ArrowDownRight className="w-3 h-3 text-[var(--debt)]" />
             )}
             <span className={cn('font-mono tabular-nums', netChange >= 0 ? 'text-[var(--money)]' : 'text-[var(--debt)]')}>
-              {showValues ? `${Math.abs(netChange).toFixed(1)}%` : '•••'}
+              {showValues ? percentFmt(Math.abs(netChange), locale, { signed: false }) : '•••'}
             </span>
           </div>
         ) : (

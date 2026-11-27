@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
-import { io, type Socket } from 'socket.io-client';
+import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
 
 type RealtimeEventType =
   | 'transaction:created'
@@ -35,6 +35,18 @@ interface UseRealtimeReturn {
 
 const SOCKET_URL = '/?XTransformPort=3004';
 
+export const MAX_RECONNECTION_ATTEMPTS = 3;
+
+export const REALTIME_SOCKET_OPTIONS = {
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: MAX_RECONNECTION_ATTEMPTS,
+  reconnectionDelay: 2000,
+  reconnectionDelayMax: 30000,
+  randomizationFactor: 0.5,
+  timeout: 10000,
+} satisfies Partial<ManagerOptions & SocketOptions>;
+
 const ALL_EVENTS: RealtimeEventType[] = [
   'transaction:created',
   'transaction:updated',
@@ -50,14 +62,7 @@ const ALL_EVENTS: RealtimeEventType[] = [
 ];
 
 function createSocket(): Socket {
-  return io(SOCKET_URL, {
-    transports: ['websocket', 'polling'],
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 10000,
-  });
+  return io(SOCKET_URL, REALTIME_SOCKET_OPTIONS);
 }
 
 // Singleton external store for realtime state, shared across all hook instances
@@ -97,6 +102,8 @@ export function getServerSnapshot() {
 export function useRealtime(options?: UseRealtimeOptions): UseRealtimeReturn {
   const socketRef = useRef<Socket | null>(null);
   const optionsRef = useRef(options);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectFailedHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     optionsRef.current = options;
@@ -110,6 +117,10 @@ export function useRealtime(options?: UseRealtimeOptions): UseRealtimeReturn {
   );
 
   const cleanup = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     if (socketRef.current) {
       ALL_EVENTS.forEach((event) => {
         socketRef.current?.off(event);
@@ -117,6 +128,11 @@ export function useRealtime(options?: UseRealtimeOptions): UseRealtimeReturn {
       socketRef.current.off('connect');
       socketRef.current.off('disconnect');
       socketRef.current.off('joined');
+      socketRef.current.off('connect_error');
+      if (reconnectFailedHandlerRef.current) {
+        socketRef.current.io?.off('reconnect_failed', reconnectFailedHandlerRef.current);
+        reconnectFailedHandlerRef.current = null;
+      }
       socketRef.current.disconnect();
       socketRef.current = null;
     }
@@ -147,6 +163,22 @@ export function useRealtime(options?: UseRealtimeOptions): UseRealtimeReturn {
       emitChange();
     });
 
+    // Fallback silencioso quando o serviço :3004 estiver indisponível
+    socket.on('connect_error', () => {
+      if (realtimeState.isConnected) {
+        realtimeState = { ...realtimeState, isConnected: false };
+        emitChange();
+      }
+    });
+
+    const handleReconnectFailed = () => {
+      if (socketRef.current === socket) {
+        cleanup();
+      }
+    };
+    reconnectFailedHandlerRef.current = handleReconnectFailed;
+    socket.io?.on('reconnect_failed', handleReconnectFailed);
+
     ALL_EVENTS.forEach((event) => {
       socket.on(event, (data: unknown) => {
         console.log('[useRealtime] Event received:', event, data);
@@ -171,7 +203,10 @@ export function useRealtime(options?: UseRealtimeOptions): UseRealtimeReturn {
   const reconnect = useCallback(() => {
     console.log('[useRealtime] Manual reconnect requested');
     cleanup();
-    setTimeout(() => connect(), 100);
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectTimerRef.current = null;
+      connect();
+    }, 100);
   }, [cleanup, connect]);
 
   useEffect(() => {

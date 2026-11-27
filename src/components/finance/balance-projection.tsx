@@ -22,7 +22,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt, shortCurrency } from '@/lib/helpers';
+import { currencyFmt, percentFmt, rateFmt, shortCurrency } from '@/lib/helpers';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
 import {
   FinanceChartTooltip,
@@ -292,8 +292,8 @@ export function BalanceProjectionContent({
   const projectionChange = data.totalProjected - data.totalCurrentBalance;
   const projectionChangePct =
     data.totalCurrentBalance !== 0
-      ? ((projectionChange / Math.abs(data.totalCurrentBalance)) * 100).toFixed(1)
-      : '0.0';
+      ? (projectionChange / Math.abs(data.totalCurrentBalance)) * 100
+      : 0;
 
   return (
     <QueryPanel
@@ -317,13 +317,13 @@ export function BalanceProjectionContent({
           <dt className="text-xs text-muted-foreground">{t('projection.metrics.projectedIn', { count: data.months })}</dt>
           <dd className="break-words font-mono text-sm font-semibold tabular-nums">{money(data.totalProjected)}</dd>
           <dd className="text-xs text-muted-foreground">
-            {t('projection.metrics.variation', { value: showValues ? `${projectionChange >= 0 ? '+' : ''}${projectionChangePct}%` : '•••' })}
+            {t('projection.metrics.variation', { value: showValues ? percentFmt(projectionChangePct, locale) : '•••' })}
           </dd>
         </div>
         <div className="min-w-0 space-y-1 bg-card p-3">
           <dt className="text-xs text-muted-foreground">{t('projection.metrics.avgMonthlySavings')}</dt>
           <dd className="break-words font-mono text-sm font-semibold tabular-nums">{signedMoney(data.averageMonthlySavings)}</dd>
-          <dd className="text-xs text-muted-foreground">{t('projection.metrics.rate', { rate: showValues ? data.savingsRate : '•••' })}</dd>
+          <dd className="text-xs text-muted-foreground">{t('projection.metrics.rate', { rate: showValues ? rateFmt(data.savingsRate, locale) : '•••' })}</dd>
         </div>
         <div className="min-w-0 space-y-1 bg-card p-3">
           <dt className="text-xs text-muted-foreground">{t('projection.metrics.riskLevel')}</dt>
@@ -404,7 +404,7 @@ export function BalanceProjectionContent({
                   {t('projection.risk.savingsRateLabel')}
                 </span>
                 <span className={`font-mono text-xs font-semibold tabular-nums ${currentRisk.textClass}`}>
-                  {showValues ? `${data.savingsRate}%` : '•••'}
+                  {showValues ? percentFmt(data.savingsRate, locale, { signed: false }) : '•••'}
                 </span>
               </div>
               <div
@@ -413,7 +413,7 @@ export function BalanceProjectionContent({
                 aria-valuenow={Math.round(Math.max(0, Math.min(100, Math.abs(data.savingsRate))))}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuetext={showValues ? `${data.savingsRate}%` : '•••'}
+                aria-valuetext={showValues ? percentFmt(data.savingsRate, locale, { signed: false }) : '•••'}
                 className="h-1.5 overflow-hidden rounded-full bg-muted"
               >
                 <div

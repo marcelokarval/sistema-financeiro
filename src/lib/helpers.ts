@@ -54,12 +54,34 @@ export const dateFmt = (d: string, locale?: string) =>
 export const dateShortFmt = (d: string, locale?: string) =>
   formatDateWithPattern(d, '2-digit', locale);
 
-export const percentFmt = (v: number, locale?: string) => {
-  const formatted = new Intl.NumberFormat(resolveIntlLocale(locale), {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(v);
-  return `${v >= 0 ? '+' : ''}${formatted}%`;
+export const numberFmt = (
+  v: number,
+  locale?: string,
+  options?: Intl.NumberFormatOptions,
+) => new Intl.NumberFormat(resolveIntlLocale(locale), options).format(v);
+
+export const rateFmt = (
+  v: number,
+  locale?: string,
+  maximumFractionDigits = 2,
+) =>
+  numberFmt(v, locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  });
+
+export const percentFmt = (
+  v: number,
+  locale?: string,
+  options?: { precision?: number; signed?: boolean },
+) => {
+  const precision = options?.precision ?? 1;
+  const signed = options?.signed ?? true;
+  const formatted = numberFmt(v, locale, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  });
+  return `${signed && v >= 0 ? '+' : ''}${formatted}%`;
 };
 
 export const pct = (part: number, total: number) =>

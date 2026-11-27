@@ -4,17 +4,17 @@
   },
   "projection": {
     "title": "Projeção de saldos",
-    "subtitle": "Estimativas por conta · {count, plural, one {# mês} other {# meses}}",
+    "subtitle": "Estimativas por conta · {count, plural, =0 {# meses} one {# mês} other {# meses}}",
     "loading": "Carregando projeção de saldos…",
     "error": "Não foi possível carregar a projeção de saldos.",
     "empty": "Nenhuma projeção de saldos disponível.",
     "emptyAccounts": "Nenhuma conta para projetar.",
     "horizonAria": "Horizonte da projeção",
-    "monthsOption": "{count, plural, one {# mês} other {# meses}}",
+    "monthsOption": "{count, plural, =0 {# meses} one {# mês} other {# meses}}",
     "refreshAria": "Atualizar projeção de saldos",
     "metrics": {
       "currentTotal": "Saldo total atual",
-      "projectedIn": "Projeção em {count, plural, one {# mês} other {# meses}}",
+      "projectedIn": "Projeção em {count, plural, =0 {# meses} one {# mês} other {# meses}}",
       "variation": "Variação: {value}",
       "avgMonthlySavings": "Economia mensal média",
       "rate": "Taxa: {rate}%",
@@ -96,9 +96,9 @@
       "consortiums": "Consórcios"
     },
     "counts": {
-      "cards": "{count, plural, one {# cartão} other {# cartões}}",
-      "plans": "{count, plural, one {# plano} other {# planos}}",
-      "consortiums": "{count, plural, one {# consórcio} other {# consórcios}}"
+      "cards": "{count, plural, =0 {# cartões} one {# cartão} other {# cartões}}",
+      "plans": "{count, plural, =0 {# planos} one {# plano} other {# planos}}",
+      "consortiums": "{count, plural, =0 {# consórcios} one {# consórcio} other {# consórcios}}"
     },
     "types": {
       "financing": "Financiamento",
@@ -159,7 +159,7 @@
     "emptyCategories": "Nenhuma categoria com despesas para exibir.",
     "top3Title": "Categorias com maior despesa",
     "others": "Outros",
-    "othersCount": "Outros ({count, plural, one {# categoria} other {# categorias}})",
+    "othersCount": "Outros ({count, plural, =0 {# categorias} one {# categoria} other {# categorias}})",
     "monthlyEstimate": "Estimativa mensal pela participação da categoria"
   },
   "calendar": {
@@ -168,7 +168,7 @@
     "loadingAria": "Carregando calendário financeiro",
     "error": "Não foi possível carregar o calendário financeiro.",
     "rangeAria": "Intervalo do calendário",
-    "filterDays": "{count, plural, one {# dia} other {# dias}}",
+    "filterDays": "{count, plural, =0 {# dias} one {# dia} other {# dias}}",
     "refreshAria": "Atualizar calendário",
     "summaryAria": "Resumo do intervalo",
     "metrics": {
@@ -196,7 +196,7 @@
       "sat": "Sáb"
     },
     "allUpcoming": "Todos os próximos eventos",
-    "eventsCount": "{count, plural, one {# evento} other {# eventos}}",
+    "eventsCount": "{count, plural, =0 {# eventos} one {# evento} other {# eventos}}",
     "today": "Hoje",
     "emptyDayTitle": "Nenhum evento neste dia",
     "emptyUpcomingTitle": "Nenhum evento nos próximos dias",
@@ -205,7 +205,7 @@
   },
   "reports": {
     "title": "Relatórios Financeiros",
-    "subtitle": "Análise comparativa dos últimos {count, plural, one {# mês} other {# meses}}",
+    "subtitle": "Análise comparativa dos últimos {count, plural, =0 {# meses} one {# mês} other {# meses}}",
     "loadingAria": "Carregando relatórios financeiros",
     "error": "Não foi possível carregar os relatórios financeiros.",
     "refreshAria": "Atualizar relatórios",
@@ -234,7 +234,7 @@
     "topCategoriesTitle": "Top Categorias de Despesa",
     "topCategoriesEmpty": "Nenhuma categoria com despesas",
     "savingsRateTitle": "Taxa de Poupança",
-    "monthsBadge": "{count, plural, one {# mês} other {# meses}}"
+    "monthsBadge": "{count, plural, =0 {# meses} one {# mês} other {# meses}}"
   },
   "networth": {
     "title": "Evolução Patrimonial",
@@ -244,7 +244,7 @@
     "error": "Não foi possível carregar a evolução patrimonial.",
     "empty": "Nenhum mês disponível para este intervalo.",
     "periodAria": "Período da evolução patrimonial",
-    "monthsAria": "{count, plural, one {# mês} other {# meses}}",
+    "monthsAria": "{count, plural, =0 {# meses} one {# mês} other {# meses}}",
     "monthsShort": "{count}m",
     "refreshAria": "Atualizar patrimônio",
     "current": "Patrimônio Atual",
@@ -265,12 +265,12 @@
   },
   "timeline": {
     "title": "Linha do tempo",
-    "subtitle": "Fluxo de caixa diário · {count, plural, one {# dia com atividade} other {# dias com atividade}}",
+    "subtitle": "Fluxo de caixa diário · {count, plural, =0 {# dias com atividade} one {# dia com atividade} other {# dias com atividade}}",
     "loading": "Carregando movimentações…",
     "error": "Não foi possível carregar a linha do tempo.",
     "empty": "Sem dados de movimentação para exibir.",
     "periodAria": "Período da linha do tempo",
-    "filterDays": "{count, plural, one {# dia} other {# dias}}",
+    "filterDays": "{count, plural, =0 {# dias} one {# dia} other {# dias}}",
     "refreshAria": "Atualizar linha do tempo",
     "metrics": {
       "runningBalance": "Saldo acumulado",
@@ -287,7 +287,7 @@
     "today": "Hoje",
     "yesterday": "Ontem",
     "currentBadge": "Atual",
-    "movementsCount": "{count, plural, one {# movimento} other {# movimentos}}",
+    "movementsCount": "{count, plural, =0 {# movimentos} one {# movimento} other {# movimentos}}",
     "noMovements": "Sem movimentações"
   },
   "transactions": {

@@ -5,7 +5,7 @@ import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { QueryPanel } from '@/components/shared/query-panel';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, numberFmt, percentFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 
 // --- Types ---
@@ -55,8 +55,9 @@ function MiniSparkline({ data, strokeColor, label }: { data: number[]; strokeCol
 
 function ChangeIndicator({ change, showValues = true }: { change: number; showValues?: boolean }) {
   const t = useSafeTranslations('dashboard');
+  const locale = useSafeLocale();
   if (change === 0) return null;
-  const displayChange = showValues ? `${change > 0 ? '+' : '−'}${Math.abs(change).toFixed(1)}%` : '•••';
+  const displayChange = showValues ? percentFmt(change, locale) : '•••';
   return (
     <span className="text-xs text-muted-foreground">
       <span className="font-mono tabular-nums">{displayChange}</span> {t('quickStats.vsLastMonth')}
@@ -83,6 +84,7 @@ function StatCard({ label, value, badge, sparklineData, sparklineStroke, sparkli
 // --- Health Bar ---
 function HealthBar({ savingsRate, balanceTrend, showValues = true }: { savingsRate: number; balanceTrend: 'up' | 'down' | 'stable'; showValues?: boolean }) {
   const t = useSafeTranslations('dashboard');
+  const locale = useSafeLocale();
   // Color logic: <0% red, 0-15% amber, 15-30% cyan, >30% emerald
   const barColor =
     savingsRate < 0
@@ -134,7 +136,7 @@ function HealthBar({ savingsRate, balanceTrend, showValues = true }: { savingsRa
           <div className={cn('h-full rounded-full', barColor)} style={{ width: `${showValues ? barWidth : 0}%` }} />
         </div>
         <span className="text-[11px] font-bold tabular-nums text-muted-foreground min-w-[40px] text-right">
-          {showValues ? `${savingsRate.toFixed(1)}%` : '•••'}
+          {showValues ? percentFmt(savingsRate, locale, { signed: false }) : '•••'}
         </span>
       </div>
       <p className="text-[10px] text-muted-foreground mt-1.5">
@@ -250,7 +252,7 @@ export function QuickStatsPanel({ data, showValues = true }: { data: QuickStatsD
       key: 'monthlySavings',
       label: t('quickStats.metrics.monthlySavings'),
       value: money(current.monthlySavings),
-      badge: t('quickStats.badges.savingsRate', { rate: showValues ? current.savingsRate.toFixed(1) : '•••' }),
+      badge: t('quickStats.badges.savingsRate', { rate: showValues ? numberFmt(current.savingsRate, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '•••' }),
       sparklineData: hasSavingsHistory
         ? data.monthlySavingsHistory!
         : sparklines.balance.map((_, i, arr) => {

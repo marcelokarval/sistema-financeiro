@@ -5,7 +5,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CardsView } from '@/components/finance/cards-view';
 import { formatPurchaseDate, purchaseDateForInput, purchaseDateForSave } from './purchase-date';
-import { currencyFmt, dateFmt, dateShortFmt, percentFmt, shortCurrency } from './helpers';
+import { currencyFmt, dateFmt, dateShortFmt, numberFmt, percentFmt, rateFmt, shortCurrency } from './helpers';
 import { existsSync } from 'node:fs';
 import { NextRequest } from 'next/server';
 import { DashboardContent } from '@/components/finance/dashboard-view';
@@ -118,6 +118,28 @@ test('formatadores financeiros preservam BRL nominal e formatação regional por
   expect(percentFmt(12.34, 'es')).toBe('+12,3%');
   expect(percentFmt(12.34, 'en')).toBe('+12.3%');
   expect(percentFmt(-4.5, 'en')).toBe('-4.5%');
+
+  expect(percentFmt(12.34, 'pt', { signed: false })).toBe('12,3%');
+  expect(percentFmt(12.34, 'es', { signed: false })).toBe('12,3%');
+  expect(percentFmt(12.34, 'en', { signed: false })).toBe('12.3%');
+  expect(percentFmt(0, 'pt', { signed: false })).toBe('0,0%');
+  expect(percentFmt(0, 'en', { signed: false })).toBe('0.0%');
+  expect(percentFmt(25, 'pt', { precision: 0, signed: false })).toBe('25%');
+  expect(percentFmt(-4.5, 'pt', { signed: false })).toBe('-4,5%');
+
+  expect(numberFmt(1234.56, 'pt', { minimumFractionDigits: 2, maximumFractionDigits: 2 })).toBe('1.234,56');
+  expect(numberFmt(1234.56, 'es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })).toBe('1234,56');
+  expect(numberFmt(1234.56, 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })).toBe('1,234.56');
+  expect(numberFmt(41.7, 'pt', { minimumFractionDigits: 1, maximumFractionDigits: 1 })).toBe('41,7');
+  expect(numberFmt(41.7, 'en', { minimumFractionDigits: 1, maximumFractionDigits: 1 })).toBe('41.7');
+
+  expect(rateFmt(1.5, 'pt')).toBe('1,5');
+  expect(rateFmt(1.5, 'es')).toBe('1,5');
+  expect(rateFmt(1.5, 'en')).toBe('1.5');
+  expect(rateFmt(12.345, 'pt')).toBe('12,35');
+  expect(rateFmt(12.345, 'en')).toBe('12.35');
+  expect(rateFmt(12, 'pt')).toBe('12');
+  expect(rateFmt(1.234, 'pt', 3)).toBe('1,234');
 });
 
 test('formatadores de data preservam dia civil em UTC para pt, es e en', () => {

@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FinanceMetric } from '@/components/shared/finance-metric';
 import { FinanceProgress } from '@/components/shared/finance-progress';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt, dateFmt } from '@/lib/helpers';
+import { currencyFmt, dateFmt, percentFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { INVESTMENT_TYPE_KEYS, SAVINGS_TYPE_KEYS } from './analytics-i18n';
 
@@ -219,7 +219,6 @@ function GoalInvestmentRow({ inv, showValues = true }: { inv: InvestmentItem; sh
   const locale = useSafeLocale();
   const maskedValue = t('maskedValue');
   const typeKey = INVESTMENT_TYPE_KEYS[inv.type] || 'other';
-  const isPositive = inv.returnRate >= 0;
   const profit = inv.currentAmount - inv.totalInvested;
   return (
     <li className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4">
@@ -233,7 +232,7 @@ function GoalInvestmentRow({ inv, showValues = true }: { inv: InvestmentItem; sh
         <FinanceMetric variant="compact" label={t('dashboard.investmentsList.currentValue')} value={currencyFmt(inv.currentAmount, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
         <FinanceMetric variant="compact" label={t('dashboard.investmentsList.invested')} value={currencyFmt(inv.totalInvested, locale)} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
         <FinanceMetric variant="compact" label={t('dashboard.investmentsList.result')} value={`${profit >= 0 ? '+' : ''}${currencyFmt(profit, locale)}`} showValues={showValues} maskedValue={maskedValue} valueClassName="text-sm" />
-        <FinanceMetric variant="compact" label={t('dashboard.investmentsList.returnRate')} value={`${isPositive ? '+' : ''}${inv.returnRate.toFixed(1)}%`} showValues={showValues} maskedValue="•••" valueClassName="text-sm" />
+        <FinanceMetric variant="compact" label={t('dashboard.investmentsList.returnRate')} value={percentFmt(inv.returnRate, locale)} showValues={showValues} maskedValue="•••" valueClassName="text-sm" />
       </dl>
     </li>
   );

@@ -4,6 +4,7 @@ import React, { type ReactElement, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from '@/components/ui/alert-dialog';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
+import { Select, SelectItem } from '@/components/ui/select';
 import { FinanceConfirmationDialogShell, FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
 import { InvestmentEntries, InvestmentPortfolio, InvestmentsView } from './investments-view';
 import { InvestmentDeleteConfirmation } from './investment-delete-confirmation';
@@ -213,7 +214,7 @@ for (const [mode, detail, method, submit] of [
           brokerage: 'Corretora A', ticker: 'QA1', accountId: 'conta-a', categoryId: 'categoria-a',
         } : {
           name: '', type: 'STOCK', description: '', investedAmount: '', yieldRate: '0', brokerage: '', ticker: '',
-          accountId: '', categoryId: '',
+          accountId: 'none', categoryId: 'none',
         });
         const change = (name: string, value: string) => {
           const props = find(editor(render()), field(name))!.props;
@@ -823,4 +824,108 @@ test('renderiza InvestmentPortfolio e InstallmentPortfolio em pt, es e en sem ch
     expect(instHtml).toContain(expected[locale].installment);
     expect(instHtml).not.toContain('MISSING_MESSAGE');
   }
+});
+
+test('#21: InvestmentEditor e InstallmentPlanEditor oferecem opção Nenhum(a) nos selects opcionais e limpam vínculos na edição', async () => {
+  const expectedNone = { pt: 'Nenhum(a)', es: 'Ninguno(a)', en: 'None' } as const;
+
+  const collectNoneItems = (node: ReactNode, out: string[] = []): string[] => {
+    for (const child of React.Children.toArray(node)) {
+      if (!React.isValidElement<Record<string, any>>(child)) continue;
+      if (child.type === SelectItem && child.props.value === 'none') {
+        out.push(String(child.props.children));
+      }
+      collectNoneItems(child.props.children, out);
+    }
+    return out;
+  };
+
+  for (const locale of CANONICAL_LOCALES) {
+    const invChanges: Array<[string, string]> = [];
+    const invTree = withPtIntlDispatcher(
+      () =>
+        InvestmentEditor({
+          mode: 'create',
+          open: true,
+          saving: false,
+          form: {
+            name: '', type: 'STOCK', description: '', investedAmount: '', yieldRate: '0',
+            brokerage: '', ticker: '', accountId: '', categoryId: '',
+          },
+          accounts: [{ id: 'acc-1', name: 'Conta 1' }],
+          categories: [{ id: 'cat-1', name: 'Categoria 1' }],
+          onFieldChange: (fieldName, val) => invChanges.push([fieldName, val]),
+          onOpenChange: () => {},
+          onCloseAutoFocus: () => {},
+          onSave: async () => {},
+        }),
+      locale,
+    );
+    expect(collectNoneItems(invTree)).toEqual([expectedNone[locale], expectedNone[locale]]);
+    const invAccountSelect = find(invTree, (el) => el.type === Select && Boolean(find(el.props.children, (c) => c.props.id === 'investment-form-accountId')))!;
+    const invCategorySelect = find(invTree, (el) => el.type === Select && Boolean(find(el.props.children, (c) => c.props.id === 'investment-form-categoryId')))!;
+    expect(invAccountSelect.props.value).toBe('none');
+    expect(invCategorySelect.props.value).toBe('none');
+    invAccountSelect.props.onValueChange('none');
+    invCategorySelect.props.onValueChange('none');
+    expect(invChanges).toEqual([['accountId', ''], ['categoryId', '']]);
+
+    const planChanges: Array<[string, string]> = [];
+    const planTree = withPtIntlDispatcher(
+      () =>
+        InstallmentPlanEditor({
+          open: true,
+          creating: false,
+          form: {
+            description: '', totalAmount: '', installmentCount: '', monthlyValue: '',
+            interestRate: '', type: 'FINANCING', startDate: '2026-05-01', cardId: '', categoryId: '',
+          },
+          cards: [{ id: 'card-1', name: 'Cartão 1', color: '#8b5cf6' }],
+          categories: [{ id: 'cat-1', name: 'Categoria 1', type: 'EXPENSE', color: '#22c55e' }],
+          planTypes: { FINANCING: { label: 'Financiamento', icon: () => null } },
+          onFieldChange: (fieldName, val) => planChanges.push([fieldName, val]),
+          onAmountChange: () => {},
+          onCountChange: () => {},
+          onOpenChange: () => {},
+          onCloseAutoFocus: () => {},
+          onSubmit: async () => {},
+        }),
+      locale,
+    );
+    expect(collectNoneItems(planTree)).toEqual([expectedNone[locale], expectedNone[locale]]);
+    const planCardSelect = find(planTree, (el) => el.type === Select && Boolean(find(el.props.children, (c) => c.props.id === 'plan-form-cardId')))!;
+    const planCategorySelect = find(planTree, (el) => el.type === Select && Boolean(find(el.props.children, (c) => c.props.id === 'plan-form-categoryId')))!;
+    expect(planCardSelect.props.value).toBe('none');
+    expect(planCategorySelect.props.value).toBe('none');
+    planCardSelect.props.onValueChange('none');
+    planCategorySelect.props.onValueChange('none');
+    expect(planChanges).toEqual([['cardId', ''], ['categoryId', '']]);
+  }
+
+  // Edição de investimento com vínculo prévio: selecionar 'none' envia null no PUT para limpar no banco
+  const linked = { ...a, accountId: 'conta-a', categoryId: 'categoria-a' };
+  await exercise(InvestmentsView, (request) => {
+    if (request.url === investmentsUrl && request.method === 'GET') return Response.json([linked, b]);
+    if (request.method === 'PUT') return Response.json({});
+    return readFixture(request);
+  }, async (render, requests) => {
+    edit(render(), linked, false);
+    find(editor(render()), field('accountId'))!.props.onValueChange('none');
+    find(editor(render()), field('categoryId'))!.props.onValueChange('none');
+    expect(find(editor(render()), field('accountId'))!.props.value).toBe('none');
+    expect(find(editor(render()), field('categoryId'))!.props.value).toBe('none');
+
+    const before = requests.length;
+    await click(editor(render()), 'Salvar')();
+    const putReq = requests.slice(before).find((r) => r.method === 'PUT')!;
+    expect(JSON.parse(putReq.body!)).toEqual({
+      id: 'a',
+      name: 'Investimento A',
+      type: 'CDB',
+      investedAmount: 1200,
+      yieldRate: 0,
+      accountId: null,
+      categoryId: null,
+    });
+  });
 });

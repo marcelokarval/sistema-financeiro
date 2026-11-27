@@ -235,12 +235,26 @@ test('mantém paridade recursiva de chaves e placeholders ICU nos 18 namespaces 
   }
 
   const rootMessages = join(process.cwd(), 'src', 'messages');
+  const expectedNoneOption = { pt: 'Nenhum(a)', es: 'Ninguno(a)', en: 'None' } as const;
   for (const ns of uiNamespaces) {
     const ptMap = flattenLeafStrings(JSON.parse(readFileSync(join(rootMessages, 'pt', `${ns}.json`), 'utf8')));
     expect(ptMap.size).toBeGreaterThan(0);
+    for (const [key, ptVal] of ptMap) {
+      if (ptVal.includes(', plural,')) {
+        const matches = [...ptVal.matchAll(/,\s*plural\s*,/g)];
+        const zeroBranches = [...ptVal.matchAll(/(?:^|[,{\s])=0\s*\{/g)];
+        expect(zeroBranches.length).toBeGreaterThanOrEqual(matches.length);
+      }
+      if (ns === 'shared' && key === 'noneOption') {
+        expect(ptVal).toBe(expectedNoneOption.pt);
+      }
+    }
     for (const locale of ['es', 'en'] as const) {
       const otherMap = flattenLeafStrings(JSON.parse(readFileSync(join(rootMessages, locale, `${ns}.json`), 'utf8')));
       expect([...otherMap.keys()].sort()).toEqual([...ptMap.keys()].sort());
+      if (ns === 'shared') {
+        expect(otherMap.get('noneOption')).toBe(expectedNoneOption[locale]);
+      }
       for (const [key, ptVal] of ptMap) {
         const otherVal = otherMap.get(key) ?? '';
         expect(otherVal.trim().length).toBeGreaterThan(0);

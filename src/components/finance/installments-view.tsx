@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   currencyFmt,
   dateFmt,
+  rateFmt,
 } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
@@ -427,7 +428,7 @@ export function InstallmentsView() {
               {selectedPlan.interestRate > 0 && (
                 <p className="text-sm text-muted-foreground">
                   {t.rich('detail.interestDetails', {
-                    rate: selectedPlan.interestRate,
+                    rate: rateFmt(selectedPlan.interestRate, locale),
                     monthly: currencyFmt(selectedPlan.monthlyValue, locale),
                     startDate: dateFmt(selectedPlan.startDate, locale),
                     strong: (chunks) => <strong>{chunks}</strong>,

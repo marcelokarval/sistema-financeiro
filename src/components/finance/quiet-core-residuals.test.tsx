@@ -302,8 +302,44 @@ describe('Task 0017 — SmartInsights e QuickStatsOverview com QueryPanel preser
 
     const zeroHtml = renderWithIntl(zeroPanelEl, 'pt');
     expect(zeroHtml).toContain('R$ 0,00');
-    expect(zeroHtml).toContain('0.0%');
+    expect(zeroHtml).toContain('0,0%');
     expect(zeroHtml).toContain('Estável');
     expect(zeroHtml).not.toContain('do patrimônio (valor absoluto)');
+
+    const rateData = {
+      current: {
+        totalBalance: 5000,
+        cardDebt: 800,
+        investments: 12000,
+        savingsGoals: 3000,
+        netWorth: 19200,
+        monthlyIncome: 6000,
+        monthlyExpense: 3500,
+        monthlySavings: 2500,
+        savingsRate: 41.7,
+      },
+      sparklines: { balance: [1000, 5000], income: [5000, 6000], expense: [3000, 3500] },
+      changes: { incomeVsLastMonth: 3.4, expenseVsLastMonth: -2.9, savingsVsLastMonth: 4.2 },
+    };
+    const ptRates = renderWithIntl(<QuickStatsPanel data={rateData} />, 'pt');
+    expect(ptRates).toContain('Taxa de economia: 41,7%');
+    expect(ptRates).toContain('41,7%');
+    expect(ptRates).toContain('+3,4%');
+    expect(ptRates).toContain('-2,9%');
+
+    const esRates = renderWithIntl(<QuickStatsPanel data={rateData} />, 'es');
+    expect(esRates).toContain('Tasa de ahorro: 41,7%');
+    expect(esRates).toContain('+3,4%');
+    expect(esRates).toContain('-2,9%');
+
+    const enRates = renderWithIntl(<QuickStatsPanel data={rateData} />, 'en');
+    expect(enRates).toContain('Savings rate: 41.7%');
+    expect(enRates).toContain('+3.4%');
+    expect(enRates).toContain('-2.9%');
+
+    const maskedRates = renderWithIntl(<QuickStatsPanel data={rateData} showValues={false} />, 'pt');
+    expect(maskedRates).toContain('Taxa de economia: •••%');
+    expect(maskedRates).not.toContain('41,7%');
+    expect(maskedRates).not.toContain('+3,4%');
   });
 });
