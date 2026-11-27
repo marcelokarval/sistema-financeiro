@@ -23,7 +23,7 @@ sistema-financeiro/
 │   │   └── ui/             # Componentes shadcn/ui (NÃO editar manualmente)
 │   ├── hooks/              # Hooks React customizados
 │   ├── i18n/               # Fundação next-intl sem URL routing (config, messages, types, request, provider)
-│   ├── lib/                # store.ts (Zustand), db.ts (Prisma), helpers.ts, server-i18n.ts, utils.ts (cn), api-validation.ts
+│   ├── lib/                # store.ts (Zustand), db.ts (Prisma), helpers.ts, search-normalize.ts, server-i18n.ts, utils.ts (cn), api-validation.ts
 │   ├── messages/           # Catálogos JSON por idioma (pt/, es/, en/ — domínios UI + api.json)
 │   └── test-utils/         # Helpers de teste (intl.tsx: IntlTestWrapper, renderWithIntl)
 ├── prisma/
@@ -69,12 +69,12 @@ sistema-financeiro/
   import { useRealtime } from '@/hooks/use-realtime';
   ```
 - **Componentes e UI:**
-  - Widgets e views em `src/components/finance/` usam `'use client'`, estado de navegação via `src/lib/store.ts` e moeda formatada com `currencyFmt(v, locale)` (mantendo `BRL` fixo).
+  - Widgets e views em `src/components/finance/` usam `'use client'`, estado de navegação via `src/lib/store.ts`, moeda formatada com `currencyFmt(v, locale)` (mantendo `BRL` fixo) e taxas/percentuais/números localizados via `rateFmt`, `percentFmt` e `numberFmt` (`@/lib/helpers`).
   - Compose classes condicionais com `cn()` (`@/lib/utils`). **VETO a `raw-conditional-class-name`** (template literal em `className` com ternária de strings), verificado por `bun --no-env-file run arch:check`.
   - **VETO a `framer-motion`**: proibido importar `framer-motion` em `src/`.
   - **NÃO** hardcode cores hex/oklch nos componentes; preserve o import de `docs/reference/design-system.premium-theme.css` em `src/app/globals.css` e use variáveis Tailwind / `--ds-*`.
-  - **NÃO** edite componentes em `src/components/ui/` manualmente — use a CLI do shadcn.
-  - **Internacionalização (i18n) e Moeda:** suporte multilíngue obrigatório em **pt** (padrão), **es** e **en**, sem roteamento por URL (`NEXT_LOCALE` + `Accept-Language`). Nos componentes de `src/components/shared/` e `src/components/finance/`, use `useSafeTranslations` e `useSafeLocale` de `@/i18n/provider` (nunca hooks crus de `next-intl`, garantindo fallback seguro em `'pt'` fora de provider); nas rotas API use `src/lib/server-i18n.ts`; nos testes use `IntlTestWrapper` / `renderWithIntl` de `@/test-utils/intl`; mantenha moeda contábil fixa em **BRL** (sem conversão cambial) e verifique **dark mode e light mode**.
+  - **NÃO** edite componentes em `src/components/ui/` manualmente — use a CLI do shadcn; diálogos financeiros usam `FinanceFormDialogShell` com `closeLabel` localizado (fallback `shared.dialogCloseLabel`) e selects opcionais utilizam `shared.noneOption`.
+  - **Internacionalização (i18n) e Moeda:** suporte multilíngue obrigatório em **pt** (padrão), **es** e **en**, sem roteamento por URL (`NEXT_LOCALE` + `Accept-Language`). Nos componentes de `src/components/shared/` e `src/components/finance/`, use `useSafeTranslations` e `useSafeLocale` de `@/i18n/provider` (nunca hooks crus de `next-intl`, garantindo fallback seguro em `'pt'` fora de provider); nas rotas API use `src/lib/server-i18n.ts`; nos testes use `IntlTestWrapper` / `renderWithIntl` de `@/test-utils/intl`; todas as cláusulas ICU `, plural,` em `src/messages/pt/*.json` devem declarar ramo `=0 {...}` mantendo paridade com `es` e `en`; mantenha moeda contábil fixa em **BRL** (sem conversão cambial) e verifique **dark mode e light mode**.
 
 ---
 
