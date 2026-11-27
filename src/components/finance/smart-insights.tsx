@@ -23,7 +23,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
-import { useSafeTranslations } from '@/i18n/provider';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { useAppStore, type ViewType } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { INSIGHT_TYPE_PRESENTATION } from './analytics-i18n';
@@ -77,25 +77,46 @@ function TrendIndicator({ trend }: { trend: 'up' | 'down' | 'stable' }) {
   return <span className="text-xs text-muted-foreground">{t(`insights.trends.${trend}`)}</span>;
 }
 
-export function insightActionDestination(insight: Pick<FinancialInsight, 'id' | 'action'>): ViewType {
-  if (insight.id.startsWith('card-') || insight.action === 'Pagar fatura') return 'cards';
-  if (insight.id.startsWith('category-') || insight.action === 'Ver detalhes da categoria' || insight.action === 'Analisar gastos') return 'categories';
-  if (insight.id.startsWith('goal-') || insight.id === 'emergency-fund' || insight.action === 'Contribuir agora' || insight.action === 'Rever orçamento') return 'savings';
-  if (insight.id === 'income-vs-expense' || insight.action === 'Rever despesas') return 'accounts';
+export function insightActionDestination(insight: Pick<FinancialInsight, 'id'> & { action?: string }): ViewType {
+  if (insight.id.startsWith('card-')) return 'cards';
+  if (insight.id.startsWith('category-')) return 'categories';
+  if (insight.id.startsWith('goal-') || insight.id === 'emergency-fund') return 'savings';
+  if (insight.id === 'income-vs-expense') return 'accounts';
   return 'dashboard';
 }
 
-export function InsightCard({ insight, onNavigate }: { insight: FinancialInsight; onNavigate?: (view: ViewType) => void }) {
+function maskInsightText(text: string, maskedValue: string): string {
+  return text
+    .replace(/-?R\$\s*[\d.,]+/g, maskedValue)
+    .replace(/[+-]?\d+(?:[.,]\d+)?\s*%/g, '•••')
+    .replace(/\d+(?:[.,]\d+)*/g, '•••');
+}
+
+export function InsightCard({
+  insight,
+  onNavigate,
+  showValues = true,
+}: {
+  insight: FinancialInsight;
+  onNavigate?: (view: ViewType) => void;
+  showValues?: boolean;
+}) {
   const t = useSafeTranslations('goals');
   const { labelKey, color } = INSIGHT_TYPE_PRESENTATION[insight.type] ?? INSIGHT_TYPE_PRESENTATION.info;
   const navigate = onNavigate ?? ((view: ViewType) => useAppStore.getState().setCurrentView(view));
+  const maskedValue = t('maskedValue');
+  const title = showValues ? insight.title : maskInsightText(insight.title, maskedValue);
+  const description = showValues ? insight.description : maskInsightText(insight.description, maskedValue);
+  const metric = insight.metric
+    ? (showValues ? insight.metric : (insight.metric.includes('R$') ? maskedValue : '•••'))
+    : undefined;
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-4">
       <span aria-hidden="true" className={color}>{getInsightIcon(insight.icon, insight.type)}</span>
       <div className="min-w-0 space-y-1">
         <p className={cn('text-xs font-medium', color)}>{t(`insights.types.${labelKey}`)}</p>
-        <h4 className="break-words text-sm font-semibold">{insight.title}</h4>
-        <p className="break-words text-sm text-muted-foreground">{insight.description}</p>
+        <h4 className="break-words text-sm font-semibold">{title}</h4>
+        <p className="break-words text-sm text-muted-foreground">{description}</p>
         {insight.action && (
           <Button
             type="button"
@@ -109,9 +130,9 @@ export function InsightCard({ insight, onNavigate }: { insight: FinancialInsight
           </Button>
         )}
       </div>
-      {(insight.metric || insight.trend) && (
+      {(metric || insight.trend) && (
         <div className="col-start-2 flex min-w-0 flex-wrap items-baseline gap-x-2 sm:col-start-auto sm:flex-col sm:items-end">
-          {insight.metric && <span className="break-words font-mono text-sm tabular-nums">{insight.metric}</span>}
+          {metric && <span className="break-words font-mono text-sm tabular-nums">{metric}</span>}
           {insight.trend && <TrendIndicator trend={insight.trend} />}
         </div>
       )}
@@ -143,7 +164,8 @@ function EmptyState({ filtered = false }: { filtered?: boolean }) {
 }
 
 // --- Main Component ---
-export function SmartInsights() {
+export function SmartInsights({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [insights, setInsights] = useState<FinancialInsight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -169,8 +191,9 @@ export function SmartInsights() {
   }, []);
 
   useEffect(() => {
+    void locale;
     fetchInsights();
-  }, [fetchInsights]);
+  }, [fetchInsights, locale]);
 
   return (
     <SmartInsightsContent
@@ -180,6 +203,7 @@ export function SmartInsights() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       onRetry={fetchInsights}
+      showValues={showValues}
     />
   );
 }
@@ -191,6 +215,7 @@ export function SmartInsightsContent({
   activeTab,
   onTabChange,
   onRetry,
+  showValues = true,
 }: {
   insights: FinancialInsight[];
   loading: boolean;
@@ -198,6 +223,7 @@ export function SmartInsightsContent({
   activeTab: string;
   onTabChange: (tab: string) => void;
   onRetry: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('goals');
   const filteredInsights = filterInsights(insights, activeTab);
@@ -235,7 +261,7 @@ export function SmartInsightsContent({
       </Tabs>
       {filteredInsights.length > 0 ? (
         <ul className="divide-y divide-border">
-          {filteredInsights.map((insight) => <InsightCard key={insight.id} insight={insight} />)}
+          {filteredInsights.map((insight) => <InsightCard key={insight.id} insight={insight} showValues={showValues} />)}
         </ul>
       ) : <EmptyState filtered />}
     </QueryPanel>

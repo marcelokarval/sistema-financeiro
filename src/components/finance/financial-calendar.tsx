@@ -99,7 +99,8 @@ export function currentFinancialCalendar(
   return settled?.request === request ? settled.result : { status: 'loading' };
 }
 
-export function FinancialCalendar() {
+export function FinancialCalendar({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [request, setRequest] = useState<FinancialCalendarRequest>({ days: 30 });
   const [settled, setSettled] = useState<FinancialCalendarResult | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -113,10 +114,11 @@ export function FinancialCalendar() {
   }, []);
 
   useEffect(() => {
+    void locale;
     const controller = new AbortController();
     void requestFinancialCalendar(request, controller.signal, setSettled);
     return () => controller.abort();
-  }, [request]);
+  }, [request, locale]);
 
   const handleToday = () => {
     setSelectedDate(null);
@@ -138,6 +140,7 @@ export function FinancialCalendar() {
       setCurrentMonth={setCurrentMonth}
       onToday={handleToday}
       fetchData={fetchData}
+      showValues={showValues}
     />
   );
 }
@@ -153,6 +156,7 @@ export function FinancialCalendarContent({
   setCurrentMonth,
   onToday,
   fetchData,
+  showValues = true,
 }: {
   data: CalendarData | null;
   loading: boolean;
@@ -164,9 +168,12 @@ export function FinancialCalendarContent({
   setCurrentMonth: Dispatch<SetStateAction<Date>>;
   onToday: () => void;
   fetchData: (days: number) => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   const dateFnsLocale = getDateFnsLocale(locale);
   const dateFormats = CALENDAR_DATE_FORMATS[locale];
 
@@ -182,10 +189,12 @@ export function FinancialCalendarContent({
     const map = new Map<string, { hasIncome: boolean; hasExpense: boolean }>();
     if (!data) return map;
     for (const day of data.days) {
-      map.set(day.date, {
-        hasIncome: day.income > 0,
-        hasExpense: day.expense > 0,
-      });
+      if (day.income > 0 || day.expense > 0 || day.events.length > 0) {
+        map.set(day.date, {
+          hasIncome: day.income > 0,
+          hasExpense: day.expense > 0,
+        });
+      }
     }
     return map;
   }, [data]);
@@ -277,8 +286,8 @@ export function FinancialCalendarContent({
         <CardContent className="min-w-0 space-y-4 px-4 sm:px-5">
           <dl aria-label={t('calendar.summaryAria')} className="grid grid-cols-1 gap-x-4 gap-y-2 border-y border-border py-3 sm:grid-cols-2 xl:grid-cols-5">
             <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label={t('calendar.metrics.billsToPay')} value={summary.totalBills} />
-            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label={t('calendar.metrics.intervalExpense')} value={currencyFmt(summary.totalExpense, locale)} />
-            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label={t('calendar.metrics.intervalIncome')} value={currencyFmt(summary.totalIncome, locale)} />
+            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label={t('calendar.metrics.intervalExpense')} value={currencyFmt(summary.totalExpense, locale)} showValues={showValues} maskedValue={maskedValue} />
+            <FinanceMetric variant="compact" className={metricClass} valueClassName="text-sm" label={t('calendar.metrics.intervalIncome')} value={currencyFmt(summary.totalIncome, locale)} showValues={showValues} maskedValue={maskedValue} />
             <FinanceMetric
               variant="compact"
               className={metricClass}
@@ -293,6 +302,8 @@ export function FinancialCalendarContent({
                 valueClassName="text-sm"
                 label={t('calendar.metrics.biggestExpense')}
                 value={currencyFmt(summary.upcomingBiggestExpense.amount, locale)}
+                showValues={showValues}
+                maskedValue={maskedValue}
               />
             )}
           </dl>
@@ -311,6 +322,7 @@ export function FinancialCalendarContent({
               selectedDayData={selectedDayData}
               filteredEvents={filteredEvents}
               onToday={onToday}
+              showValues={showValues}
             />
           </div>
         </CardContent>

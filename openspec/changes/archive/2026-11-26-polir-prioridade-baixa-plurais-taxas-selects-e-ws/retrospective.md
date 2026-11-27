@@ -1,0 +1,12 @@
+# Retrospective — `polir-prioridade-baixa-plurais-taxas-selects-e-ws`
+
+## O que funcionou bem
+- O particionamento em três frentes paralelas na Onda 1 (`1.1` catálogos PT e `invariants.test.ts`, `1.2` helpers numéricos em `src/lib/helpers.ts`, `shared.json`, 14 componentes com taxas/percentuais e selects opcionais, `1.3` `use-realtime.ts` + `use-realtime.test.ts`) evitou qualquer colisão de escrita ao isolar `noneOption` em `src/messages/{pt,es,en}/shared.json` (`#483`, `#484`, `#485`).
+- Preservar `precision = 1, signed = true` como padrão de `percentFmt(v, locale)` enquanto `rateFmt` e `percentFmt(..., { signed: false })` formatam taxas e participações via `Intl.NumberFormat` manteve retrocompatibilidade integral (`+12.3%` / `-4.5%`) e eliminou helpers locais duplicados em `financial-report-tabs.tsx` e `dashboard-view.tsx` (`#20`).
+- Enviar `null` em `saveInvestment` apenas quando `editingInvestment` possuía `accountId`/`categoryId` prévio e preservar `undefined` quando já vazio atendeu simultaneamente à limpeza no banco (`#21`) e aos testes de mutação existentes.
+- Configurar `MAX_RECONNECTION_ATTEMPTS = 3` com backoff exponencial (`2000ms`–`30000ms`) e tratamento silencioso de `connect_error`/`reconnect_failed` em `src/hooks/use-realtime.ts` eliminou spam de conexão quando `:3004` está ausente sem perder `SERVER_SNAPSHOT` nem `reconnect()` manual (`#22`).
+
+## Pontos de atenção e lições aprendidas
+- A execução simultânea de dois lotes pesados de Playwright (`Lote 3/4` e `Lote 4/4` em paralelo) causou contenção de CPU e `exit 143` no `Lote 4/4` (`#494`); reexecutar o `Lote 4/4` sequencialmente em `bwrap` resolveu integralmente a verificação sem desvios ou saltos (`#496`, `#499`).
+- Após atualizar formatadores localizados e selects opcionais (`#20`, `#21`), 9 asserções legadas nos testes unitários falharam exatamente conforme previsto na etapa RED da Task `2.1` (`dashboard-view.test.tsx`, `quiet-core-residuals.test.tsx`, `quiet-analysis-calendar.test.tsx`, `quiet-investment-mutations.test.tsx`) e foram reconciliadas junto com novos casos multi-idioma para `pt`, `es` e `en` (`#499`).
+- O gate AST e o teto de `500` linhas foram preservados em todos os módulos tocados (`balance-projection.tsx` `469`, `debt-sections.tsx` `453`, `networth-evolution.tsx` `436`, `transaction-analysis-tabs.tsx` `473`), mantendo `0` erros e as `6` identidades aprovadas do baseline (`#501`).

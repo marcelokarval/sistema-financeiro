@@ -172,6 +172,7 @@ async function runCases(page, html) {
     await scenario(`POST ${type} pendente não duplica`, view, async () => {
       await button(type === "conta" ? "Nova conta" : "Novo cartão").click();
       await field(fieldId).fill("Rascunho");
+      if (type === "cartão") await field("card-digits").fill("1234");
       await checkNoDuplicate(createAction);
     });
     await scenario(`PUT ${type} pendente não duplica`, view, async () => {

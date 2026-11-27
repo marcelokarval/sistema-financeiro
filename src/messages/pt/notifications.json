@@ -1,7 +1,7 @@
 {
   "title": "Notificações",
   "subtitle": "Atividade recente",
-  "unreadCount": "{count, plural, one {# nova} other {# novas}}",
+  "unreadCount": "{count, plural, =0 {# novas} one {# nova} other {# novas}}",
   "allRead": "Todas lidas",
   "close": "Fechar",
   "loading": "Carregando atividades…",

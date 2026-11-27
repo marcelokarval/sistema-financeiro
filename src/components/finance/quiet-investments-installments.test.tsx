@@ -220,6 +220,8 @@ const findElement = (node: React.ReactNode, matches: (element: ViewElement) => b
       content = withPtIntlDispatcher(() => InstallmentPlanEditor((child as React.ReactElement<React.ComponentProps<typeof InstallmentPlanEditor>>).props));
     } else if (child.type === InstallmentDeleteConfirmation) {
       content = withPtIntlDispatcher(() => InstallmentDeleteConfirmation((child as React.ReactElement<React.ComponentProps<typeof InstallmentDeleteConfirmation>>).props));
+    } else if (child.type === installments.InstallmentPortfolio) {
+      content = withPtIntlDispatcher(() => installments.InstallmentPortfolio((child as React.ReactElement<React.ComponentProps<typeof installments.InstallmentPortfolio>>).props));
     } else if (child.type === FinanceFormDialogShell) {
       content = withPtIntlDispatcher(() => FinanceFormDialogShell((child as React.ReactElement<React.ComponentProps<typeof FinanceFormDialogShell>>).props));
     } else if (child.type === FinanceConfirmationDialogShell) {
@@ -632,5 +634,205 @@ test('renderiza InvestmentsView, InstallmentsView e InstallmentEntries em pt, es
       locale,
     );
     expect(entriesHtml).toContain(expected[locale].overdue);
+  }
+});
+
+test('#16, #17 e #18: Parcelas valida criação, Investimentos/Parcelas adotam min-h-11/size-11 e InstallmentEntries filtra e salta preservando 1..N', async () => {
+  for (const file of ['./investments-view.tsx', './installments-view.tsx'] as const) {
+    const src = readFileSync(new URL(file, import.meta.url), 'utf8');
+    expect(src).toContain('min-h-11');
+  }
+  const invSrc = readFileSync(new URL('./investments-view.tsx', import.meta.url), 'utf8');
+  expect(invSrc).toContain('size-11');
+
+  await exerciseInstallments(
+    async () => Response.json([]),
+    async (render, requests, feedback) => {
+      const opener = findElement(render(), (e) => e.props.onClick && React.Children.toArray(e.props.children).some((c) => typeof c === 'string' && c.includes('Novo plano')))!;
+      opener.props.onClick({ currentTarget: null });
+      const activeDialog = () => findElement(render(), (e) => e.type === Dialog && e.props.open)!;
+      const submitCreate = () => findElement(activeDialog(), (e) => e.props.onClick && React.Children.toArray(e.props.children).includes('Criar Plano'))!;
+
+      // Descrição em branco -> bloqueia POST
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-description')?.props.onChange({ target: { value: '   ' } });
+      await submitCreate().props.onClick();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+      expect(feedback.at(-1)).toBe('error');
+
+      // Valor total <= 0 -> bloqueia POST
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-description')?.props.onChange({ target: { value: 'Plano Válido' } });
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-totalAmount')?.props.onChange({ target: { value: '0' } });
+      await submitCreate().props.onClick();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+
+      // Quantidade de parcelas inválida (0) -> bloqueia POST
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-totalAmount')?.props.onChange({ target: { value: '1200' } });
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-installmentCount')?.props.onChange({ target: { value: '0' } });
+      await submitCreate().props.onClick();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+
+      // Valor da parcela <= 0 -> bloqueia POST
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-installmentCount')?.props.onChange({ target: { value: '6' } });
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-monthlyValue')?.props.onChange({ target: { value: '-10' } });
+      await submitCreate().props.onClick();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+
+      // Taxa de juros negativa -> bloqueia POST
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-monthlyValue')?.props.onChange({ target: { value: '200' } });
+      findElement(activeDialog(), (e) => e.props.id === 'plan-form-interestRate')?.props.onChange({ target: { value: '-2' } });
+      await submitCreate().props.onClick();
+      expect(requests.filter(([m]) => m === 'POST')).toHaveLength(0);
+    },
+  );
+
+  // #18 InstallmentEntries: filtros Todas/Pendentes/Pagas, ordem 1..N, guarda planId e salto à próxima pendente
+  const multiPlan = {
+    ...plan,
+    installmentCount: 3,
+    installments: [
+      { id: 'e1', installmentPlanId: plan.id, number: 1, amount: 500, status: 'PAID' as const, dueDate: '2026-04-01', paidDate: '2026-04-01' },
+      { id: 'e2', installmentPlanId: plan.id, number: 2, amount: 500, status: 'OVERDUE' as const, dueDate: '2026-05-01', paidDate: null },
+      { id: 'e3', installmentPlanId: plan.id, number: 3, amount: 500, status: 'PENDING' as const, dueDate: '2026-06-01', paidDate: null },
+      { id: 'foreign', installmentPlanId: 'other-plan', number: 99, amount: 500, status: 'PENDING' as const, dueDate: '2026-07-01', paidDate: null },
+    ],
+  };
+
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previousH = internals.H;
+  const states: unknown[] = [];
+  const refs: { current: unknown }[] = [];
+  function renderEntries(targetPlan = multiPlan) {
+    let s = 0, r = 0;
+    internals.H = {
+      useState(initial: unknown) {
+        const i = s++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useRef: (init: unknown) => (refs[r++] ??= { current: init }),
+      useMemo: (f: () => unknown) => f(),
+      useCallback: (cb: unknown) => cb,
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, 'pt'),
+      useEffect: () => {},
+    };
+    try {
+      return installments.InstallmentEntries({ plan: targetPlan, paying: null, onPay: noop });
+    } finally {
+      internals.H = previousH;
+    }
+  }
+
+  let tree = renderEntries();
+  const findBtn = (node: React.ReactNode, text: string) =>
+    findElement(node, (e) => Boolean(e.props?.onClick) && React.Children.toArray(e.props.children).some((c) => typeof c === 'string' && c.trim() === text))!;
+
+  // Filtro Pendentes agrupa OVERDUE + PENDING mantendo 2 -> 3
+  findBtn(tree, 'Pendentes').props.onClick();
+  tree = renderEntries();
+  const pendingHtml = renderToStaticMarkup(tree);
+  expect(pendingHtml).not.toContain('Parcela 1 de 3');
+  expect(pendingHtml).toContain('Parcela 2 de 3');
+  expect(pendingHtml).toContain('Parcela 3 de 3');
+  expect(pendingHtml.indexOf('Parcela 2 de 3')).toBeLessThan(pendingHtml.indexOf('Parcela 3 de 3'));
+  // Parcela alheia não recebe botão Pagar
+  expect(pendingHtml).not.toContain('Pagar parcela 99 de 3');
+
+  // Filtro Pagas exibe apenas 1; acionar Ir para próxima pendente volta para Todas
+  findBtn(tree, 'Pagas').props.onClick();
+  tree = renderEntries();
+  const paidHtml = renderToStaticMarkup(tree);
+  expect(paidHtml).toContain('Parcela 1 de 3');
+  expect(paidHtml).not.toContain('Parcela 2 de 3');
+
+  const jumpBtn = findBtn(tree, 'Ir para próxima pendente');
+  expect(jumpBtn.props.disabled).toBe(false);
+  jumpBtn.props.onClick();
+  tree = renderEntries();
+  expect(findBtn(tree, 'Todas').props['aria-pressed']).toBe(true);
+
+  // Plano totalmente pago desabilita Ir para próxima pendente
+  states.length = 0;
+  refs.length = 0;
+  const allPaidTree = renderEntries({
+    ...multiPlan,
+    installments: [multiPlan.installments[0]],
+  });
+  expect(findBtn(allPaidTree, 'Ir para próxima pendente').props.disabled).toBe(true);
+});
+
+test('#20 e #21: Investimentos e Parcelas localizam taxas decimais por locale e oferecem Nenhum(a) em InstallmentPlanEditor', async () => {
+  const expectedYield = { pt: '+12,5%', es: '+12,5%', en: '+12.5%' } as const;
+  for (const locale of CANONICAL_LOCALES) {
+    const invHtml = renderWithIntl(
+      <investments.InvestmentPortfolio
+        summary={{ totalInvested: 1200, currentTotal: 1350, rentabilidade: 12.5, dividendsReceived: 0 }}
+        count={1}
+        records={[{ ...investment, currentBalance: 1350 }]}
+        filter="all"
+        onFilter={noop}
+        onNew={noop}
+        onOpen={noop}
+        onEdit={noop}
+        onDelete={noop}
+      />,
+      locale,
+    );
+    expect(invHtml).toContain(expectedYield[locale]);
+  }
+
+  const ratePlan = { ...plan, interestRate: 1.5 };
+  const dispatcher = (React as unknown as { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown } }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const { H } = dispatcher;
+  const originalFetch = globalThis.fetch;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const states: unknown[] = [], refs: { current: unknown }[] = [];
+    const cleanups: (() => void)[] = [];
+    let mounted = false;
+    function render() {
+      let stateIndex = 0, refIndex = 0;
+      const effects: (() => void)[] = [];
+      dispatcher.H = {
+        useState(initial: unknown) {
+          const i = stateIndex++;
+          if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+          return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+        },
+        useRef: (current: unknown) => (refs[refIndex++] ??= { current }),
+        useCallback: (fn: unknown) => fn,
+        useMemo: (factory: () => unknown) => factory(),
+        useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, locale),
+        useId: () => 'test-id',
+        useEffect: (effect: () => void | (() => void)) => { if (!mounted) effects.push(effect); },
+        useLayoutEffect: () => {},
+      };
+      try {
+        const view = installments.InstallmentsView();
+        mounted = true;
+        effects.forEach((effect) => {
+          const cleanup = effect();
+          if (typeof cleanup === 'function') cleanups.push(cleanup);
+        });
+        return view;
+      } finally { dispatcher.H = H; }
+    }
+    try {
+      globalThis.fetch = (async (url: string) => {
+        if (url === '/api/installments') return Response.json([ratePlan]);
+        if (url === '/api/installments?id=p1') return Response.json(ratePlan);
+        return Response.json([]);
+      }) as typeof fetch;
+      render();
+      await settle();
+      findElement(render(), (e) => e.type === installments.InstallmentPortfolio)!.props.onOpen(ratePlan);
+      await settle();
+      const detailHtml = renderWithIntl(render(), locale);
+      expect(detailHtml).toContain(locale === 'en' ? '1.5%' : '1,5%');
+    } finally {
+      cleanups.forEach((c) => c());
+      globalThis.fetch = originalFetch;
+    }
   }
 });

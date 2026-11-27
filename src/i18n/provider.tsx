@@ -1,6 +1,15 @@
 'use client';
 
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type ReactNode,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import {
   NextIntlClientProvider,
@@ -8,7 +17,7 @@ import {
   type NamespaceKeys,
   type NestedKeyOf,
 } from 'next-intl';
-import { DEFAULT_LOCALE, normalizeLocale, type CanonicalLocale } from './config';
+import { DEFAULT_LOCALE, getHtmlLang, normalizeLocale, type CanonicalLocale } from './config';
 import { MESSAGES_BY_LOCALE, getMessagesForLocale } from './messages';
 import type { AppMessages } from './types';
 
@@ -17,8 +26,15 @@ export interface AppIntlBridgeValue {
   messages: AppMessages;
 }
 
+export interface AppLocaleSwitchValue {
+  setOptimisticLocale: (locale: CanonicalLocale) => void;
+  isPending: boolean;
+}
+
 export const AppIntlBridgeContext = createContext<AppIntlBridgeValue | null>(null);
 export const AppRefreshContext = createContext<(() => void) | null>(null);
+export const AppLocaleSwitchContext = createContext<AppLocaleSwitchValue | null>(null);
+const AppRefreshPendingContext = createContext<boolean>(false);
 
 export type SafeAppNamespace = NamespaceKeys<AppMessages, NestedKeyOf<AppMessages>>;
 
@@ -36,29 +52,67 @@ export function AppIntlProvider({
   onRefresh,
   children,
 }: AppIntlProviderProps) {
-  const normalizedLocale = normalizeLocale(locale);
+  const normalizedPropLocale = normalizeLocale(locale);
+  const [optimistic, setOptimistic] = useState<{
+    basePropLocale: CanonicalLocale;
+    locale: CanonicalLocale;
+  } | null>(null);
+  const isRefreshPending = useContext(AppRefreshPendingContext);
+
+  const isOptimisticActive =
+    optimistic !== null &&
+    optimistic.basePropLocale === normalizedPropLocale &&
+    optimistic.locale !== normalizedPropLocale;
+
+  const effectiveLocale = isOptimisticActive ? optimistic.locale : normalizedPropLocale;
+
   const resolvedMessages = useMemo(
-    () => (messages ?? getMessagesForLocale(normalizedLocale)) as AppMessages,
-    [messages, normalizedLocale],
+    () => (isOptimisticActive || !messages ? getMessagesForLocale(effectiveLocale) : messages) as AppMessages,
+    [effectiveLocale, isOptimisticActive, messages],
   );
+
+  useEffect(() => {
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.lang = getHtmlLang(effectiveLocale);
+    }
+  }, [effectiveLocale]);
+
+  const setOptimisticLocale = useCallback(
+    (nextLocale: CanonicalLocale) => {
+      const normalizedNext = normalizeLocale(nextLocale);
+      setOptimistic({ basePropLocale: normalizedPropLocale, locale: normalizedNext });
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.lang = getHtmlLang(normalizedNext);
+      }
+    },
+    [normalizedPropLocale],
+  );
+
+  const switchValue = useMemo<AppLocaleSwitchValue>(
+    () => ({ setOptimisticLocale, isPending: isRefreshPending }),
+    [setOptimisticLocale, isRefreshPending],
+  );
+
   const bridgeValue = useMemo<AppIntlBridgeValue>(
-    () => ({ locale: normalizedLocale, messages: resolvedMessages }),
-    [normalizedLocale, resolvedMessages],
+    () => ({ locale: effectiveLocale, messages: resolvedMessages }),
+    [effectiveLocale, resolvedMessages],
   );
   const inheritedRefresh = useContext(AppRefreshContext);
   const effectiveRefresh = onRefresh ?? inheritedRefresh;
 
   return (
     <AppRefreshContext.Provider value={effectiveRefresh}>
-      <AppIntlBridgeContext.Provider value={bridgeValue}>
-        <NextIntlClientProvider
-          locale={normalizedLocale}
-          messages={resolvedMessages}
-          timeZone="UTC"
-        >
-          {children}
-        </NextIntlClientProvider>
-      </AppIntlBridgeContext.Provider>
+      <AppLocaleSwitchContext.Provider value={switchValue}>
+        <AppIntlBridgeContext.Provider value={bridgeValue}>
+          <NextIntlClientProvider
+            locale={effectiveLocale}
+            messages={resolvedMessages}
+            timeZone="UTC"
+          >
+            {children}
+          </NextIntlClientProvider>
+        </AppIntlBridgeContext.Provider>
+      </AppLocaleSwitchContext.Provider>
     </AppRefreshContext.Provider>
   );
 }
@@ -66,10 +120,17 @@ export function AppIntlProvider({
 /** Connects Next.js App Router refresh to AppRefreshContext when mounted under RootLayout. */
 export function NextRouterRefreshBridge({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const refresh = useCallback(() => {
-    router.refresh();
+    startTransition(() => {
+      router.refresh();
+    });
   }, [router]);
-  return <AppRefreshContext.Provider value={refresh}>{children}</AppRefreshContext.Provider>;
+  return (
+    <AppRefreshPendingContext.Provider value={isPending}>
+      <AppRefreshContext.Provider value={refresh}>{children}</AppRefreshContext.Provider>
+    </AppRefreshPendingContext.Provider>
+  );
 }
 
 /** Returns the active canonical locale, falling back safely to Portuguese outside a provider. */

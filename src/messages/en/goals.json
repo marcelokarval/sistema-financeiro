@@ -81,6 +81,7 @@
       "updateError": "Error updating goal"
     },
     "editor": {
+      "closeLabel": "Close form",
       "editTitle": "Edit Goal",
       "createTitle": "New Budget Goal",
       "editDescription": "Update your budget goal details.",
@@ -281,6 +282,7 @@
       "deleteError": "Error deleting"
     },
     "editor": {
+      "closeLabel": "Close form",
       "editTitle": "Edit Budget",
       "createTitle": "New Budget",
       "description": "Enter the category, amount, and limit period.",

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSafeTranslations } from '@/i18n/provider';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import {
   FinancialReportsAnalysisTab,
   FinancialReportsMonthlyTab,
@@ -73,7 +73,8 @@ export function currentFinancialReports(
   return settled?.request === request ? settled.result : { status: 'loading' };
 }
 
-export function FinancialReportsWidget() {
+export function FinancialReportsWidget({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [request, setRequest] = useState<FinancialReportsRequest>(() => ({}));
   const [settled, setSettled] = useState<FinancialReportsResult | null>(null);
   const [activeTab, setActiveTab] = useState('monthly');
@@ -86,10 +87,11 @@ export function FinancialReportsWidget() {
   }, []);
 
   useEffect(() => {
+    void locale;
     const controller = new AbortController();
     void requestFinancialReports(request, controller.signal, setSettled);
     return () => controller.abort();
-  }, [request]);
+  }, [request, locale]);
 
   return (
     <FinancialReportsContent
@@ -99,6 +101,7 @@ export function FinancialReportsWidget() {
       onTabChange={setActiveTab}
       fetchReports={fetchReports}
       onRetry={fetchReports}
+      showValues={showValues}
     />
   );
 }
@@ -110,6 +113,7 @@ export function FinancialReportsContent({
   onTabChange,
   fetchReports,
   onRetry,
+  showValues = true,
 }: {
   data: ReportsData | null;
   loading: boolean;
@@ -117,6 +121,7 @@ export function FinancialReportsContent({
   onTabChange: (tab: string) => void;
   fetchReports?: () => void;
   onRetry?: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
   const handleRetry = onRetry ?? fetchReports;
@@ -164,8 +169,8 @@ export function FinancialReportsContent({
               <TabsTrigger value="monthly" className="min-h-9 text-xs">{t('reports.tabs.monthly')}</TabsTrigger>
               <TabsTrigger value="analysis" className="min-h-9 text-xs">{t('reports.tabs.analysis')}</TabsTrigger>
             </TabsList>
-            <FinancialReportsMonthlyTab monthlyData={data.monthlyData} />
-            <FinancialReportsAnalysisTab data={data} />
+            <FinancialReportsMonthlyTab monthlyData={data.monthlyData} showValues={showValues} />
+            <FinancialReportsAnalysisTab data={data} showValues={showValues} />
           </Tabs>
         </CardContent>
       </Card>

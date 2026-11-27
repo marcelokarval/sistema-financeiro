@@ -78,7 +78,7 @@
     "noResults": "Nenhum resultado encontrado",
     "noResultsHint": "Tente buscar por outro termo.",
     "startTyping": "Comece a digitar para buscar",
-    "resultCount": "{count, plural, one {# resultado} other {# resultados}}",
+    "resultCount": "{count, plural, =0 {# resultados} one {# resultado} other {# resultados}}",
     "navigateHint": "Navegar",
     "selectHint": "Selecionar",
     "groups": {

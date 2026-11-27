@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   currencyFmt,
   dateFmt,
+  rateFmt,
 } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
@@ -197,15 +198,43 @@ export function InstallmentsView() {
 
   const createPlan = async () => {
     if (createInFlight.current) return;
+
+    const description = form.description.trim();
+    if (!description) {
+      toast.error(t('errors.descriptionRequired'));
+      return;
+    }
+    const totalAmount = Number(form.totalAmount);
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      toast.error(t('errors.totalPositive'));
+      return;
+    }
+    const installmentCount = Number(form.installmentCount);
+    if (!Number.isInteger(installmentCount) || installmentCount < 1) {
+      toast.error(t('errors.countInvalid'));
+      return;
+    }
+    const monthlyValue = Number(form.monthlyValue);
+    if (!Number.isFinite(monthlyValue) || monthlyValue <= 0) {
+      toast.error(t('errors.monthlyPositive'));
+      return;
+    }
+    const rawInterestRate = form.interestRate.trim();
+    const interestRate = rawInterestRate === '' ? 0 : Number(rawInterestRate);
+    if (!Number.isFinite(interestRate) || interestRate < 0) {
+      toast.error(t('errors.invalidInterestRate'));
+      return;
+    }
+
     createInFlight.current = true;
     setCreating(true);
     try {
       const body = {
-        description: form.description,
-        totalAmount: parseFloat(form.totalAmount) || 0,
-        installmentCount: parseInt(form.installmentCount) || 1,
-        monthlyValue: parseFloat(form.monthlyValue) || 0,
-        interestRate: parseFloat(form.interestRate) || 0,
+        description,
+        totalAmount,
+        installmentCount,
+        monthlyValue,
+        interestRate,
         type: form.type,
         startDate: form.startDate,
         cardId: form.cardId || null,
@@ -220,7 +249,7 @@ export function InstallmentsView() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || t('errors.createPlan'));
+        toast.error(data?.error || t('errors.createPlan'));
         return;
       }
 
@@ -367,7 +396,7 @@ export function InstallmentsView() {
     const nextInstallment = selectedPlan?.installments?.find((i) => i.status === 'PENDING' || i.status === 'OVERDUE');
     return (
       <section key={selection.id} className="min-w-0 space-y-5" aria-labelledby="plan-detail-title">
-        <Button variant="ghost" size="sm" onClick={closePlanDetail}><ArrowLeft aria-hidden="true" /> {t('actions.backToPlans')}</Button>
+        <Button variant="ghost" className="min-h-11" onClick={closePlanDetail}><ArrowLeft aria-hidden="true" /> {t('actions.backToPlans')}</Button>
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 id="plan-detail-title" tabIndex={-1} className="break-words text-xl font-semibold tracking-tight">{selection.description}</h2>
@@ -376,7 +405,7 @@ export function InstallmentsView() {
             )}
           </div>
           {confirmedPlanId === selection.id && (
-            <Button variant="outline" size="sm" className="text-destructive aria-disabled:opacity-50" aria-disabled={!selectedPlan}
+            <Button variant="outline" className="min-h-11 text-destructive aria-disabled:opacity-50" aria-disabled={!selectedPlan}
               onClick={(event) => {
                 if (selectedPlan) rememberDialogOrigin(event.currentTarget, () => setShowDeleteDialog(selectedPlan.id));
               }}><Trash2 aria-hidden="true" /> {t('actions.deletePlan')}</Button>
@@ -399,7 +428,7 @@ export function InstallmentsView() {
               {selectedPlan.interestRate > 0 && (
                 <p className="text-sm text-muted-foreground">
                   {t.rich('detail.interestDetails', {
-                    rate: selectedPlan.interestRate,
+                    rate: rateFmt(selectedPlan.interestRate, locale),
                     monthly: currencyFmt(selectedPlan.monthlyValue, locale),
                     startDate: dateFmt(selectedPlan.startDate, locale),
                     strong: (chunks) => <strong>{chunks}</strong>,
@@ -499,12 +528,12 @@ export function InstallmentPortfolio({ summary, count, records, filter, loadErro
           <h2 id="installments-title" tabIndex={-1} className="text-xl font-semibold tracking-tight">{t('title')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <Button size="sm" onClick={onNew}><Plus aria-hidden="true" /> {t('actions.newPlan')}</Button>
+        <Button className="min-h-11" onClick={onNew}><Plus aria-hidden="true" /> {t('actions.newPlan')}</Button>
       </header>
       {loadError && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-4 text-sm">
           <p className="text-destructive">{t('errors.loadPlans')}</p>
-          {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>{t('actions.retry')}</Button>}
+          {onRetry && <Button variant="outline" className="min-h-11" onClick={onRetry}>{t('actions.retry')}</Button>}
         </div>
       )}
       <InstallmentMetrics label={t('summary.ariaLabel')} metrics={[
@@ -517,7 +546,7 @@ export function InstallmentPortfolio({ summary, count, records, filter, loadErro
         <h3 id="plan-records-title" className="font-semibold">{t('portfolio.sectionTitle')}</h3>
         <div role="group" aria-label={t('filters.ariaLabel')} className="flex flex-wrap gap-2">
           {INSTALLMENT_FILTER_TABS.map((tab) => (
-            <Button key={tab.key} size="sm" variant={filter === tab.key ? 'secondary' : 'outline'}
+            <Button key={tab.key} className="min-h-11" variant={filter === tab.key ? 'secondary' : 'outline'}
               aria-pressed={filter === tab.key} onClick={() => onFilter(tab.key)}>{t(tab.labelKey)}</Button>
           ))}
         </div>
@@ -563,47 +592,153 @@ export function InstallmentPortfolio({ summary, count, records, filter, loadErro
   );
 }
 
+type InstallmentEntryFilter = 'ALL' | 'PENDING' | 'PAID';
+
 export function InstallmentEntries({ plan, paying, onPay }: { plan: InstallmentPlan; paying: string | null; onPay: (id: string) => void }) {
   const t = useSafeTranslations('installments');
   const locale = useSafeLocale();
+  const [entryFilter, setEntryFilter] = useState<InstallmentEntryFilter>('ALL');
+  const pendingJumpIdRef = useRef<string | null>(null);
+  const entryRefs = useRef(new Map<string, HTMLLIElement>());
+  const payButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  const allInstallments = useMemo(() => plan.installments ?? [], [plan.installments]);
+  const filteredInstallments = useMemo(() => {
+    if (entryFilter === 'PENDING') {
+      return allInstallments.filter((inst) => inst.status === 'PENDING' || inst.status === 'OVERDUE');
+    }
+    if (entryFilter === 'PAID') {
+      return allInstallments.filter((inst) => inst.status === 'PAID');
+    }
+    return allInstallments;
+  }, [allInstallments, entryFilter]);
+
+  const firstOpenInstallment = useMemo(
+    () => allInstallments.find((inst) => inst.installmentPlanId === plan.id && (inst.status === 'PENDING' || inst.status === 'OVERDUE')),
+    [allInstallments, plan.id],
+  );
+
+  const focusPendingEntry = useCallback((targetId: string) => {
+    const rowEl = entryRefs.current.get(targetId);
+    const actionEl = payButtonRefs.current.get(targetId);
+    if (!rowEl && !actionEl) return false;
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    rowEl?.scrollIntoView?.({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' });
+    if (actionEl && !actionEl.disabled) {
+      actionEl.focus();
+    } else {
+      rowEl?.focus();
+    }
+    return true;
+  }, []);
+
+  useEffect(() => {
+    const targetId = pendingJumpIdRef.current;
+    if (!targetId) return;
+    if (focusPendingEntry(targetId)) {
+      pendingJumpIdRef.current = null;
+    }
+  }, [entryFilter, filteredInstallments, focusPendingEntry]);
+
+  const jumpToNextPending = () => {
+    if (!firstOpenInstallment) return;
+    if (entryFilter === 'PAID') {
+      pendingJumpIdRef.current = firstOpenInstallment.id;
+      setEntryFilter('ALL');
+      return;
+    }
+    pendingJumpIdRef.current = null;
+    focusPendingEntry(firstOpenInstallment.id);
+  };
+
   return (
     <section aria-labelledby="plan-entries-title" className="space-y-3">
       <h3 id="plan-entries-title" className="font-semibold">{t('entries.title')}</h3>
-      {!plan.installments?.length ? (
+      {allInstallments.length === 0 ? (
         <p className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">{t('entries.empty')}</p>
       ) : (
-        <ul className="divide-y rounded-lg border bg-card">
-          {plan.installments.map((inst) => {
-            const config = INSTALLMENT_ENTRY_STATUS_META[inst.status] || INSTALLMENT_ENTRY_STATUS_META.PENDING;
-            const isPaying = paying === inst.id;
-            const label = t('entries.label', { number: inst.number, total: plan.installmentCount });
-            return (
-              <li key={inst.id} className="grid min-w-0 items-center gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="min-w-0 space-y-1">
-                  <p className="text-sm font-medium">{label}</p>
-                  <p className="text-xs text-muted-foreground">{t('entries.dueDate', { date: dateFmt(inst.dueDate, locale) })}{inst.paidDate && ` · ${t('entries.paidOn', { date: dateFmt(inst.paidDate, locale) })}`}</p>
-                </div>
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className={cn('rounded px-2 py-0.5 text-xs font-medium', config.className)}>{t(config.labelKey)}</span>
-                  <span className="break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(inst.amount, locale)}</span>
-                  {inst.installmentPlanId === plan.id && inst.status !== 'PAID' && (
-                    <Button size="sm" variant="outline" disabled={paying !== null} aria-label={t('entries.payAriaLabel', { number: inst.number, total: plan.installmentCount })}
-                      aria-busy={isPaying} onClick={(event) => {
-                        const button = event.currentTarget;
-                        // Preserve keyboard focus before the control is disabled or replaced.
-                        if (button.ownerDocument.activeElement === button) {
-                          button.ownerDocument.getElementById('plan-detail-title')?.focus();
-                        }
-                        return onPay(inst.id);
-                      }}>
-                      <Check aria-hidden="true" /> {isPaying ? t('entries.paying') : t('entries.pay')}
-                    </Button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div role="group" aria-label={t('entries.filters.ariaLabel')} className="flex flex-wrap gap-2">
+              {(['ALL', 'PENDING', 'PAID'] as const).map((status) => (
+                <Button
+                  key={status}
+                  type="button"
+                  variant={entryFilter === status ? 'secondary' : 'outline'}
+                  className="min-h-11"
+                  aria-pressed={entryFilter === status}
+                  onClick={() => setEntryFilter(status)}
+                >
+                  {t(`entries.filters.${status}`)}
+                </Button>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              disabled={!firstOpenInstallment}
+              onClick={jumpToNextPending}
+            >
+              {t('actions.jumpToNextPending')}
+            </Button>
+          </div>
+          {filteredInstallments.length === 0 ? (
+            <p className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">{t('entries.emptyFiltered')}</p>
+          ) : (
+            <ul className="divide-y rounded-lg border bg-card">
+              {filteredInstallments.map((inst) => {
+                const config = INSTALLMENT_ENTRY_STATUS_META[inst.status] || INSTALLMENT_ENTRY_STATUS_META.PENDING;
+                const isPaying = paying === inst.id;
+                const label = t('entries.label', { number: inst.number, total: plan.installmentCount });
+                return (
+                  <li
+                    key={inst.id}
+                    tabIndex={-1}
+                    ref={(node) => {
+                      if (node) entryRefs.current.set(inst.id, node);
+                      else entryRefs.current.delete(inst.id);
+                    }}
+                    className="grid min-w-0 items-center gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-sm font-medium">{label}</p>
+                      <p className="text-xs text-muted-foreground">{t('entries.dueDate', { date: dateFmt(inst.dueDate, locale) })}{inst.paidDate && ` · ${t('entries.paidOn', { date: dateFmt(inst.paidDate, locale) })}`}</p>
+                    </div>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className={cn('rounded px-2 py-0.5 text-xs font-medium', config.className)}>{t(config.labelKey)}</span>
+                      <span className="break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(inst.amount, locale)}</span>
+                      {inst.installmentPlanId === plan.id && inst.status !== 'PAID' && (
+                        <Button
+                          ref={(node) => {
+                            if (node) payButtonRefs.current.set(inst.id, node);
+                            else payButtonRefs.current.delete(inst.id);
+                          }}
+                          variant="outline"
+                          className="min-h-11"
+                          disabled={paying !== null}
+                          aria-label={t('entries.payAriaLabel', { number: inst.number, total: plan.installmentCount })}
+                          aria-busy={isPaying}
+                          onClick={(event) => {
+                            const button = event.currentTarget;
+                            // Preserve keyboard focus before the control is disabled or replaced.
+                            if (button.ownerDocument.activeElement === button) {
+                              button.ownerDocument.getElementById('plan-detail-title')?.focus();
+                            }
+                            return onPay(inst.id);
+                          }}
+                        >
+                          <Check aria-hidden="true" /> {isPaying ? t('entries.paying') : t('entries.pay')}
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
       )}
     </section>
   );

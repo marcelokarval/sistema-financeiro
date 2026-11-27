@@ -93,6 +93,7 @@ function installFixture(Page, ThemeProvider, AppIntlProvider, getMessagesForLoca
     unexpected: [],
     ghostSearch: false,
     failNotificationsOnce: false,
+    advisorMode: null,
     store: useAppStore,
     rootInstance: null,
   };
@@ -150,6 +151,9 @@ function installFixture(Page, ThemeProvider, AppIntlProvider, getMessagesForLoca
     }
 
     if (method === 'POST' && url === '/api/advisor') {
+      if (qa.advisorMode === 'transport') {
+        throw new TypeError('Failed to fetch');
+      }
       return Response.json({ response: 'Resposta sintética do assistente.' });
     }
 
@@ -186,7 +190,7 @@ function installFixture(Page, ThemeProvider, AppIntlProvider, getMessagesForLoca
 }
 
 // Função serializada para a VM do Playwright CLI: não depende de módulos Node.
-async function runCases(page, html, width, theme, phase, localeFlagBodies) {
+async function runCases(page, html, width, theme, phase, localeFlagBodies, variant = 'candidate') {
   const url = 'https://finance-qa.invalid/';
   const results = [];
   const errors = [];
@@ -378,6 +382,20 @@ async function runCases(page, html, width, theme, phase, localeFlagBodies) {
       await btn('Itens da compra: Mercado Central').waitFor();
       require((await page.locator('button[aria-expanded="true"]').count()) === 0, 'ID inexistente de compra expandiu outra linha');
       results.push({ name: 'busca-purchases-inexistente', expanded: false, violations: [] });
+
+      if (variant === 'candidate') {
+        await mountFresh();
+        await btn('Abrir busca global').click();
+        const searchDialog = page.getByRole('dialog', { name: 'Busca Global', exact: true });
+        await searchDialog.waitFor();
+        require((await btn('Fechar formulário', searchDialog).count()) === 1, 'Busca Global sem botão Fechar formulário (#8)');
+        require((await btn('Close', searchDialog).count()) === 0, 'Busca Global expôs Close em inglês (#8)');
+        const input = searchDialog.getByLabel('Buscar nas finanças', { exact: true });
+        await input.fill('salario sintetico');
+        await searchDialog.locator('button[data-result-index]').filter({ hasText: 'Salário sintético' }).first().waitFor();
+        await btn('Fechar formulário', searchDialog).click();
+        await waitSearchClosed();
+      }
     }
 
     if (phase === 'focus-services') {
@@ -486,6 +504,28 @@ async function runCases(page, html, width, theme, phase, localeFlagBodies) {
       }));
       require(afterEscape.focusLabel === 'Abrir assistente financeiro IA' && afterEscape.inert, `Retorno de foco/inert do AIAdvisor falhou: ${JSON.stringify(afterEscape)}`);
       results.push({ name: 'assistente-ia-sob-demanda', beforeDemand, afterEscape, violations: [] });
+
+      if (variant === 'candidate') {
+        // #10: clique fora fecha NotificationPanel
+        await mountFresh();
+        await btn('Notificações').click();
+        await page.locator('[data-quiet-notifications]').waitFor();
+        await page.locator('main').click({ position: { x: 10, y: 10 }, force: true });
+        await page.waitForFunction(() => !document.querySelector('[data-quiet-notifications]'));
+
+        // #10: erro de transporte em AIAdvisor localizado + clique no backdrop fecha <dialog>
+        await page.evaluate(() => { window.qa.advisorMode = 'transport'; });
+        await btn('Abrir assistente financeiro IA').click();
+        const advDialog = page.locator('dialog[open]');
+        await advDialog.waitFor();
+        await advDialog.getByRole('button', { name: 'Como economizar mais?', exact: true }).click();
+        await advDialog.getByText('Erro ao conectar com o assistente.', { exact: true }).waitFor();
+        require(!(await advDialog.innerText()).includes('Failed to fetch'), 'AIAdvisor vazou Failed to fetch (#10)');
+        await page.evaluate(() => { window.qa.advisorMode = null; });
+        blocked.length = 0;
+        await advDialog.click({ position: { x: 2, y: 2 } });
+        await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+      }
     }
 
     const unexpected = await page.evaluate(() => window.qa.unexpected);
@@ -668,7 +708,7 @@ try {
         for (const label of ['baseline', 'candidate']) {
           const outcome = await cli(
             'run-code',
-            `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)}, ${JSON.stringify(localeFlagBodies)})`,
+            `(page) => (${runCases.toString()})(page, ${JSON.stringify(html[label])}, ${width}, ${JSON.stringify(theme)}, ${JSON.stringify(phase)}, ${JSON.stringify(localeFlagBodies)}, ${JSON.stringify(label)})`,
           );
           const result = outcome.match(/^### Result\s*\n([^\n]+)/m)?.[1];
           assert(result, `${label}/${phase}: resultado DOM ausente`);

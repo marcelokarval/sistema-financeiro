@@ -39,11 +39,17 @@
     "backToPlans": "Volver a planes",
     "deletePlan": "Eliminar plan",
     "retry": "Intentar de nuevo",
-    "openAriaLabel": "Abrir plan: {description}"
+    "openAriaLabel": "Abrir plan: {description}",
+    "jumpToNextPending": "Ir a la próxima pendiente"
   },
   "errors": {
     "loadPlans": "No fue posible cargar los planes.",
     "loadPlanDetail": "No fue posible cargar los detalles del plan.",
+    "descriptionRequired": "Ingresa la descripción del plan",
+    "totalPositive": "El valor total debe ser mayor que cero",
+    "countInvalid": "El número de cuotas debe ser un número entero mayor o igual a 1",
+    "monthlyPositive": "El valor de la cuota debe ser mayor que cero",
+    "invalidInterestRate": "La tasa de interés debe ser un número mayor o igual a cero",
     "createPlan": "Error al crear el plan",
     "deletePlan": "Error al eliminar el plan",
     "payInstallment": "Error al registrar el pago"
@@ -85,6 +91,13 @@
   "entries": {
     "title": "Cuotas",
     "empty": "No se encontraron cuotas. Las cuotas se generarán automáticamente.",
+    "emptyFiltered": "No hay cuotas en este filtro.",
+    "filters": {
+      "ariaLabel": "Filtrar cuotas por estado",
+      "ALL": "Todas",
+      "PENDING": "Pendientes",
+      "PAID": "Pagadas"
+    },
     "label": "Cuota {number} de {total}",
     "dueDate": "Vencimiento: {date}",
     "paidOn": "Pagada el {date}",

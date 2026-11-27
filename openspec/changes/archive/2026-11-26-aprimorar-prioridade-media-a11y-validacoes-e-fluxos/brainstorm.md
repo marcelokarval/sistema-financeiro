@@ -1,0 +1,51 @@
+# Brainstorm — Melhorias de Prioridade Média em Acessibilidade, Validações e Fluxos (#7 a #18)
+
+**Skill mapping and observed invocation:** `brainstorming` (`/home/marcelo-karval/.agents/skills/brainstorming/SKILL.md`) lida integralmente e aplicada no levantamento técnico de código-fonte, rotas API, catálogos JSON (`pt`, `es`, `en`), suítes unitárias (`src/components/finance/*.test.*`) e runners Playwright (`.qa.mjs`).
+
+## Contexto e Sequenciamento
+
+Este pacote (**Pacote 2 — Prioridade Média**) consolida os itens **#7 a #18** confirmados na auditoria ao vivo e executa **sequencialmente após o Pacote 1** (`corrigir-prioridade-alta-resumo-i18n-e-cartoes`), operando exclusivamente sobre os arquivos de aplicação, catálogos de tradução, testes unitários e runners `.qa.mjs`, mantendo intocados componentes shadcn/ui em `src/components/ui/**`.
+
+## Cadeia de Decisões (Q1–Q7)
+
+### Q1 — Como eliminar o vazamento `"Close"` em inglês (#8) sem editar `src/components/ui/dialog.tsx`?
+- **Constatação no código:** `src/components/shared/finance-dialog-shell.tsx` define `showCloseButton={!closeLabel}`. Hoje, 8 diálogos baseados em `FinanceFormDialogShell` (`monthly-budget-editor.tsx`, `budget-goal-editor.tsx`, `account-transfer-dialog.tsx`, `card-editor.tsx`, `consortium-editor.tsx`, `consortium-installment-payment.tsx`, `savings-goal-editor.tsx`, `savings-contribution-dialog.tsx`) omitem `closeLabel`, enquanto `accounts-view.tsx` (3 diálogos) e `consortiums-view.tsx` (criação de consórcio) usam `<DialogContent>` direto.
+- **Decisão:**
+  1. Em `src/components/shared/finance-dialog-shell.tsx`, adicionar fallback localizado via `useSafeTranslations('shared')` (`dialogCloseLabel` em `src/messages/{pt,es,en}/shared.json`) sempre que `closeLabel` for omitido, garantindo `showCloseButton={false}` por padrão e botão `<DialogClose asChild>` acessível dentro da casca compartilhada.
+  2. Passar `closeLabel` localizado explicitamente nos 8 editores/diálogos existentes (com chaves em `goals`, `accounts`, `cards`, `consortiums` e `savings`), converter a criação de consórcio em `consortiums-view.tsx` para `FinanceFormDialogShell` (ou `showCloseButton={false}` + `<DialogClose>`) e adotar `showCloseButton={false}` + `<DialogClose>` localizado nos 3 diálogos de `accounts-view.tsx`.
+  3. Atualizar na Task `2.1` as 6 asserções unitárias que verificavam `closeLabel === undefined` (`quiet-consortiums-savings.test.tsx:670,770,825,1023` e `quiet-goals-health.test.tsx:503,542`) e os passos em `quiet-primary-operations.qa.mjs:370,543` que clicavam em `'Close'`.
+
+### Q2 — Como corrigir o cabeçalho mobile (#7) e o fechamento/erro de overlays (#10)?
+- **#7 (`app-header.tsx`):** Em `390x844`, os 7 controles em `pt` (`"Novo lançamento"` 158px) e `es` (`"Nuevo movimiento"` 167px) empurram o CTA para uma linha extra (`109px` vs `71px` em `en`). Decisão: compactar o CTA no mobile (`<640px`) ocultando o texto longo ou exibindo rótulo curto em `<sm` mantendo `aria-label={t('newEntry')}` integral (para preservar leitores de tela e seletores existentes) e ajustando espaçamentos para altura uniforme em `pt`, `es` e `en` sem recorte nem overflow.
+- **#10 (`app-header.tsx`, `notification-panel.tsx`, `app-overlays.tsx`, `ai-advisor.tsx`):**
+  - Envolver gatilho e `NotificationPanel` em `app-header.tsx` com `ref` de contêiner e efeito `pointerdown` enquanto `showNotifications` estiver aberto, fechando ao clicar fora do contêiner sem bloquear cliques internos.
+  - Em `app-overlays.tsx`, mover o padding `p-4` do `<dialog>` para um contêiner interno para que `event.target === event.currentTarget` em `onClick` represente estritamente o backdrop e feche via `onCloseAdvisor()`.
+  - Em `ai-advisor.tsx`, mapear falhas de rede/transporte (`TypeError` / erro de fetch fora de resposta HTTP JSON) para `t('errors.connectFailed')`, eliminando `"Erro: Failed to fetch"`.
+
+### Q3 — Como evitar duplicação na busca sem acentos (#9)?
+- **Decisão:** Criar um único helper puro compartilhado `src/lib/search-normalize.ts` exportando `normalizeSearchText(value: string): string` (`value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()`) e consumi-lo tanto em `global-search.tsx` (`buildSearchResults`) quanto em `purchases-view.tsx` (`filtered`), evitando duplicar lógica entre módulos.
+
+### Q4 — Como corrigir calendário (#11), preset `Tudo` (#12) e retorno de foco no orçamento mensal (#13)?
+- **#11 (`financial-calendar.tsx`, `financial-calendar-grid.tsx`):** Popular `activityMap` apenas quando `day.income > 0 || day.expense > 0 || day.events.length > 0`, restaurando `aria-disabled="true"` e bloqueio de seleção em dias realmente vazios.
+- **#12 (`dashboard-query.ts`, `src/app/api/dashboard/route.ts`, `route.test.ts`):** Preservar `quickRange('all')` a partir de `2000-01-01` e todos os agregados desde 2000 (`monthIncome`, `monthExpense`, `recentTransactions`, `recentPurchases`, `expenseByCategory`). No `GET /api/dashboard`, apenas para `monthlyTrend` quando o intervalo exceder 12 meses (`trendMonths > 12`), iniciar a série no mês do primeiro movimento real (`monthlyTransactions` ou `monthlyPurchases`) dentro do intervalo (ou manter apenas o mês final quando não houver nenhum movimento no período), mantendo 100% da retrocompatibilidade para intervalos curtos (`month`, `quarter`, `halfyear`, `year`, e `route.test.ts` em banco vazio).
+- **#13 (`monthly-budget-tracker.tsx`, `monthly-budget-editor.tsx`):** Capturar o botão de origem (`Novo limite` ou gatilho `DropdownMenuTrigger` da linha via ref por orçamento) em `MonthlyBudgetTracker` e passar `onCloseAutoFocus` restaurando o foco com `event.preventDefault()`, preservando o comportamento standalone de `MonthlyBudgetEditor` testado em `quiet-goals-health.test.tsx:545-547`.
+
+### Q5 — Como tratar `TRANSFER` e `notes` em Contas (#14) e `Depositar` em meta concluída (#15)?
+- **#14 (`accounts-view.tsx`, `account-transaction-fields.tsx`, `accounts.json`):** Renderizar transações `TRANSFER` com `tone="neutral"` em `FinanceRow` e rótulo localizado `t('detail.transferType')` (sem sinal negativo nem rótulo de despesa), impedir corrupção do tipo ao abrir edição de `TRANSFER` (exibindo opção/estado preservado de `TRANSFER` em `AccountTransactionFields`) e expor o campo `notes` no formulário compartilhado `AccountTransactionFields` (já presente no estado e nos payloads testados).
+- **#15 (`savings-view.tsx`):** Ocultar o item `Depositar` também dentro do `DropdownMenuContent` (`Mais ações`) quando `isComplete` for verdadeiro, evitando chamada inválida `POST /api/savings/deposit` com erro `GOAL_COMPLETED`.
+
+### Q6 — Como fortalecer validações client-side (#16), alvos táteis mobile (#17) e listas longas de parcelas (#18)?
+- **#16:**
+  - `cards-view.tsx`: validar `.trim()` em `name`, `lastFourDigits` com exatamente 4 dígitos (`/^\d{4}$/`), e para `CREDIT` validar `creditLimit >= 0` e `closingDay`/`dueDay` inteiros em `1..31` (sem mascarar `0` via `||`), além de ler `data?.error` na resposta `!res.ok`.
+  - `purchases-view.tsx`: aplicar `.trim()` em `merchant` e no payload, exigir ao menos um item válido e `formTotal > 0` (alinhado à rota `/api/purchases`), e exibir `data?.error` quando `!res.ok`.
+  - `categories-view.tsx`: validar `form.name.trim()` e enviar `name: form.name.trim()`.
+  - `consortiums-view.tsx` e `installments-view.tsx`: validar no cliente `description.trim()`, valores positivos (`totalAmount > 0`, `monthlyPayment > 0` / `monthlyValue > 0`), quantidade de parcelas inteira `>= 1` e `interestRate >= 0`, evitando requisições sabidamente inválidas e exibindo toasts localizados antes do lock/envio.
+  - Ajustar na Task `2.1` os testes/QA existentes que submetiam formulários sintéticos sem `lastFourDigits` (`quiet-accounts-cards.test.tsx:753`, `quiet-accounts-cards.qa.mjs:174`) ou compra com total zerado (`quiet-purchases-categories.test.tsx:524`).
+- **#17 (`accounts-view.tsx`, `cards-view.tsx`, `investments-view.tsx`, `installments-view.tsx`):** Padronizar botões de ação, voltar, filtro e linhas com `min-h-11` e botões iconográficos com `size-11` (ou `min-h-11 min-w-11`), preservando intactas as identidades AST do baseline (`InstallmentMetrics`, `InvestmentMetrics`) e evitando novas expressões `raw-conditional-class-name`.
+- **#18 (`consortiums-view.tsx`, `installments-view.tsx`):** Adicionar filtro rápido de parcelas no detalhe (`Todas` / `Pendentes` / `Pagas`, onde `Pendentes` inclui `PENDING` e `OVERDUE`) e botão `Ir para próxima pendente` que garante filtro compatível e rola/foca a primeira parcela aberta, preservando estritamente a ordem numérica `1..N`, as guardas `A/B` (`findPayableConsortiumInstallment`, `confirmedPlanId`, `inst.installmentPlanId === plan.id`) e as identidades AST do baseline.
+
+### Q7 — Como particionar as frentes paralelas sem colisões de escrita?
+- **Task 1.1 (`shared`, `shell`, `goals`, `calendar`, `dashboard-preset`):** `finance-dialog-shell.tsx`, `app-header.tsx`, `notification-panel.tsx`, `app-overlays.tsx`, `ai-advisor.tsx`, `financial-calendar.tsx`, `financial-calendar-grid.tsx`, `dashboard-query.ts`, `src/app/api/dashboard/route.ts`, `src/app/api/dashboard/route.test.ts`, `monthly-budget-tracker.tsx`, `monthly-budget-editor.tsx`, `budget-goal-editor.tsx`, e JSONs `shared`, `shell`, `goals` (`pt`, `es`, `en`).
+- **Task 1.2 (`search`, `accounts`, `cards`, `purchases`, `categories`):** `src/lib/search-normalize.ts`, `global-search.tsx`, `accounts-view.tsx`, `account-transaction-fields.tsx`, `account-transfer-dialog.tsx`, `cards-view.tsx`, `card-editor.tsx`, `purchases-view.tsx`, `categories-view.tsx`, e JSONs `accounts`, `cards`, `purchases`, `categories` (`pt`, `es`, `en`).
+- **Task 1.3 (`consortiums`, `installments`, `savings`, `investments`):** `consortiums-view.tsx`, `consortium-editor.tsx`, `consortium-installment-payment.tsx`, `savings-view.tsx`, `savings-goal-editor.tsx`, `savings-contribution-dialog.tsx`, `investments-view.tsx`, `installments-view.tsx`, e JSONs `consortiums`, `installments`, `savings` (`pt`, `es`, `en`).
+- **Task 2.1 (`Depends on: 1.1, 1.2, 1.3` — Testes, QA e Verificação Integrada):** `src/lib/search-normalize.test.ts`, suítes `src/components/finance/*.test.*` e `.qa.mjs` afetadas, checagem completa `check`, `test:sqlite`, `build` e verificação Playwright ao vivo.

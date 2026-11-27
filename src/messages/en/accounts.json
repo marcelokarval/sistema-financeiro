@@ -13,7 +13,8 @@
     "save": "Save",
     "delete": "Delete",
     "create": "Create",
-    "update": "Update"
+    "update": "Update",
+    "closeDialog": "Close form"
   },
   "errors": {
     "loadAccounts": "Could not update accounts.",
@@ -66,6 +67,7 @@
     "emptyTransactions": "No transactions recorded.",
     "incomeType": "Income",
     "expenseType": "Expense",
+    "transferType": "Transfer",
     "editTransactionAria": "Edit transaction {description}",
     "deleteTransactionAria": "Delete transaction {description}"
   },
@@ -121,6 +123,7 @@
     "typeLabel": "Type",
     "expense": "Expense",
     "income": "Income",
+    "transfer": "Transfer",
     "descriptionLabel": "Description",
     "descriptionPlaceholder": "e.g. Salary, Lunch...",
     "amountLabel": "Amount (BRL)",
@@ -128,9 +131,12 @@
     "dateLabel": "Date",
     "categoryLabel": "Category",
     "categoryPlaceholder": "Select...",
-    "noCategory": "None"
+    "noCategory": "None",
+    "notesLabel": "Notes (optional)",
+    "notesPlaceholder": "Additional notes..."
   },
   "transfer": {
+    "closeLabel": "Close form",
     "title": "Transfer between Accounts",
     "description": "Move money from one account to another",
     "fromLabel": "From (Source)",

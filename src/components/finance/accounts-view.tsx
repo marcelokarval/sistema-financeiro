@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
-import { Plus, Pencil, Trash2, Wallet, Landmark, Smartphone, ArrowLeft, ArrowLeftRight, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wallet, Landmark, Smartphone, ArrowLeft, ArrowLeftRight, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -703,7 +704,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
     return withChooser(
       <div className="min-w-0 space-y-5">
         <header className="space-y-3">
-          <Button ref={detailBack} variant="ghost" size="sm" onClick={() => setSelectedAccountId(null)}>
+          <Button ref={detailBack} variant="ghost" className="min-h-11" onClick={() => setSelectedAccountId(null)}>
             <ArrowLeft aria-hidden="true" /> {t('actions.backToAccounts')}
           </Button>
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -711,7 +712,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
               <p className="text-sm text-muted-foreground">{resolveAccountTypeLabel(selectedAccount.type)}</p>
               <h2 className="wrap-anywhere text-2xl font-semibold tracking-tight">{selectedAccount.name}</h2>
             </div>
-            <Button ref={transactionButton} onClick={() => openTransaction(selectedAccount.id)} aria-label={t('actions.newTransaction')}>
+            <Button ref={transactionButton} className="min-h-11" onClick={() => openTransaction(selectedAccount.id)} aria-label={t('actions.newTransaction')}>
               <Plus aria-hidden="true" /> {t('actions.newTransaction')}
             </Button>
           </div>
@@ -730,7 +731,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
           ) : txError ? (
             <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm">
               <p className="text-destructive">{t('errors.loadTransactions')}</p>
-              <Button variant="outline" size="sm" onClick={() => void fetchTransactions(selectedAccount.id)}>
+              <Button variant="outline" className="min-h-11" onClick={() => void fetchTransactions(selectedAccount.id)}>
                 {t('actions.retry')}
               </Button>
             </div>
@@ -742,14 +743,15 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                 <FinanceRow
                   key={tx.id}
                   variant="default"
-                  tone={tx.type === 'INCOME' ? 'positive' : 'negative'}
+                  tone={tx.type === 'INCOME' ? 'positive' : tx.type === 'TRANSFER' ? 'neutral' : 'negative'}
                   description={tx.description}
-                  metadata={`${tx.type === 'INCOME' ? t('detail.incomeType') : t('detail.expenseType')} · ${dateFmt(tx.date, locale)}${tx.category ? ` · ${tx.category.name}` : ''}`}
+                  metadata={`${tx.type === 'INCOME' ? t('detail.incomeType') : tx.type === 'TRANSFER' ? t('detail.transferType') : t('detail.expenseType')} · ${dateFmt(tx.date, locale)}${tx.category ? ` · ${tx.category.name}` : ''}`}
                   amount={tx.amount}
                 >
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="size-11"
                     aria-label={t('detail.editTransactionAria', { description: tx.description })}
                     onClick={(event) => { txActionOrigin.current = event.currentTarget; openEditTransaction(tx); }}
                   >
@@ -759,7 +761,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                     variant="ghost"
                     size="icon"
                     aria-label={t('detail.deleteTransactionAria', { description: tx.description })}
-                    className="text-destructive hover:text-destructive"
+                    className="size-11 text-destructive hover:text-destructive"
                     onClick={(event) => {
                       txActionOrigin.current = event.currentTarget;
                       ++deleteTxOpening.current;
@@ -778,6 +780,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
         <Dialog open={!!activeDraft && !newTransactionRequested} onOpenChange={(open) => { if (!open) closeTransaction(); }}>
           {txForm && (
             <DialogContent
+              showCloseButton={false}
               className="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
               onCloseAutoFocus={(event) => {
                 if (launchDialog.current === 'transaction') {
@@ -788,7 +791,18 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                 }
               }}
             >
-              <DialogHeader>
+              <DialogHeader className="relative pr-10 text-left">
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t('actions.closeDialog')}
+                    className="absolute right-0 top-0"
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                </DialogClose>
                 <DialogTitle>{t('transactionDialog.createTitle')}</DialogTitle>
                 <DialogDescription>
                   {t('transactionDialog.createDescription', { account: selectedAccount.name })}
@@ -812,6 +826,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
         <Dialog open={!!editingTransaction} onOpenChange={(open) => { if (!open) { ++editTxOpening.current; setEditingTransaction(null); } }}>
           {editingTransaction && (
             <DialogContent
+              showCloseButton={false}
               className="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none"
               onCloseAutoFocus={(event) => {
                 event.preventDefault();
@@ -820,7 +835,18 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                 (origin?.isConnected ? origin : transactionButton.current)?.focus();
               }}
             >
-              <DialogHeader>
+              <DialogHeader className="relative pr-10 text-left">
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t('actions.closeDialog')}
+                    className="absolute right-0 top-0"
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                </DialogClose>
                 <DialogTitle>{t('transactionDialog.editTitle')}</DialogTitle>
                 <DialogDescription>{t('transactionDialog.editDescription', { account: selectedAccount.name })}</DialogDescription>
               </DialogHeader>
@@ -877,10 +903,10 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" aria-label={t('actions.transfer')} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowTransferDialog(true); }}>
+          <Button variant="outline" className="min-h-11" aria-label={t('actions.transfer')} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowTransferDialog(true); }}>
             <ArrowLeftRight aria-hidden="true" /> {t('actions.transfer')}
           </Button>
-          <Button ref={newAccountButton} onClick={(event) => { dialogReturn.current = event.currentTarget; openNewAccount(); }}>
+          <Button ref={newAccountButton} className="min-h-11" onClick={(event) => { dialogReturn.current = event.currentTarget; openNewAccount(); }}>
             <Plus aria-hidden="true" /> {t('actions.newAccount')}
           </Button>
         </div>
@@ -889,7 +915,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
       {accountsLoadFailed && (
         <div className={`${accountPanel} flex flex-wrap items-center justify-between gap-2 p-4 text-sm`}>
           <p role="alert">{t('errors.loadAccounts')}</p>
-          <Button variant="outline" size="sm" onClick={() => void fetchAccounts()}>{t('actions.retry')}</Button>
+          <Button variant="outline" className="min-h-11" onClick={() => void fetchAccounts()}>{t('actions.retry')}</Button>
         </div>
       )}
       {(!accountsLoadFailed || accounts.length > 0) && (
@@ -911,7 +937,7 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                   const txCount = acc._count?.transactions || 0;
                   return (
                     <li key={acc.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 px-4 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto] sm:gap-x-4">
-                      <Button type="button" variant="ghost" aria-label={t('list.openAccountAria', { name: acc.name })} onClick={() => { detailReturn.current = acc.id; openAccount(acc); }} data-account-detail={acc.id} className="col-span-2 h-auto min-h-10 min-w-0 justify-start whitespace-normal px-0 text-left sm:col-span-1">
+                      <Button type="button" variant="ghost" aria-label={t('list.openAccountAria', { name: acc.name })} onClick={() => { detailReturn.current = acc.id; openAccount(acc); }} data-account-detail={acc.id} className="col-span-2 h-auto min-h-11 min-w-0 justify-start whitespace-normal px-0 text-left sm:col-span-1">
                         <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
                         <span className="min-w-0 wrap-anywhere">
                           <span className="block font-semibold">{acc.name}</span>
@@ -921,10 +947,10 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
                       </Button>
                       <p className="wrap-anywhere font-mono text-sm font-semibold tabular-nums sm:text-right">{currencyFmt(acc.balance, locale)}</p>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" aria-label={t('list.editAccountAria', { name: acc.name })} onClick={(event) => { dialogReturn.current = event.currentTarget; openEditAccount(acc); }}>
+                        <Button variant="ghost" size="icon" className="size-11" aria-label={t('list.editAccountAria', { name: acc.name })} onClick={(event) => { dialogReturn.current = event.currentTarget; openEditAccount(acc); }}>
                           <Pencil aria-hidden="true" />
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label={t('list.deleteAccountAria', { name: acc.name })} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowDeleteDialog(acc.id); }} className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" aria-label={t('list.deleteAccountAria', { name: acc.name })} onClick={(event) => { dialogReturn.current = event.currentTarget; setShowDeleteDialog(acc.id); }} className="size-11 text-destructive hover:text-destructive">
                           <Trash2 aria-hidden="true" />
                         </Button>
                       </div>
@@ -939,11 +965,22 @@ export function AccountsView({ onLaunchClose, refreshCounter }: { onLaunchClose:
 
       {/* Account Form Dialog */}
       <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
-        <DialogContent className={dialogSurface} onCloseAutoFocus={(event) => {
+        <DialogContent showCloseButton={false} className={dialogSurface} onCloseAutoFocus={(event) => {
           if (launchDialog.current === 'account') restoreFocusAfterLaunch(event);
           else restoreDialogFocus(event);
         }}>
-          <DialogHeader>
+          <DialogHeader className="relative pr-10 text-left">
+            <DialogClose asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label={t('actions.closeDialog')}
+                className="absolute right-0 top-0"
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </DialogClose>
             <DialogTitle>
               {editingAccount ? t('accountForm.editTitle') : t('accountForm.createTitle')}
             </DialogTitle>

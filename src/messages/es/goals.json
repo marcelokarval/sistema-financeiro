@@ -81,6 +81,7 @@
       "updateError": "Error al actualizar la meta"
     },
     "editor": {
+      "closeLabel": "Cerrar formulario",
       "editTitle": "Editar Meta",
       "createTitle": "Nueva Meta de Presupuesto",
       "editDescription": "Actualiza los datos de tu meta de presupuesto.",
@@ -281,6 +282,7 @@
       "deleteError": "Error al eliminar"
     },
     "editor": {
+      "closeLabel": "Cerrar formulario",
       "editTitle": "Editar Presupuesto",
       "createTitle": "Nuevo Presupuesto",
       "description": "Indica la categoría, el monto y el período del límite.",

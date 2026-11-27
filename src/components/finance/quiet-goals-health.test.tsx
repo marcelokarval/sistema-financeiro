@@ -500,13 +500,13 @@ test('BudgetGoalEditor adota FinanceFormDialogShell preservando retorno de foco,
   );
 
   expect(element.type).toBe(FinanceFormDialogShell);
-  expect(element.props.closeLabel).toBeUndefined();
+  expect(element.props.closeLabel).toBe('Fechar formulário');
   expect(element.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
   expect(findElement(element, (e) => e.type === AlertDialog)).toBeUndefined();
   const dialog = findElement(element, (e) => e.type === Dialog);
   expect(dialog).toBeDefined();
   const content = findElement(element, (e) => e.type === DialogContent);
-  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.showCloseButton).toBe(false);
   expect(content?.props.onCloseAutoFocus).toBe(onCloseAutoFocus);
   expect(findElement(element, (e) => React.Children.toArray(e.props.children).includes('Editar Meta'))).toBeDefined();
   const submitBtn = findElement(element, (e) => e.props.onClick === onSubmit);
@@ -520,7 +520,7 @@ test('BudgetGoalEditor adota FinanceFormDialogShell preservando retorno de foco,
   expect(cancelled).toBe(1);
 });
 
-test('MonthlyBudgetEditor adota FinanceFormDialogShell sem closeLabel extra, sem bloquear autoFocus padrão e com w-full nos triggers', () => {
+test('MonthlyBudgetEditor adota FinanceFormDialogShell com closeLabel localizado, sem bloquear autoFocus padrão e com w-full nos triggers', () => {
   let closed = 0;
   const onSubmit = async () => {};
   const createEl = withPtIntlDispatcher(() =>
@@ -539,9 +539,9 @@ test('MonthlyBudgetEditor adota FinanceFormDialogShell sem closeLabel extra, sem
   );
 
   expect(createEl.type).toBe(FinanceFormDialogShell);
-  expect(createEl.props.closeLabel).toBeUndefined();
+  expect(createEl.props.closeLabel).toBe('Fechar formulário');
   const content = findElement(createEl, (e) => e.type === DialogContent);
-  expect(content?.props.showCloseButton).toBe(true);
+  expect(content?.props.showCloseButton).toBe(false);
   const fakeEvent = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
   content?.props.onCloseAutoFocus(fakeEvent);
   expect(fakeEvent.defaultPrevented).toBe(false);
@@ -820,4 +820,312 @@ test('renderiza orçamento, metas e saúde financeira em pt, es e en sem chaves 
     );
     expect(goalsHtml).toContain(expected[locale].goals);
   }
+});
+
+test('desafios, metas, conquistas, saúde financeira e orçamento mascaram valores/percentuais com showValues=false', () => {
+  const challengeRowHtml = renderToStaticMarkup(
+    <SavingsUI.ChallengeRow
+      showValues={false}
+      challenge={{
+        id: 'daily-spend',
+        title: 'Meta R$500.00 / R$ 1.000,00 (0.0%)',
+        description: 'Saldo atual R$0.00 de R$1,000.00 com 0.0% concluído',
+        current: 20,
+        target: 50,
+        progress: 40,
+        unit: 'currency',
+      }}
+    />,
+  );
+  const challengeVisible = challengeRowHtml.replace(/<[^>]+>/g, ' ');
+  const challengeAriaLabels = [...challengeRowHtml.matchAll(/aria-label="([^"]*)"/g)].map((m) => m[1]).join(' ');
+  expect(challengeRowHtml).toContain('R$ ••••••');
+  expect(challengeRowHtml).toContain('aria-valuetext="•••"');
+  expect(challengeVisible).not.toMatch(/20|50|40|500|1\.000|1,000|0\.0|%/);
+  expect(challengeAriaLabels).toContain('R$ ••••••');
+  expect(challengeAriaLabels).not.toMatch(/\d|%/);
+
+  const challengeVisibleHtml = renderToStaticMarkup(
+    <SavingsUI.ChallengeRow
+      showValues
+      challenge={{
+        id: 'daily-spend-visible',
+        title: 'Meta R$500.00',
+        description: 'Atual R$0.00 (0.0%) até R$1,000.00',
+        current: 20,
+        target: 50,
+        progress: 40,
+        unit: 'currency',
+      }}
+    />,
+  );
+  expect(challengeVisibleHtml).toContain('Meta R$500.00');
+  expect(challengeVisibleHtml).toContain('Atual R$0.00 (0.0%) até R$1,000.00');
+
+  const ChallengeContent = (SavingsUI as Record<string, any>).SavingsChallengeContent;
+  const challengeHtml = renderToStaticMarkup(
+    <ChallengeContent
+      loading={false}
+      onRetry={() => {}}
+      showValues={false}
+      data={{
+        currentMonthSavings: 1500, dailyAverageExpense: 45.5, projectedMonthExpense: 1365,
+        projectedSavings: 1800, savingsRate: 33, daysRemaining: 10, daysInMonth: 30, daysElapsed: 20,
+        income: 3000, totalExpenses: 910, todaySpending: 25, dailyTarget: 60, challengeTargets: [],
+      }}
+    />,
+  );
+  expect(challengeHtml).toContain('R$ ••••••');
+  expect(challengeHtml).toContain('•••');
+  expect(challengeHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/1\.500|45,50|1\.800|33|25|60/);
+
+  const goalHtml = renderToStaticMarkup(
+    <BudgetUI.BudgetGoalRow
+      showValues={false}
+      goal={{
+        id: 'g1', name: 'Meta sintética', description: '', targetAmount: 500, currentAmount: 125,
+        categoryId: null, category: null, startDate: '2026-01-01', endDate: null, isCompleted: false,
+      }}
+      onEdit={() => {}}
+      onDelete={() => {}}
+      onToggle={() => {}}
+    />,
+  );
+  expect(goalHtml).toContain('R$ ••••••');
+  expect(goalHtml).toContain('aria-valuetext="•••"');
+  expect(goalHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/500|125|375|25%/);
+
+  const goalsProgressHtml = renderToStaticMarkup(
+    <GoalsUI.GoalsProgress
+      showValues={false}
+      summary={{ totalGoals: 2, completedGoals: 0, inProgressGoals: 2, totalTargetAmount: 250, totalCurrentAmount: 100, overallProgress: 40, estimatedCompletion: null }}
+    />,
+  );
+  expect(goalsProgressHtml).toContain('R$ ••••••');
+  expect(goalsProgressHtml).toContain('aria-valuetext="•••"');
+  expect(goalsProgressHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/250|100|150|40%/);
+
+  const achHtml = renderToStaticMarkup(
+    <AchievementUI.AchievementRow
+      showValues={false}
+      achievement={{
+        id: 'a',
+        title: 'Reserva R$ 1.000,00 / R$500.00 (0.0%)',
+        description: 'Acumulado R$0.00 de R$1,000.00 — 0.0% atingido',
+        icon: 'Target',
+        category: 'controle',
+        unlocked: false,
+        progress: 67,
+        currentValue: 67,
+        targetValue: 100,
+        unlockedAt: null,
+      }}
+    />,
+  );
+  const achVisible = achHtml.replace(/<[^>]+>/g, ' ');
+  const achAriaLabels = [...achHtml.matchAll(/aria-label="([^"]*)"/g)].map((m) => m[1]).join(' ');
+  expect(achHtml).toContain('aria-valuetext="•••"');
+  expect(achHtml).toContain('R$ ••••••');
+  expect(achVisible).not.toMatch(/67|100|500|1\.000|1,000|0\.0|%/);
+  expect(achAriaLabels).toContain('R$ ••••••');
+  expect(achAriaLabels).not.toMatch(/\d|%/);
+
+  const achVisibleHtml = renderToStaticMarkup(
+    <AchievementUI.AchievementRow
+      showValues
+      achievement={{
+        id: 'a-visible',
+        title: 'Reserva R$ 1.000,00',
+        description: 'Atual R$0.00 de R$500.00 (0.0%) / R$1,000.00',
+        icon: 'Target',
+        category: 'controle',
+        unlocked: false,
+        progress: 67,
+        currentValue: 67,
+        targetValue: 100,
+        unlockedAt: null,
+      }}
+    />,
+  );
+  expect(achVisibleHtml).toContain('Reserva R$ 1.000,00');
+  expect(achVisibleHtml).toContain('Atual R$0.00 de R$500.00 (0.0%) / R$1,000.00');
+
+  const healthHtml = renderToStaticMarkup(
+    <HealthUI.HealthBreakdown
+      showValues={false}
+      data={{
+        totalBalance: 2000, totalCardBalance: 500, totalCardLimit: 2500,
+        monthIncome: 3000, monthExpense: 1800,
+        recentTransactions: [], recentPurchases: [], expenseByCategory: [], monthlyTrend: [], accountBalances: [],
+      }}
+    />,
+  );
+  expect(healthHtml).toContain('R$ ••••••');
+  expect(healthHtml).toContain('aria-valuetext="•••"');
+  expect(healthHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/2\.000|3\.000|1\.800|1\.200/);
+
+  const monthlyBudgetMasked = renderToStaticMarkup(<MonthlyBudgetUI.MonthlyBudgetTracker showValues={false} refreshCounter={0} />);
+  expect(monthlyBudgetMasked).not.toContain('MISSING_MESSAGE');
+});
+
+test('widgets de metas e saúde financeira refazem fetch ao trocar locale sem adicionar ?locale=', async () => {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  const originalFetch = globalThis.fetch;
+  const requested: string[] = [];
+  let activeLocale: CanonicalLocale = 'pt';
+  const states: unknown[] = [];
+  const callbacks: Array<{ deps?: readonly unknown[]; fn: unknown }> = [];
+  const effects: Array<{ deps?: readonly unknown[]; cleanup?: () => void }> = [];
+  const sameDeps = (a?: readonly unknown[], b?: readonly unknown[]) =>
+    Boolean(a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i])));
+
+  const renderHealth = () => {
+    let s = 0, c = 0, e = 0;
+    const pending: Array<{ idx: number; fn: () => void | (() => void); deps?: readonly unknown[] }> = [];
+    internals.H = {
+      useState(initial: unknown) {
+        const i = s++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useCallback: (fn: unknown, deps?: readonly unknown[]) => {
+        const i = c++;
+        if (!callbacks[i] || !sameDeps(callbacks[i].deps, deps)) callbacks[i] = { deps, fn };
+        return callbacks[i].fn;
+      },
+      useMemo: (f: () => unknown) => f(),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, activeLocale),
+      useEffect: (fn: () => void | (() => void), deps?: readonly unknown[]) => {
+        const i = e++;
+        if (!effects[i] || !sameDeps(effects[i].deps, deps)) pending.push({ idx: i, fn, deps });
+      },
+    };
+    const tree = FinancialHealthScore({ showValues: true });
+    for (const item of pending) {
+      effects[item.idx]?.cleanup?.();
+      const cleanup = item.fn();
+      effects[item.idx] = { deps: item.deps, cleanup: typeof cleanup === 'function' ? cleanup : undefined };
+    }
+    return tree;
+  };
+
+  try {
+    globalThis.fetch = (async (url: string) => {
+      requested.push(String(url));
+      return Response.json({
+        totalBalance: 1000, totalCardBalance: 0, totalCardLimit: 0, monthIncome: 500, monthExpense: 200,
+        recentTransactions: [], recentPurchases: [], expenseByCategory: [], monthlyTrend: [], accountBalances: [],
+      });
+    }) as typeof fetch;
+
+    renderHealth();
+    await settle();
+    expect(requested).toEqual(['/api/dashboard']);
+
+    activeLocale = 'es';
+    renderHealth();
+    await settle();
+    expect(requested).toEqual(['/api/dashboard', '/api/dashboard']);
+    expect(requested.every((url) => !url.includes('locale='))).toBe(true);
+  } finally {
+    effects.forEach((entry) => entry?.cleanup?.());
+    internals.H = previous;
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('#8 e #13: BudgetGoalEditor e MonthlyBudgetEditor localizam closeLabel nos 3 idiomas e MonthlyBudgetTracker restaura foco no fechamento', async () => {
+  const expectedClose = {
+    pt: 'Fechar formulário',
+    es: 'Cerrar formulario',
+    en: 'Close form',
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const goalEl = withPtIntlDispatcher(
+      () =>
+        BudgetGoalEditor({
+          mode: 'create',
+          open: true,
+          submitting: false,
+          form: { name: '', description: '', targetAmount: '', currentAmount: '0', categoryId: '', endDate: '' },
+          categories: [],
+          onFieldChange: () => {},
+          onOpenChange: () => {},
+          onCloseAutoFocus: () => {},
+          onSubmit: async () => {},
+        }),
+      locale,
+    );
+    expect(goalEl.props.closeLabel).toBe(expectedClose[locale]);
+
+    const budgetEl = withPtIntlDispatcher(
+      () =>
+        MonthlyBudgetEditor({
+          mode: 'create',
+          open: true,
+          submitting: false,
+          fieldId: ':qa:',
+          form: { categoryId: '', amount: '', month: '11', year: '2026' },
+          categories: [],
+          years: ['2026'],
+          onFieldChange: () => {},
+          onOpenChange: () => {},
+          onSubmit: async () => {},
+        }),
+      locale,
+    );
+    expect(budgetEl.props.closeLabel).toBe(expectedClose[locale]);
+  }
+
+  let focusCalls: string[] = [];
+  const createBtn = { isConnected: true, focus: () => focusCalls.push('create') } as unknown as HTMLButtonElement;
+  const rowMenuBtn = { isConnected: true, focus: () => focusCalls.push('row') } as unknown as HTMLButtonElement;
+  const disconnectedBtn = { isConnected: false, focus: () => focusCalls.push('disconnected') } as unknown as HTMLButtonElement;
+
+  await exerciseWidget(
+    () => MonthlyBudgetUI.MonthlyBudgetTracker({ showValues: true, refreshCounter: 0 }),
+    async (url) => {
+      if (String(url).startsWith('/api/monthly-budgets')) {
+        return Response.json({
+          budgets: [
+            { id: 'mb-1', categoryId: 'cat-1', categoryName: 'Moradia', categoryColor: '#8b5cf6', categoryIcon: 'home', amount: 1000, spent: 200, remaining: 800, percentage: 20, isOverBudget: false },
+          ],
+        });
+      }
+      if (String(url).startsWith('/api/categories')) {
+        return Response.json([{ id: 'cat-1', name: 'Moradia', color: '#8b5cf6', icon: 'home', type: 'EXPENSE' }]);
+      }
+      throw new Error(`Unexpected GET ${url}`);
+    },
+    async (render) => {
+      await settle();
+      const tree = render();
+      const header = findElement(tree, (e) => e.type === MonthlyBudgetUI.BudgetHeader)!;
+      const createRef = header.props.createButtonRef as { current: HTMLButtonElement | null };
+      createRef.current = createBtn;
+
+      // 1) Abrir pelo gatilho da linha -> restaura foco ao gatilho da linha conectado
+      const row = findElement(tree, (e) => typeof e.type === 'function' && e.type.name === 'BudgetRow')!;
+      row.props.onEdit(rowMenuBtn);
+      const editorAfterRow = findElement(render(), (e) => e.type === MonthlyBudgetEditor)!;
+      expect(typeof editorAfterRow.props.onCloseAutoFocus).toBe('function');
+      const rowEvt = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      editorAfterRow.props.onCloseAutoFocus(rowEvt);
+      expect(rowEvt.defaultPrevented).toBe(true);
+      expect(focusCalls).toEqual(['row']);
+
+      // 2) Se gatilho desconectado, faz fallback ao createButtonRef conectado
+      focusCalls = [];
+      row.props.onEdit(disconnectedBtn);
+      const editorAfterDisconnect = findElement(render(), (e) => e.type === MonthlyBudgetEditor)!;
+      const fallbackEvt = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      editorAfterDisconnect.props.onCloseAutoFocus(fallbackEvt);
+      expect(fallbackEvt.defaultPrevented).toBe(true);
+      expect(focusCalls).toEqual(['create']);
+    },
+  );
 });

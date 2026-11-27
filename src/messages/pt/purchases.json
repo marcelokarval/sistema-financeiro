@@ -13,6 +13,8 @@
   "errors": {
     "merchantRequired": "Informe o estabelecimento",
     "itemsRequired": "Adicione ao menos um item",
+    "invalidItems": "Verifique quantidade e preço dos itens",
+    "totalPositive": "O total da compra deve ser maior que zero",
     "save": "Erro ao salvar compra",
     "delete": "Erro ao excluir compra",
     "refresh": "Não foi possível atualizar a lista de compras.",
@@ -34,11 +36,11 @@
     "title": "Registros de compras",
     "searchLabel": "Buscar por estabelecimento ou cartão",
     "searchPlaceholder": "Estabelecimento ou cartão",
-    "foundCount": "{count, plural, one {# compra encontrada} other {# compras encontradas}}",
+    "foundCount": "{count, plural, =0 {# compras encontradas} one {# compra encontrada} other {# compras encontradas}}",
     "resultsTotalPrefix": "Total dos resultados:",
     "emptySearch": "Nenhuma compra corresponde à busca.",
     "empty": "Nenhuma compra registrada.",
-    "itemCount": "{count, plural, one {# item} other {# itens}}",
+    "itemCount": "{count, plural, =0 {# itens} one {# item} other {# itens}}",
     "toggleItemsAria": "Itens da compra: {merchant}",
     "editAria": "Editar compra: {merchant}",
     "deleteAria": "Excluir compra: {merchant}",
@@ -50,7 +52,7 @@
   "ranking": {
     "title": "Estabelecimentos com mais gastos",
     "subtitle": "Considera todas as compras, sem aplicar a busca.",
-    "purchaseCount": "{count, plural, one {# compra} other {# compras}}"
+    "purchaseCount": "{count, plural, =0 {# compras} one {# compra} other {# compras}}"
   },
   "deleteDialog": {
     "title": "Excluir compra?",

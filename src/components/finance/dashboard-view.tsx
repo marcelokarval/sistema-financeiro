@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { FinanceRow } from '@/components/shared/finance-row';
 import { INTL_LOCALE, type CanonicalLocale } from '@/i18n/config';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, percentFmt } from '@/lib/helpers';
 import { formatPurchaseDate } from '@/lib/purchase-date';
+import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { BudgetGoalsWidget } from './budget-goals';
 import { FinancialReportsWidget } from './financial-reports';
@@ -41,12 +42,16 @@ export function DashboardView({ children, refreshCounter = 0 }: { children?: Rea
   const [preset, setPreset] = useState<QuickFilterKey | 'custom'>('month');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [showValues, setShowValues] = useState(true);
+  const showValues = useAppStore((state) => state.showValues);
+  const toggleShowValues = useAppStore((state) => state.toggleShowValues);
 
-  useEffect(() => observeQuery(
-    (signal) => fetchDashboard(request.range, signal),
-    (result) => setSettled({ request, refreshCounter, result }),
-  ), [request, refreshCounter]);
+  useEffect(() => {
+    void locale;
+    return observeQuery(
+      (signal) => fetchDashboard(request.range, signal),
+      (result) => setSettled({ request, refreshCounter, result }),
+    );
+  }, [request, refreshCounter, locale]);
 
   const retry = () => setRequest((current) => ({ range: current.range }));
   const invalidRange = Boolean(from && to && from > to);
@@ -74,7 +79,7 @@ export function DashboardView({ children, refreshCounter = 0 }: { children?: Rea
             <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t('title')}</h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => setShowValues((visible) => !visible)}>
+            <Button type="button" size="sm" variant="outline" onClick={toggleShowValues}>
               {showValues ? <Eye aria-hidden="true" /> : <EyeOff aria-hidden="true" />}
               {showValues ? t('hideValues') : t('showValues')}
             </Button>
@@ -150,10 +155,10 @@ export function DashboardContent({ query, showValues, retry, children, refreshCo
         <summary className={disclosure}>{t('moreDetails')}</summary>
         <div className="mt-5 grid min-w-0 gap-4">
           {data && metrics && <DashboardDetails data={data} metrics={metrics} money={money} showValues={showValues} />}
-          <FinancialHealthScore key={`FinancialHealthScore-${refreshCounter}`} />
-          <FinancialReportsWidget key={`FinancialReportsWidget-${refreshCounter}`} />
-          <RecurringTransactionsWidget key={`RecurringTransactionsWidget-${refreshCounter}`} />
-          <BudgetGoalsWidget key={`BudgetGoalsWidget-${refreshCounter}`} />
+          <FinancialHealthScore key={`FinancialHealthScore-${refreshCounter}`} showValues={showValues} />
+          <FinancialReportsWidget key={`FinancialReportsWidget-${refreshCounter}`} showValues={showValues} />
+          <RecurringTransactionsWidget key={`RecurringTransactionsWidget-${refreshCounter}`} showValues={showValues} />
+          <BudgetGoalsWidget key={`BudgetGoalsWidget-${refreshCounter}`} showValues={showValues} />
           {children}
         </div>
       </details>
@@ -257,7 +262,7 @@ function RecentTransactions({ transactions, showValues }: { transactions: Dashbo
 function DashboardDetails({ data, metrics, money, showValues }: { data: DashboardData; metrics: ReturnType<typeof dashboardMetrics>; money: Money; showValues: boolean }) {
   const t = useSafeTranslations('dashboard');
   const locale = useSafeLocale();
-  const pct = (value: number, precision = 0) => showValues ? `${value.toFixed(precision)}%` : '•••';
+  const pct = (value: number, precision = 0) => showValues ? percentFmt(value, locale, { precision, signed: false }) : '•••';
   const change = (label: string, value?: number) => value === undefined ? null : <span className={muted}> · {label}: {pct(value, 1)}</span>;
   const netStatus = metrics.net >= 0 ? t('details.otherMetrics.surplus') : t('details.otherMetrics.deficit');
   return (

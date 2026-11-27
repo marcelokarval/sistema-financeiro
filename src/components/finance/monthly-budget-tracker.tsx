@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { format } from 'date-fns';
 import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -44,9 +44,11 @@ const smallText = 'text-xs leading-relaxed text-muted-foreground';
 const moneyClass = 'font-mono tabular-nums tracking-tight';
 
 function BudgetRow({ budget, money, showValues, onEdit, onDelete }: {
-  budget: BudgetItem; money: (amount: number) => string; showValues: boolean; onEdit: () => void; onDelete: () => void;
+  budget: BudgetItem; money: (amount: number) => string; showValues: boolean; onEdit: (trigger?: HTMLButtonElement | null) => void; onDelete: () => void;
 }) {
   const t = useSafeTranslations('goals');
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const openingEditorRef = useRef(false);
   const statusKey = budget.isOverBudget
     ? 'exceeded'
     : budget.percentage >= 90
@@ -67,10 +69,26 @@ function BudgetRow({ budget, money, showValues, onEdit, onDelete }: {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label={t('monthlyBudget.row.actionsAria', { category: budget.categoryName })}><MoreHorizontal aria-hidden="true" /></Button>
+            <Button ref={menuTriggerRef} variant="ghost" size="icon" aria-label={t('monthlyBudget.row.actionsAria', { category: budget.categoryName })}><MoreHorizontal aria-hidden="true" /></Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEdit}><Pencil aria-hidden="true" />{t('monthlyBudget.row.edit')}</DropdownMenuItem>
+          <DropdownMenuContent
+            align="end"
+            onCloseAutoFocus={(event) => {
+              if (openingEditorRef.current || document.activeElement !== document.body) {
+                event.preventDefault();
+              }
+              openingEditorRef.current = false;
+            }}
+          >
+            <DropdownMenuItem
+              onSelect={() => {
+                openingEditorRef.current = true;
+                onEdit(menuTriggerRef.current);
+              }}
+            >
+              <Pencil aria-hidden="true" />
+              {t('monthlyBudget.row.edit')}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive"><Trash2 aria-hidden="true" />{t('monthlyBudget.row.delete')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -108,12 +126,14 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
   const [submitting, setSubmitting] = useState(false);
   const [pendingDeleteBudget, setPendingDeleteBudget] = useState<BudgetItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogOriginRef = useRef<HTMLButtonElement | null>(null);
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
   const monthLabel = format(now, 'MMMM yyyy', { locale: getDateFnsLocale(locale) });
-  const key = `${currentYear}-${currentMonth}-${request}-${refreshCounter}`;
+  const key = `${currentYear}-${currentMonth}-${request}-${refreshCounter}-${locale}`;
   const query = settled?.key === key ? settled.result : { status: 'loading' as const };
   const refreshBudgets = () => setRequest((value) => value + 1);
   const money = (amount: number) => showValues ? currencyFmt(amount, locale) : t('maskedValue');
@@ -127,14 +147,16 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
   }, (result) => setSettled({ key, result })), [currentMonth, currentYear, key]);
 
   useEffect(() => observeQuery(async (signal) => {
+    void locale;
     const response = await fetch('/api/categories', { signal });
     if (!response.ok) throw new Error('Categorias indisponíveis');
     type Category = MonthlyBudgetCategoryOption & { type: string };
     const data: { categories: Category[] } | Category[] = await response.json();
     return (Array.isArray(data) ? data : data.categories).filter((category) => category.type === 'EXPENSE');
-  }, (result) => { if (result.status === 'ready') setCategories(result.data); }), [refreshCounter]);
+  }, (result) => { if (result.status === 'ready') setCategories(result.data); }), [refreshCounter, locale]);
 
-  const openCreateDialog = () => {
+  const openCreateDialog = (origin?: HTMLButtonElement | null) => {
+    dialogOriginRef.current = origin ?? createButtonRef.current;
     setEditingBudget(null);
     setFormCategoryId('');
     setFormAmount('');
@@ -143,7 +165,8 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
     setDialogOpen(true);
   };
 
-  const openEditDialog = (budget: BudgetItem) => {
+  const openEditDialog = (budget: BudgetItem, trigger?: HTMLButtonElement | null) => {
+    dialogOriginRef.current = trigger ?? null;
     setEditingBudget(budget);
     setFormCategoryId(budget.categoryId);
     setFormAmount(String(budget.amount));
@@ -236,7 +259,7 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
 
   return (
     <section aria-label={t('monthlyBudget.title')} className="h-full min-w-0 rounded-lg border border-border bg-card p-4 sm:p-5">
-      <BudgetHeader status={query.status} monthLabel={monthLabel} openCreateDialog={openCreateDialog} refreshBudgets={refreshBudgets} />
+      <BudgetHeader status={query.status} monthLabel={monthLabel} createButtonRef={createButtonRef} openCreateDialog={openCreateDialog} refreshBudgets={refreshBudgets} />
       {query.status === 'ready' && (budgets.length ? (
         <>
           <dl className="my-3 grid gap-1.5 rounded-md border border-border p-2.5 text-xs">
@@ -245,7 +268,7 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
             ))}
           </dl>
           <ul className="max-h-80 divide-y divide-border overflow-y-auto">
-            {budgets.map((budget) => <BudgetRow key={budget.id} budget={budget} money={money} showValues={showValues} onEdit={() => openEditDialog(budget)} onDelete={() => setPendingDeleteBudget(budget)} />)}
+            {budgets.map((budget) => <BudgetRow key={budget.id} budget={budget} money={money} showValues={showValues} onEdit={(trigger) => openEditDialog(budget, trigger)} onDelete={() => setPendingDeleteBudget(budget)} />)}
           </ul>
           {totalOverBudget && (
             <p className="mt-2 border-t border-border pt-2 text-xs text-destructive">
@@ -277,6 +300,13 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
         years={years}
         onFieldChange={handleFieldChange}
         onOpenChange={setDialogOpen}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const origin = dialogOriginRef.current;
+          dialogOriginRef.current = null;
+          const target = origin?.isConnected ? origin : createButtonRef.current;
+          if (target?.isConnected) target.focus();
+        }}
         onSubmit={handleSubmit}
       />
 
@@ -314,8 +344,8 @@ export function MonthlyBudgetTracker({ showValues = true, refreshCounter = 0 }: 
   );
 }
 
-export function BudgetHeader({ status, monthLabel, openCreateDialog, refreshBudgets }: {
-  status: QueryResult<BudgetItem[]>['status']; monthLabel: string; openCreateDialog: () => void; refreshBudgets: () => void;
+export function BudgetHeader({ status, monthLabel, createButtonRef, openCreateDialog, refreshBudgets }: {
+  status: QueryResult<BudgetItem[]>['status']; monthLabel: string; createButtonRef?: RefObject<HTMLButtonElement | null>; openCreateDialog: (origin?: HTMLButtonElement | null) => void; refreshBudgets: () => void;
 }) {
   const t = useSafeTranslations('goals');
   return (
@@ -325,7 +355,7 @@ export function BudgetHeader({ status, monthLabel, openCreateDialog, refreshBudg
           <h2 className="text-sm font-semibold sm:text-base">{t('monthlyBudget.title')}</h2>
           <p className={cn(smallText, 'mt-1')}>{t('monthlyBudget.currentMonth', { month: monthLabel })}</p>
         </div>
-        {status !== 'loading' && <Button variant="outline" size="sm" onClick={openCreateDialog}><Plus aria-hidden="true" />{t('monthlyBudget.newLimit')}</Button>}
+        {status !== 'loading' && <Button ref={createButtonRef} variant="outline" size="sm" onClick={(event) => openCreateDialog(event.currentTarget)}><Plus aria-hidden="true" />{t('monthlyBudget.newLimit')}</Button>}
       </div>
       {status === 'loading' && <p role="status" className={cn(smallText, 'mt-4')}>{t('monthlyBudget.loading')}</p>}
       {status === 'error' && <div className="mt-4 space-y-2"><p role="alert" className="text-sm text-destructive">{t('monthlyBudget.error')}</p><Button size="sm" variant="outline" onClick={refreshBudgets}>{t('common.retry')}</Button></div>}

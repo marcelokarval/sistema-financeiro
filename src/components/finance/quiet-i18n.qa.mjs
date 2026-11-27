@@ -23,6 +23,7 @@ function installFixture(
   ];
   const cards = [
     { id: 'c1', name: 'Cartão Principal', type: 'CREDIT', brand: 'VISA', lastFourDigits: '4321', creditLimit: 6000, currentBalance: 750, color: '#8b5cf6', closingDay: 5, dueDay: 15, flag: 'Banco QA' },
+    { id: 'c2', name: 'Cartão Débito QA', type: 'DEBIT', brand: 'ELO', lastFourDigits: '9876', creditLimit: 0, currentBalance: 0, color: '#0ea5e9', closingDay: 1, dueDay: 10, flag: 'Banco Débito' },
   ];
   const categories = [
     { id: 'cat1', name: 'Alimentação', type: 'EXPENSE', color: '#22c55e', icon: 'utensils', _count: { transactions: 1, purchases: 1 } },
@@ -33,11 +34,14 @@ function installFixture(
   const purchases = [
     { id: 'p1', merchant: 'Mercado QA', totalAmount: 250, date: '2026-11-12', cardId: 'c1', card: cards[0], categoryId: 'cat1', category: categories[0], items: [{ id: 'i1', name: 'Item QA', quantity: 1, unitPrice: 250, totalPrice: 250 }] },
   ];
+  const debitPurchases = [
+    { id: 'p2', merchant: 'Padaria Débito QA', totalAmount: 45, date: '2026-11-15', cardId: 'c2', card: cards[1], categoryId: 'cat1', category: categories[0], items: [{ id: 'i2', name: 'Café QA', quantity: 1, unitPrice: 45, totalPrice: 45 }] },
+  ];
   const investments = [
     { id: 'inv1', name: 'Tesouro QA', type: 'CDB', investedAmount: 4000, currentBalance: 4400, yieldRate: 10 },
   ];
   const goals = [
-    { id: 'g1', name: 'Reserva QA', type: 'EMERGENCY_FUND', targetAmount: 10000, currentAmount: 3500, isCompleted: false, color: '#10b981' },
+    { id: 'g1', name: 'Reserva QA', type: 'EMERGENCY_FUND', targetAmount: 10000, currentAmount: 3500, yieldRate: 12.5, isCompleted: false, color: '#10b981' },
   ];
 
   const qa = (window.qa = { unexpected: [], calls: [] });
@@ -66,7 +70,10 @@ function installFixture(
     if (url.startsWith('/api/cards')) return Response.json(cards);
     if (url.startsWith('/api/categories')) return Response.json(categories);
     if (url.startsWith('/api/transactions')) return Response.json(transactions);
-    if (url.startsWith('/api/purchases')) return Response.json(purchases);
+    if (url.startsWith('/api/purchases')) {
+      if (url.includes('cardId=c2')) return Response.json(debitPurchases);
+      return Response.json(purchases);
+    }
     if (url.startsWith('/api/investments/transactions')) return Response.json([]);
     if (url.startsWith('/api/investments')) return Response.json(investments);
     if (url.startsWith('/api/installments')) return Response.json([]);
@@ -101,12 +108,51 @@ function installFixture(
       return Response.json({ accounts: [], monthLabels: [], totalCurrentBalance: 5400, totalProjected: 8150, averageMonthlySavings: 2750, savingsRate: 91.7, riskLevel: 'low', months: 6 });
     }
     if (url.startsWith('/api/timeline')) return Response.json([]);
-    if (url.startsWith('/api/expense-breakdown')) return Response.json({ categories: [], totalExpense: 250, topCategory: null, monthlyData: [] });
-    if (url.startsWith('/api/networth')) return Response.json({ monthlyData: [] });
+    if (url.startsWith('/api/expense-breakdown')) {
+      return Response.json({
+        categories: [{ categoryId: 'cat1', categoryName: 'Alimentação', categoryColor: '#22c55e', total: 250, percentage: 100, count: 1 }],
+        totalExpense: 250,
+        topCategory: { categoryId: 'cat1', categoryName: 'Alimentação', categoryColor: '#22c55e', total: 250, percentage: 100 },
+        monthlyData: [],
+      });
+    }
+    if (url.startsWith('/api/networth')) {
+      return Response.json({
+        monthlyData: [
+          { month: 'out', netWorth: 11800, assets: 12550, liabilities: 750, changePercent: 4.5, changeAmount: 500 },
+          { month: 'nov', netWorth: 12550, assets: 13300, liabilities: 750, changePercent: 6.4, changeAmount: 750 },
+        ],
+      });
+    }
     if (url.startsWith('/api/debts')) return Response.json({ totalDebt: 750, cardsDebt: 750, installmentDebt: 0, consortiumDebt: 0, debtToIncomeRatio: 25, monthlyIncome: 3000, cards: [], installments: [], consortiums: [] });
     if (url.startsWith('/api/financial-calendar')) return Response.json({ days: [], summary: { totalUpcoming: 0, totalBills: 0, totalIncome: 0, totalExpense: 0, upcomingBiggestExpense: null, nextPaymentDate: null } });
-    if (url.startsWith('/api/reports')) return Response.json({ monthlyData: [], topExpenseCategory: null, topCategories: [], avgDailySpend: 0, highestExpense: null, lowestIncome: null, savingsRateTrend: [], ticketMedio: 0 });
-    if (url.startsWith('/api/transaction-analytics')) return Response.json({ overview: { totalTransactions: 1, totalIncome: 3000, totalExpense: 250, averagePerTransaction: 1625, highestTransaction: null, lowestTransaction: null, mostFrequentCategory: null, weekdayBreakdown: [] }, monthlyComparison: [], topMerchants: [], amountDistribution: [], dailyPattern: [] });
+    if (url.startsWith('/api/reports')) {
+      return Response.json({
+        monthlyData: [
+          { month: 'out', income: 2800, expense: 200, net: 2600, transactionCount: 2, purchaseCount: 1, avgDailySpend: 10, savingsRate: 92.8 },
+          { month: 'nov', income: 3000, expense: 250, net: 2750, transactionCount: 2, purchaseCount: 1, avgDailySpend: 12.5, savingsRate: 91.7 },
+        ],
+        topExpenseCategory: { name: 'Alimentação', color: '#22c55e', total: 250, count: 1 },
+        topCategories: [{ name: 'Alimentação', color: '#22c55e', total: 250, count: 1 }],
+        avgDailySpend: 12.5,
+        highestExpense: { id: 'p1', description: 'Mercado QA', amount: 250, date: '2026-11-12' },
+        lowestIncome: { id: 't1', description: 'Salário QA', amount: 3000, date: '2026-11-10' },
+        savingsRateTrend: [{ month: 'nov', rate: 91.7 }],
+        ticketMedio: 250,
+      });
+    }
+    if (url.startsWith('/api/transaction-analytics')) {
+      return Response.json({
+        overview: { totalTransactions: 1, totalIncome: 3000, totalExpense: 250, averagePerTransaction: 1625, highestTransaction: null, lowestTransaction: null, mostFrequentCategory: null, weekdayBreakdown: [{ day: 'Seg', income: 3000, expense: 250, count: 2 }] },
+        monthlyComparison: [
+          { month: 'out/26', income: 2800, expense: 200, net: 2600, count: 4, avgPerTx: 750 },
+          { month: 'nov/26', income: 3000, expense: 250, net: 2750, count: 2, avgPerTx: 1625 },
+        ],
+        topMerchants: [{ name: 'Mercado QA', count: 1, total: 250, category: 'Alimentação' }],
+        amountDistribution: [{ range: '0-500', count: 1, percentage: 100 }],
+        dailyPattern: [{ hour: '10h', count: 2 }],
+      });
+    }
     if (url.startsWith('/api/goals-dashboard')) return Response.json({ summary: { totalGoals: 0, completedGoals: 0, inProgressGoals: 0, totalTargetAmount: 0, totalCurrentAmount: 0, overallProgress: 0, estimatedCompletion: null }, budgetGoals: [], savingsGoals: [], investments: [] });
     if (url.startsWith('/api/financial-health')) return Response.json({ score: 85, pillars: [] });
     if (url.startsWith('/api/achievements')) return Response.json({ achievements: [] });
@@ -144,7 +190,7 @@ function installFixture(
         { attribute: 'class', forcedTheme: theme, disableTransitionOnChange: true },
         createElement(
           AppIntlProvider,
-          { locale, messages: getMessagesForLocale(locale) },
+          { locale, messages: getMessagesForLocale(locale), onRefresh: () => {} },
           createElement(Page),
           createElement(Toaster, { theme }),
         ),
@@ -197,54 +243,114 @@ async function runCases(page, html, width, theme, flagBodies) {
       balanceLabel: 'Saldo em contas',
       moreDetails: 'Mais detalhes financeiros',
       detailHeadings: ['Relatórios Financeiros', 'Metas de orçamento', 'Gerador de recibos'],
+      patternsTab: 'Padrões',
+      monthlyComparisonHeading: 'Comparação Mensal',
+      hideValues: 'Ocultar valores',
+      showValues: 'Mostrar valores',
+      debitMode: 'Débito à vista',
+      debitNotice: 'Cartão na modalidade débito',
+      openDebitAria: 'Abrir cartão Cartão Débito QA',
+      debitPurchases: 'Padaria Débito QA',
+      creditOnlyTerms: ['Fecha dia', 'Vence dia', 'Fechamento', 'Vencimento'],
       currencyPattern: /R\$/,
       views: [
         { view: 'accounts', heading: 'Contas', expectBrl: true },
         { view: 'cards', heading: 'Cartões', expectBrl: true },
         { view: 'purchases', heading: 'Compras', expectBrl: true },
         { view: 'investments', heading: 'Investimentos', expectBrl: true },
+        { view: 'installments', heading: 'Parcelas e financiamentos', expectBrl: true },
         { view: 'savings', heading: 'Caixinhas', expectBrl: true },
       ],
       notifTrigger: 'Notificações',
       notifTitle: 'Notificações',
       aiTrigger: 'Assistente IA',
       aiHeading: 'Assistente Financeiro',
+      newEntryAria: 'Novo lançamento',
+      newAccountBtn: 'Nova conta',
+      newInvestmentBtn: 'Novo investimento',
+      newPlanBtn: 'Novo plano',
+      closeFormLabel: 'Fechar formulário',
+      noneOptionText: 'Nenhum(a)',
+      savingsYieldText: '12,5% a.a.',
+      quickStatsRateText: 'Taxa de economia: 91,7%',
+      zeroGoalsText: '0 metas',
+      zeroInvestmentsText: '0 investimentos',
+      zeroPlansText: '0 planos no total',
+      zeroFoundPurchasesText: '0 compras encontradas',
     },
     es: {
       dashboardHeading: 'Resumen financiero',
       balanceLabel: 'Saldo en cuentas',
       moreDetails: 'Más detalles financieros',
       detailHeadings: ['Informes Financieros', 'Metas de presupuesto', 'Generador de recibos'],
+      patternsTab: 'Patrones',
+      monthlyComparisonHeading: 'Comparación Mensual',
+      hideValues: 'Ocultar valores',
+      showValues: 'Mostrar valores',
+      debitMode: 'Débito al contado',
+      debitNotice: 'Tarjeta en modalidad débito',
+      openDebitAria: 'Abrir tarjeta Cartão Débito QA',
+      debitPurchases: 'Padaria Débito QA',
+      creditOnlyTerms: ['Cierra día', 'Vence día', 'Cierre', 'Vencimiento'],
       currencyPattern: /BRL/,
       views: [
         { view: 'accounts', heading: 'Cuentas', expectBrl: true },
         { view: 'cards', heading: 'Tarjetas', expectBrl: true },
         { view: 'purchases', heading: 'Compras', expectBrl: true },
         { view: 'investments', heading: 'Inversiones', expectBrl: true },
+        { view: 'installments', heading: 'Cuotas y financiamientos', expectBrl: true },
         { view: 'savings', heading: 'Alcancías', expectBrl: true },
       ],
       notifTrigger: 'Notificaciones',
       notifTitle: 'Notificaciones',
       aiTrigger: 'Asistente IA',
       aiHeading: 'Asistente Financiero',
+      newEntryAria: 'Nuevo movimiento',
+      newAccountBtn: 'Nueva cuenta',
+      newInvestmentBtn: 'Nueva inversión',
+      newPlanBtn: 'Nuevo plan',
+      closeFormLabel: 'Cerrar formulario',
+      noneOptionText: 'Ninguno(a)',
+      savingsYieldText: '12,5% anual',
+      quickStatsRateText: 'Tasa de ahorro: 91,7%',
+      zeroPlansText: '0 planes en total',
     },
     en: {
       dashboardHeading: 'Financial overview',
       balanceLabel: 'Account balance',
       moreDetails: 'More financial details',
       detailHeadings: ['Financial Reports', 'Budget goals', 'Receipt generator'],
+      patternsTab: 'Patterns',
+      monthlyComparisonHeading: 'Monthly Comparison',
+      hideValues: 'Hide values',
+      showValues: 'Show values',
+      debitMode: 'Debit card',
+      debitNotice: 'Debit mode card',
+      openDebitAria: 'Open card Cartão Débito QA',
+      debitPurchases: 'Padaria Débito QA',
+      creditOnlyTerms: ['Closes day', 'Due day', 'Closing', 'Due'],
       currencyPattern: /R\$/,
       views: [
         { view: 'accounts', heading: 'Accounts', expectBrl: true },
         { view: 'cards', heading: 'Cards', expectBrl: true },
         { view: 'purchases', heading: 'Purchases', expectBrl: true },
         { view: 'investments', heading: 'Investments', expectBrl: true },
+        { view: 'installments', heading: 'Installments & financing', expectBrl: true },
         { view: 'savings', heading: 'Savings Boxes', expectBrl: true },
       ],
       notifTrigger: 'Notifications',
       notifTitle: 'Notifications',
       aiTrigger: 'AI Assistant',
       aiHeading: 'Financial Assistant',
+      newEntryAria: 'New entry',
+      newAccountBtn: 'New account',
+      newInvestmentBtn: 'New investment',
+      newPlanBtn: 'New plan',
+      closeFormLabel: 'Close form',
+      noneOptionText: 'None',
+      savingsYieldText: '12.5% p.a.',
+      quickStatsRateText: 'Savings rate: 91.7%',
+      zeroPlansText: '0 plans in total',
     },
   };
 
@@ -265,13 +371,20 @@ async function runCases(page, html, width, theme, flagBodies) {
       await waitText(spec.balanceLabel);
       await frame();
 
-      const dashProbe = await page.evaluate(() => {
+      const dashProbe = await page.evaluate((newEntryLabel) => {
         const text = document.body.innerText ?? '';
         const bg = getComputedStyle(document.body).backgroundColor;
         const overflow = document.documentElement.scrollWidth > window.innerWidth + 1;
-        return { text, bg, overflow, scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth };
-      });
+        const headerEl = document.querySelector('header');
+        const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 0;
+        const hasNewEntryAria = Boolean(document.querySelector(`header button[aria-label="${newEntryLabel}"]`));
+        return { text, bg, overflow, scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, headerHeight, hasNewEntryAria };
+      }, spec.newEntryAria);
       if (!renderedBg) renderedBg = dashProbe.bg;
+      ensure(dashProbe.hasNewEntryAria, `${width}/${theme}/${locale} missing header newEntry aria-label (${spec.newEntryAria})`);
+      if (width <= 390) {
+        ensure(dashProbe.headerHeight > 0 && dashProbe.headerHeight <= 76, `${width}/${theme}/${locale} mobile header too tall (#7): ${dashProbe.headerHeight}px`);
+      }
       ensure(!dashProbe.overflow, `${width}/${theme}/${locale} dashboard overflow: ${dashProbe.scrollWidth} > ${dashProbe.innerWidth}`);
       ensure(spec.currencyPattern.test(dashProbe.text), `${width}/${theme}/${locale} missing BRL format on dashboard`);
       ensure(!/MISSING_MESSAGE/.test(dashProbe.text), `${width}/${theme}/${locale} MISSING_MESSAGE leaked on dashboard`);
@@ -292,6 +405,47 @@ async function runCases(page, html, width, theme, flagBodies) {
       ensure(detailsProbe.scrollWidth <= detailsProbe.innerWidth + 1, `${width}/${theme}/${locale} details overflow`);
       ensure(!/MISSING_MESSAGE/.test(detailsProbe.text), `${width}/${theme}/${locale} details MISSING_MESSAGE`);
       ensure(!/(?:dashboard|accounts|cards|receipts|investments|goals|analytics|notifications|advisor)\.[a-zA-Z]+\.[a-zA-Z]+/.test(detailsProbe.text), `${width}/${theme}/${locale} details raw key leaked`);
+      ensure(detailsProbe.text.includes(spec.quickStatsRateText), `${width}/${theme}/${locale} missing localized quickStats rate (${spec.quickStatsRateText}) (#20)`);
+      if (locale === 'pt') {
+        ensure(detailsProbe.text.includes(spec.zeroGoalsText), `${width}/${theme}/${locale} missing =0 plural (${spec.zeroGoalsText}) (#19)`);
+        ensure(detailsProbe.text.includes(spec.zeroInvestmentsText), `${width}/${theme}/${locale} missing =0 plural (${spec.zeroInvestmentsText}) (#19)`);
+      }
+
+      // (#2) Open Patterns tab and verify width containment (especially 390px/360px)
+      await page.getByRole('tab', { name: spec.patternsTab }).first().click();
+      await waitText(spec.monthlyComparisonHeading);
+      await frame();
+      const patternsProbe = await page.evaluate(() => {
+        const mainEl = document.querySelector('main');
+        return {
+          docScroll: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+          mainScroll: mainEl ? mainEl.scrollWidth : 0,
+          mainClient: mainEl ? mainEl.clientWidth : 0,
+          hasScrollWrapper: Boolean(document.querySelector('.overflow-x-auto table')),
+        };
+      });
+      ensure(patternsProbe.docScroll <= patternsProbe.innerWidth + 1, `${width}/${theme}/${locale} patterns doc overflow: ${patternsProbe.docScroll} > ${patternsProbe.innerWidth}`);
+      ensure(patternsProbe.mainScroll <= patternsProbe.mainClient + 1, `${width}/${theme}/${locale} patterns main overflow: ${patternsProbe.mainScroll} > ${patternsProbe.mainClient}`);
+      ensure(patternsProbe.hasScrollWrapper, `${width}/${theme}/${locale} missing overflow-x-auto wrapper for monthly table`);
+
+      // (#3) Toggle Hide Values with More financial details expanded and preserve .recharts-wrapper
+      await page.getByRole('button', { name: spec.hideValues }).first().click();
+      await frame();
+      const hiddenProbe = await page.evaluate(() => {
+        const text = document.body.innerText ?? '';
+        const ariaValues = Array.from(document.querySelectorAll('[aria-valuetext], [aria-label]'))
+          .map((el) => `${el.getAttribute('aria-valuetext') ?? ''} ${el.getAttribute('aria-label') ?? ''}`)
+          .join(' ');
+        const rechartsCount = document.querySelectorAll('.recharts-wrapper').length;
+        return { text, ariaValues, rechartsCount };
+      });
+      ensure(hiddenProbe.rechartsCount > 0, `${width}/${theme}/${locale} .recharts-wrapper unmounted when hidden`);
+      ensure(hiddenProbe.text.includes('••••••'), `${width}/${theme}/${locale} masked values missing when hidden`);
+      ensure(!/5\.?400|12\.?550|2\.?750|11\.?800|91[.,]7/.test(hiddenProbe.text), `${width}/${theme}/${locale} sensitive numbers leaked in text when hidden`);
+      ensure(!/5\.?400|12\.?550|91[.,]7/.test(hiddenProbe.ariaValues), `${width}/${theme}/${locale} sensitive numbers leaked in ARIA when hidden`);
+      await page.getByRole('button', { name: spec.showValues }).first().click();
+      await frame();
 
       for (const item of spec.views) {
         await page.evaluate((v) => window.qa.setView(v), item.view);
@@ -307,6 +461,101 @@ async function runCases(page, html, width, theme, flagBodies) {
         ensure(!/(?:dashboard|accounts|cards|receipts|investments|goals|analytics|notifications|advisor)\.[a-zA-Z]+\.[a-zA-Z]+/.test(viewProbe.text), `${width}/${theme}/${locale}/${item.view} raw key leaked`);
         if (item.expectBrl) {
           ensure(spec.currencyPattern.test(viewProbe.text), `${width}/${theme}/${locale}/${item.view} missing BRL formatting`);
+        }
+        if (item.view === 'accounts') {
+          // (#17) Touch targets >= 44px on mobile/desktop + (#8) localized dialog close label without "Close"
+          const accountTouchProbe = await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('main button')).map((b) => {
+              const r = b.getBoundingClientRect();
+              return { label: b.getAttribute('aria-label') || b.textContent?.trim() || '', w: r.width, h: r.height };
+            });
+            return buttons.filter((b) => b.w > 0 && b.h > 0 && (b.w < 43.5 || b.h < 43.5));
+          });
+          ensure(accountTouchProbe.length === 0, `${width}/${theme}/${locale}/accounts touch target <44px (#17): ${JSON.stringify(accountTouchProbe)}`);
+
+          await page.getByRole('button', { name: spec.newAccountBtn, exact: true }).click();
+          const accDialog = page.getByRole('dialog').first();
+          await accDialog.waitFor();
+          ensure((await accDialog.getByRole('button', { name: spec.closeFormLabel, exact: true }).count()) === 1, `${width}/${theme}/${locale}/accounts missing localized close (${spec.closeFormLabel}) (#8)`);
+          if (locale !== 'en') {
+            ensure((await accDialog.getByRole('button', { name: 'Close', exact: true }).count()) === 0, `${width}/${theme}/${locale}/accounts leaked English Close (#8)`);
+          }
+          await page.keyboard.press('Escape');
+          await accDialog.waitFor({ state: 'detached' });
+        }
+        if (item.view === 'cards') {
+          const cardTouchProbe = await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('main button')).map((b) => {
+              const r = b.getBoundingClientRect();
+              return { label: b.getAttribute('aria-label') || b.textContent?.trim() || '', w: r.width, h: r.height };
+            });
+            return buttons.filter((b) => b.w > 0 && b.h > 0 && (b.w < 43.5 || b.h < 43.5));
+          });
+          ensure(cardTouchProbe.length === 0, `${width}/${theme}/${locale}/cards touch target <44px (#17): ${JSON.stringify(cardTouchProbe)}`);
+          // (#6) Verify DEBIT card omits credit cycle/limit/usage in list and detail
+          const debitRowText = await page.evaluate(() => {
+            const items = Array.from(document.querySelectorAll('li'));
+            const row = items.find((li) => (li.textContent ?? '').includes('Cartão Débito QA'));
+            return {
+              found: Boolean(row),
+              text: row?.textContent ?? '',
+              hasProgress: Boolean(row?.querySelector('[role="progressbar"]')),
+            };
+          });
+          ensure(debitRowText.found && debitRowText.text.includes(spec.debitMode), `${width}/${theme}/${locale} DEBIT row missing mode label`);
+          ensure(!debitRowText.hasProgress, `${width}/${theme}/${locale} DEBIT row rendered credit progress bar`);
+          for (const term of spec.creditOnlyTerms) {
+            ensure(!debitRowText.text.includes(term), `${width}/${theme}/${locale} DEBIT row leaked credit term: ${term}`);
+          }
+
+          await page.getByRole('button', { name: spec.openDebitAria }).first().click();
+          await waitText(spec.debitNotice);
+          await waitText(spec.debitPurchases);
+          await frame();
+          const debitDetailProbe = await page.evaluate(() => ({
+            text: document.body.innerText ?? '',
+            hasProgress: Boolean(document.querySelector('[role="progressbar"]')),
+          }));
+          ensure(!debitDetailProbe.hasProgress, `${width}/${theme}/${locale} DEBIT detail rendered credit progress bar`);
+          for (const term of spec.creditOnlyTerms) {
+            ensure(!debitDetailProbe.text.includes(term), `${width}/${theme}/${locale} DEBIT detail leaked credit term: ${term}`);
+          }
+        }
+        if (item.view === 'purchases' && locale === 'pt') {
+          const searchInput = page.locator('#purchase-search').first();
+          await searchInput.fill('zzzz-sem-correspondencia');
+          await waitText(spec.zeroFoundPurchasesText);
+          await searchInput.fill('');
+        }
+        if (item.view === 'investments') {
+          await page.getByRole('button', { name: spec.newInvestmentBtn, exact: true }).click();
+          const invDialog = page.getByRole('dialog').first();
+          await invDialog.waitFor();
+          const accTriggerText = (await invDialog.locator('#investment-form-accountId').innerText()).trim();
+          const catTriggerText = (await invDialog.locator('#investment-form-categoryId').innerText()).trim();
+          ensure(accTriggerText.includes(spec.noneOptionText), `${width}/${theme}/${locale}/investments account select missing ${spec.noneOptionText} (#21): ${accTriggerText}`);
+          ensure(catTriggerText.includes(spec.noneOptionText), `${width}/${theme}/${locale}/investments category select missing ${spec.noneOptionText} (#21): ${catTriggerText}`);
+          await invDialog.locator('#investment-form-accountId').click();
+          await page.getByRole('option', { name: spec.noneOptionText, exact: true }).first().click();
+          await invDialog.getByRole('button', { name: spec.closeFormLabel, exact: true }).click();
+          await invDialog.waitFor({ state: 'detached' });
+        }
+        if (item.view === 'installments') {
+          ensure(viewProbe.text.includes(spec.zeroPlansText), `${width}/${theme}/${locale}/installments missing zero plural (${spec.zeroPlansText}) (#19)`);
+          await page.getByRole('button', { name: spec.newPlanBtn, exact: true }).click();
+          const planDialog = page.getByRole('dialog').first();
+          await planDialog.waitFor();
+          const cardTriggerText = (await planDialog.locator('#plan-form-cardId').innerText()).trim();
+          const catTriggerText = (await planDialog.locator('#plan-form-categoryId').innerText()).trim();
+          ensure(cardTriggerText.includes(spec.noneOptionText), `${width}/${theme}/${locale}/installments card select missing ${spec.noneOptionText} (#21): ${cardTriggerText}`);
+          ensure(catTriggerText.includes(spec.noneOptionText), `${width}/${theme}/${locale}/installments category select missing ${spec.noneOptionText} (#21): ${catTriggerText}`);
+          await planDialog.locator('#plan-form-cardId').click();
+          await page.getByRole('option', { name: spec.noneOptionText, exact: true }).first().click();
+          await planDialog.getByRole('button', { name: spec.closeFormLabel, exact: true }).click();
+          await planDialog.waitFor({ state: 'detached' });
+        }
+        if (item.view === 'savings') {
+          ensure(viewProbe.text.includes(spec.savingsYieldText), `${width}/${theme}/${locale}/savings missing localized yieldRate (${spec.savingsYieldText}) (#20)`);
         }
       }
 
@@ -329,6 +578,26 @@ async function runCases(page, html, width, theme, flagBodies) {
       ensure(!overlayProbe.overflow, `${width}/${theme}/${locale} overlay overflow`);
       ensure(!/MISSING_MESSAGE/.test(overlayProbe.text), `${width}/${theme}/${locale} overlay MISSING_MESSAGE`);
       await page.evaluate(() => window.qa.setAiVisible(false));
+      await page.locator('main').click({ position: { x: 8, y: 8 } });
+      await page.locator('[data-quiet-notifications]').waitFor({ state: 'detached' });
+
+      if (locale === 'pt') {
+        // (#5) Dynamic switch via LanguageSwitcher updates UI immediately and refetches widgets without ?locale=
+        const callsBeforeSwitch = await page.evaluate(() => window.qa.calls.length);
+        await page.locator('[data-language-switcher="compact"]').first().click();
+        await page.locator('[role="menuitem"][data-locale="es"]').first().click();
+        await waitText(specs.es.dashboardHeading);
+        await frame();
+        const switchProbe = await page.evaluate(() => ({
+          lang: document.documentElement.lang,
+          cookie: document.cookie,
+          calls: window.qa.calls.slice(),
+        }));
+        ensure(switchProbe.lang === 'es-ES', `${width}/${theme} LanguageSwitcher did not update lang: ${switchProbe.lang}`);
+        ensure(switchProbe.cookie.includes('NEXT_LOCALE=es'), `${width}/${theme} LanguageSwitcher did not write NEXT_LOCALE=es`);
+        ensure(switchProbe.calls.length > callsBeforeSwitch, `${width}/${theme} widgets did not refetch after locale switch`);
+        ensure(switchProbe.calls.every((c) => !c.includes('locale=')), `${width}/${theme} widget fetch leaked ?locale= param`);
+      }
 
       cellSummary.push({ locale, viewsChecked: spec.views.length + 3 });
     }

@@ -44,6 +44,26 @@ export function Sidebar({ collapsed, isConnected, onToggle, onNavigate }: Sideba
   const t = useSafeTranslations('shell.navigation');
   const collapseLabel = collapsed ? t('expandNavigation') : t('collapseNavigation');
   const connectionLabel = isConnected ? t('realtimeActive') : t('realtimeUnavailable');
+  const actionControls = (
+    <div className="flex items-center gap-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="size-6" aria-label={t('reload')} onClick={() => window.location.reload()}>
+            <RefreshCw aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{t('reload')}</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="size-6" aria-label={collapseLabel} onClick={onToggle}>
+            {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{collapseLabel}</TooltipContent>
+      </Tooltip>
+    </div>
+  );
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -51,15 +71,24 @@ export function Sidebar({ collapsed, isConnected, onToggle, onNavigate }: Sideba
         'hidden h-full min-h-0 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex',
         collapsed ? 'w-[72px]' : 'w-[218px] xl:w-[248px]',
       )}>
-        <div className={cn('flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border', collapsed ? 'justify-center' : 'px-5')}>
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-sidebar-primary/35 bg-sidebar-primary/10 text-sidebar-primary">
-            <ArrowUpRight aria-hidden="true" className="size-4" />
-          </span>
-          <div className={cn(collapsed && 'sr-only')}>
-            <p className="text-sm font-semibold tracking-tight">{t('brandName')}</p>
-            <p className="text-xs text-muted-foreground">{t('brandSubtitle')}</p>
+        <div className={cn('flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border', collapsed ? 'justify-center' : 'justify-between px-4')}>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-sidebar-primary/35 bg-sidebar-primary/10 text-sidebar-primary">
+              <ArrowUpRight aria-hidden="true" className="size-4" />
+            </span>
+            <div className={cn('min-w-0', collapsed && 'sr-only')}>
+              <p className="truncate text-sm font-semibold tracking-tight">{t('brandName')}</p>
+              <p className="truncate text-xs text-muted-foreground">{t('brandSubtitle')}</p>
+            </div>
           </div>
+          {!collapsed && actionControls}
         </div>
+
+        {collapsed && (
+          <div className="flex shrink-0 items-center justify-center border-b border-sidebar-border px-2 py-2">
+            {actionControls}
+          </div>
+        )}
 
         <nav id="desktop-navigation" aria-label={t('desktopAriaLabel')} className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
           {navigationGroups.map((group) => (
@@ -97,32 +126,12 @@ export function Sidebar({ collapsed, isConnected, onToggle, onNavigate }: Sideba
           ))}
         </nav>
 
-        <div className="space-y-2 border-t border-sidebar-border p-3">
+        <div className="space-y-1.5 border-t border-sidebar-border p-3">
           <div className={cn('flex items-center gap-2 text-xs text-muted-foreground', collapsed ? 'justify-center' : 'px-2')}>
             <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', isConnected ? 'bg-[var(--ds-accent-positive)]' : 'bg-muted-foreground')} />
             <span className={cn(collapsed && 'sr-only')}>{connectionLabel}</span>
           </div>
-          <div className={cn('flex items-center gap-1', !collapsed && 'justify-between')}>
-            {!collapsed && <span className="px-2 text-xs text-muted-foreground">{t('personalSpace')}</span>}
-            <div className="flex items-center gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="size-6" aria-label={t('reload')} onClick={() => window.location.reload()}>
-                    <RefreshCw aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">{t('reload')}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="size-6" aria-label={collapseLabel} onClick={onToggle}>
-                    {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">{collapseLabel}</TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
+          {!collapsed && <p className="px-2 text-xs text-muted-foreground">{t('personalSpace')}</p>}
         </div>
       </aside>
     </TooltipProvider>

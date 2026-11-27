@@ -1,0 +1,71 @@
+{
+  "candidate": "3198b26939d3ba0f944a146984f4a553bf570476b633a91aa4e972e3cac1f019",
+  "tasks": [
+    {
+      "id": "1.1",
+      "plan": "1.1",
+      "red": {
+        "command": "bun --no-env-file -e '<SSR/store/sidebar/upcoming-bills/quick-stats/receipts probe>'",
+        "outcome": "expected_failure",
+        "details": "store.showValues undefined, Sidebar com controles apos </nav>, UpcomingBillsPanel thisMonth incluia Overdue e NextMonth, QuickStatsPanel vazava 19.200 e 41.7%, e ReceiptWorkspace vazava 42,50 (#427)."
+      },
+      "green": {
+        "command": "bun --no-env-file run typecheck && bun --no-env-file run lint && bun --no-env-file run arch:check && bun --no-env-file test ./src/hooks/use-realtime.ts ./src/components/finance/language-switcher.test.tsx ./src/components/finance/quiet-navigation.test.tsx ./src/components/finance/quiet-core-residuals.test.tsx",
+        "outcome": "passed",
+        "details": "typecheck limpo, eslint 0 erros (17 avisos), arch:check limpo em 79 arquivos com 6 identidades baseline, 32 aprovados com 301 expect() calls, quiet-recurring-receipts 35/35 aprovados, getServerSnapshot com referencia estavel e receipt-generator.tsx com 392 linhas (#427)."
+      }
+    },
+    {
+      "id": "1.2",
+      "plan": "1.2",
+      "red": {
+        "command": "bun --no-env-file -e '<overflow/i18n/masking probe>' && bun --no-env-file -e '<ChallengeRow/AchievementRow R1 probe>'",
+        "outcome": "expected_failure",
+        "details": "Ausencia de min-w-0 em transaction-analytics.tsx:222 e transaction-analysis-tabs.tsx, comparacoes PT legadas em smart-insights.tsx:80-86 e ausencia de showValues/locale nos 22 modulos (#430); na auditoria R1 (#444) ChallengeRow e AchievementRow vazavam R$500.00/0.0%/R$1,000.00 (RED chLeaks: true achLeaks: true, exit 1) (#446)."
+      },
+      "green": {
+        "command": "bun --no-env-file run typecheck && bun --no-env-file run lint && bun --no-env-file run arch:check && bun --no-env-file test src/components/finance/quiet-insights-flow.test.tsx src/components/finance/quiet-goals-health.test.tsx src/components/finance/quiet-analysis-calendar.test.tsx",
+        "outcome": "passed",
+        "details": "typecheck limpo, eslint 0 erros, arch:check limpo em 79 arquivos com 6 identidades baseline, 66 aprovados com 642 expect() calls (#430), quiet-goals-health.test.tsx 30 aprovados com 249 expect() calls apos maskChallengeText/maskAchievementText (#446), e todos os 22 modulos com no maximo 472 linhas (#430, #446)."
+      }
+    },
+    {
+      "id": "1.3",
+      "plan": "1.3",
+      "red": {
+        "command": "bun --no-env-file -e '<recurring masking & debit card probe>'",
+        "outcome": "expected_failure",
+        "details": "RecurringPanel com showValues=false vazava digitos (RECURRING_LEAKS_DIGITS: true) e cards-view.tsx renderizava cycleDates, currentBalance, available e CardUsage incondicionalmente para cartoes DEBIT (#429)."
+      },
+      "green": {
+        "command": "bun --no-env-file run typecheck && bun --no-env-file run lint && bun --no-env-file run arch:check && bun --no-env-file test src/components/finance/quiet-recurring-receipts.test.tsx src/components/finance/quiet-accounts-cards.test.tsx",
+        "outcome": "passed",
+        "details": "typecheck limpo, eslint 0 erros, arch:check limpo em 79 arquivos com 6 identidades baseline, 66 aprovados com 606 expect() calls, paridade estrita pt/es/en em cards.json, recurring-transactions.tsx com 478 linhas e cards-view.tsx com 476 linhas (#429)."
+      }
+    },
+    {
+      "id": "2.1",
+      "plan": "2.1",
+      "red": {
+        "command": "bun --no-env-file test",
+        "outcome": "expected_failure",
+        "details": "dashboard-view.test.tsx:130:19 rejeitou Este mes (3) apos exclusao de overdue em UpcomingBillsPanel (610 aprovados, 41 opt-in SQLite, 1 falha esperada), e page.tsx/dashboard-view.tsx ainda nao propagavam showValues, min-w-0 e locale (#442)."
+      },
+      "green": {
+        "command": "bun --no-env-file run check && bun --no-env-file run test:sqlite && DATABASE_URL=\"file:/tmp/ci-p1-alta.db\" bwrap next build && bwrap Playwright QA suite (9 .qa.mjs runners + live GET check)",
+        "outcome": "passed",
+        "details": "check aprovado (tsc limpo, eslint 0 erros, arch:check limpo em 79 arquivos com 6 identidades baseline, bun test 622 aprovados com 16016 expect() calls em 64 arquivos, test:scripts 72 aprovados com 418 expect() calls), test:sqlite 60 aprovados nas 6 execucoes bwrap, next build em bwrap compilado em 80s, 9 .qa.mjs aprovados em bwrap e auditoria ao vivo PASS sem erros de console (#442, #451, #453)."
+      }
+    }
+  ],
+  "structural": {
+    "command": "bun --no-env-file run check && bun --no-env-file run test:sqlite",
+    "result": "pass"
+  },
+  "review": {
+    "reviewer": "verifier-p1-r2-13 (#453 PASS) — auditoria independente zero-write sobre candidato pre-commit fa3f1b657cc0a4528539b9fb42b464a398b45845c62eea5e03e214b7c0204013 com os 48 arquivos commitados intactos em 4a14fd54b790f62855351b848aab5469e1b4f72a",
+    "status": "pass",
+    "candidate": "3198b26939d3ba0f944a146984f4a553bf570476b633a91aa4e972e3cac1f019"
+  },
+  "unresolved": []
+}

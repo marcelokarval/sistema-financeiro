@@ -30,9 +30,22 @@ const smallText = 'text-xs leading-relaxed text-muted-foreground';
 const moneyClass = 'font-mono tabular-nums tracking-tight';
 const disclosure = 'cursor-pointer rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring';
 
+function isBillInReferenceMonth(dueDate: string, referenceDate: Date): boolean {
+  const civilMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dueDate.trim());
+  if (civilMatch) {
+    const year = Number(civilMatch[1]);
+    const month = Number(civilMatch[2]) - 1;
+    return year === referenceDate.getFullYear() && month === referenceDate.getMonth();
+  }
+  const parsed = new Date(dueDate);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed.getFullYear() === referenceDate.getFullYear() && parsed.getMonth() === referenceDate.getMonth();
+}
+
 export function UpcomingBills({ showValues = true, refreshCounter = 0 }: { showValues?: boolean; refreshCounter?: number } = {}) {
+  const locale = useSafeLocale();
   const [request, setRequest] = useState(0);
-  const key = `${request}-${refreshCounter}`;
+  const key = `${request}-${refreshCounter}-${locale}`;
   const [settled, setSettled] = useState<{ key: string; result: SettledQuery<UpcomingBillsData> } | null>(null);
   const query = settled?.key === key ? settled.result : { status: 'loading' as const };
   const refresh = () => setRequest((current) => current + 1);
@@ -48,7 +61,17 @@ export function UpcomingBills({ showValues = true, refreshCounter = 0 }: { showV
   return <UpcomingBillsPanel query={query} refresh={refresh} showValues={showValues} />;
 }
 
-export function UpcomingBillsPanel({ query, refresh, showValues }: { query: QueryResult<UpcomingBillsData>; refresh: () => void; showValues: boolean }) {
+export function UpcomingBillsPanel({
+  query,
+  refresh,
+  showValues,
+  referenceDate = new Date(),
+}: {
+  query: QueryResult<UpcomingBillsData>;
+  refresh: () => void;
+  showValues: boolean;
+  referenceDate?: Date;
+}) {
   const t = useSafeTranslations('dashboard');
   const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
@@ -58,7 +81,11 @@ export function UpcomingBillsPanel({ query, refresh, showValues }: { query: Quer
   const groups = [
     { key: 'overdue', label: t('upcomingBills.groups.overdue'), bills: bills.filter((bill) => bill.status === 'overdue') },
     { key: 'urgent', label: t('upcomingBills.groups.urgent'), bills: bills.filter((bill) => bill.status === 'urgent') },
-    { key: 'thisMonth', label: t('upcomingBills.groups.thisMonth'), bills: bills.filter((bill) => bill.status !== 'later') },
+    {
+      key: 'thisMonth',
+      label: t('upcomingBills.groups.thisMonth'),
+      bills: bills.filter((bill) => bill.status !== 'overdue' && isBillInReferenceMonth(bill.dueDate, referenceDate)),
+    },
   ];
 
   return (

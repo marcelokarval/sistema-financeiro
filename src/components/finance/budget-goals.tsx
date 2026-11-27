@@ -63,11 +63,12 @@ export function restoreBudgetGoalFocusAfterDeletion(
   }
 }
 
-export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
+export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle, showValues = true }: {
   goal: BudgetGoal;
   onEdit: (goal: BudgetGoal, trigger: HTMLButtonElement | null) => void;
   onDelete: (goal: BudgetGoal) => void;
   onToggle: (goal: BudgetGoal) => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('goals');
   const locale = useSafeLocale();
@@ -105,12 +106,12 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
           min={0}
           max={100}
           unit="%"
-          displayValue={`${Math.round(percent)}%`}
-          valueText={`${Math.round(percent)}%`}
+          displayValue={showValues ? `${Math.round(percent)}%` : '•••'}
+          valueText={showValues ? `${Math.round(percent)}%` : '•••'}
         />
         <dl className="flex flex-wrap gap-x-4 gap-y-1">
           {metrics.map(([label, value]) => (
-            <FinanceMetric key={label} variant="compact" label={label} value={currencyFmt(value, locale)} valueClassName="text-xs font-normal" />
+            <FinanceMetric key={label} variant="compact" label={label} value={currencyFmt(value, locale)} showValues={showValues} maskedValue={t('maskedValue')} valueClassName="text-xs font-normal" />
           ))}
         </dl>
       </div>
@@ -142,8 +143,9 @@ export function BudgetGoalRow({ goal, onEdit, onDelete, onToggle }: {
   );
 }
 
-export function BudgetGoalsWidget() {
+export function BudgetGoalsWidget({ showValues = true }: { showValues?: boolean } = {}) {
   const t = useSafeTranslations('goals');
+  const locale = useSafeLocale();
   const [goals, setGoals] = useState<BudgetGoal[]>([]);
   const [categories, setCategories] = useState<BudgetGoalCategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,8 +181,9 @@ export function BudgetGoalsWidget() {
   }, []);
 
   useEffect(() => {
+    void locale;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, locale]);
 
   useEffect(() => {
     if (pendingDeletionFocus.current.size === 0) return;
@@ -316,6 +319,7 @@ export function BudgetGoalsWidget() {
         onDelete={handleDelete}
         onToggle={handleToggleComplete}
         onRetry={fetchData}
+        showValues={showValues}
       />
       <BudgetGoalEditor
         mode={editingGoal ? 'edit' : 'create'}
@@ -346,6 +350,7 @@ export function BudgetGoalsContent({
   onDelete,
   onToggle,
   onRetry,
+  showValues = true,
 }: {
   goals: BudgetGoal[];
   loading: boolean;
@@ -356,6 +361,7 @@ export function BudgetGoalsContent({
   onDelete: (goal: BudgetGoal) => void;
   onToggle: (goal: BudgetGoal) => void;
   onRetry: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('goals');
   if (loading) {
@@ -396,7 +402,7 @@ export function BudgetGoalsContent({
         </div>
       ) : (
         <ul className="divide-y divide-border border-y border-border">
-          {goals.map((goal) => <BudgetGoalRow key={goal.id} goal={goal} onEdit={onEdit} onDelete={onDelete} onToggle={onToggle} />)}
+          {goals.map((goal) => <BudgetGoalRow key={goal.id} goal={goal} onEdit={onEdit} onDelete={onDelete} onToggle={onToggle} showValues={showValues} />)}
         </ul>
       )}
     </section>

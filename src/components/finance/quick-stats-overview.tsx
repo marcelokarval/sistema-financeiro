@@ -5,7 +5,7 @@ import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { QueryPanel } from '@/components/shared/query-panel';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt } from '@/lib/helpers';
+import { currencyFmt, numberFmt, percentFmt } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 
 // --- Types ---
@@ -53,18 +53,20 @@ function MiniSparkline({ data, strokeColor, label }: { data: number[]; strokeCol
   );
 }
 
-function ChangeIndicator({ change }: { change: number }) {
+function ChangeIndicator({ change, showValues = true }: { change: number; showValues?: boolean }) {
   const t = useSafeTranslations('dashboard');
+  const locale = useSafeLocale();
   if (change === 0) return null;
+  const displayChange = showValues ? percentFmt(change, locale) : '•••';
   return (
     <span className="text-xs text-muted-foreground">
-      <span className="font-mono tabular-nums">{change > 0 ? '+' : '−'}{Math.abs(change).toFixed(1)}%</span> {t('quickStats.vsLastMonth')}
+      <span className="font-mono tabular-nums">{displayChange}</span> {t('quickStats.vsLastMonth')}
     </span>
   );
 }
 
-function StatCard({ label, value, badge, sparklineData, sparklineStroke, sparklineLabel, change }: {
-  label: string; value: string; badge?: string; sparklineData: number[]; sparklineStroke: string; sparklineLabel: string; change?: number;
+function StatCard({ label, value, badge, sparklineData, sparklineStroke, sparklineLabel, change, showValues = true }: {
+  label: string; value: string; badge?: string; sparklineData: number[]; sparklineStroke: string; sparklineLabel: string; change?: number; showValues?: boolean;
 }) {
   return (
     <div className="min-w-0 space-y-2 border-t border-border px-3 py-3 sm:px-4">
@@ -72,7 +74,7 @@ function StatCard({ label, value, badge, sparklineData, sparklineStroke, sparkli
       <dd className="space-y-2">
         <p className="break-words font-mono text-base font-semibold tabular-nums">{value}</p>
         {badge && <p className="text-xs text-muted-foreground">{badge}</p>}
-        {change !== undefined && <ChangeIndicator change={change} />}
+        {change !== undefined && <ChangeIndicator change={change} showValues={showValues} />}
         <MiniSparkline data={sparklineData} strokeColor={sparklineStroke} label={sparklineLabel} />
       </dd>
     </div>
@@ -80,8 +82,9 @@ function StatCard({ label, value, badge, sparklineData, sparklineStroke, sparkli
 }
 
 // --- Health Bar ---
-function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balanceTrend: 'up' | 'down' | 'stable' }) {
+function HealthBar({ savingsRate, balanceTrend, showValues = true }: { savingsRate: number; balanceTrend: 'up' | 'down' | 'stable'; showValues?: boolean }) {
   const t = useSafeTranslations('dashboard');
+  const locale = useSafeLocale();
   // Color logic: <0% red, 0-15% amber, 15-30% cyan, >30% emerald
   const barColor =
     savingsRate < 0
@@ -130,10 +133,10 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
       </div>
       <div className="flex items-center gap-3">
         <div aria-hidden="true" className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-          <div className={cn('h-full rounded-full', barColor)} style={{ width: `${barWidth}%` }} />
+          <div className={cn('h-full rounded-full', barColor)} style={{ width: `${showValues ? barWidth : 0}%` }} />
         </div>
         <span className="text-[11px] font-bold tabular-nums text-muted-foreground min-w-[40px] text-right">
-          {savingsRate.toFixed(1)}%
+          {showValues ? percentFmt(savingsRate, locale, { signed: false }) : '•••'}
         </span>
       </div>
       <p className="text-[10px] text-muted-foreground mt-1.5">
@@ -144,8 +147,9 @@ function HealthBar({ savingsRate, balanceTrend }: { savingsRate: number; balance
 }
 
 // --- Main Component ---
-export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: number }) {
+export function QuickStatsOverview({ refreshCounter = 0, showValues = true }: { refreshCounter?: number; showValues?: boolean }) {
   const t = useSafeTranslations('dashboard');
+  const locale = useSafeLocale();
   const [data, setData] = useState<QuickStatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -169,7 +173,7 @@ export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: nu
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats, refreshCounter]);
+  }, [fetchStats, refreshCounter, locale]);
 
   if (loading || !data) {
     return (
@@ -185,12 +189,15 @@ export function QuickStatsOverview({ refreshCounter = 0 }: { refreshCounter?: nu
     );
   }
 
-  return <QuickStatsPanel data={data} />;
+  return <QuickStatsPanel data={data} showValues={showValues} />;
 }
 
-export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
+export function QuickStatsPanel({ data, showValues = true }: { data: QuickStatsData; showValues?: boolean }) {
   const t = useSafeTranslations('dashboard');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
+  const money = (v: number) => (showValues ? currencyFmt(v, locale) : maskedValue);
   const { current, sparklines, changes } = data;
   const hasSavingsHistory = Array.isArray(data.monthlySavingsHistory) && data.monthlySavingsHistory.length > 0;
   const hasInvestmentsHistory = Array.isArray(data.investmentsHistory) && data.investmentsHistory.length > 0;
@@ -216,7 +223,7 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
     {
       key: 'netWorth',
       label: t('quickStats.metrics.netWorth'),
-      value: currencyFmt(current.netWorth, locale),
+      value: money(current.netWorth),
       badge: t('quickStats.badges.currentPosition'),
       sparklineData: sparklines.balance,
       sparklineStroke: 'var(--primary)',
@@ -226,7 +233,7 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
     {
       key: 'monthlyIncome',
       label: t('quickStats.metrics.monthlyIncome'),
-      value: currencyFmt(current.monthlyIncome, locale),
+      value: money(current.monthlyIncome),
       sparklineData: sparklines.income,
       sparklineStroke: 'var(--ds-accent-positive)',
       sparklineLabel: t('quickStats.sparklines.income'),
@@ -235,7 +242,7 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
     {
       key: 'monthlyExpense',
       label: t('quickStats.metrics.monthlyExpense'),
-      value: currencyFmt(current.monthlyExpense, locale),
+      value: money(current.monthlyExpense),
       sparklineData: sparklines.expense,
       sparklineStroke: 'var(--ds-accent-danger)',
       sparklineLabel: t('quickStats.sparklines.expense'),
@@ -244,8 +251,8 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
     {
       key: 'monthlySavings',
       label: t('quickStats.metrics.monthlySavings'),
-      value: currencyFmt(current.monthlySavings, locale),
-      badge: t('quickStats.badges.savingsRate', { rate: current.savingsRate.toFixed(1) }),
+      value: money(current.monthlySavings),
+      badge: t('quickStats.badges.savingsRate', { rate: showValues ? numberFmt(current.savingsRate, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '•••' }),
       sparklineData: hasSavingsHistory
         ? data.monthlySavingsHistory!
         : sparklines.balance.map((_, i, arr) => {
@@ -259,8 +266,8 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
     {
       key: 'investments',
       label: t('quickStats.metrics.investments'),
-      value: currencyFmt(current.investments, locale),
-      badge: current.netWorth !== 0 ? t('quickStats.badges.investmentPct', { pct: investmentPct }) : undefined,
+      value: money(current.investments),
+      badge: current.netWorth !== 0 ? t('quickStats.badges.investmentPct', { pct: showValues ? investmentPct : '•••' }) : undefined,
       sparklineData: hasInvestmentsHistory
         ? data.investmentsHistory!
         : sparklines.balance.map((_, i) => Math.round((current.investments / 6) * (i + 1))),
@@ -271,7 +278,7 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
     {
       key: 'cardDebt',
       label: t('quickStats.metrics.cardDebt'),
-      value: currencyFmt(current.cardDebt, locale),
+      value: money(current.cardDebt),
       sparklineData: hasCardDebtHistory
         ? data.cardDebtHistory!
         : sparklines.expense.map((v) => Math.round(v * 0.6 * 100) / 100),
@@ -290,9 +297,9 @@ export function QuickStatsPanel({ data }: { data: QuickStatsData }) {
       contentClassName="space-y-0 p-0 sm:p-0"
     >
       <dl className="grid grid-cols-2 sm:grid-cols-3 sm:[&>div:not(:nth-child(3n+1))]:border-l max-sm:[&>div:nth-child(even)]:border-l">
-        {statsConfig.map(({ key, ...stat }) => <StatCard key={key} {...stat} />)}
+        {statsConfig.map(({ key, ...stat }) => <StatCard key={key} {...stat} showValues={showValues} />)}
       </dl>
-      <HealthBar savingsRate={current.savingsRate} balanceTrend={balanceTrend} />
+      <HealthBar savingsRate={current.savingsRate} balanceTrend={balanceTrend} showValues={showValues} />
     </QueryPanel>
   );
 }

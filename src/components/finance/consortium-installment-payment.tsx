@@ -48,6 +48,7 @@ export function ConsortiumInstallmentPayment({
         if (!nextOpen) onCancel();
       }}
       onCloseAutoFocus={onCloseAutoFocus}
+      closeLabel={t('payment.closeLabel')}
       contentClassName="max-h-[85dvh] overflow-y-auto"
       title={t('payment.title')}
       description={

@@ -22,7 +22,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt, shortCurrency } from '@/lib/helpers';
+import { currencyFmt, percentFmt, rateFmt, shortCurrency } from '@/lib/helpers';
 import { QueryPanel, type QueryPanelStatus } from '@/components/shared/query-panel';
 import {
   FinanceChartTooltip,
@@ -187,7 +187,8 @@ export function currentBalanceProjection(
   return settled?.request === request ? settled.result : { status: 'loading' };
 }
 
-export function BalanceProjection() {
+export function BalanceProjection({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [request, setRequest] = useState<BalanceProjectionRequest>({ months: 6 });
   const [settled, setSettled] = useState<BalanceProjectionResult | null>(null);
   const query = currentBalanceProjection(request, settled);
@@ -196,10 +197,11 @@ export function BalanceProjection() {
   const error = query.status === 'error';
 
   useEffect(() => {
+    void locale;
     const controller = new AbortController();
     void requestBalanceProjection(request, controller.signal, setSettled);
     return () => controller.abort();
-  }, [request]);
+  }, [request, locale]);
 
   return (
     <BalanceProjectionContent
@@ -211,6 +213,7 @@ export function BalanceProjection() {
         if (months !== request.months) setRequest({ months });
       }}
       onRetry={() => setRequest({ months: request.months })}
+      showValues={showValues}
     />
   );
 }
@@ -233,7 +236,11 @@ export function BalanceProjectionContent({
   showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
+  const money = (v: number) => (showValues ? currencyFmt(v, locale) : maskedValue);
+  const signedMoney = (v: number) => (showValues ? `${v >= 0 ? '+' : ''}${currencyFmt(v, locale)}` : maskedValue);
   const status: QueryPanelStatus = loading
     ? 'loading'
     : error || (error === undefined && !data)
@@ -285,8 +292,8 @@ export function BalanceProjectionContent({
   const projectionChange = data.totalProjected - data.totalCurrentBalance;
   const projectionChangePct =
     data.totalCurrentBalance !== 0
-      ? ((projectionChange / Math.abs(data.totalCurrentBalance)) * 100).toFixed(1)
-      : '0.0';
+      ? (projectionChange / Math.abs(data.totalCurrentBalance)) * 100
+      : 0;
 
   return (
     <QueryPanel
@@ -304,21 +311,19 @@ export function BalanceProjectionContent({
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border lg:grid-cols-4">
         <div className="min-w-0 space-y-1 bg-card p-3">
           <dt className="text-xs text-muted-foreground">{t('projection.metrics.currentTotal')}</dt>
-          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(data.totalCurrentBalance, locale)}</dd>
+          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{money(data.totalCurrentBalance)}</dd>
         </div>
         <div className="min-w-0 space-y-1 bg-card p-3">
           <dt className="text-xs text-muted-foreground">{t('projection.metrics.projectedIn', { count: data.months })}</dt>
-          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{currencyFmt(data.totalProjected, locale)}</dd>
+          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{money(data.totalProjected)}</dd>
           <dd className="text-xs text-muted-foreground">
-            {t('projection.metrics.variation', { value: `${projectionChange >= 0 ? '+' : ''}${projectionChangePct}%` })}
+            {t('projection.metrics.variation', { value: showValues ? percentFmt(projectionChangePct, locale) : '•••' })}
           </dd>
         </div>
         <div className="min-w-0 space-y-1 bg-card p-3">
           <dt className="text-xs text-muted-foreground">{t('projection.metrics.avgMonthlySavings')}</dt>
-          <dd className="break-words font-mono text-sm font-semibold tabular-nums">
-            {data.averageMonthlySavings >= 0 ? '+' : ''}{currencyFmt(data.averageMonthlySavings, locale)}
-          </dd>
-          <dd className="text-xs text-muted-foreground">{t('projection.metrics.rate', { rate: data.savingsRate })}</dd>
+          <dd className="break-words font-mono text-sm font-semibold tabular-nums">{signedMoney(data.averageMonthlySavings)}</dd>
+          <dd className="text-xs text-muted-foreground">{t('projection.metrics.rate', { rate: showValues ? rateFmt(data.savingsRate, locale) : '•••' })}</dd>
         </div>
         <div className="min-w-0 space-y-1 bg-card p-3">
           <dt className="text-xs text-muted-foreground">{t('projection.metrics.riskLevel')}</dt>
@@ -347,7 +352,7 @@ export function BalanceProjectionContent({
                   tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => shortCurrency(v, locale)}
+                  tickFormatter={(v) => (showValues ? shortCurrency(v, locale) : '•••')}
                 />
                 <RechartsTooltip content={<BalanceProjectionTooltip showValues={showValues} />} />
                 <Legend iconType="line" iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
@@ -399,7 +404,7 @@ export function BalanceProjectionContent({
                   {t('projection.risk.savingsRateLabel')}
                 </span>
                 <span className={`font-mono text-xs font-semibold tabular-nums ${currentRisk.textClass}`}>
-                  {data.savingsRate}%
+                  {showValues ? percentFmt(data.savingsRate, locale, { signed: false }) : '•••'}
                 </span>
               </div>
               <div
@@ -408,13 +413,13 @@ export function BalanceProjectionContent({
                 aria-valuenow={Math.round(Math.max(0, Math.min(100, Math.abs(data.savingsRate))))}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuetext={`${data.savingsRate}%`}
+                aria-valuetext={showValues ? percentFmt(data.savingsRate, locale, { signed: false }) : '•••'}
                 className="h-1.5 overflow-hidden rounded-full bg-muted"
               >
                 <div
                   className="h-full rounded-full"
                   style={{
-                    width: `${Math.max(0, Math.min(100, Math.abs(data.savingsRate)))}%`,
+                    width: `${showValues ? Math.max(0, Math.min(100, Math.abs(data.savingsRate))) : 0}%`,
                     backgroundColor:
                       data.riskLevel === 'low'
                         ? 'var(--ds-accent-positive)'
@@ -425,8 +430,8 @@ export function BalanceProjectionContent({
                 />
               </div>
               <div className="flex items-center justify-between mt-1">
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">0%</span>
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">100%</span>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">{showValues ? '0%' : '•••'}</span>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">{showValues ? '100%' : '•••'}</span>
               </div>
             </div>
           </div>
@@ -447,11 +452,11 @@ export function BalanceProjectionContent({
                     <span className="text-xs text-muted-foreground">{t(`projection.trends.${acc.trend}`)}</span>
                   </div>
                   <dl className="grid grid-cols-2 gap-2 text-xs md:grid-cols-5">
-                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.current')}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.currentBalance, locale)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.projected')}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(finalBalance, locale)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.incomePerMonth')}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.avgMonthlyIncome, locale)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.expensePerMonth')}</dt><dd className="break-words font-mono tabular-nums">{currencyFmt(acc.avgMonthlyExpense, locale)}</dd></div>
-                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.netPerMonth')}</dt><dd className="break-words font-mono tabular-nums">{acc.monthlyNet >= 0 ? '+' : ''}{currencyFmt(acc.monthlyNet, locale)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.current')}</dt><dd className="break-words font-mono tabular-nums">{money(acc.currentBalance)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.projected')}</dt><dd className="break-words font-mono tabular-nums">{money(finalBalance)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.incomePerMonth')}</dt><dd className="break-words font-mono tabular-nums">{money(acc.avgMonthlyIncome)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.expensePerMonth')}</dt><dd className="break-words font-mono tabular-nums">{money(acc.avgMonthlyExpense)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">{t('projection.accountMetrics.netPerMonth')}</dt><dd className="break-words font-mono tabular-nums">{signedMoney(acc.monthlyNet)}</dd></div>
                   </dl>
                 </li>
               );

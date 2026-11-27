@@ -8,14 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -23,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { FinanceFormDialogShell } from '@/components/shared/finance-dialog-shell';
 import { ConsortiumEditor, type ConsortiumDraft } from './consortium-editor';
 import { ConsortiumDeleteConfirmation } from './consortium-delete-confirmation';
 import {
@@ -380,17 +373,39 @@ export function ConsortiumsView() {
   const createConsortium = async () => {
     const opening = createOpening;
     if (!opening || currentCreateOpening.current !== opening || pendingCreates.current.has(opening)) return;
+
+    const description = createForm.description.trim();
+    if (!description) {
+      toast.error(t('errors.descriptionRequired'));
+      return;
+    }
+    const totalAmount = Number(createForm.totalAmount);
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      toast.error(t('errors.totalPositive'));
+      return;
+    }
+    const monthlyPayment = Number(createForm.monthlyPayment);
+    if (!Number.isFinite(monthlyPayment) || monthlyPayment <= 0) {
+      toast.error(t('errors.monthlyPositive'));
+      return;
+    }
+    const installmentCount = Number(createForm.installmentCount);
+    if (!Number.isInteger(installmentCount) || installmentCount < 1) {
+      toast.error(t('errors.installmentCountInvalid'));
+      return;
+    }
+
     pendingCreates.current.add(opening);
     setCreating(opening);
     try {
       const body = {
-        description: createForm.description,
+        description,
         group: createForm.group,
         quota: createForm.quota,
         administrator: createForm.administrator,
-        totalAmount: parseFloat(createForm.totalAmount) || 0,
-        monthlyPayment: parseFloat(createForm.monthlyPayment) || 0,
-        installmentCount: parseInt(createForm.installmentCount) || 0,
+        totalAmount,
+        monthlyPayment,
+        installmentCount,
         startDate: createForm.startDate || new Date().toISOString(),
         nextAssemblyDate: createForm.nextAssemblyDate || null,
         categoryId: createForm.categoryId || null,
@@ -402,8 +417,8 @@ export function ConsortiumsView() {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const data = await res.json();
-        if (currentCreateOpening.current === opening) toast.error(data.error || t('errors.create'));
+        const data = await res.json().catch(() => ({}));
+        if (currentCreateOpening.current === opening) toast.error(data?.error || t('errors.create'));
         return;
       }
       if (currentCreateOpening.current === opening) {
@@ -601,7 +616,7 @@ export function ConsortiumsView() {
           </div>
         </header>
 
-        <ConsortiumDetail consortium={c} installments={installments} installmentLoad={installmentLoad}
+        <ConsortiumDetail key={c.id} consortium={c} installments={installments} installmentLoad={installmentLoad}
           onPay={(inst, event) => openPayDialog(opening, inst, event)}
         />
 
@@ -680,14 +695,27 @@ export function ConsortiumsView() {
       </section>
 
         {/* Create Consortium Dialog */}
-        <Dialog open={!!createOpening} onOpenChange={(open) => { if (!open) closeCreateDialog(); }}>
-          <DialogContent onCloseAutoFocus={restoreDialogFocus} className="max-h-[85dvh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{t('createDialog.title')}</DialogTitle>
-              <DialogDescription>
-                {t('createDialog.description')}
-              </DialogDescription>
-            </DialogHeader>
+        <FinanceFormDialogShell
+          open={!!createOpening}
+          onOpenChange={(open) => { if (!open) closeCreateDialog(); }}
+          onCloseAutoFocus={restoreDialogFocus}
+          closeLabel={t('createDialog.closeLabel')}
+          contentClassName="max-h-[85dvh] overflow-y-auto"
+          title={t('createDialog.title')}
+          description={t('createDialog.description')}
+          footer={
+            <>
+              <Button variant="outline" onClick={closeCreateDialog}>
+                {t('createDialog.cancel')}
+              </Button>
+              <Button
+                onClick={createConsortium} disabled={createOpening !== null && creating === createOpening}
+              >
+                {t('createDialog.submit')}
+              </Button>
+            </>
+          }
+        >
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
@@ -828,18 +856,7 @@ export function ConsortiumsView() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={closeCreateDialog}>
-                {t('createDialog.cancel')}
-              </Button>
-              <Button
-                onClick={createConsortium} disabled={createOpening !== null && creating === createOpening}
-              >
-                {t('createDialog.submit')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </FinanceFormDialogShell>
 
         <ConsortiumEditor origin="list" open={!!editOpening} draft={editForm} saving={editingIds.has(editForm.id)}
           onFieldChange={changeEditField} onCancel={closeEditDialog} onSave={updateConsortium} onCloseAutoFocus={restoreDialogFocus} />
@@ -927,6 +944,8 @@ export function ConsortiumRow({ consortium: c, onOpen, onEdit, onDelete }: {
     </li>
   );
 }
+type InstallmentEntryFilter = 'ALL' | 'PENDING' | 'PAID';
+
 export function ConsortiumDetail({ consortium: c, installments, installmentLoad = 'ready', onPay }: {
   consortium: Consortium;
   installments: ConsortiumInstallment[];
@@ -935,11 +954,66 @@ export function ConsortiumDetail({ consortium: c, installments, installmentLoad 
 }) {
   const t = useSafeTranslations('consortiums');
   const locale = useSafeLocale();
+  const [entryFilter, setEntryFilter] = useState<InstallmentEntryFilter>('ALL');
+  const pendingJumpIdRef = useRef<string | null>(null);
+  const entryRefs = useRef(new Map<string, HTMLLIElement>());
+  const payButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const installmentStatusLabels = useMemo(
     () => buildStatusBadgeLabels(CONSORTIUM_INSTALLMENT_STATUS_META, t),
     [t],
   );
-  const rows = installmentLoad === 'ready' && installments.every((row) => row.consortiumId === c.id) ? installments : [];
+  const rows = useMemo(
+    () => (installmentLoad === 'ready' && installments.every((row) => row.consortiumId === c.id) ? installments : []),
+    [installmentLoad, installments, c.id],
+  );
+  const filteredRows = useMemo(() => {
+    if (entryFilter === 'PENDING') {
+      return rows.filter((inst) => inst.status === 'PENDING' || inst.status === 'OVERDUE');
+    }
+    if (entryFilter === 'PAID') {
+      return rows.filter((inst) => inst.status === 'PAID');
+    }
+    return rows;
+  }, [rows, entryFilter]);
+  const firstOpenInstallment = useMemo(
+    () => rows.find((inst) => inst.status === 'PENDING' || inst.status === 'OVERDUE'),
+    [rows],
+  );
+
+  const focusPendingEntry = useCallback((targetId: string) => {
+    const rowEl = entryRefs.current.get(targetId);
+    const actionEl = payButtonRefs.current.get(targetId);
+    if (!rowEl && !actionEl) return false;
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    rowEl?.scrollIntoView?.({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' });
+    if (actionEl && !actionEl.disabled) {
+      actionEl.focus();
+    } else {
+      rowEl?.focus();
+    }
+    return true;
+  }, []);
+
+  useEffect(() => {
+    const targetId = pendingJumpIdRef.current;
+    if (!targetId) return;
+    if (focusPendingEntry(targetId)) {
+      pendingJumpIdRef.current = null;
+    }
+  }, [entryFilter, filteredRows, focusPendingEntry]);
+
+  const jumpToNextPending = () => {
+    if (!firstOpenInstallment) return;
+    if (entryFilter === 'PAID') {
+      pendingJumpIdRef.current = firstOpenInstallment.id;
+      setEntryFilter('ALL');
+      return;
+    }
+    pendingJumpIdRef.current = null;
+    focusPendingEntry(firstOpenInstallment.id);
+  };
+
   return (
     <>
       <div className="space-y-3">
@@ -967,27 +1041,75 @@ export function ConsortiumDetail({ consortium: c, installments, installmentLoad 
           ) : rows.length === 0 ? (
             <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground">{t('detail.emptyInstallments')}</p>
           ) : (
-            <ul aria-label={t('detail.installmentsAriaLabel')} className="divide-y divide-border border-t border-border">
-              {rows.map((inst) => (
-                <li key={inst.id} className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                  <div className="min-w-0 space-y-1 break-words">
-                    <p className="text-sm font-semibold">{t('detail.installmentLabel', { number: inst.number })}</p>
-                    <p className="text-xs text-muted-foreground">{t('detail.dueDate', { date: dateFmt(inst.dueDate, locale) })}</p>
-                    {inst.paidDate && <p className="text-xs text-muted-foreground">{t('detail.paidOn', { date: dateFmt(inst.paidDate, locale) })}</p>}
-                    {inst.notes && <p className="text-xs text-muted-foreground">{inst.notes}</p>}
-                  </div>
-                  <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
-                    <StatusBadge status={inst.status} labels={installmentStatusLabels} />
-                    <span className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(inst.amount, locale)}</span>
-                    {(inst.status === 'PENDING' || inst.status === 'OVERDUE') && (
-                      <Button variant="outline" className="min-h-11" aria-label={t('actions.markPaidAriaLabel', { number: inst.number })} onClick={(event) => onPay(inst, event)}>
-                        <CheckCircle2 aria-hidden="true" /> {t('actions.markPaid')}
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
+                <div role="group" aria-label={t('detail.installmentFilters.ariaLabel')} className="flex flex-wrap gap-2">
+                  {(['ALL', 'PENDING', 'PAID'] as const).map((status) => (
+                    <Button
+                      key={status}
+                      type="button"
+                      variant={entryFilter === status ? 'secondary' : 'outline'}
+                      className="min-h-11"
+                      aria-pressed={entryFilter === status}
+                      onClick={() => setEntryFilter(status)}
+                    >
+                      {t(`detail.installmentFilters.${status}`)}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  disabled={!firstOpenInstallment}
+                  onClick={jumpToNextPending}
+                >
+                  {t('actions.jumpToNextPending')}
+                </Button>
+              </div>
+              {filteredRows.length === 0 ? (
+                <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground">{t('detail.emptyFilteredInstallments')}</p>
+              ) : (
+                <ul aria-label={t('detail.installmentsAriaLabel')} className="divide-y divide-border border-t border-border">
+                  {filteredRows.map((inst) => (
+                    <li
+                      key={inst.id}
+                      tabIndex={-1}
+                      ref={(node) => {
+                        if (node) entryRefs.current.set(inst.id, node);
+                        else entryRefs.current.delete(inst.id);
+                      }}
+                      className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+                    >
+                      <div className="min-w-0 space-y-1 break-words">
+                        <p className="text-sm font-semibold">{t('detail.installmentLabel', { number: inst.number })}</p>
+                        <p className="text-xs text-muted-foreground">{t('detail.dueDate', { date: dateFmt(inst.dueDate, locale) })}</p>
+                        {inst.paidDate && <p className="text-xs text-muted-foreground">{t('detail.paidOn', { date: dateFmt(inst.paidDate, locale) })}</p>}
+                        {inst.notes && <p className="text-xs text-muted-foreground">{inst.notes}</p>}
+                      </div>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+                        <StatusBadge status={inst.status} labels={installmentStatusLabels} />
+                        <span className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(inst.amount, locale)}</span>
+                        {(inst.status === 'PENDING' || inst.status === 'OVERDUE') && (
+                          <Button
+                            ref={(node) => {
+                              if (node) payButtonRefs.current.set(inst.id, node);
+                              else payButtonRefs.current.delete(inst.id);
+                            }}
+                            variant="outline"
+                            className="min-h-11"
+                            aria-label={t('actions.markPaidAriaLabel', { number: inst.number })}
+                            onClick={(event) => onPay(inst, event)}
+                          >
+                            <CheckCircle2 aria-hidden="true" /> {t('actions.markPaid')}
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </section>
         <section aria-labelledby="consortium-assemblies" className="min-w-0 rounded-xl border border-border bg-card p-4">

@@ -71,7 +71,7 @@
     "currentValue": "Valor atual",
     "currentValueNote": "Soma dos saldos atuais",
     "totalInvested": "Total investido",
-    "investmentCount": "{count, plural, one {# investimento} other {# investimentos}}",
+    "investmentCount": "{count, plural, =0 {# investimentos} one {# investimento} other {# investimentos}}",
     "totalYield": "Rentabilidade total",
     "accumulatedProfit": "Lucro acumulado",
     "accumulatedLoss": "Prejuízo acumulado",

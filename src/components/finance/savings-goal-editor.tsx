@@ -62,6 +62,7 @@ export function SavingsGoalEditor({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
+      closeLabel={t('editor.closeLabel')}
       contentClassName="sm:max-w-lg max-h-[85dvh] overflow-y-auto"
       title={isEditing ? t('editor.editTitle') : t('editor.createTitle')}
       description={

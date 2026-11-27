@@ -3,7 +3,7 @@
 import { expect, test } from 'bun:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { QuickStatsOverview } from './quick-stats-overview';
+import { QuickStatsOverview, QuickStatsPanel } from './quick-stats-overview';
 import { SmartInsights } from './smart-insights';
 import { CashFlowForecast } from './cash-flow-forecast';
 import { SpendingTimeline } from './spending-timeline';
@@ -14,6 +14,7 @@ import { renderWithIntl } from '@/test-utils/intl';
 import { CANONICAL_LOCALES, type CanonicalLocale } from '@/i18n/config';
 import { getMessagesForLocale } from '@/i18n/messages';
 import { AppIntlBridgeContext } from '@/i18n/provider';
+import { YAxis } from 'recharts';
 
 function withPtIntlDispatcher<T>(fn: () => T, locale: CanonicalLocale = 'pt'): T {
   const internals = (React as unknown as {
@@ -114,14 +115,16 @@ import { FinanceRow } from '@/components/shared/finance-row';
 import { FinanceChartTooltip } from '@/components/shared/finance-chart-tooltip';
 import { Tooltip as RechartsTooltip } from 'recharts';
 
-test('smart-insights conecta ação do insight à navegação da store e exibe erro com retry', () => {
+test('smart-insights conecta ação do insight à navegação da store, roteia só por id e exibe erro com retry', () => {
   useAppStore.setState(useAppStore.getInitialState(), true);
   expect(typeof (smartInsights as Record<string, any>).insightActionDestination).toBe('function');
   const dest = (smartInsights as Record<string, any>).insightActionDestination;
-  expect(dest({ id: 'card-util-1', action: 'Pagar fatura' })).toBe('cards');
-  expect(dest({ id: 'category-overspend', action: 'Ver detalhes da categoria' })).toBe('categories');
-  expect(dest({ id: 'goal-1', action: 'Contribuir agora' })).toBe('savings');
-  expect(dest({ id: 'income-vs-expense', action: 'Rever despesas' })).toBe('accounts');
+  expect(dest({ id: 'card-util-1', action: 'Pay statement' })).toBe('cards');
+  expect(dest({ id: 'category-overspend', action: 'Ver detalles de categoría' })).toBe('categories');
+  expect(dest({ id: 'goal-1', action: 'Contribute now' })).toBe('savings');
+  expect(dest({ id: 'emergency-fund' })).toBe('savings');
+  expect(dest({ id: 'income-vs-expense', action: 'Review expenses' })).toBe('accounts');
+  expect(dest({ id: 'other-1', action: 'Pagar fatura' })).toBe('dashboard');
 
   const Card = (smartInsights as Record<string, any>).InsightCard;
   expect(typeof Card).toBe('function');
@@ -151,6 +154,7 @@ test('smart-insights conecta ação do insight à navegação da store e exibe e
 
   const src = readFileSync(new URL('./smart-insights.tsx', import.meta.url), 'utf8');
   expect(src).not.toContain('min-h-8');
+  expect(src).not.toMatch(/Pagar fatura|Ver detalhes da categoria|Contribuir agora|Rever despesas/);
 });
 
 test('widgets de fluxo e análise removem framer-motion, cores Tailwind fixas, sombras hardcoded e micro-tipografia', () => {
@@ -502,5 +506,199 @@ test('renderiza CashFlowForecastContent, BalanceProjectionContent e SpendingTime
       locale,
     );
     expect(maskedTooltip).not.toMatch(/1\.?250/);
+  }
+});
+
+function findYAxisNodes(node: unknown): Array<{ props: Record<string, any> }> {
+  if (!node || typeof node !== 'object') return [];
+  const el = node as { type?: unknown; props?: Record<string, any> };
+  const own = el.type === YAxis ? [el as { props: Record<string, any> }] : [];
+  const nested = React.Children.toArray(el.props?.children).flatMap(findYAxisNodes);
+  return [...own, ...nested];
+}
+
+test('QuickStatsPanel, SmartInsights, CashFlowForecast, SpendingTimeline e BalanceProjection ocultam dígitos/percentuais/YAxis com showValues=false', () => {
+  const qsHtml = renderToStaticMarkup(
+    <QuickStatsPanel
+      showValues={false}
+      data={{
+        current: {
+          totalBalance: 5400, cardDebt: 750, investments: 4400, savingsGoals: 3500,
+          netWorth: 12550, monthlyIncome: 3000, monthlyExpense: 250, monthlySavings: 2750, savingsRate: 91.7,
+        },
+        sparklines: { balance: [5000, 5400], income: [2800, 3000], expense: [200, 250] },
+        changes: { incomeVsLastMonth: 7.1, expenseVsLastMonth: 25.0, savingsVsLastMonth: 5.8 },
+      }}
+    />,
+  );
+  expect(qsHtml).toContain('R$ ••••••');
+  expect(qsHtml).toContain('•••');
+  expect(qsHtml).not.toMatch(/12\.550|3\.000|2\.750|4\.400|91\.7|7\.1|25\.0|5\.8|750|250/);
+
+  const Content = (smartInsights as Record<string, any>).SmartInsightsContent;
+  const siHtml = renderToStaticMarkup(
+    <Content
+      insights={[{
+        id: 'card-1', type: 'warning', icon: 'CreditCard',
+        title: 'Uso de 82%', description: 'Fatura de R$ 1.500,00 atingiu 82%', metric: 'R$ 1.500,00',
+      }]}
+      loading={false}
+      error={false}
+      activeTab="all"
+      onTabChange={() => {}}
+      onRetry={() => {}}
+      showValues={false}
+    />,
+  );
+  expect(siHtml).toContain('R$ ••••••');
+  expect(siHtml).toContain('•••');
+  expect(siHtml).not.toMatch(/1\.500|82/);
+
+  const CashContent = (cashFlow as Record<string, any>).CashFlowForecastContent;
+  const cashProps = {
+    loading: false,
+    onRetry: () => {},
+    showValues: false,
+    data: {
+      forecastMonths: [{ month: 'março', projectedIncome: 4200, projectedExpense: 4550, projectedNet: -350, confidence: 85 }],
+      topExpenseCategories: [{ category: 'Moradia', projectedAmount: 1800, percentage: 40 }],
+      riskAlerts: ['Déficit previsto de R$ 350,00'],
+      trendDirection: 'declining',
+    },
+  };
+  const cashTree = withPtIntlDispatcher(() => CashContent(cashProps));
+  expect(findTooltipNode(cashTree)?.props.content?.props.showValues).toBe(false);
+  const cashYAxes = findYAxisNodes(cashTree);
+  expect(cashYAxes.length).toBeGreaterThan(0);
+  for (const y of cashYAxes) expect(y.props.tickFormatter(4200)).toBe('•••');
+  const cashMaskedHtml = renderToStaticMarkup(<CashContent {...cashProps} />);
+  expect(cashMaskedHtml).toContain('R$ ••••••');
+  expect(cashMaskedHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/4\.200|4\.550|1\.800|350|85|40/);
+
+  const tlMaskedHtml = renderToStaticMarkup(
+    <timeline.SpendingTimelineContent
+      data={[{
+        date: '2026-01-15', income: 320, expense: 85.5, net: 234.5, count: 2, runningBalance: 1234.5,
+        items: [{ type: 'transaction', description: 'Freela', amount: 320, category: 'Renda Extra' }],
+      }]}
+      loading={false}
+      error={false}
+      activeDays={30}
+      expandedDay="2026-01-15"
+      onSelectDays={() => {}}
+      onToggleDay={() => {}}
+      onRetry={() => {}}
+      showValues={false}
+    />,
+  );
+  expect(tlMaskedHtml).toContain('R$ ••••••');
+  expect(tlMaskedHtml).toContain('title="2026-01-15: R$ ••••••"');
+  expect(tlMaskedHtml).not.toMatch(/320|85,50|234,50|1\.234/);
+
+  const BalContent = (balanceProj as Record<string, any>).BalanceProjectionContent;
+  const balProps = {
+    loading: false,
+    selectedMonths: 6,
+    onSelectMonths: () => {},
+    onRetry: () => {},
+    showValues: false,
+    data: {
+      accounts: [{
+        accountId: 'acc-1', accountName: 'Conta Corrente', accountColor: '#0ea5e9', accountType: 'CHECKING',
+        currentBalance: 1000, projectedBalances: [1850.5], avgMonthlyIncome: 2000, avgMonthlyExpense: 1149.5, monthlyNet: 850.5, trend: 'up',
+      }],
+      monthLabels: ['abr/26'],
+      totalCurrentBalance: 1000,
+      totalProjected: 1850.5,
+      averageMonthlySavings: 850.5,
+      savingsRate: 42.5,
+      riskLevel: 'low',
+      months: 6,
+    },
+  };
+  const balTree = withPtIntlDispatcher(() => BalContent(balProps));
+  expect(findTooltipNode(balTree)?.props.content?.props.showValues).toBe(false);
+  const balYAxes = findYAxisNodes(balTree);
+  expect(balYAxes.length).toBeGreaterThan(0);
+  for (const y of balYAxes) expect(y.props.tickFormatter(1850.5)).toBe('•••');
+  const balMaskedHtml = renderToStaticMarkup(<BalContent {...balProps} />);
+  expect(balMaskedHtml).toContain('aria-valuetext="•••"');
+  expect(balMaskedHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/1\.000|1\.850|850|42\.5/);
+});
+
+test('widgets de fluxo e análises refazem fetch ao trocar locale sem adicionar ?locale=', async () => {
+  const internals = (React as unknown as {
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+  }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const previous = internals.H;
+  const originalFetch = globalThis.fetch;
+  const requested: string[] = [];
+  let activeLocale: CanonicalLocale = 'pt';
+  const states: unknown[] = [];
+  const refs: Array<{ current: unknown }> = [];
+  const memos: Array<{ deps?: readonly unknown[]; value: unknown }> = [];
+  const callbacks: Array<{ deps?: readonly unknown[]; fn: unknown }> = [];
+  const effects: Array<{ deps?: readonly unknown[]; cleanup?: () => void }> = [];
+  const sameDeps = (a?: readonly unknown[], b?: readonly unknown[]) =>
+    Boolean(a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i])));
+
+  const renderExpense = () => {
+    let s = 0, r = 0, m = 0, c = 0, e = 0;
+    const pending: Array<{ idx: number; fn: () => void | (() => void); deps?: readonly unknown[] }> = [];
+    internals.H = {
+      useState(initial: unknown) {
+        const i = s++;
+        if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+        return [states[i], (next: unknown) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }];
+      },
+      useRef: (v: unknown) => (refs[r++] ??= { current: v }),
+      useMemo: (f: () => unknown, deps?: readonly unknown[]) => {
+        const i = m++;
+        if (!memos[i] || !sameDeps(memos[i].deps, deps)) memos[i] = { deps, value: f() };
+        return memos[i].value;
+      },
+      useCallback: (fn: unknown, deps?: readonly unknown[]) => {
+        const i = c++;
+        if (!callbacks[i] || !sameDeps(callbacks[i].deps, deps)) callbacks[i] = { deps, fn };
+        return callbacks[i].fn;
+      },
+      useContext: (ctx: React.Context<unknown>) =>
+        ctx === AppIntlBridgeContext
+          ? { locale: activeLocale, messages: getMessagesForLocale(activeLocale) }
+          : (ctx as unknown as { _currentValue?: unknown })._currentValue,
+      useId: () => 'test-locale-id',
+      useEffect: (fn: () => void | (() => void), deps?: readonly unknown[]) => {
+        const i = e++;
+        if (!effects[i] || !sameDeps(effects[i].deps, deps)) pending.push({ idx: i, fn, deps });
+      },
+    };
+    const tree = ExpenseBreakdown({ showValues: true });
+    for (const item of pending) {
+      effects[item.idx]?.cleanup?.();
+      const cleanup = item.fn();
+      effects[item.idx] = { deps: item.deps, cleanup: typeof cleanup === 'function' ? cleanup : undefined };
+    }
+    return tree;
+  };
+
+  try {
+    globalThis.fetch = (async (url: string) => {
+      requested.push(String(url));
+      return expenseResponse(100);
+    }) as typeof fetch;
+
+    renderExpense();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(requested).toEqual(['/api/expense-breakdown?months=6']);
+
+    activeLocale = 'en';
+    renderExpense();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(requested).toEqual(['/api/expense-breakdown?months=6', '/api/expense-breakdown?months=6']);
+    expect(requested.every((url) => !url.includes('locale='))).toBe(true);
+  } finally {
+    effects.forEach((entry) => entry?.cleanup?.());
+    internals.H = previous;
+    globalThis.fetch = originalFetch;
   }
 });

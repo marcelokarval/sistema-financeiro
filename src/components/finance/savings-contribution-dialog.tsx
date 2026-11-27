@@ -51,6 +51,7 @@ export function SavingsContributionDialog({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
+      closeLabel={t('contribution.closeLabel')}
       contentClassName="sm:max-w-md max-h-[85dvh] overflow-y-auto"
       title={t('contribution.title')}
       description={

@@ -228,16 +228,41 @@ export async function GET(request?: NextRequest) {
       balance: acc.balance,
     }));
 
-    // Monthly trend - iterate through each month in the date range
+    // Monthly trend - trim leading empty months for long ranges (> 12 months) while preserving full totals
+    let effectiveTrendStart = trendStart;
+    let effectiveTrendMonths = trendMonths;
+    if (trendMonths > 12) {
+      const activityDates = [
+        ...monthlyTransactions.map((t) => t.date),
+        ...monthlyPurchases.map((p) => p.date),
+      ];
+      if (activityDates.length === 0) {
+        effectiveTrendStart = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+        effectiveTrendMonths = 1;
+      } else {
+        let earliest = activityDates[0];
+        for (const d of activityDates) {
+          if (d < earliest) earliest = d;
+        }
+        const firstActiveMonth = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+        effectiveTrendStart = firstActiveMonth > trendStart ? firstActiveMonth : trendStart;
+        const activeMonthsDiff =
+          (rangeEnd.getFullYear() - effectiveTrendStart.getFullYear()) * 12 +
+          (rangeEnd.getMonth() - effectiveTrendStart.getMonth());
+        effectiveTrendMonths = Math.max(activeMonthsDiff + 1, 1);
+      }
+    }
+
+    // Monthly trend - iterate through each month in the effective trend range
     const monthlyTrend: {
       month: string;
       monthKey: string;
       income: number;
       expense: number;
     }[] = [];
-    for (let i = 0; i < trendMonths; i++) {
-      const trendMonth = new Date(trendStart.getFullYear(), trendStart.getMonth() + i, 1);
-      const trendMonthEnd = new Date(trendStart.getFullYear(), trendStart.getMonth() + i + 1, 0, 23, 59, 59, 999);
+    for (let i = 0; i < effectiveTrendMonths; i++) {
+      const trendMonth = new Date(effectiveTrendStart.getFullYear(), effectiveTrendStart.getMonth() + i, 1);
+      const trendMonthEnd = new Date(effectiveTrendStart.getFullYear(), effectiveTrendStart.getMonth() + i + 1, 0, 23, 59, 59, 999);
       const monthLabel = formatServerMonthLabel(trendMonth, locale);
 
       const monthTxns = monthlyTransactions.filter(

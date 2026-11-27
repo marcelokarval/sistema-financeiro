@@ -44,7 +44,7 @@
     "title": "Metas de orçamento",
     "loading": "Carregando metas…",
     "error": "Não foi possível carregar as metas de orçamento.",
-    "summary": "{activeCount, plural, one {# ativa} other {# ativas}} · {completedCount, plural, one {# concluída} other {# concluídas}}",
+    "summary": "{activeCount, plural, =0 {# ativas} one {# ativa} other {# ativas}} · {completedCount, plural, =0 {# concluídas} one {# concluída} other {# concluídas}}",
     "newGoal": "Nova Meta",
     "emptyTitle": "Nenhuma meta cadastrada",
     "emptyDescription": "Crie sua primeira meta de orçamento para acompanhar seus objetivos.",
@@ -81,6 +81,7 @@
       "updateError": "Erro ao atualizar meta"
     },
     "editor": {
+      "closeLabel": "Fechar formulário",
       "editTitle": "Editar Meta",
       "createTitle": "Nova Meta de Orçamento",
       "editDescription": "Atualize os dados da sua meta de orçamento.",
@@ -140,7 +141,7 @@
       "noIncome": "Sem renda registrada",
       "creditUsed": "{rate}% utilizado",
       "noCards": "Sem cartões de crédito",
-      "accountsCount": "{count, plural, one {# conta} other {# contas}}",
+      "accountsCount": "{count, plural, =0 {# contas} one {# conta} other {# contas}}",
       "expensesLower": "Despesas {pct}% menores",
       "expensesStable": "Despesas estáveis",
       "expensesHigher": "Despesas {pct}% maiores",
@@ -184,8 +185,8 @@
       "savings": "Economias",
       "investments": "Investimentos",
       "investmentResult": "Resultado dos investimentos",
-      "goalsCount": "{count, plural, one {# meta} other {# metas}}",
-      "investmentsCount": "{count, plural, one {# investimento} other {# investimentos}}"
+      "goalsCount": "{count, plural, =0 {# metas} one {# meta} other {# metas}}",
+      "investmentsCount": "{count, plural, =0 {# investimentos} one {# investimento} other {# investimentos}}"
     },
     "recentTitle": "Metas recentes",
     "recentEmpty": "Nenhuma meta cadastrada.",
@@ -201,7 +202,7 @@
       "remaining": "Faltam",
       "monthlyContribution": "Contribuição mensal",
       "perMonth": "{value}/mês",
-      "approxMonths": "{count, plural, one {~# mês} other {~# meses}}",
+      "approxMonths": "{count, plural, =0 {~# meses} one {~# mês} other {~# meses}}",
       "startDate": "Início",
       "deadline": "Prazo"
     },
@@ -281,6 +282,7 @@
       "deleteError": "Erro ao excluir"
     },
     "editor": {
+      "closeLabel": "Fechar formulário",
       "editTitle": "Editar Orçamento",
       "createTitle": "Novo Orçamento",
       "description": "Informe a categoria, o valor e o período do limite.",
@@ -335,9 +337,9 @@
     },
     "motivation": {
       "high": "Incrível! Você está economizando {rate}% da sua renda. Continue assim!",
-      "good": "Muito bem! Sua taxa de poupança está saudável. Faltam {days, plural, one {# dia} other {# dias}} — mantenha o foco!",
+      "good": "Muito bem! Sua taxa de poupança está saudável. Faltam {days, plural, =0 {# dias} one {# dia} other {# dias}} — mantenha o foco!",
       "medium": "Você está no caminho certo. Tente reduzir pequenos gastos para atingir 20% de economia.",
-      "low": "Sua taxa de poupança está baixa. Que tal cortar gastos desnecessários estes {days, plural, one {# dia} other {# dias}}?",
+      "low": "Sua taxa de poupança está baixa. Que tal cortar gastos desnecessários estes {days, plural, =0 {# dias} one {# dia} other {# dias}}?",
       "negative": "Suas despesas ultrapassaram a renda. Revise seus gastos e busque formas de economizar."
     },
     "footerSummary": "Receita: {income} · Despesas: {expenses} · {elapsed} de {total} dias"

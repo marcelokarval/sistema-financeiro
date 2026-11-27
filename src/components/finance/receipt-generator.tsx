@@ -31,7 +31,7 @@ export { buildReceiptPrintHtml, type BuildReceiptPrintOptions, type ReceiptPrint
 const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)] motion-reduce:transition-none';
 
 // --- Main Component ---
-export function ReceiptGenerator() {
+export function ReceiptGenerator({ showValues = true }: { showValues?: boolean } = {}) {
   const locale = useSafeLocale();
   const t = createFallbackTranslator(useSafeTranslations('receipts'), PT_OPERATIONS_MESSAGES.receipts);
   const [receiptType, setReceiptType] = useState<string>('transaction');
@@ -200,6 +200,7 @@ export function ReceiptGenerator() {
       isLoading={isLoading}
       error={error}
       copied={copied}
+      showValues={showValues}
       receiptRef={receiptRef}
       generateReceipt={generateReceipt}
       handlePrint={handlePrint}
@@ -214,6 +215,12 @@ interface ReceiptRecordOption {
   label: string;
 }
 
+interface FetchedReceiptRecord {
+  id: string;
+  labelBase: string;
+  amount: number | null;
+}
+
 interface ReceiptWorkspaceProps {
   receiptType: string;
   setReceiptType: (type: string) => void;
@@ -223,6 +230,7 @@ interface ReceiptWorkspaceProps {
   isLoading: boolean;
   error: string | null;
   copied: boolean;
+  showValues?: boolean;
   records?: ReceiptRecordOption[];
   receiptRef?: React.Ref<HTMLDivElement>;
   generateReceipt: () => void;
@@ -233,12 +241,14 @@ interface ReceiptWorkspaceProps {
 
 export function ReceiptWorkspace({
   receiptType, setReceiptType, receiptId, setReceiptId, receiptData, isLoading, error, copied,
-  records, receiptRef, generateReceipt, handlePrint, handleDownload, handleCopy,
+  showValues = true, records, receiptRef, generateReceipt, handlePrint, handleDownload, handleCopy,
 }: ReceiptWorkspaceProps) {
   const id = useId();
   const locale = useSafeLocale();
   const t = createFallbackTranslator(useSafeTranslations('receipts'), PT_OPERATIONS_MESSAGES.receipts);
-  const [fetchedRecords, setFetchedRecords] = useState<ReceiptRecordOption[]>([]);
+  const tShared = useSafeTranslations('shared');
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
+  const [fetchedRecords, setFetchedRecords] = useState<FetchedReceiptRecord[]>([]);
   useEffect(() => {
     if (records !== undefined) return;
     let active = true;
@@ -254,8 +264,7 @@ export function ReceiptWorkspace({
             ? (typeof row.merchant === 'string' ? row.merchant : itemId)
             : (typeof row.description === 'string' ? row.description : itemId);
           const rawAmount = receiptType === 'purchase' ? row.totalAmount : row.amount;
-          const amountLabel = typeof rawAmount === 'number' ? ` · ${currencyFmt(rawAmount, locale)}` : '';
-          return [{ id: itemId, label: `${labelBase}${amountLabel}` }];
+          return [{ id: itemId, labelBase, amount: typeof rawAmount === 'number' ? rawAmount : null }];
         });
         setFetchedRecords(mapped);
       })
@@ -265,7 +274,14 @@ export function ReceiptWorkspace({
     return () => { active = false; };
   }, [locale, receiptType, records]);
 
-  const availableRecords = records ?? fetchedRecords;
+  const availableRecords: ReceiptRecordOption[] = records !== undefined
+    ? records.map((rec) => (showValues ? rec : { ...rec, label: rec.label.replace(/\s·\s.*$/, ` · ${maskedValue}`) }))
+    : fetchedRecords.map((rec) => ({
+        id: rec.id,
+        label: rec.amount !== null
+          ? `${rec.labelBase} · ${showValues ? currencyFmt(rec.amount, locale) : maskedValue}`
+          : rec.labelBase,
+      }));
   const previewFields = receiptData
     ? buildReceiptFields(receiptData, {
         locale,
@@ -350,7 +366,7 @@ export function ReceiptWorkspace({
             ) : previewFields ? (
               <>
                 <div ref={receiptRef} className="min-w-0 rounded-lg border border-border bg-background p-3 sm:p-4">
-                  <ReceiptPreview fields={previewFields} />
+                  <ReceiptPreview fields={previewFields} showValues={showValues} />
                 </div>
                 <div role="group" aria-label={t('actionsAria')} className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={handlePrint} className={focusClass}>

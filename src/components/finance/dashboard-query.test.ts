@@ -76,3 +76,11 @@ test('QUICK_FILTERS expõe chaves estáveis independentes do idioma', async () =
   const { QUICK_FILTERS } = await import('./dashboard-query');
   expect(QUICK_FILTERS.map((item) => item.key)).toEqual(['month', 'quarter', 'halfyear', 'year', 'all']);
 });
+
+test('#12: quickRange("all") preserva início em 2000-01-01 e fim na data civil local', async () => {
+  const { quickRange } = await import('./dashboard-query');
+  const range = quickRange('all');
+  expect(range.from).toBe('2000-01-01');
+  expect(range.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(range.to >= '2026-01-01').toBe(true);
+});

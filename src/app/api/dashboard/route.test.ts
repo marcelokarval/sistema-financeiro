@@ -144,4 +144,71 @@ describe("GET /api/dashboard - filtro de data civil", () => {
       code: "INVALID_DATE_RANGE",
     });
   });
+
+  test("apara meses iniciais vazios em monthlyTrend quando intervalo > 12 meses mantendo totais desde 2000", async () => {
+    // Cenário 1: intervalo > 12 meses sem movimentos emite apenas o mês de rangeEnd
+    const emptyAllRes = await GET(
+      new NextRequest("http://localhost/api/dashboard?from=2000-01-01&to=2026-11-30")
+    );
+    expect(emptyAllRes.status).toBe(200);
+    const emptyAllData = await emptyAllRes.json();
+    expect(emptyAllData.monthIncome).toBe(0);
+    expect(emptyAllData.monthExpense).toBe(0);
+    expect(emptyAllData.monthlyTrend.map((m: { monthKey: string }) => m.monthKey)).toEqual([
+      "2026-11",
+    ]);
+
+    // Cenário 2: registros apenas em 2026 (transação em 2026-10 e compra em 2026-11)
+    await localDb.transaction.create({
+      data: {
+        id: "tx-all-oct",
+        type: "INCOME",
+        amount: 2500,
+        description: "Salário outubro",
+        date: new Date(2026, 9, 15, 12, 0, 0),
+      },
+    });
+    await localDb.purchase.create({
+      data: {
+        id: "pur-all-nov",
+        merchant: "Mercado novembro",
+        totalAmount: 400,
+        date: new Date(2026, 10, 10, 12, 0, 0),
+      },
+    });
+
+    const activeAllRes = await GET(
+      new NextRequest("http://localhost/api/dashboard?from=2000-01-01&to=2026-11-30")
+    );
+    expect(activeAllRes.status).toBe(200);
+    const activeAllData = await activeAllRes.json();
+
+    expect(activeAllData.monthIncome).toBe(2500);
+    expect(activeAllData.monthExpense).toBe(400);
+    expect(activeAllData.monthlyTrend).toHaveLength(2);
+    expect(activeAllData.monthlyTrend.map((m: { monthKey: string }) => m.monthKey)).toEqual([
+      "2026-10",
+      "2026-11",
+    ]);
+    expect(activeAllData.monthlyTrend[0]).toMatchObject({
+      monthKey: "2026-10",
+      income: 2500,
+      expense: 0,
+    });
+    expect(activeAllData.monthlyTrend[1]).toMatchObject({
+      monthKey: "2026-11",
+      income: 0,
+      expense: 400,
+    });
+
+    // Cenário 3: faixa <= 12 meses permanece inalterada mesmo com meses iniciais vazios
+    const yearRes = await GET(
+      new NextRequest("http://localhost/api/dashboard?from=2026-01-01&to=2026-11-30")
+    );
+    expect(yearRes.status).toBe(200);
+    const yearData = await yearRes.json();
+    expect(yearData.monthlyTrend).toHaveLength(11);
+    expect(yearData.monthlyTrend[0].monthKey).toBe("2026-01");
+    expect(yearData.monthlyTrend[10].monthKey).toBe("2026-11");
+  });
 });

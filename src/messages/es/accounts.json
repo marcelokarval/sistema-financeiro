@@ -13,7 +13,8 @@
     "save": "Guardar",
     "delete": "Eliminar",
     "create": "Crear",
-    "update": "Actualizar"
+    "update": "Actualizar",
+    "closeDialog": "Cerrar formulario"
   },
   "errors": {
     "loadAccounts": "No se pudieron actualizar las cuentas.",
@@ -66,6 +67,7 @@
     "emptyTransactions": "No hay transacciones registradas.",
     "incomeType": "Ingreso",
     "expenseType": "Gasto",
+    "transferType": "Transferencia",
     "editTransactionAria": "Editar transacción {description}",
     "deleteTransactionAria": "Eliminar transacción {description}"
   },
@@ -121,6 +123,7 @@
     "typeLabel": "Tipo",
     "expense": "Gasto",
     "income": "Ingreso",
+    "transfer": "Transferencia",
     "descriptionLabel": "Descripción",
     "descriptionPlaceholder": "Ej: Salario, Almuerzo...",
     "amountLabel": "Monto (BRL)",
@@ -128,9 +131,12 @@
     "dateLabel": "Fecha",
     "categoryLabel": "Categoría",
     "categoryPlaceholder": "Selecciona...",
-    "noCategory": "Ninguna"
+    "noCategory": "Ninguna",
+    "notesLabel": "Observaciones (opcional)",
+    "notesPlaceholder": "Notas adicionales..."
   },
   "transfer": {
+    "closeLabel": "Cerrar formulario",
     "title": "Transferir entre Cuentas",
     "description": "Mueve dinero de una cuenta a otra",
     "fromLabel": "De (Origen)",

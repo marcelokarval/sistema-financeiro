@@ -30,6 +30,7 @@ export function ConsortiumEditor({ origin, open, draft, saving, onFieldChange, o
       open={open}
       onOpenChange={(nextOpen) => { if (!nextOpen) onCancel(); }}
       onCloseAutoFocus={onCloseAutoFocus}
+      closeLabel={t('editor.closeLabel')}
       contentClassName="max-h-[85dvh] overflow-y-auto"
       title={t('editor.title')}
       description={t('editor.description')}

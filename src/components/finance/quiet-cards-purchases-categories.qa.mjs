@@ -343,6 +343,7 @@ async function runCases(page, html, width, theme, phase) {
         await page.evaluate(() => { window.qa.mode.cardsWrite = 'hold'; });
         await openByKeyboard(btn('Novo cartão'), 'dialog', 'Novo Cartão');
         await page.locator('#card-name').fill('Cartão Lock');
+        await page.locator('#card-digits').fill('1234');
         await btn('Adicionar', dialog('dialog')).evaluate((el) => { el.click(); el.click(); });
         const key = await waitPending('cardsWrite:POST:');
         const w = await writes();

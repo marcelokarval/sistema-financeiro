@@ -51,25 +51,26 @@ interface ForecastData {
 }
 
 // ─── Confidence Badge ──────────────────────────────────────────────
-function ConfidenceBadge({ confidence }: { confidence: number }) {
+function ConfidenceBadge({ confidence, showValues = true }: { confidence: number; showValues?: boolean }) {
   const t = useSafeTranslations('analytics');
+  const displayValue = showValues ? confidence : '•••';
   if (confidence >= 80) {
     return (
       <Badge className="bg-[var(--ds-accent-positive)]/10 text-[var(--ds-accent-positive)] border-[var(--ds-accent-positive)]/20 font-mono text-xs tabular-nums px-2 py-0.5 hover:bg-[var(--ds-accent-positive)]/15">
-        {t('forecast.confidence', { value: confidence })}
+        {t('forecast.confidence', { value: displayValue })}
       </Badge>
     );
   }
   if (confidence >= 50) {
     return (
       <Badge className="bg-[var(--ds-accent-warning)]/10 text-[var(--ds-accent-warning)] border-[var(--ds-accent-warning)]/20 font-mono text-xs tabular-nums px-2 py-0.5 hover:bg-[var(--ds-accent-warning)]/15">
-        {t('forecast.confidence', { value: confidence })}
+        {t('forecast.confidence', { value: displayValue })}
       </Badge>
     );
   }
   return (
     <Badge className="bg-[var(--ds-accent-danger)]/10 text-[var(--ds-accent-danger)] border-[var(--ds-accent-danger)]/20 font-mono text-xs tabular-nums px-2 py-0.5 hover:bg-[var(--ds-accent-danger)]/15">
-      {t('forecast.confidence', { value: confidence })}
+      {t('forecast.confidence', { value: displayValue })}
     </Badge>
   );
 }
@@ -157,7 +158,8 @@ export function CashFlowForecastTooltip({
 }
 
 // ─── Main Component ────────────────────────────────────────────────
-export function CashFlowForecast() {
+export function CashFlowForecast({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [data, setData] = useState<ForecastData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -180,10 +182,11 @@ export function CashFlowForecast() {
   }, []);
 
   useEffect(() => {
+    void locale;
     fetchForecast();
-  }, [fetchForecast]);
+  }, [fetchForecast, locale]);
 
-  return <CashFlowForecastContent data={data} loading={loading} onRetry={fetchForecast} />;
+  return <CashFlowForecastContent data={data} loading={loading} onRetry={fetchForecast} showValues={showValues} />;
 }
 
 export function CashFlowForecastContent({
@@ -200,7 +203,14 @@ export function CashFlowForecastContent({
   showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
+  const money = (v: number) => (showValues ? currencyFmt(v, locale) : maskedValue);
+  const maskText = (text: string) => text
+    .replace(/-?R\$\s*[\d.,]+/g, maskedValue)
+    .replace(/[+-]?\d+(?:[.,]\d+)?\s*%/g, '•••')
+    .replace(/\d+(?:[.,]\d+)*/g, '•••');
   const status: QueryPanelStatus = loading
     ? 'loading'
     : error || (error === undefined && !data)
@@ -267,12 +277,12 @@ export function CashFlowForecastContent({
               <article key={m.month} className="min-w-0 bg-card p-3">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-1">
                   <h4 className="text-sm font-semibold capitalize">{m.month}</h4>
-                  <ConfidenceBadge confidence={m.confidence} />
+                  <ConfidenceBadge confidence={m.confidence} showValues={showValues} />
                 </div>
                 <dl className="space-y-1.5 text-xs">
-                  <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-muted-foreground">{t('forecast.card.projectedIncome')}</dt><dd className="font-mono tabular-nums">{currencyFmt(m.projectedIncome, locale)}</dd></div>
-                  <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-muted-foreground">{t('forecast.card.projectedExpense')}</dt><dd className="font-mono tabular-nums">{currencyFmt(m.projectedExpense, locale)}</dd></div>
-                  <div className="flex flex-wrap justify-between gap-x-2 border-t border-border pt-1.5"><dt className="font-medium">{t('forecast.card.projectedNet')}</dt><dd className="font-mono font-semibold tabular-nums">{m.projectedNet >= 0 ? '+' : ''}{currencyFmt(m.projectedNet, locale)}</dd></div>
+                  <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-muted-foreground">{t('forecast.card.projectedIncome')}</dt><dd className="font-mono tabular-nums">{money(m.projectedIncome)}</dd></div>
+                  <div className="flex flex-wrap justify-between gap-x-2"><dt className="text-muted-foreground">{t('forecast.card.projectedExpense')}</dt><dd className="font-mono tabular-nums">{money(m.projectedExpense)}</dd></div>
+                  <div className="flex flex-wrap justify-between gap-x-2 border-t border-border pt-1.5"><dt className="font-medium">{t('forecast.card.projectedNet')}</dt><dd className="font-mono font-semibold tabular-nums">{showValues ? `${m.projectedNet >= 0 ? '+' : ''}${currencyFmt(m.projectedNet, locale)}` : maskedValue}</dd></div>
                 </dl>
               </article>
             ))}
@@ -297,7 +307,7 @@ export function CashFlowForecastContent({
                     tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v) => shortCurrency(v, locale)}
+                    tickFormatter={(v) => (showValues ? shortCurrency(v, locale) : '•••')}
                   />
                   <RechartsTooltip content={<CashFlowForecastTooltip showValues={showValues} />} />
                   <Legend iconType="line" iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
@@ -356,17 +366,17 @@ export function CashFlowForecastContent({
                 <div className="hidden h-1.5 w-20 overflow-hidden rounded-full bg-muted sm:block">
                   <div
                     style={{
-                      width: `${Math.min(
+                      width: `${showValues ? Math.min(
                         100,
                         (cat.averageMonthly / (data.topExpenseCategories[0]?.averageMonthly || 1)) * 100,
-                      )}%`,
+                      ) : 0}%`,
                       backgroundColor: cat.color,
                     }}
                     className="h-full rounded-full"
                   />
                 </div>
                 <span className="shrink-0 text-right font-mono text-xs font-semibold tabular-nums">
-                  {currencyFmt(cat.averageMonthly, locale)}
+                  {money(cat.averageMonthly)}
                 </span>
               </div>
             ))}
@@ -391,7 +401,7 @@ export function CashFlowForecastContent({
             {data.riskAlerts.map((alert, idx) => (
               <div key={idx} className="flex items-start gap-2.5 py-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-[var(--ds-accent-warning)] mt-1.5 shrink-0" />
-                <p className="text-xs text-[var(--ds-accent-warning)] leading-relaxed">{alert}</p>
+                <p className="text-xs text-[var(--ds-accent-warning)] leading-relaxed">{showValues ? alert : maskText(alert)}</p>
               </div>
             ))}
           </div>

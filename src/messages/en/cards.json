@@ -13,6 +13,10 @@
     "loadCards": "Could not load cards.",
     "loadPurchases": "Could not load card purchases.",
     "nameRequired": "Card name is required",
+    "lastFourInvalid": "Enter the last 4 digits of the card",
+    "invalidLimit": "Enter a valid credit limit",
+    "invalidClosingDay": "Closing day must be between 1 and 31",
+    "invalidDueDay": "Due day must be between 1 and 31",
     "saveCard": "Error saving card",
     "deleteCard": "Error deleting card"
   },
@@ -36,7 +40,10 @@
     "copied": "Copied",
     "cycleDates": "Closes day {closingDay} · Due day {dueDay}",
     "currentBalance": "Current statement",
-    "available": "Available"
+    "available": "Available",
+    "debitSubtitle": "Debit mode",
+    "debitMode": "Debit card",
+    "debitNoCredit": "Purchases linked to account balance"
   },
   "usage": {
     "high": "High limit usage",
@@ -49,6 +56,8 @@
     "available": "Available",
     "infoAria": "Card details",
     "maskedNumber": "Masked number",
+    "type": "Type",
+    "debitNotice": "Debit mode card: purchases are recorded directly without a credit billing cycle.",
     "closing": "Closing",
     "due": "Due",
     "day": "Day {day}",
@@ -78,6 +87,7 @@
     "description": "This action cannot be undone. Purchase history will be preserved."
   },
   "editor": {
+    "closeLabel": "Close form",
     "editTitle": "Edit Card",
     "createTitle": "New Card",
     "editDescription": "Update card details",

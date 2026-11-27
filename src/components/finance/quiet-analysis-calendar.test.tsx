@@ -120,7 +120,7 @@ test('financial-reports mantém Tabs fora de CardHeader, exibe erro com retry e 
     />,
   );
   expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>R\$ 400,00/);
-  expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>60\.0%/);
+  expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>60,0%/);
 });
 
 test('transaction-analytics remove classe drop- quebrada e imports mortos, exibe erro com retry e tabular-nums', () => {
@@ -186,7 +186,7 @@ test('networth-evolution remove imports mortos, formata patrimônio com font-mon
   expect(readyHtml).toContain('aria-valuemin="0"');
   expect(readyHtml).toContain('aria-valuemax="100"');
   expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>R\$ 25\.000,00/);
-  expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>25\.0%/);
+  expect(readyHtml).toMatch(/font-mono[^>]*tabular-nums[^>]*>25,0%/);
 });
 
 test('debt-overview remove dark: redundante e hover:bg-accent, formata valores em font-mono e usa progressbar acessível', () => {
@@ -213,7 +213,7 @@ test('debt-overview remove dark: redundante e hover:bg-accent, formata valores e
   expect(html).toContain('aria-valuemin="0"');
   expect(html).toContain('aria-valuemax="100"');
   expect(html).toMatch(/font-mono[^>]*tabular-nums[^>]*>R\$ 1\.500,00/);
-  expect(html).toMatch(/font-mono[^>]*tabular-nums[^>]*>20\.0%/);
+  expect(html).toMatch(/font-mono[^>]*tabular-nums[^>]*>20,0%/);
 });
 
 test('financial-calendar usa ChevronRight, botão retry no erro e tamanhos acessíveis', () => {
@@ -247,7 +247,7 @@ test('financial-calendar usa ChevronRight, botão retry no erro e tamanhos acess
 
 import { QueryPanel } from '@/components/shared/query-panel';
 import { FinanceChartTooltip } from '@/components/shared/finance-chart-tooltip';
-import { Tooltip as RechartsTooltip } from 'recharts';
+import { Tooltip as RechartsTooltip, YAxis } from 'recharts';
 import * as balanceProj from './balance-projection';
 import * as cashFlow from './cash-flow-forecast';
 import * as expenseBk from './expense-breakdown';
@@ -277,7 +277,10 @@ function findButtonByText(node: unknown, label: string): { props: Record<string,
   return undefined;
 }
 
-function runWithReactHarness(renderComponent: () => React.ReactElement<Record<string, any>>) {
+function runWithReactHarness(
+  renderComponent: () => React.ReactElement<Record<string, any>>,
+  getLocale: () => CanonicalLocale = () => 'pt',
+) {
   const reactInternals = (React as unknown as {
     __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
   }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
@@ -311,7 +314,7 @@ function runWithReactHarness(renderComponent: () => React.ReactElement<Record<st
         return memos[i].value;
       },
       useDebugValue: () => {},
-      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx),
+      useContext: (ctx: React.Context<unknown>) => ptUseContext(ctx, getLocale()),
       useId: () => 'test-query-id',
       useSyncExternalStore: (_sub: unknown, getSnapshot: () => unknown) => getSnapshot(),
       useEffect(fn: () => void | (() => void), deps?: readonly unknown[]) {
@@ -918,7 +921,7 @@ test('Task 0018: seções extraídas de dívidas, calendário, relatórios e an�
   expect(debtExpandedHtml).toContain('Nubank');
   expect(debtExpandedHtml).toContain('****4321');
   expect(debtExpandedHtml).toContain('Uso do limite do cartão Nubank');
-  expect(debtExpandedHtml).toContain('35.0%');
+  expect(debtExpandedHtml).toContain('35,0%');
 
   const CalendarView = calendar.FinancialCalendarContent;
   const calendarHtml = renderToStaticMarkup(
@@ -1533,5 +1536,348 @@ test('renderiza relatórios, análises, patrimônio, dívidas e calendário em p
     }
     const calHtml = renderWithIntl(<CalendarView loading onRetry={() => {}} />, locale);
     expect(calHtml).toContain(expected[locale].calendarTitle);
+  }
+});
+
+function findYAxisList(node: unknown): Array<{ props: Record<string, any> }> {
+  if (!node || typeof node !== 'object') return [];
+  const el = node as { type?: unknown; props?: Record<string, any> };
+  const own = el.type === YAxis ? [el as { props: Record<string, any> }] : [];
+  const nested = React.Children.toArray(el.props?.children).flatMap(findYAxisList);
+  return [...own, ...nested];
+}
+
+test('TransactionAnalytics e TransactionAnalysisTabs aplicam min-w-0 e sub-widgets ocultam valores e YAxis com showValues=false', () => {
+  const taSrc = source('transaction-analytics');
+  const taTabsSrc = source('transaction-analysis-tabs');
+  expect(taSrc).toMatch(/<Tabs[^>]*className="min-w-0"/);
+  expect(taTabsSrc).toContain('<TabsContent value="overview" className="mt-0 min-w-0 space-y-4">');
+  expect(taTabsSrc).toContain('<TabsContent value="distribution" className="mt-0 min-w-0 space-y-5">');
+  expect(taTabsSrc).toContain('<TabsContent value="patterns" className="mt-0 min-w-0 space-y-5">');
+  expect(taTabsSrc).toContain('min-w-0 rounded-lg border border-border overflow-hidden');
+
+  const ReportView = reports.FinancialReportsContent;
+  const reportHtml = renderToStaticMarkup(
+    <ReportView
+      loading={false}
+      activeTab="monthly"
+      onTabChange={() => {}}
+      onRetry={() => {}}
+      showValues={false}
+      data={{
+        monthlyData: [
+          { month: 'jan', income: 1000, expense: 400, net: 600, transactionCount: 2, purchaseCount: 1, avgDailySpend: 20, savingsRate: 60 },
+          { month: 'fev', income: 1200, expense: 500, net: 700, transactionCount: 3, purchaseCount: 2, avgDailySpend: 25, savingsRate: 58.3 },
+        ],
+        topExpenseCategory: { name: 'Mercado', color: '#888', total: 400, count: 3 },
+        topCategories: [{ name: 'Mercado', color: '#888', total: 400, count: 3 }],
+        avgDailySpend: 20,
+        highestExpense: { id: 'e1', description: 'Compra', amount: 400, date: '2026-01-01' },
+        lowestIncome: { id: 'i1', description: 'Salário', amount: 1000, date: '2026-01-01' },
+        savingsRateTrend: [{ month: 'jan', rate: 60 }],
+        ticketMedio: 133.33,
+      }}
+    />,
+  );
+  expect(reportHtml).toContain('R$ ••••••');
+  expect(reportHtml).toContain('•••');
+  expect(reportHtml).not.toMatch(/1\.000|1\.200|400|600|700/);
+
+  const AnalyticsView = analytics.TransactionAnalyticsContent;
+  for (const tab of ['overview', 'distribution', 'patterns'] as const) {
+    const html = renderToStaticMarkup(
+      <AnalyticsView
+        loading={false}
+        typeFilter="ALL"
+        onTypeFilterChange={() => {}}
+        activeTab={tab}
+        onTabChange={() => {}}
+        onRetry={() => {}}
+        showValues={false}
+        data={{
+          overview: {
+            totalTransactions: 9, totalIncome: 5000, totalExpense: 2000, averagePerTransaction: 777,
+            highestTransaction: { description: 'Aluguel', amount: 1500, date: '2026-01-01', categoryName: 'Casa', type: 'EXPENSE' },
+            lowestTransaction: { description: 'Café', amount: 15, date: '2026-01-02', categoryName: 'Lazer', type: 'EXPENSE' },
+            mostFrequentCategory: { categoryName: 'Casa', categoryColor: '#888', count: 4, total: 1500 },
+            weekdayBreakdown: [{ day: 'Seg', income: 500, expense: 200, count: 2 }],
+          },
+          monthlyComparison: [{ month: 'jan', income: 1000, expense: 400, net: 600, count: 3, avgPerTx: 466.67 }],
+          topMerchants: [{ name: 'Padaria', count: 4, total: 120, category: 'Alimentação' }],
+          amountDistribution: [{ range: '0-100', count: 2, percentage: 100 }],
+          dailyPattern: [{ hour: '10h', count: 7 }],
+        }}
+      />,
+    );
+    expect(html).not.toMatch(/5\.000|2\.000|1\.500|777|466|120/);
+  }
+
+  const NetworthView = networth.NetworthEvolutionContent;
+  const nwProps = {
+    loading: false,
+    selectedMonths: 6,
+    onSelectMonths: () => {},
+    fetchData: () => {},
+    onRetry: () => {},
+    showValues: false,
+    data: {
+      monthlyData: [
+        { month: 'jan', netWorth: 20000, assets: 25000, liabilities: 5000, changePercent: 5, changeAmount: 1000 },
+        { month: 'fev', netWorth: 25000, assets: 30000, liabilities: 5000, changePercent: 25, changeAmount: 5000 },
+      ],
+    },
+  };
+  const nwTree = withPtIntlDispatcher(() => NetworthView(nwProps));
+  expect(findElementByType(nwTree, RechartsTooltip)?.props.content?.props.showValues).toBe(false);
+  for (const y of findYAxisList(nwTree)) expect(y.props.tickFormatter(25000)).toBe('•••');
+  const nwHtml = renderToStaticMarkup(<NetworthView {...nwProps} />);
+  expect(nwHtml).toContain('aria-valuetext="•••"');
+  expect(nwHtml).not.toMatch(/25\.000|30\.000|5\.000|25[.,]0%/);
+
+  const DebtView = debt.DebtOverviewContent;
+  const debtHtml = renderToStaticMarkup(
+    <DebtView
+      loading={false}
+      expandedType="cards"
+      onToggleExpand={() => {}}
+      onRetry={() => {}}
+      showValues={false}
+      data={{
+        totalDebt: 2500, cardDebt: 1500, installmentDebt: 1000, consortiumDebt: 0,
+        debtToIncomeRatio: 35, monthlyIncome: 7142.85,
+        cards: [{ id: 'c1', name: 'Nubank', brand: 'Master', lastFourDigits: '4321', creditLimit: 5000, currentBalance: 1500, utilizationRate: 30, color: '#8b5cf6', dueDay: 10 }],
+        installments: [],
+        consortiums: [],
+      }}
+    />,
+  );
+  expect(debtHtml).toContain('R$ ••••••');
+  expect(debtHtml).toContain('•••');
+  expect(debtHtml.replace(/<[^>]+>/g, ' ')).not.toMatch(/2\.500|1\.500|1\.000|5\.000|35[.,]0%|30% usado/);
+
+  const CalendarView = calendar.FinancialCalendarContent;
+  const calHtml = renderToStaticMarkup(
+    <CalendarView
+      loading={false}
+      activeDays={30}
+      selectedDate="2026-11-19"
+      currentMonth={new Date('2026-11-15T12:00:00Z')}
+      onSelectDays={() => {}}
+      onSelectDate={() => {}}
+      setCurrentMonth={() => {}}
+      onToday={() => {}}
+      fetchData={() => {}}
+      showValues={false}
+      data={{
+        days: [{
+          date: '2026-11-19', dayOfWeek: 'qui', income: 500, expense: 120,
+          events: [{ id: 'ev-1', type: 'transaction', description: 'Freela', amount: 500, category: 'Renda', isRecurring: false }],
+        }],
+        summary: {
+          totalUpcoming: 380, totalBills: 2, totalIncome: 500, totalExpense: 120,
+          upcomingBiggestExpense: { description: 'Mercado', amount: 120, date: '2026-11-19' }, nextPaymentDate: '2026-11-19',
+        },
+      }}
+    />,
+  );
+  expect(calHtml).toContain('R$ ••••••');
+  expect(calHtml).not.toMatch(/380|500|120/);
+});
+
+test('widgets de análise refazem fetch ao trocar locale mantendo URLs /api/... exatas', async () => {
+  const originalFetch = globalThis.fetch;
+  const requested: string[] = [];
+  let activeLocale: CanonicalLocale = 'pt';
+  globalThis.fetch = (async (url: string) => {
+    requested.push(String(url));
+    return Response.json({
+      totalDebt: 0, cardDebt: 0, installmentDebt: 0, consortiumDebt: 0,
+      debtToIncomeRatio: 0, monthlyIncome: 0, cards: [], installments: [], consortiums: [],
+    });
+  }) as typeof fetch;
+
+  const harness = runWithReactHarness(() => debt.DebtOverview(), () => activeLocale);
+  try {
+    harness.renderTree();
+    await settle();
+    expect(requested).toEqual(['/api/debts']);
+
+    activeLocale = 'en';
+    harness.renderTree();
+    await settle();
+    expect(requested).toEqual(['/api/debts', '/api/debts']);
+    expect(requested.every((url) => !url.includes('locale='))).toBe(true);
+  } finally {
+    harness.cleanupAll();
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('#11: FinancialCalendar marca dias sem receita, despesa ou eventos com aria-disabled="true" e bloqueia seleção', () => {
+  const CalendarView = calendar.FinancialCalendarContent;
+  const selectedCalls: Array<string | null> = [];
+  const calendarProps = {
+    loading: false,
+    activeDays: 30,
+    selectedDate: null as string | null,
+    currentMonth: new Date('2026-11-15T12:00:00Z'),
+    onSelectDays: () => {},
+    onSelectDate: (d: string | null) => selectedCalls.push(d),
+    setCurrentMonth: () => {},
+    onToday: () => {},
+    fetchData: () => {},
+    data: {
+      days: [
+        { date: '2026-11-10', dayOfWeek: 'ter', income: 0, expense: 0, events: [] },
+        {
+          date: '2026-11-12',
+          dayOfWeek: 'qui',
+          income: 300,
+          expense: 0,
+          events: [{ id: 'ev-1', type: 'transaction' as const, description: 'Freela', amount: 300, category: 'Renda', isRecurring: false }],
+        },
+      ],
+      summary: {
+        totalUpcoming: 300,
+        totalBills: 1,
+        totalIncome: 300,
+        totalExpense: 0,
+        upcomingBiggestExpense: null,
+        nextPaymentDate: '2026-11-12',
+      },
+    },
+  };
+
+  const html = renderWithIntl(<CalendarView {...calendarProps} />, 'pt');
+  expect(html).toContain('aria-disabled="true"');
+  expect(html).toContain('aria-disabled="false"');
+
+  // Testa diretamente o handler de clique na árvore de elementos do grid
+  const harness = runWithReactHarness(() => CalendarView(calendarProps));
+  const collectDayButtons = (node: unknown, out: Array<{ props: Record<string, any> }> = []) => {
+    if (!node || typeof node !== 'object') return out;
+    const el = node as { type?: unknown; props?: Record<string, any> };
+    if (el.props && 'aria-disabled' in el.props && 'aria-pressed' in el.props && typeof el.props.onClick === 'function') {
+      out.push(el as { props: Record<string, any> });
+    }
+    if (typeof el.type === 'function') {
+      const rendered = withPtIntlDispatcher(() => (el.type as (p: Record<string, any>) => unknown)(el.props ?? {}));
+      return collectDayButtons(rendered, out);
+    }
+    for (const child of React.Children.toArray(el.props?.children)) {
+      collectDayButtons(child, out);
+    }
+    return out;
+  };
+
+  try {
+    const tree = harness.renderTree();
+    const dayButtons = collectDayButtons(tree);
+    expect(dayButtons.length).toBeGreaterThanOrEqual(28);
+    const disabledDays = dayButtons.filter((b) => b.props['aria-disabled'] === true);
+    const enabledDays = dayButtons.filter((b) => b.props['aria-disabled'] === false);
+    expect(enabledDays).toHaveLength(1);
+    expect(disabledDays.length).toBe(dayButtons.length - 1);
+
+    // Dia vazio (2026-11-10 presente em data.days com zeros) não dispara onSelectDate
+    for (const b of disabledDays) b.props.onClick();
+    expect(selectedCalls).toEqual([]);
+
+    // Dia ativo (2026-11-12) dispara onSelectDate
+    enabledDays[0].props.onClick();
+    expect(selectedCalls).toEqual(['2026-11-12']);
+  } finally {
+    harness.cleanupAll();
+  }
+});
+
+test('#20: widgets de análise formatam taxas e percentuais decimais com separador localizado em pt, es e en', () => {
+  const ReportView = reports.FinancialReportsContent;
+  const NetworthView = networth.NetworthEvolutionContent;
+  const DebtView = debt.DebtOverviewContent;
+  const BalView = balanceProj.BalanceProjectionContent;
+
+  const expectedDecimal = { pt: ',', es: ',', en: '.' } as const;
+  for (const locale of CANONICAL_LOCALES) {
+    const sep = expectedDecimal[locale];
+    const reportHtml = renderWithIntl(
+      <ReportView
+        loading={false}
+        activeTab="analysis"
+        onTabChange={() => {}}
+        onRetry={() => {}}
+        data={{
+          monthlyData: [{ month: 'jan', income: 1000, expense: 400, net: 600, transactionCount: 2, purchaseCount: 1, avgDailySpend: 20, savingsRate: 60 }],
+          topExpenseCategory: { name: 'Mercado', color: '#888', total: 400, count: 3 },
+          topCategories: [{ name: 'Mercado', color: '#888', total: 400, count: 3 }],
+          avgDailySpend: 20,
+          highestExpense: { id: 'e1', description: 'Compra', amount: 400, date: '2026-01-01' },
+          lowestIncome: { id: 'i1', description: 'Salário', amount: 1000, date: '2026-01-01' },
+          savingsRateTrend: [{ month: 'jan', rate: 60.5 }],
+          ticketMedio: 133.33,
+        }}
+      />,
+      locale,
+    );
+    expect(reportHtml).toContain(`60${sep}5%`);
+
+    const nwHtml = renderWithIntl(
+      <NetworthView
+        loading={false}
+        selectedMonths={6}
+        onSelectMonths={() => {}}
+        fetchData={() => {}}
+        onRetry={() => {}}
+        data={{
+          monthlyData: [
+            { month: 'jan', netWorth: 20000, assets: 25000, liabilities: 5000, changePercent: 5.2, changeAmount: 1000 },
+            { month: 'fev', netWorth: 25000, assets: 30000, liabilities: 5000, changePercent: 25.4, changeAmount: 5000 },
+          ],
+        }}
+      />,
+      locale,
+    );
+    expect(nwHtml).toContain(`+25${sep}4%`);
+    expect(nwHtml).toContain(`25${sep}0%`);
+
+    const debtHtml = renderWithIntl(
+      <DebtView
+        loading={false}
+        expandedType="installments"
+        onToggleExpand={() => {}}
+        onRetry={() => {}}
+        data={{
+          totalDebt: 2500, cardDebt: 1500, installmentDebt: 1000, consortiumDebt: 0,
+          debtToIncomeRatio: 35.5, monthlyIncome: 7142.85,
+          cards: [],
+          installments: [{ id: 'i1', description: 'Notebook', totalAmount: 2000, paidAmount: 1000, remaining: 1000, installmentCount: 10, paidInstallments: 5, monthlyValue: 200, interestRate: 1.5, type: 'CARD_INSTALLMENT', status: 'ACTIVE', cardName: 'Nubank', nextPaymentDate: null }],
+          consortiums: [],
+        }}
+      />,
+      locale,
+    );
+    expect(debtHtml).toContain(`35${sep}5%`);
+    expect(debtHtml).toContain(`1${sep}5%`);
+
+    const balHtml = renderWithIntl(
+      <BalView
+        loading={false}
+        selectedMonths={6}
+        onSelectMonths={() => {}}
+        onRetry={() => {}}
+        data={{
+          accounts: [],
+          monthLabels: ['jan'],
+          totalCurrentBalance: 1000,
+          totalProjected: 1125,
+          averageMonthlySavings: 125,
+          savingsRate: 12.5,
+          riskLevel: 'medium',
+          months: 6,
+        }}
+      />,
+      locale,
+    );
+    expect(balHtml).toContain(`12${sep}5%`);
   }
 });

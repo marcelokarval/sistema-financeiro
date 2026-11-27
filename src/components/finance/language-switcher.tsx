@@ -1,6 +1,7 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { useContext, useTransition } from 'react';
+import { Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,7 +17,12 @@ import {
   type CanonicalLocale,
   type LocaleMetadata,
 } from '@/i18n/config';
-import { useAppRefresh, useSafeLocale, useSafeTranslations } from '@/i18n/provider';
+import {
+  AppLocaleSwitchContext,
+  useAppRefresh,
+  useSafeLocale,
+  useSafeTranslations,
+} from '@/i18n/provider';
 import { cn } from '@/lib/utils';
 
 export interface LanguageSwitcherProps {
@@ -78,7 +84,23 @@ export function LanguageSwitcher({
   const currentLocale = useSafeLocale();
   const t = useSafeTranslations('languageSwitcher');
   const refresh = useAppRefresh();
+  const localeSwitch = useContext(AppLocaleSwitchContext);
+  const [localPending, startLocalTransition] = useTransition();
+  const isPending = Boolean(localeSwitch?.isPending || localPending);
   const currentMeta = LOCALE_METADATA[currentLocale];
+  const pendingIndicator = isPending ? (
+    <Loader2 aria-hidden="true" className="size-3.5 animate-spin motion-reduce:animate-none" />
+  ) : null;
+
+  const handleSelect = (nextLocale: CanonicalLocale) => {
+    if (nextLocale === currentLocale) return;
+    startLocalTransition(() => {
+      applyLocaleSelection(nextLocale, currentLocale, onLocaleSelect, refresh);
+    });
+    if (!onLocaleSelect) {
+      localeSwitch?.setOptimisticLocale(nextLocale);
+    }
+  };
 
   return (
     <DropdownMenu modal={false}>
@@ -89,6 +111,7 @@ export function LanguageSwitcher({
             variant="outline"
             data-language-switcher="full"
             aria-label={t('label')}
+            aria-busy={isPending || undefined}
             title={t('currentLanguage', { language: currentMeta.autonym })}
             className={cn('h-10 w-full justify-between gap-2 px-3', className)}
           >
@@ -96,7 +119,10 @@ export function LanguageSwitcher({
               <LocaleFlagIcon locale={currentLocale} />
               <span className="text-sm font-medium text-foreground">{currentMeta.autonym}</span>
             </span>
-            <span className="font-mono text-xs text-muted-foreground">{currentMeta.shortCode}</span>
+            <span className="flex items-center gap-1.5">
+              {pendingIndicator}
+              <span className="font-mono text-xs text-muted-foreground">{currentMeta.shortCode}</span>
+            </span>
           </Button>
         ) : (
           <Button
@@ -105,10 +131,12 @@ export function LanguageSwitcher({
             size="sm"
             data-language-switcher="compact"
             aria-label={t('label')}
+            aria-busy={isPending || undefined}
             title={t('currentLanguage', { language: currentMeta.autonym })}
             className={cn('h-9 gap-1.5 px-2 text-muted-foreground hover:text-foreground', className)}
           >
             <LocaleFlagIcon locale={currentLocale} />
+            {pendingIndicator}
             <span className="font-mono text-xs font-medium">{currentMeta.shortCode}</span>
           </Button>
         )}
@@ -128,7 +156,7 @@ export function LanguageSwitcher({
               data-locale={item.code}
               data-active={active ? 'true' : undefined}
               aria-current={active ? 'true' : undefined}
-              onSelect={() => applyLocaleSelection(item.code, currentLocale, onLocaleSelect, refresh)}
+              onSelect={() => handleSelect(item.code)}
             >
               <LanguageSwitcherOptionRow item={item} active={active} />
             </DropdownMenuItem>

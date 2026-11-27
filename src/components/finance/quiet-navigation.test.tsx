@@ -17,6 +17,7 @@ import * as globalSearchModule from './global-search';
 import { searchDestination, type SearchResultType } from './global-search';
 import { QuickActions } from './quick-actions';
 import * as pageModule from '@/app/page';
+import { getServerSnapshot } from '@/hooks/use-realtime';
 import { renderWithIntl } from '@/test-utils/intl';
 
 const noop = () => {};
@@ -38,6 +39,25 @@ describe('navegação e shell transversal Quiet Financial OS', () => {
     expect(expanded).toContain('aria-label="Recarregar"');
     expect(collapsed).toContain('aria-label="Recarregar"');
     expect(expanded).not.toMatch(/bg-gradient|glass-card|card-glow/);
+
+    const navStartExpanded = expanded.indexOf('<nav');
+    const navStartCollapsed = collapsed.indexOf('<nav');
+    expect(expanded.indexOf('aria-label="Recarregar"')).toBeLessThan(navStartExpanded);
+    expect(expanded.indexOf('aria-label="Recolher navegação"')).toBeLessThan(navStartExpanded);
+    expect(collapsed.indexOf('aria-label="Recarregar"')).toBeLessThan(navStartCollapsed);
+    expect(collapsed.indexOf('aria-label="Expandir navegação"')).toBeLessThan(navStartCollapsed);
+    expect(collapsed.indexOf('Tempo real indisponível')).toBeGreaterThan(navStartCollapsed);
+  });
+
+  test('useRealtime getServerSnapshot devolve referência cacheada e estável entre chamadas', () => {
+    const first = getServerSnapshot();
+    const second = getServerSnapshot();
+    expect(first).toBe(second);
+    expect(first).toEqual({
+      isConnected: false,
+      refreshCounter: 0,
+      lastEvent: null,
+    });
   });
 
   test('MobileNav renderiza 4 atalhos principais e botão Mais', () => {
@@ -578,5 +598,111 @@ describe('internacionalização do shell em pt, es e en', () => {
     const card = enResults.find((item) => item.id === 'card-1');
     expect(card?.secondary).toContain('Credit');
     expect(card?.secondary).toContain('Statement:');
+  });
+
+  test('#7, #8, #9 e #10: header mobile compacto, GlobalSearch closeLabel, busca NFD e dismiss externo em Notificações/AppOverlays', () => {
+    // #7 AppHeader mantém aria-label completo e classes compactas mobile nos 3 idiomas
+    const expectedNewEntry = { pt: 'Novo lançamento', es: 'Nuevo movimiento', en: 'New entry' } as const;
+    for (const locale of ['pt', 'es', 'en'] as const) {
+      const html = renderWithIntl(
+        <AppHeader
+          currentView="dashboard"
+          isConnected={true}
+          darkTheme={false}
+          onToggleTheme={noop}
+          searchButtonRef={createRef()}
+          onOpenSearch={noop}
+          advisorButtonRef={createRef()}
+          aiAssistantVisible={false}
+          onOpenAdvisor={noop}
+          notificationButtonRef={createRef()}
+          showNotifications={false}
+          onToggleNotifications={noop}
+          onCloseNotifications={noop}
+          onDismissNotifications={noop}
+          onQuickNavigate={noop}
+          onNewGoal={noop}
+          onExport={noop}
+          newEntryButtonRef={createRef()}
+          onNewEntry={noop}
+        />,
+        locale,
+      );
+      expect(html).toContain(`aria-label="${expectedNewEntry[locale]}"`);
+      expect(html).toContain('class="hidden sm:inline"');
+    }
+
+    // #8 GlobalSearch usa showCloseButton={false} + DialogClose localizado via shared.dialogCloseLabel
+    const globalSearchSrc = readFileSync(new URL('./global-search.tsx', import.meta.url), 'utf8');
+    expect(globalSearchSrc).toContain('showCloseButton={false}');
+    expect(globalSearchSrc).toContain('<DialogClose asChild>');
+    expect(globalSearchSrc).toContain("sharedTranslator.has?.('dialogCloseLabel')");
+
+    // #9 buildSearchResults encontra registros acentuados via consulta sem acento
+    const buildSearchResults = (globalSearchModule as {
+      buildSearchResults: (rawData: Record<string, any[]>, query: string, options?: { locale?: string }) => Array<{ id: string; label: string }>;
+    }).buildSearchResults;
+    const nfdMatches = buildSearchResults(
+      {
+        categories: [{ id: 'cat-s', name: 'Saúde', type: 'EXPENSE' }],
+        purchases: [{ id: 'pur-f', merchant: 'Farmácia Raia', totalAmount: 80, date: '2026-11-19' }],
+      },
+      'saude',
+      { locale: 'pt' },
+    );
+    expect(nfdMatches.some((item) => item.id === 'cat-s' && item.label === 'Saúde')).toBe(true);
+    const farmMatches = buildSearchResults(
+      {
+        purchases: [{ id: 'pur-f', merchant: 'Farmácia Raia', totalAmount: 80, date: '2026-11-19' }],
+      },
+      'farmacia',
+      { locale: 'pt' },
+    );
+    expect(farmMatches.some((item) => item.id === 'pur-f')).toBe(true);
+
+    // #10 AppOverlays: <dialog> com p-0, wrapper interno p-4 e fechamento em clique no backdrop (target === currentTarget)
+    let advisorClosed = 0;
+    const internals = (React as unknown as {
+      __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: { H: unknown };
+    }).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const previousH = internals.H;
+    internals.H = {
+      useContext: (ctx: React.Context<unknown>) => (ctx as unknown as { _currentValue?: unknown })._currentValue,
+      useMemo: (f: () => unknown) => f(),
+      useCallback: (cb: unknown) => cb,
+    };
+    let overlayTree: React.ReactElement<Record<string, any>>;
+    try {
+      overlayTree = AppOverlays({
+        advisorDialogRef: createRef(),
+        aiAssistantVisible: true,
+        advisorOpened: true,
+        onCloseAdvisor: () => { advisorClosed++; },
+        onAdvisorDialogClose: noop,
+        showSearch: false,
+        onCloseSearch: noop,
+        onSelectSearch: noop,
+      });
+    } finally {
+      internals.H = previousH;
+    }
+    const dialogNode = React.Children.toArray(overlayTree.props.children).find(
+      (child): child is React.ReactElement<Record<string, any>> => React.isValidElement(child) && child.type === 'dialog',
+    )!;
+    expect(dialogNode.props.className).toContain('p-0');
+    const innerWrapper = React.Children.only(dialogNode.props.children) as React.ReactElement<Record<string, any>>;
+    expect(innerWrapper.props.className).toContain('p-4');
+
+    // Clique interno (target !== currentTarget) não fecha; clique no backdrop (target === currentTarget) fecha
+    dialogNode.props.onClick({ target: {}, currentTarget: dialogNode });
+    expect(advisorClosed).toBe(0);
+    const sameEl = {};
+    dialogNode.props.onClick({ target: sameEl, currentTarget: sameEl });
+    expect(advisorClosed).toBe(1);
+
+    // #10 AppHeader registra pointerdown no document para fechar NotificationPanel em cliques externos
+    const headerSrc = readFileSync(new URL('./app-header.tsx', import.meta.url), 'utf8');
+    expect(headerSrc).toContain("document.addEventListener('pointerdown', handlePointerDown)");
+    expect(headerSrc).toContain('!container.contains(event.target)');
   });
 });

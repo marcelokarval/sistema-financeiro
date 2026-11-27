@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSafeTranslations } from '@/i18n/provider';
+import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
 import { TRANSACTION_TYPE_FILTER_KEYS } from './analytics-i18n';
 import {
   TransactionDistributionTab,
@@ -88,7 +88,8 @@ export function currentTransactionAnalytics(
   return settled?.request === request ? settled.result : { status: 'loading' };
 }
 
-export function TransactionAnalytics() {
+export function TransactionAnalytics({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [request, setRequest] = useState<TransactionAnalyticsRequest>({ typeFilter: 'ALL' });
   const [settled, setSettled] = useState<TransactionAnalyticsResult | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -101,10 +102,11 @@ export function TransactionAnalytics() {
   }, []);
 
   useEffect(() => {
+    void locale;
     const controller = new AbortController();
     void requestTransactionAnalytics(request, controller.signal, setSettled);
     return () => controller.abort();
-  }, [request]);
+  }, [request, locale]);
 
   return (
     <TransactionAnalyticsContent
@@ -118,6 +120,7 @@ export function TransactionAnalytics() {
       onTabChange={setActiveTab}
       fetchData={fetchData}
       onRetry={fetchData}
+      showValues={showValues}
     />
   );
 }
@@ -131,6 +134,7 @@ export function TransactionAnalyticsContent({
   onTabChange,
   fetchData,
   onRetry,
+  showValues = true,
 }: {
   data: AnalyticsData | null;
   loading: boolean;
@@ -140,6 +144,7 @@ export function TransactionAnalyticsContent({
   onTabChange: (tab: string) => void;
   fetchData?: () => void;
   onRetry?: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
   const handleRetry = onRetry ?? fetchData;
@@ -219,7 +224,7 @@ export function TransactionAnalyticsContent({
         </CardHeader>
 
         <CardContent className="min-w-0 px-4 sm:px-5">
-          <Tabs value={activeTab} onValueChange={onTabChange}>
+          <Tabs value={activeTab} onValueChange={onTabChange} className="min-w-0">
             <TabsList className="mb-3 grid h-auto w-full grid-cols-3 gap-0.5 p-1">
               <TabsTrigger value="overview" className="h-auto min-w-0 whitespace-normal px-1 py-1.5 text-xs leading-tight">
                 {t('transactions.tabs.overview')}
@@ -232,17 +237,19 @@ export function TransactionAnalyticsContent({
               </TabsTrigger>
             </TabsList>
 
-            <TransactionOverviewTab overview={overview} />
+            <TransactionOverviewTab overview={overview} showValues={showValues} />
             <TransactionDistributionTab
               amountDistribution={amountDistribution}
               maxDistCount={maxDistCount}
               weekdayBreakdown={overview.weekdayBreakdown}
+              showValues={showValues}
             />
             <TransactionPatternsTab
               dailyPattern={dailyPattern}
               topMerchants={topMerchants}
               maxMerchantTotal={maxMerchantTotal}
               monthlyComparison={monthlyComparison}
+              showValues={showValues}
             />
           </Tabs>
         </CardContent>

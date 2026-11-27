@@ -16,7 +16,7 @@ import {
   type FinanceChartTooltipRow,
 } from '@/components/shared/finance-chart-tooltip';
 import { useSafeLocale, useSafeTranslations } from '@/i18n/provider';
-import { currencyFmt, shortCurrency } from '@/lib/helpers';
+import { currencyFmt, percentFmt, shortCurrency } from '@/lib/helpers';
 
 export interface CategoryItem {
   categoryId: string;
@@ -103,9 +103,11 @@ export function ExpenseCategoryTooltip({
 function ExpenseCategoryMonthlyChart({
   category,
   monthlyData,
+  showValues = true,
 }: {
   category: CategoryItem;
   monthlyData: MonthlyItem[];
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
   const locale = useSafeLocale();
@@ -137,10 +139,10 @@ function ExpenseCategoryMonthlyChart({
                 stroke="var(--muted-foreground)"
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => shortCurrency(v, locale)}
+                tickFormatter={(v) => (showValues ? shortCurrency(v, locale) : '•••')}
                 width={40}
               />
-              <RechartsTooltip content={<ExpenseCategoryTooltip categoryName={category.categoryName} />} />
+              <RechartsTooltip content={<ExpenseCategoryTooltip categoryName={category.categoryName} showValues={showValues} />} />
               <Bar
                 dataKey="valor"
                 isAnimationActive={false}
@@ -162,6 +164,7 @@ function ExpenseCategoryRow({
   monthlyData,
   onToggle,
   onHover,
+  showValues = true,
 }: {
   category: CategoryItem;
   isExpanded: boolean;
@@ -169,8 +172,11 @@ function ExpenseCategoryRow({
   monthlyData: MonthlyItem[];
   onToggle: () => void;
   onHover: (categoryId: string | null) => void;
+  showValues?: boolean;
 }) {
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   return (
     <li>
       <button
@@ -200,15 +206,15 @@ function ExpenseCategoryRow({
             <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[120px]">
               <div
                 className="h-full rounded-full"
-                style={{ width: `${Math.max(cat.percentage, 1)}%`, backgroundColor: cat.categoryColor }}
+                style={{ width: `${showValues ? Math.max(cat.percentage, 1) : 0}%`, backgroundColor: cat.categoryColor }}
               />
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <div className="text-right">
-            <p className="font-mono text-sm font-semibold tabular-nums">{currencyFmt(cat.total, locale)}</p>
-            <p className="font-mono text-xs tabular-nums text-muted-foreground">{cat.percentage.toFixed(1)}%</p>
+            <p className="font-mono text-sm font-semibold tabular-nums">{showValues ? currencyFmt(cat.total, locale) : maskedValue}</p>
+            <p className="font-mono text-xs tabular-nums text-muted-foreground">{showValues ? percentFmt(cat.percentage, locale, { signed: false }) : '•••'}</p>
           </div>
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-muted-foreground" />
@@ -218,7 +224,7 @@ function ExpenseCategoryRow({
         </div>
       </button>
 
-      {isExpanded && <ExpenseCategoryMonthlyChart category={cat} monthlyData={monthlyData} />}
+      {isExpanded && <ExpenseCategoryMonthlyChart category={cat} monthlyData={monthlyData} showValues={showValues} />}
     </li>
   );
 }
@@ -231,6 +237,7 @@ export function ExpenseCategoryList({
   expandedCategory,
   onSelectActive,
   onToggleExpand,
+  showValues = true,
 }: {
   categories: CategoryItem[];
   monthlyData: MonthlyItem[];
@@ -238,9 +245,12 @@ export function ExpenseCategoryList({
   expandedCategory: string | null;
   onSelectActive: (categoryId: string | null) => void;
   onToggleExpand: (categoryId: string) => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
+  const tShared = useSafeTranslations('shared');
   const locale = useSafeLocale();
+  const maskedValue = tShared.has('maskedValue') ? tShared('maskedValue') : 'R$ ••••••';
   const remaining = categories.slice(8);
 
   return (
@@ -254,6 +264,7 @@ export function ExpenseCategoryList({
           monthlyData={monthlyData}
           onToggle={() => onToggleExpand(cat.categoryId)}
           onHover={onSelectActive}
+          showValues={showValues}
         />
       ))}
 
@@ -267,10 +278,10 @@ export function ExpenseCategoryList({
           </div>
           <div className="text-right shrink-0">
             <p className="font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-              {currencyFmt(remaining.reduce((s, c) => s + c.total, 0), locale)}
+              {showValues ? currencyFmt(remaining.reduce((s, c) => s + c.total, 0), locale) : maskedValue}
             </p>
             <p className="font-mono text-xs tabular-nums text-muted-foreground">
-              {remaining.reduce((s, c) => s + c.percentage, 0).toFixed(1)}%
+              {showValues ? percentFmt(remaining.reduce((s, c) => s + c.percentage, 0), locale, { signed: false }) : '•••'}
             </p>
           </div>
         </li>

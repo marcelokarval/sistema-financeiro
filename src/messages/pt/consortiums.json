@@ -32,11 +32,16 @@
     "editAriaLabel": "Editar consórcio {description}",
     "deleteAriaLabel": "Excluir consórcio {description}",
     "markPaid": "Marcar como paga",
-    "markPaidAriaLabel": "Marcar parcela {number} como paga"
+    "markPaidAriaLabel": "Marcar parcela {number} como paga",
+    "jumpToNextPending": "Ir para próxima pendente"
   },
   "errors": {
     "loadList": "Não foi possível carregar os consórcios.",
     "loadInstallments": "Não foi possível carregar as parcelas. Volte e abra o consórcio novamente.",
+    "descriptionRequired": "Informe a descrição do bem",
+    "totalPositive": "O valor total deve ser maior que zero",
+    "monthlyPositive": "A parcela mensal deve ser maior que zero",
+    "installmentCountInvalid": "O total de parcelas deve ser um número inteiro maior ou igual a 1",
     "create": "Erro ao criar consórcio",
     "update": "Erro ao atualizar consórcio",
     "delete": "Erro ao excluir consórcio",
@@ -58,7 +63,7 @@
   },
   "list": {
     "title": "Consórcios cadastrados",
-    "showingCount": "{shown} de {total, plural, one {# consórcio} other {# consórcios}}",
+    "showingCount": "{shown} de {total, plural, =0 {# consórcios} one {# consórcio} other {# consórcios}}",
     "emptyAllTitle": "Nenhum consórcio cadastrado",
     "emptyAllSubtitle": "Use Novo consórcio para começar.",
     "emptyFilteredTitle": "Nenhum consórcio encontrado",
@@ -83,6 +88,13 @@
     "installmentsTitle": "Parcelas",
     "paidOf": "{paid} de {total} pagas",
     "emptyInstallments": "Nenhuma parcela encontrada",
+    "emptyFilteredInstallments": "Nenhuma parcela neste filtro",
+    "installmentFilters": {
+      "ariaLabel": "Filtrar parcelas por situação",
+      "ALL": "Todas",
+      "PENDING": "Pendentes",
+      "PAID": "Pagas"
+    },
     "installmentsAriaLabel": "Parcelas do consórcio",
     "installmentLabel": "Parcela {number}",
     "dueDate": "Vencimento: {date}",
@@ -95,6 +107,7 @@
     "startDate": "Data de início"
   },
   "createDialog": {
+    "closeLabel": "Fechar formulário",
     "title": "Novo Consórcio",
     "description": "Preencha os dados do novo consórcio",
     "descriptionLabel": "Descrição do Bem",
@@ -120,6 +133,7 @@
     "submit": "Criar Consórcio"
   },
   "editor": {
+    "closeLabel": "Fechar formulário",
     "title": "Editar Consórcio",
     "description": "Atualize as informações de assembleia do consórcio",
     "cancel": "Cancelar",
@@ -135,6 +149,7 @@
     "confirm": "Excluir"
   },
   "payment": {
+    "closeLabel": "Fechar formulário",
     "title": "Marcar Parcela como Paga",
     "description": "Parcela {number} — {amount}",
     "cancel": "Cancelar",

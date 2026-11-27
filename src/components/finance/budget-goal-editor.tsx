@@ -62,6 +62,7 @@ export function BudgetGoalEditor({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
+      closeLabel={t('budgetGoals.editor.closeLabel')}
       contentClassName="max-h-[85dvh] overflow-y-auto sm:max-w-md"
       title={isEditing ? t('budgetGoals.editor.editTitle') : t('budgetGoals.editor.createTitle')}
       description={

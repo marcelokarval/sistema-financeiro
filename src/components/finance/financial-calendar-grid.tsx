@@ -234,9 +234,11 @@ function CalendarEventLeading({
 function CalendarEventRow({
   event,
   selectedDate,
+  showValues = true,
 }: {
   event: CalendarEvent & { date?: string };
   selectedDate: string | null;
+  showValues?: boolean;
 }) {
   const locale = useSafeLocale();
   const isIncome = event.amount > 0;
@@ -247,6 +249,7 @@ function CalendarEventRow({
       variant="compact"
       tone={isIncome ? 'positive' : 'negative'}
       className="px-1 py-2.5"
+      showValues={showValues}
       leading={<CalendarEventLeading event={event} isIncome={isIncome} />}
       description={
         <span className="inline-flex items-center gap-2">
@@ -291,11 +294,13 @@ export function FinancialCalendarAgenda({
   selectedDayData,
   filteredEvents,
   onToday,
+  showValues = true,
 }: {
   selectedDate: string | null;
   selectedDayData: CalendarDay | null;
   filteredEvents: Array<CalendarEvent & { date?: string }>;
   onToday: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('analytics');
   const locale = useSafeLocale();
@@ -345,7 +350,7 @@ export function FinancialCalendarAgenda({
         ) : (
           <ul key={selectedDate || 'all'} className="divide-y divide-border" role="list">
             {filteredEvents.map((event) => (
-              <CalendarEventRow key={event.id} event={event} selectedDate={selectedDate} />
+              <CalendarEventRow key={event.id} event={event} selectedDate={selectedDate} showValues={showValues} />
             ))}
           </ul>
         )}

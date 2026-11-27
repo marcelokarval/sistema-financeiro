@@ -32,11 +32,16 @@
     "editAriaLabel": "Editar consorcio {description}",
     "deleteAriaLabel": "Eliminar consorcio {description}",
     "markPaid": "Marcar como pagada",
-    "markPaidAriaLabel": "Marcar cuota {number} como pagada"
+    "markPaidAriaLabel": "Marcar cuota {number} como pagada",
+    "jumpToNextPending": "Ir a la próxima pendiente"
   },
   "errors": {
     "loadList": "No fue posible cargar los consorcios.",
     "loadInstallments": "No fue posible cargar las cuotas. Vuelve y abre el consorcio nuevamente.",
+    "descriptionRequired": "Ingresa la descripción del bien",
+    "totalPositive": "El valor total debe ser mayor que cero",
+    "monthlyPositive": "La cuota mensual debe ser mayor que cero",
+    "installmentCountInvalid": "El total de cuotas debe ser un número entero mayor o igual a 1",
     "create": "Error al crear el consorcio",
     "update": "Error al actualizar el consorcio",
     "delete": "Error al eliminar el consorcio",
@@ -83,6 +88,13 @@
     "installmentsTitle": "Cuotas",
     "paidOf": "{paid} de {total} pagadas",
     "emptyInstallments": "No se encontraron cuotas",
+    "emptyFilteredInstallments": "Ninguna cuota en este filtro",
+    "installmentFilters": {
+      "ariaLabel": "Filtrar cuotas por estado",
+      "ALL": "Todas",
+      "PENDING": "Pendientes",
+      "PAID": "Pagadas"
+    },
     "installmentsAriaLabel": "Cuotas del consorcio",
     "installmentLabel": "Cuota {number}",
     "dueDate": "Vencimiento: {date}",
@@ -95,6 +107,7 @@
     "startDate": "Fecha de inicio"
   },
   "createDialog": {
+    "closeLabel": "Cerrar formulario",
     "title": "Nuevo Consorcio",
     "description": "Completa los datos del nuevo consorcio",
     "descriptionLabel": "Descripción del Bien",
@@ -120,6 +133,7 @@
     "submit": "Crear Consorcio"
   },
   "editor": {
+    "closeLabel": "Cerrar formulario",
     "title": "Editar Consorcio",
     "description": "Actualiza la información de asamblea del consorcio",
     "cancel": "Cancelar",
@@ -135,6 +149,7 @@
     "confirm": "Eliminar"
   },
   "payment": {
+    "closeLabel": "Cerrar formulario",
     "title": "Marcar Cuota como Pagada",
     "description": "Cuota {number} — {amount}",
     "cancel": "Cancelar",

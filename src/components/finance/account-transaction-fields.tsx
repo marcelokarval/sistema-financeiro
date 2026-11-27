@@ -33,15 +33,29 @@ export function AccountTransactionFields({ mode, value, onChange, categories }: 
   const change = (field: keyof AccountTransactionForm, next: string) => onChange({ ...value, [field]: next });
 
   const changeCategory = (next: string) => change('categoryId', editing && next === NO_CATEGORY ? '' : next);
+  const isTransfer = value.type === 'TRANSFER';
   return (
     <div className="space-y-4">
       <div>
         <Label htmlFor={`${prefix}-type`}>{t('transactionFields.typeLabel')}</Label>
-        <Select value={value.type} onValueChange={(type) => change('type', type)}>
+        <Select
+          value={value.type}
+          onValueChange={(type) => {
+            if (isTransfer && type !== 'TRANSFER') return;
+            change('type', type);
+          }}
+          disabled={isTransfer}
+        >
           <SelectTrigger id={`${prefix}-type`}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="EXPENSE">{t('transactionFields.expense')}</SelectItem>
-            <SelectItem value="INCOME">{t('transactionFields.income')}</SelectItem>
+            {isTransfer ? (
+              <SelectItem value="TRANSFER">{t('transactionFields.transfer')}</SelectItem>
+            ) : (
+              <>
+                <SelectItem value="EXPENSE">{t('transactionFields.expense')}</SelectItem>
+                <SelectItem value="INCOME">{t('transactionFields.income')}</SelectItem>
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -88,6 +102,15 @@ export function AccountTransactionFields({ mode, value, onChange, categories }: 
             ))}
           </SelectContent>
         </Select>
+      </div>
+      <div>
+        <Label htmlFor={`${prefix}-notes`}>{t('transactionFields.notesLabel')}</Label>
+        <Input
+          id={`${prefix}-notes`}
+          value={value.notes}
+          onChange={(event) => change('notes', event.target.value)}
+          placeholder={t('transactionFields.notesPlaceholder')}
+        />
       </div>
     </div>
   );

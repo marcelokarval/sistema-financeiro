@@ -37,6 +37,7 @@ export function InvestmentEditor({
   mode, open, saving, form, accounts, categories, onFieldChange, onOpenChange, onCloseAutoFocus, onSave,
 }: InvestmentEditorProps) {
   const t = useSafeTranslations('investments');
+  const tShared = useSafeTranslations('shared');
   const isEditing = mode !== 'create';
   const fromDetail = mode === 'edit-detail';
 
@@ -140,13 +141,14 @@ export function InvestmentEditor({
         <div>
           <Label htmlFor="investment-form-accountId">{t('editor.accountLabel')}</Label>
           <Select
-            value={form.accountId}
-            onValueChange={(v) => onFieldChange('accountId', v)}
+            value={form.accountId || 'none'}
+            onValueChange={(v) => onFieldChange('accountId', v === 'none' ? '' : v)}
           >
             <SelectTrigger id="investment-form-accountId">
               <SelectValue placeholder={fromDetail ? t('editor.selectPlaceholder') : t('editor.accountPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">{tShared('noneOption')}</SelectItem>
               {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
                   {account.name}
@@ -158,13 +160,14 @@ export function InvestmentEditor({
         <div>
           <Label htmlFor="investment-form-categoryId">{t('editor.categoryLabel')}</Label>
           <Select
-            value={form.categoryId}
-            onValueChange={(v) => onFieldChange('categoryId', v)}
+            value={form.categoryId || 'none'}
+            onValueChange={(v) => onFieldChange('categoryId', v === 'none' ? '' : v)}
           >
             <SelectTrigger id="investment-form-categoryId">
               <SelectValue placeholder={fromDetail ? t('editor.selectPlaceholder') : t('editor.categoryPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">{tShared('noneOption')}</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category.id} value={category.id}>
                   {category.name}

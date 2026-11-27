@@ -22,7 +22,7 @@ O FinanceApp centraliza controle de fluxo de caixa, cartões, compras detalhadas
 
 Recursos transversais disponíveis no cabeçalho e sob demanda:
 - **Seletor de idiomas (`pt`, `es`, `en`)** com bandeiras SVG ([`public/locale-flags/`](public/locale-flags/)) no cabeçalho e na navegação móvel, persistindo a preferência no cookie `NEXT_LOCALE` (com fallback por `Accept-Language`, padrão `pt`).
-- **Busca global (`Ctrl/⌘ K`)** com navegação direta para registros e destinos.
+- **Busca global (`Ctrl/⌘ K`)** tolerante a acentos/diacríticos (`src/lib/search-normalize.ts`) com navegação direta para registros e destinos.
 - **Painel de notificações** e alternância de tema **Escuro / Claro**.
 - **Exportação CSV localizada** via `/api/export` (`?locale=pt|es|en`, cookie `NEXT_LOCALE` ou `Accept-Language`) com proteção contra formula injection.
 - **Assistente financeiro (opcional)** sob demanda via `/api/advisor`, com respostas e contexto financeiro sanitizado localizados em `pt`, `es` ou `en` mantendo `BRL`.
@@ -36,7 +36,7 @@ Recursos transversais disponíveis no cabeçalho e sob demanda:
 - **Estilização & Componentes:** Tailwind CSS v4, shadcn/ui (Radix UI), tokens `--ds-*` (`docs/reference/design-system.premium-theme.css`), Lucide Icons, Sonner e utilitário `cn()` (`src/lib/utils.ts`)
 - **Estado & Gráficos:** Zustand (`src/lib/store.ts`) e Recharts (`2.15.4`)
 - **Persistência:** Prisma `6.11.1` + SQLite (`prisma/schema.prisma`)
-- **Tempo real:** Socket.io (`socket.io-client` no frontend via `src/hooks/use-realtime.ts`) conectado ao serviço auxiliar [`mini-services/finance-ws/`](mini-services/finance-ws/) na porta `3004`, com suporte ao gateway [`Caddyfile`](Caddyfile) (`:81` encaminhando para `:3000` e `XTransformPort=3004` para `:3004`)
+- **Tempo real:** Socket.io (`socket.io-client` no frontend via `src/hooks/use-realtime.ts`) conectado ao serviço auxiliar [`mini-services/finance-ws/`](mini-services/finance-ws/) na porta `3004`, com reconexão finita (`3` tentativas em backoff exponencial de `2000ms` a `30000ms` e degradação silenciosa quando `:3004` estiver ausente) e suporte ao gateway [`Caddyfile`](Caddyfile) (`:81` encaminhando para `:3000` e `XTransformPort=3004` para `:3004`)
 - **Assistente de IA (`/api/advisor`):** [`src/app/api/advisor/route.ts`](src/app/api/advisor/route.ts) utiliza `z-ai-web-dev-sdk` para enviar um resumo financeiro sanitizado a um modelo de linguagem. O aplicativo funciona normalmente sem configurar esse provedor, mas as respostas do assistente dependem de credenciais/serviço externos compatíveis com `z-ai-web-dev-sdk`.
 
 ---

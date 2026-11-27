@@ -66,23 +66,24 @@ export function applySearchSelection(
 }
 
 function DashboardWithWidgets({ refreshCounter }: { refreshCounter: number }) {
+  const showValues = useAppStore((state) => state.showValues);
   return (
     <DashboardView refreshCounter={refreshCounter}>
-      <div key={refreshCounter} className="space-y-4">
-        <QuickStatsOverview refreshCounter={refreshCounter} />
-        <SmartInsights />
-        <CashFlowForecast />
-        <SpendingTimeline />
-        <SavingsChallenge />
-        <ExpenseBreakdown />
-        <BalanceProjection />
-        <FinancialCalendar />
-        <NetworthEvolution />
-        <DebtOverview />
-        <TransactionAnalytics />
-        <GoalsDashboard />
-        <ReceiptGenerator />
-        <AchievementBadges />
+      <div key={refreshCounter} className="min-w-0 space-y-4">
+        <QuickStatsOverview refreshCounter={refreshCounter} showValues={showValues} />
+        <SmartInsights showValues={showValues} />
+        <CashFlowForecast showValues={showValues} />
+        <SpendingTimeline showValues={showValues} />
+        <SavingsChallenge showValues={showValues} />
+        <ExpenseBreakdown showValues={showValues} />
+        <BalanceProjection showValues={showValues} />
+        <FinancialCalendar showValues={showValues} />
+        <NetworthEvolution showValues={showValues} />
+        <DebtOverview showValues={showValues} />
+        <TransactionAnalytics showValues={showValues} />
+        <GoalsDashboard showValues={showValues} />
+        <ReceiptGenerator showValues={showValues} />
+        <AchievementBadges showValues={showValues} />
       </div>
     </DashboardView>
   );

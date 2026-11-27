@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const baseRef = '25b44535c5068b99044afa03f7ecf318e7a9726f';
 const baselineHash = '4cb86fd747b2388301c6d5ee7b91391fb8376376f705514d10dc472e0b1a1758';
-const shellHash = 'fb7a520212aa2b67221a887a61dc651fd227f842eb769219b4607b46f08601c7';
+const shellHash = '51f21def374a054cf61c5405ae2eb493e1143586646905d90103079925c74b95';
 const source = fileURLToPath(import.meta.url);
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const view = join(root, 'src/components/finance/accounts-view.tsx');

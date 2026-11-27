@@ -13,6 +13,10 @@
     "loadCards": "Não foi possível carregar os cartões.",
     "loadPurchases": "Não foi possível carregar as compras do cartão.",
     "nameRequired": "Nome do cartão é obrigatório",
+    "lastFourInvalid": "Informe os 4 dígitos finais do cartão",
+    "invalidLimit": "Informe um limite de crédito válido",
+    "invalidClosingDay": "Dia de fechamento deve ser entre 1 e 31",
+    "invalidDueDay": "Dia de vencimento deve ser entre 1 e 31",
     "saveCard": "Erro ao salvar cartão",
     "deleteCard": "Erro ao excluir cartão"
   },
@@ -36,7 +40,10 @@
     "copied": "Copiado",
     "cycleDates": "Fecha dia {closingDay} · Vence dia {dueDay}",
     "currentBalance": "Fatura atual",
-    "available": "Disponível"
+    "available": "Disponível",
+    "debitSubtitle": "Modalidade débito",
+    "debitMode": "Débito à vista",
+    "debitNoCredit": "Movimentação vinculada ao saldo da conta"
   },
   "usage": {
     "high": "Uso elevado do limite",
@@ -49,11 +56,13 @@
     "available": "Disponível",
     "infoAria": "Dados do cartão",
     "maskedNumber": "Número mascarado",
+    "type": "Tipo",
+    "debitNotice": "Cartão na modalidade débito: compras registradas diretamente sem ciclo de crédito.",
     "closing": "Fechamento",
     "due": "Vencimento",
     "day": "Dia {day}",
     "purchasesTitle": "Compras no cartão",
-    "purchaseCount": "{count, plural, one {# compra} other {# compras}}",
+    "purchaseCount": "{count, plural, =0 {# compras} one {# compra} other {# compras}}",
     "loadingPurchases": "Carregando compras do cartão…",
     "emptyPurchases": "Nenhuma compra registrada neste cartão.",
     "purchaseItems": "Itens da compra ({count})",
@@ -78,6 +87,7 @@
     "description": "Esta ação não pode ser desfeita. O histórico de compras será preservado."
   },
   "editor": {
+    "closeLabel": "Fechar formulário",
     "editTitle": "Editar Cartão",
     "createTitle": "Novo Cartão",
     "editDescription": "Atualize os dados do cartão",

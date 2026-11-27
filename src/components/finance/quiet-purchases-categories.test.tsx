@@ -174,6 +174,7 @@ async function exercisePurchases(
     answerWrite: (answer: () => Promise<Response>) => void;
     answerRead: (answer: (url: string) => Promise<Response>) => void;
   }) => Promise<void>,
+  initialPurchases = qaPurchases,
 ) {
   const { fetch } = globalThis;
   const { success, error } = toast;
@@ -182,7 +183,7 @@ async function exercisePurchases(
   const feedback: string[] = [];
   let write = () => Promise.resolve(new Response(null, { status: 204 }));
   let read = (url: string) => {
-    if (url === '/api/purchases') return Promise.resolve(Response.json(qaPurchases));
+    if (url === '/api/purchases') return Promise.resolve(Response.json(initialPurchases));
     if (url === '/api/cards') return Promise.resolve(Response.json(qaCards));
     if (url === '/api/categories') return Promise.resolve(Response.json(qaCategories));
     return Promise.reject(new Error(`Unexpected GET ${url}`));
@@ -522,6 +523,7 @@ for (const method of ['POST', 'PUT', 'DELETE'] as const) {
         required(activeDialog(), byId('purchase-merchant')).props.onChange({ target: { value: 'Loja B' } });
         if (method === 'POST') {
           required(activeDialog(), byId('purchase-item-name-0')).props.onChange({ target: { value: 'Leite' } });
+          required(activeDialog(), byId('purchase-item-price-0')).props.onChange({ target: { value: '5' } });
         }
       }
       held.resolve(new Response(null, { status: 204 }));
@@ -697,4 +699,149 @@ test('renderiza PurchaseItemsEditor, CategoryIconColorPicker, PurchasesView e Ca
     const categoriesHtml = renderWithIntl(<CategoriesView />, locale);
     expect(categoriesHtml).toContain(expected[locale].loadingCategories);
   }
+});
+
+test('#8: PurchaseEditor e CategoryEditor localizam closeLabel em pt, es e en', () => {
+  const expectedClose = {
+    pt: 'Fechar formulário',
+    es: 'Cerrar formulario',
+    en: 'Close form',
+  } as const;
+
+  for (const locale of CANONICAL_LOCALES) {
+    const purchaseEl = withPtIntlDispatcher(
+      () =>
+        PurchaseEditor({
+          mode: 'create',
+          open: true,
+          form: { merchant: '', cardId: '', categoryId: '', date: '2026-11-19', notes: '' },
+          items: [{ name: '', quantity: 1, unitPrice: 0, totalPrice: 0 }],
+          cards: qaCards,
+          categories: qaCategories,
+          totalAmount: 0,
+          onFieldChange: () => {},
+          onItemChange: () => {},
+          onAddItem: () => {},
+          onRemoveItem: () => {},
+          onOpenChange: () => {},
+          onCloseAutoFocus: () => {},
+          onCancel: () => {},
+          onSubmit: () => {},
+        }),
+      locale,
+    );
+    expect(purchaseEl.props.closeLabel).toBe(expectedClose[locale]);
+
+    const categoryEl = withPtIntlDispatcher(
+      () =>
+        CategoryEditor({
+          mode: 'create',
+          open: true,
+          form: { name: '', icon: 'tag', type: 'EXPENSE', color: '#64748b' },
+          onFieldChange: () => {},
+          onOpenChange: () => {},
+          onCloseAutoFocus: () => {},
+          onCancel: () => {},
+          onSubmit: () => {},
+        }),
+      locale,
+    );
+    expect(categoryEl.props.closeLabel).toBe(expectedClose[locale]);
+  }
+});
+
+test('#9 e #16: PurchasesView normaliza busca sem acentos, valida total/itens e propaga data.error; CategoriesView valida nome trimado', async () => {
+  const accentedPurchases = [
+    {
+      id: 'pur-farm',
+      merchant: 'Farmácia Raia',
+      totalAmount: 55,
+      date: '2026-11-19T12:00:00.000Z',
+      cardId: 'card-saude',
+      card: { id: 'card-saude', name: 'Cartão Saúde', lastFourDigits: '5678', color: '#8b5cf6' },
+      categoryId: 'cat-a',
+      category: qaCategories[0],
+      notes: '',
+      items: [{ id: 'it-1', name: 'Vitamina', quantity: 1, unitPrice: 55, totalPrice: 55 }],
+    },
+    ...qaPurchases,
+  ];
+
+  await exercisePurchases(async ({ render, calls, feedback, answerWrite }) => {
+    // Busca sem acento encontra Farmácia Raia e Cartão Saúde na lista filtrada de registros
+    const searchInput = required(render(), (e) => e.props.placeholder === 'Estabelecimento ou cartão');
+    searchInput.props.onChange({ target: { value: 'farmacia' } });
+    const farmRecordsHtml = renderToStaticMarkup(
+      required(render(), (e) => e.type === 'section' && e.props['aria-labelledby'] === 'purchase-records-heading'),
+    );
+    expect(farmRecordsHtml).toContain('Farmácia Raia');
+    expect(farmRecordsHtml).not.toContain('Supermercado A');
+
+    searchInput.props.onChange({ target: { value: 'saude' } });
+    const cardRecordsHtml = renderToStaticMarkup(
+      required(render(), (e) => e.type === 'section' && e.props['aria-labelledby'] === 'purchase-records-heading'),
+    );
+    expect(cardRecordsHtml).toContain('Farmácia Raia');
+    expect(cardRecordsHtml).not.toContain('Supermercado A');
+
+    // Validação client-side de Compras (#16)
+    const newBtn = required(render(), buttonNamed('Nova compra'));
+    newBtn.props.onClickCapture({ currentTarget: { isConnected: true, focus() {} } });
+    newBtn.props.onClick();
+    const activeDialog = () => required(render(), dialogTitleIs('Nova compra'));
+
+    // Merchant apenas com espaços
+    required(activeDialog(), byId('purchase-merchant')).props.onChange({ target: { value: '   ' } });
+    await required(activeDialog(), buttonNamed('Registrar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Informe o estabelecimento');
+
+    // Sem item válido
+    required(activeDialog(), byId('purchase-merchant')).props.onChange({ target: { value: 'Padaria Central' } });
+    await required(activeDialog(), buttonNamed('Registrar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Adicione ao menos um item');
+
+    // Item com total zero
+    required(activeDialog(), byId('purchase-item-name-0')).props.onChange({ target: { value: 'Pão' } });
+    required(activeDialog(), byId('purchase-item-price-0')).props.onChange({ target: { value: '0' } });
+    await required(activeDialog(), buttonNamed('Registrar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: O total da compra deve ser maior que zero');
+
+    // Quantidade inválida (< 1)
+    required(activeDialog(), byId('purchase-item-quantity-0')).props.onChange({ target: { value: '0' } });
+    required(activeDialog(), byId('purchase-item-price-0')).props.onChange({ target: { value: '10' } });
+    await required(activeDialog(), buttonNamed('Registrar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Verifique quantidade e preço dos itens');
+
+    // Propaga data.error quando servidor responde 400
+    required(activeDialog(), byId('purchase-item-quantity-0')).props.onChange({ target: { value: '2' } });
+    required(activeDialog(), byId('purchase-item-price-0')).props.onChange({ target: { value: '10' } });
+    answerWrite(async () => Response.json({ error: 'Estabelecimento inválido no servidor' }, { status: 400 }));
+    await required(activeDialog(), buttonNamed('Registrar')).props.onClick();
+    await settle();
+    expect(writes(calls)).toHaveLength(1);
+    expect(feedback.at(-1)).toBe('erro: Estabelecimento inválido no servidor');
+  }, accentedPurchases);
+
+  await exerciseCategories(async ({ render, calls, feedback, answerWrite }) => {
+    const newCatBtn = required(render(), buttonNamed('Nova categoria'));
+    newCatBtn.props.onClickCapture({ currentTarget: { isConnected: true, focus() {} } });
+    newCatBtn.props.onClick();
+    const catDialog = () => required(render(), dialogTitleIs('Nova categoria'));
+
+    required(catDialog(), byId('category-name')).props.onChange({ target: { value: '   ' } });
+    await required(catDialog(), buttonNamed('Criar')).props.onClick();
+    expect(writes(calls)).toHaveLength(0);
+    expect(feedback.at(-1)).toBe('erro: Informe o nome da categoria');
+
+    required(catDialog(), byId('category-name')).props.onChange({ target: { value: '  Lazer  ' } });
+    answerWrite(async () => new Response(null, { status: 204 }));
+    await required(catDialog(), buttonNamed('Criar')).props.onClick();
+    await settle();
+    expect(writes(calls)).toHaveLength(1);
+    expect((writes(calls)[0].body as { name: string }).name).toBe('Lazer');
+  });
 });

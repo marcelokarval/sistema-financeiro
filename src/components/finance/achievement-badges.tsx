@@ -40,19 +40,29 @@ type FilterCategory = 'todas' | 'poupanca' | 'controle' | 'investimento' | 'expl
 
 const panel = 'min-w-0 space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5';
 
-export function AchievementRow({ achievement }: { achievement: Achievement }) {
+function maskAchievementText(text: string, maskedValue: string): string {
+  return text
+    .replace(/-?R\$\s*[\d.,]+/g, maskedValue)
+    .replace(/[+-]?\d+(?:[.,]\d+)?\s*%/g, '•••')
+    .replace(/\d+(?:[.,]\d+)*/g, '•••');
+}
+
+export function AchievementRow({ achievement, showValues = true }: { achievement: Achievement; showValues?: boolean }) {
   const t = useSafeTranslations('goals');
   const locale = useSafeLocale();
   const Icon = iconMap[achievement.icon] || Trophy;
   const width = Math.min(100, Math.max(achievement.progress, 0));
   const label = t(`achievements.categories.${achievement.category}`);
+  const maskedValue = t('maskedValue');
+  const title = showValues ? achievement.title : maskAchievementText(achievement.title, maskedValue);
+  const description = showValues ? achievement.description : maskAchievementText(achievement.description, maskedValue);
   return (
     <li className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] sm:gap-4">
       <div className="flex min-w-0 items-start gap-2">
         <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
-          <h3 className="break-words text-sm font-medium">{achievement.title}</h3>
-          <p className="break-words text-xs text-muted-foreground">{achievement.description}</p>
+          <h3 className="break-words text-sm font-medium">{title}</h3>
+          <p className="break-words text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
       <div className="min-w-0 space-y-1.5 text-xs">
@@ -68,14 +78,14 @@ export function AchievementRow({ achievement }: { achievement: Achievement }) {
           )
         ) : (
           <>
-            <p className="font-mono tabular-nums">{Math.round(achievement.progress)}%</p>
+            <p className="font-mono tabular-nums">{showValues ? `${Math.round(achievement.progress)}%` : '•••'}</p>
             <FinanceProgress
-              label={t('achievements.progressAriaLabel', { title: achievement.title })}
+              label={t('achievements.progressAriaLabel', { title })}
               value={width}
               min={0}
               max={100}
               unit="%"
-              valueText={`${Math.round(achievement.progress)}%`}
+              valueText={showValues ? `${Math.round(achievement.progress)}%` : '•••'}
               showHeader={false}
             />
           </>
@@ -85,7 +95,8 @@ export function AchievementRow({ achievement }: { achievement: Achievement }) {
   );
 }
 
-export function AchievementBadges() {
+export function AchievementBadges({ showValues = true }: { showValues?: boolean } = {}) {
+  const locale = useSafeLocale();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -111,8 +122,9 @@ export function AchievementBadges() {
   }, []);
 
   useEffect(() => {
+    void locale;
     fetchAchievements();
-  }, [fetchAchievements]);
+  }, [fetchAchievements, locale]);
 
   return (
     <AchievementBadgesContent
@@ -122,6 +134,7 @@ export function AchievementBadges() {
       activeFilter={activeFilter}
       onFilterChange={setActiveFilter}
       onRetry={fetchAchievements}
+      showValues={showValues}
     />
   );
 }
@@ -133,6 +146,7 @@ export function AchievementBadgesContent({
   activeFilter,
   onFilterChange,
   onRetry,
+  showValues = true,
 }: {
   achievements: Achievement[];
   loading: boolean;
@@ -140,6 +154,7 @@ export function AchievementBadgesContent({
   activeFilter: FilterCategory;
   onFilterChange: (filter: FilterCategory) => void;
   onRetry: () => void;
+  showValues?: boolean;
 }) {
   const t = useSafeTranslations('goals');
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
@@ -175,12 +190,12 @@ export function AchievementBadgesContent({
       ) : (
         <>
           <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 text-xs">
-            <FinanceMetric variant="compact" label={t('achievements.unlockedLabel')} value={`${unlockedCount}/${totalCount}`} valueClassName="text-lg" />
+            <FinanceMetric variant="compact" label={t('achievements.unlockedLabel')} value={`${unlockedCount}/${totalCount}`} showValues={showValues} maskedValue="•••" valueClassName="text-lg" />
             <div>
               <dt className="text-xs text-muted-foreground">{t('achievements.completionLabel')}</dt>
-              <dd className="font-mono text-lg font-semibold tabular-nums">{completionPct}%</dd>
+              <dd className="font-mono text-lg font-semibold tabular-nums">{showValues ? `${completionPct}%` : '•••'}</dd>
               <dd aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className="h-full bg-primary" style={{ width: `${completionPct}%` }} />
+                <div className="h-full bg-primary" style={{ width: `${showValues ? completionPct : 0}%` }} />
               </dd>
             </div>
           </dl>
@@ -196,7 +211,7 @@ export function AchievementBadgesContent({
             })}
           </div>
           {filtered.length > 0 ? (
-            <ul className="divide-y divide-border">{filtered.map((achievement) => <AchievementRow key={achievement.id} achievement={achievement} />)}</ul>
+            <ul className="divide-y divide-border">{filtered.map((achievement) => <AchievementRow key={achievement.id} achievement={achievement} showValues={showValues} />)}</ul>
           ) : <p className="text-sm text-muted-foreground">{t('achievements.emptyCategory')}</p>}
         </>
       )}
